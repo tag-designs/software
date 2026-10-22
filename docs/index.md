@@ -365,7 +365,7 @@ design document.
 
 ### Command Line
 
-- [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
+- [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-cal-write and dataprocessing.
 - [Command-Line Tools TODO](../host/commandline/TODO.md) *(worklist)* — Open command-line tool work - dataprocessing tests, further processors and SensorViz support for processed files.
 - [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams and IMUTag orientation with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 
@@ -442,6 +442,11 @@ design document.
 ### python / tagclient / examples
 
 - [tagclient Examples](../host/python/tagclient/examples/README.md) — Python counterparts of tag-info, tag-start, tag-stop, tag-reset, tag-dwnld and tag-peek, plus a live status monitor, written against tag-server with tagclient.
+
+### python / tagsim
+
+- [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file - installing, running, testing, and what the first slice does not model yet.
+- [tagsim: How the First Slice Works](../host/python/tagsim/design/simulator.md) — How tagsim's first slice turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the noise-free sensor model and its axes, page packing, and the truth file.
 
 ### python / tagsim / Proposals
 

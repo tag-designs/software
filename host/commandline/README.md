@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-cal-write and dataprocessing.
+summary: Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-cal-write and dataprocessing.
 ---
 
 # Command-Line Tools
@@ -43,6 +43,8 @@ caught by the signature check in `host/tools/release-macos.sh`:
 - `tag-peek`: read arbitrary memory through the monitor interface.
 - `tag-cal-write`: write an identity (no-op) calibration constant set, to
   unblock a mass-erased CompassTag. See below.
+- `tag-log-import`: write a `tagclient` JSONL download as a SQLite log, with
+  no tag. See below.
 - `qtmonitor-fixture-capture`: capture `TagInfo`, default `Config`, `Status`,
   and voltage from a real tag into the fixture JSON consumed by qtmonitor
   documentation screenshot automation.
@@ -187,6 +189,34 @@ layout version the decoder does not know is refused. How to capture, and how
 to keep the decoders in step with the firmware, is in
 [Capturing a tag](../../docs/bench/capturing-a-tag.md); the design choice is
 [decision 0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md).
+
+## tag-log-import
+
+Writes a download in the JSONL format of `tagclient`'s
+[`tag_dwnld.py`](../python/tagclient/examples/tag_dwnld.py) as a SQLite log,
+with the same writer `tag-dwnld` uses. It needs no tag:
+
+```sh
+build-host/bin/tag-log-import download.jsonl -o tag.db3
+```
+
+The input has two parts:
+
+- **The first line** is the header. `config` and `info` are required.
+  `states` (State messages) and `calibration` (CalibrationConstants, oldest
+  first) are optional. Other members are ignored, such as `tag_sha` and
+  `status`.
+- **Every later line** is one Ack in protobuf JSON. Each is written with one
+  `writeLog()` call, in order.
+
+A line the writer takes no records from is an error: it means the Acks do not
+match the header's tag type. The tool is tag-agnostic.
+
+The `info` table gains `source` = `import` and `import_file`, and
+`--info KEY=VALUE` adds more rows. On failure, the partial output is removed.
+
+[tagsim](../python/tagsim/README.md) uses it to turn simulated IMUTag pages
+into a genuine log.
 
 ## tag-cal-write
 

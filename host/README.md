@@ -17,7 +17,7 @@ The layout is organized by role:
 | `applications/` | Qt applications such as `qtmonitor`, `qtprogram`, `qtcalibrate`, `btviz`, and `sensorviz`. |
 | `commandline/` | CLI tools built on the low-level tag library. |
 | `tagserver/` | `tag-server`, the tag library over gRPC for test programs; built only with `BUILD_TAG_SERVER=ON`. See [tagserver/README.md](tagserver/README.md). |
-| `python/` | Python packages; `tagclient` is the client for `tag-server`. |
+| `python/` | Python packages; `tagclient` is the client for `tag-server`, `tagsim` the IMUTag log simulator (testing infrastructure). |
 | `common/` | Small Qt helpers shared by applications, but not part of the low-level tag library. |
 | `docs/` | MkDocs user-guide sources and the fixtures its screenshots are generated from; see [docs/README.md](docs/README.md). Build with the CMake `docs` target; installed with packages when `BUILD_HOST_DOCS=ON`. |
 

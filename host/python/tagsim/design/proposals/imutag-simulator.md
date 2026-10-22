@@ -6,7 +6,20 @@ summary: A Python test tool, tagsim, that replays R/C pattern-aerobatics flights
 
 # tagsim: Synthetic IMUTag Logs from Pattern Flights
 
-**Status:** proposed, nothing built.
+**Status:** the first end-to-end slice is built (2026-10-21): one recorded
+flight in, a noise-free IMUTag log and truth file out, through the new
+`tag-log-import`. How it works is in [../simulator.md](../simulator.md), and
+how to run it is in [the README](../../README.md). The phases table below
+says what is done.
+
+Where the build departed from this proposal:
+
+- **Position fit.** Position is a least-squares quintic B-spline, not an
+  exact quintic Hermite. EKF position and velocity disagree too much for an
+  interpolant to honour both.
+- **Magnetometer sign.** The sign is taken from real IMUTagNandBmp581 data,
+  not from a literal reading of the axis contract. See the
+  [design](../simulator.md#sensor-model).
 
 `tagsim` is a Python package of testing infrastructure, next to
 [`tagclient`](../../../tagclient/README.md). It is not a shipped tool.
@@ -498,9 +511,9 @@ sensorviz shows the generated IMUTag log itself as it shows any other.
 
 | Phase | Work | Checked by |
 | --- | --- | --- |
-| 1 | `tag-log-import`; tagsim page and Ack writer; a stationary trajectory; no noise | The imported log decodes back to exactly the values the model wrote, including flags, segments, NaN slots and partial pages; `sensorviz` and `dataprocessing` open it |
-| 2 | Full sensor model (noise, quantization, saturation, clock, magnetometer timing, pressure drift, calibration distortion); truth sidecar and `SimRun` | Allan-variance and spectrum checks of a simulated static log against the configured noise; `check_orientation_frames.py` agrees; calibration recovers the true field |
-| 3 | Pattern-flight replay (recorded logs and SITL) and synthetic primitives; consistency check; comparison with the log's own sensors; UAV Log Viewer export | Strapdown drift under a stated bound; on SITL, the fitted trajectory matches `SIM`; the exported trajectory matches the source flight by eye in the viewer and numerically |
+| 1 (**done**, with the replay part of 3) | `tag-log-import`; tagsim page and Ack writer; a stationary trajectory; no noise | The imported log decodes back to exactly the values the model wrote, including flags, segments, NaN slots and partial pages; `sensorviz` and `dataprocessing` open it |
+| 2 (quantization, saturation, truth sidecar and `SimRun` **done**) | Full sensor model (noise, quantization, saturation, clock, magnetometer timing, pressure drift, calibration distortion); truth sidecar and `SimRun` | Allan-variance and spectrum checks of a simulated static log against the configured noise; `check_orientation_frames.py` agrees; calibration recovers the true field |
+| 3 (recorded-log replay, glitch repair, truth sidecar and consistency check **done**; SITL, primitives, sensor comparison and export open) | Pattern-flight replay (recorded logs and SITL) and synthetic primitives; consistency check; comparison with the log's own sensors; UAV Log Viewer export | Strapdown drift under a stated bound; on SITL, the fitted trajectory matches `SIM`; the exported trajectory matches the source flight by eye in the viewer and numerically |
 | 4 | pytest harness: small generated fixtures run through the importer, `dataprocessing` and, once it exists, sensorviz's `session_cli`; a saturation report across ODR and range settings | Runs without hardware; the range report informs default configuration |
 | Later | Refit noise and bias parameters from a static recording on a prototype; validate against a short real motion recording | Simulated and real noise statistics agree |
 
