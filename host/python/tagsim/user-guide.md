@@ -118,7 +118,11 @@ deliberately wrong calibration constants, as a real field calibration might.
 autopilot data:
 
 - the tag's attitude;
-- its gyro and accelerometer biases;
+- its gyro biases, and the gyro's own scale and misalignment errors;
+- its accelerometer biases;
+- any calibration error left in the magnetometer;
+- the magnetometer's clock, so each reading can be placed at the moment it
+  was actually taken;
 - its altitude relative to the start, and its vertical speed.
 
 ### Different sample rates
@@ -136,7 +140,9 @@ each reading at its own time:
   its time and applies it there.
 - **Its timestamp is corrected first.** The firmware reads those sensors at
   the end of each group of ten samples, not the start. A magnetometer reading
-  is also somewhat older than when it is read.
+  is also older than when it is read, by up to one conversion period. The
+  filter works out the magnetometer's own clock from the data, and places
+  each reading at its true time.
 - **Missing readings are simply missing.** Nothing assumes a fixed ratio
   between sensors, so the same filter works at every rate from 100 to
   1600 Hz.
@@ -145,9 +151,9 @@ each reading at its own time:
 
 | Sensor | Role |
 | --- | --- |
-| Gyro | Carries the attitude through everything, including the hardest manoeuvres. Its bias is estimated, mostly while the tag sits still |
+| Gyro | Carries the attitude through everything, including the hardest manoeuvres. Its bias is estimated, mostly while the tag sits still, and its scale and misalignment errors from the large rotations of the flight itself |
 | Accelerometer | Says which way is down, but only when the tag isn't accelerating. Its weight is turned down smoothly during manoeuvres, so a loop's 5 g pull isn't mistaken for gravity |
-| Magnetometer | Says which way is north, after calibration, compared with the expected field. Readings with the wrong magnitude (a disturbance) are ignored |
+| Magnetometer | Says which way is north, after calibration, compared with the expected field. Any calibration error left over is estimated. Readings with the wrong magnitude (a disturbance) are ignored |
 | Pressure | Gives altitude changes, a few centimetres per sample. It also keeps the vertical part of the acceleration honest, which helps the tilt estimate during manoeuvres |
 
 ### Two passes
@@ -162,10 +168,6 @@ each reading at its own time:
 **Memory:** a full-flash log needs no more memory than your machine has. The
 history the smoother needs goes to temporary files on disk above 1 GiB.
 
-**In progress:** gyro scale and misalignment errors in the filter's state,
-and a per-reading magnetometer age correction instead of an average. See
-the design note for the current state.
-
 ### How well it does
 
 On the 15 simulated pattern flights, comparing the filter's smoothed attitude
@@ -173,17 +175,24 @@ with truth, median across flights, in the air:
 
 | Condition | Error |
 | --- | --- |
-| Simple sensor errors | 0.07° |
-| Realistic errors (scale, misalignment, bias wander) | 0.8° |
-| Realistic errors plus imperfect calibration | 1.4° |
+| Simple sensor errors | 0.08° |
+| Realistic errors (scale, misalignment, bias wander) | 0.12° |
+| Realistic errors plus imperfect calibration | 0.27° |
 | Today's one-sample compass, for comparison | 28° |
 
 Altitude is within about 2 cm, and vertical speed within about 1 cm/s.
 
-**Treat these as provisional.** Several error sizes are assumptions until
-they're measured on a real tag, gyro misalignment above all, and that is
-now the largest source of error. Real prototype data, and a flight with a
-tag aboard, will settle them.
+**What makes the difference:**
+
+- *The gyro calibration states:* without them, the realistic case is 0.73°.
+- *Estimating leftover magnetometer calibration error:* without it, the
+  imperfect-calibration case is 1.6°.
+- *Pressure:* without it, every case is about 0.5°.
+
+**Treat these as provisional.** They come from simulated data. Several error
+sizes are assumptions until they're measured on a real tag, gyro
+misalignment above all. Real prototype data, and a flight with a tag aboard,
+will settle them.
 
 ## Running it
 
@@ -249,11 +258,13 @@ instead with `--site LAT LON ALT`.
 ### Look at it
 
 As a sanity check, open these in [UAV Log Viewer](https://plot.ardupilot.org/)
-and compare the flight paths and attitudes by eye:
+and compare the flight paths and attitudes by eye, in two browser tabs:
 
-- the original flight log;
-- the view file `tagsim view` writes, which has the truth as the main track
-  and the estimate as a second one.
+- the original flight log, for example `00000173.BIN`;
+- the view file, for example `f173-smoothed.view.bin`, written by
+  `tagsim view --score`. It has the truth as the main track (`POS`, `ATT`)
+  and the filter's smoothed estimate as `AHR2`. Its timeline matches the
+  original's.
 
 The provider of the first logs has agreed to their being opened on that
 public site.
