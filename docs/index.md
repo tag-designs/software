@@ -445,8 +445,9 @@ design document.
 
 ### python / tagsim
 
-- [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, scores orientation estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.
-- [Compass Baseline Results](../host/python/tagsim/design/compass-baseline-results.md) *(results)* — Append-only log of tagsim scores for dataprocessing's single-sample IMUTag compass on the recorded pattern flights - the attitude and heading errors a post-processing filter has to beat, with the build, settings and conditions of each run.
+- [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, prototypes the post-processing attitude and altitude filter, scores estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.
+- [Compass Baseline Results](../host/python/tagsim/design/compass-baseline-results.md) *(results)* — Append-only log of tagsim scores on the recorded pattern flights - dataprocessing's single-sample IMUTag compass, the baseline a post-processing filter has to beat, and the navigation filter prototype against it - with the build, settings and conditions of each run.
+- [IMUTag Navigation Filter (Prototype)](../host/python/tagsim/design/navigation-filter.md) — tagsim's Python prototype of the IMUTag post-processing filter - a multi-rate error-state EKF over attitude, gyro bias, relative altitude and vertical velocity, with an RTS smoother - how it orders the sensors' events, its updates and initialisation, and what it does not model.
 - [tagsim: How It Works](../host/python/tagsim/design/simulator.md) — How tagsim turns an ArduPilot flight into an IMUTag log - glitch repair, the attitude and position splines, the sensor model and its axes, the datasheet sensor errors, magnetometer timing, page packing, the truth file - and how it scores an orientation estimate and exports truth and estimate for UAV Log Viewer.
 
 ### python / tagsim / Proposals

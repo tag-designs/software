@@ -51,6 +51,14 @@ Manual review, once SensorViz support exists:
 prototype tags now at fab; synthetic logs cannot show real motion, mag timing
 or disturbance.
 
+A Python prototype now exists in tagsim (`tagsim filter`,
+[design](../python/tagsim/design/navigation-filter.md)): a multi-rate
+error-state EKF over attitude, gyro bias, relative altitude and vertical
+velocity, with an RTS smoother, scored on simulated pattern flights in
+[compass-baseline-results.md](../python/tagsim/design/compass-baseline-results.md).
+Its simulated gyro has no scale-factor or misalignment error, so it does not
+lift the block below.
+
 This needs a design before more processors are added. A download is the whole
 deployment, so orientation can be estimated offline with a forward EKF over
 the 400 Hz accel and gyro, corrected by the 40 Hz magnetometer, and a backward

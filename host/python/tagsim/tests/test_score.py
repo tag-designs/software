@@ -52,7 +52,7 @@ def test_error_split():
 def _still_truth(sim, flying_us):
     n = len(sim.signals.t)
     return Truth(np.arange(n) * 1e6 / sim.cfg.odr_hz, sim.signals.q_enu_tag,
-                 sim.signals.vel_enu, flying_us, sim.cfg.mag_ned_ut, {})
+                 sim.signals.vel_enu, sim.signals.pos_enu[:, 2], flying_us, sim.cfg.mag_ned_ut, {})
 
 
 def test_compass_at_rest_scores_its_errors():

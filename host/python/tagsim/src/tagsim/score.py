@@ -12,6 +12,13 @@ split about the vertical:
 - **heading**: E's twist about the vertical, signed clockwise from above, as
   a compass heading error, in (-180, 180].
 
+Where the estimate has them, it also scores **velocity** (``|v_est -
+v_true|``), **altitude** relative to the start and **vertical velocity**.
+Altitude is compared as a change: the estimate's and the truth's altitude
+both relative to their own value at the start, taken as the mean offset
+between them over the estimate's first second (so neither a datum nor one
+noisy first row matters).
+
 Rows are split into **flight** (inside the source log's ``STAT.isFlying``
 window) and **ground** (the padding either side), and each metric is
 summarised by median, 95th percentile and maximum of its absolute value.
@@ -22,8 +29,8 @@ Estimates:
   quaternion is in the algorithm's own convention, so the attitude it
   implies is recovered with :func:`tagsim.compass.implied_attitude`.
 - ``enu``: any table with ``ElapsedUs``, ``qw qx qy qz`` (tag frame to
-  ENU, tagsim's convention) and optionally ``ve vn vu`` (m/s), which is the
-  form a future filter should write.
+  ENU, tagsim's convention) and optionally ``ve vn vu`` (m/s), ``alt`` (m,
+  any datum) and ``vz`` (m/s, up). :mod:`tagsim.navfilter` writes this form.
 """
 
 from __future__ import annotations
@@ -38,7 +45,11 @@ import numpy as np
 from .compass import implied_attitude
 from .rotations import make_continuous, qconj, qmul, qrotate, slerp
 
-METRICS = ("total_deg", "tilt_deg", "heading_deg", "velocity_mps")
+METRICS = ("total_deg", "tilt_deg", "heading_deg", "velocity_mps", "altitude_m", "vz_mps")
+
+#: Span (s) at the start of an estimate over which its altitude datum is
+#: matched to truth's.
+ALTITUDE_REFERENCE_S = 1.0
 
 
 @dataclass
@@ -48,6 +59,7 @@ class Truth:
     elapsed_us: np.ndarray
     q_enu_tag: np.ndarray
     vel_enu: np.ndarray
+    up_m: np.ndarray  #: ENU up about the EKF origin
     flying_us: tuple[float, float] | None  #: flying window, truth ElapsedUs
     field_ned_ut: tuple[float, float, float]
     config: dict
@@ -57,13 +69,13 @@ def load_truth(path: Path) -> Truth:
     con = sqlite3.connect(path)
     try:
         rows = np.array(con.execute(
-            "SELECT ElapsedUs, qw, qx, qy, qz, ve, vn, vu FROM TruthPose "
+            "SELECT ElapsedUs, qw, qx, qy, qz, ve, vn, vu, u FROM TruthPose "
             "WHERE SegmentId = 0 ORDER BY SampleIndex").fetchall(), dtype=np.float64)
         config = json.loads(con.execute("SELECT ConfigJson FROM SimRun").fetchone()[0])
     finally:
         con.close()
     flying = config.get("flying_elapsed_us")
-    return Truth(rows[:, 0], make_continuous(rows[:, 1:5]), rows[:, 5:8],
+    return Truth(rows[:, 0], make_continuous(rows[:, 1:5]), rows[:, 5:8], rows[:, 8],
                  tuple(flying) if flying else None,
                  tuple(config["sensor"]["mag_ned_ut"]), config)
 
@@ -80,6 +92,8 @@ class Estimate:
     vel_enu: np.ndarray | None = None
     #: How well the estimate's own convention was decoded (rad), if it had to be.
     decode_residual: np.ndarray | None = None
+    alt_m: np.ndarray | None = None  #: altitude, any datum
+    vz_mps: np.ndarray | None = None  #: vertical velocity, up
 
 
 def truth_at(truth: Truth, elapsed_us: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -88,6 +102,15 @@ def truth_at(truth: Truth, elapsed_us: np.ndarray) -> tuple[np.ndarray, np.ndarr
     q = slerp(truth.elapsed_us, truth.q_enu_tag, t)
     v = np.stack([np.interp(t, truth.elapsed_us, truth.vel_enu[:, k]) for k in range(3)], -1)
     return q, v
+
+
+def altitude_error(truth: Truth, elapsed_us: np.ndarray, alt_m: np.ndarray) -> np.ndarray:
+    """Error (m) of an altitude change: estimate minus truth, after matching
+    their datums by the mean offset over the first ``ALTITUDE_REFERENCE_S``."""
+    t = np.asarray(elapsed_us, dtype=np.float64)
+    d = np.asarray(alt_m, dtype=np.float64) - np.interp(t, truth.elapsed_us, truth.up_m)
+    first = (t <= t[0] + ALTITUDE_REFERENCE_S * 1e6) & np.isfinite(d)
+    return d - (d[first].mean() if first.any() else np.nan)
 
 
 def imu_compass_estimate(processed: Path, truth: Truth) -> Estimate:
@@ -112,17 +135,26 @@ def enu_estimate(db: Path, table: str) -> Estimate:
     con = sqlite3.connect(db)
     try:
         cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
-        has_v = {"ve", "vn", "vu"} <= cols
+        extra = [c for c in ("ve", "vn", "vu", "alt", "vz") if c in cols]
         seg = "SegmentId" if "SegmentId" in cols else "0"
         idx = "SampleIndex" if "SampleIndex" in cols else "0"
         rows = np.array(con.execute(
             f"SELECT {seg}, {idx}, ElapsedUs, qw, qx, qy, qz"
-            + (", ve, vn, vu" if has_v else "") + f" FROM {table} ORDER BY ElapsedUs").fetchall(),
+            + "".join(f", {c}" for c in extra) + f" FROM {table} ORDER BY ElapsedUs").fetchall(),
             dtype=np.float64)
     finally:
         con.close()
+
+    def col(name):
+        if name not in extra:
+            return None
+        v = rows[:, 7 + extra.index(name)]
+        return None if np.isnan(v).all() else v
+
+    has_v = all(c in extra for c in ("ve", "vn", "vu"))
+    vel = np.stack([col(c) for c in ("ve", "vn", "vu")], -1) if has_v else None
     return Estimate(table, rows[:, 0].astype(np.int64), rows[:, 1].astype(np.int64), rows[:, 2],
-                    rows[:, 3:7], rows[:, 7:10] if has_v else None)
+                    rows[:, 3:7], vel, alt_m=col("alt"), vz_mps=col("vz"))
 
 
 def attitude_errors(q_est: np.ndarray, q_true: np.ndarray) -> dict[str, np.ndarray]:
@@ -161,6 +193,10 @@ def score(truth: Truth, est: Estimate) -> Score:
     errors = attitude_errors(est.q_enu_tag, q_true)
     if est.vel_enu is not None:
         errors["velocity_mps"] = np.linalg.norm(est.vel_enu - v_true, axis=1)
+    if est.alt_m is not None:
+        errors["altitude_m"] = altitude_error(truth, est.elapsed_us, est.alt_m)
+    if est.vz_mps is not None:
+        errors["vz_mps"] = est.vz_mps - v_true[:, 2]
     if truth.flying_us is None:
         flying = np.zeros(len(est.elapsed_us), dtype=bool)
     else:
@@ -185,7 +221,7 @@ def write_score(path: Path, result: Score, truth_path: Path, estimate_path: Path
         con.executescript("""
             CREATE TABLE ScoreSeries (Estimate TEXT, SegmentId INTEGER, SampleIndex INTEGER,
                 ElapsedUs INTEGER, Flying INTEGER, TotalDeg REAL, TiltDeg REAL, HeadingDeg REAL,
-                VelocityErrMps REAL, qw REAL, qx REAL, qy REAL, qz REAL, DecodeResidualDeg REAL);
+                VelocityErrMps REAL, AltitudeErrM REAL, VzErrMps REAL, qw REAL, qx REAL, qy REAL, qz REAL, DecodeResidualDeg REAL);
             CREATE TABLE ScoreSummary (Estimate TEXT, Phase TEXT, Metric TEXT, N INTEGER,
                 Median REAL, P95 REAL, Max REAL);
             CREATE TABLE ScoreRun (Estimate TEXT, TruthFile TEXT, EstimateFile TEXT,
@@ -196,7 +232,7 @@ def write_score(path: Path, result: Score, truth_path: Path, estimate_path: Path
             return None if not np.isfinite(x) else float(x)
 
         con.executemany(
-            "INSERT INTO ScoreSeries VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO ScoreSeries VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             ((est.name, int(s), int(i), int(e), int(fl), *(f(c[k]) for c in cols),
               *(float(x) for x in est.q_enu_tag[k]), float(np.degrees(resid[k])))
              for k, (s, i, e, fl) in enumerate(zip(est.segment_id, est.sample_index,
@@ -224,4 +260,4 @@ def summary_lines(result: Score) -> list[str]:
 
 
 __all__ = ["Truth", "Estimate", "Score", "load_truth", "imu_compass_estimate", "enu_estimate",
-           "truth_at", "attitude_errors", "score", "write_score", "summary_lines"]
+           "truth_at", "altitude_error", "attitude_errors", "score", "write_score", "summary_lines"]

@@ -1,4 +1,4 @@
-"""Command line: ``tagsim run``, ``score``, ``view`` and ``batch``."""
+"""Command line: ``tagsim run``, ``filter``, ``score``, ``view`` and ``batch``."""
 
 from __future__ import annotations
 
@@ -175,6 +175,61 @@ def cmd_view(args: argparse.Namespace) -> int:
     return 0
 
 
+def filter_config(args: argparse.Namespace, epoch_unix: float):
+    """The navigation filter's configuration from ``tagsim filter``'s options.
+
+    The Earth field comes from ``--field-ned``, else the WMM at ``--site``
+    on the log's date, else the field a tagsim truth file (``--truth``) was
+    generated with."""
+    from .navfilter import FilterConfig, field_enu_from_ned
+    from .score import load_truth
+
+    if args.field_ned:
+        ned = args.field_ned
+    elif args.site:
+        ned = earth_field(*args.site, epoch_unix).ned_ut
+    elif args.truth:
+        ned = load_truth(args.truth).field_ned_ut
+    else:
+        raise ValueError("give the Earth field: --field-ned, --site or --truth")
+    values = FilterConfig(field_enu_ut=field_enu_from_ned(ned),
+                          use_pressure=not args.no_pressure,
+                          smooth=not args.no_smooth).as_dict()
+    for item in args.set or []:
+        name, _, text = item.partition("=")
+        if name not in values or not text:
+            raise ValueError(f"--set {item!r}: expected NAME=VALUE, NAME one of "
+                             f"{', '.join(sorted(values))}")
+        value = json.loads(text)
+        values[name] = tuple(value) if isinstance(value, list) else value
+    return FilterConfig(**values)
+
+
+def cmd_filter(args: argparse.Namespace) -> int:
+    import time
+
+    from .navfilter import read_log, run_filter, write_estimates
+
+    logs = read_log(args.log)
+    if not logs:
+        raise ValueError(f"{args.log}: no IMU samples")
+    cfg = filter_config(args, logs[0].epoch_unix)
+    results = []
+    for log in logs:
+        start = time.perf_counter()
+        r = run_filter(log, cfg)
+        s = r.stats
+        print(f"segment {log.segment_id}: {len(log.t_imu)} IMU samples at {log.odr_hz:g} Hz, "
+              f"{s['mag_updates']} mag updates ({s['mag_gated']} gated), "
+              f"{s['pressure_updates']} pressure; still at start: {s['start_still']}; "
+              f"gyro bias {np.round(s['gyro_bias_final_dps'], 3).tolist()} dps; "
+              f"{time.perf_counter() - start:.1f} s")
+        results.append(r)
+    write_estimates(args.output, results, cfg, args.log)
+    print(f"FilterForward and FilterSmoothed in {args.output}")
+    return 0
+
+
 def dataprocessing_binary() -> str:
     """``dataprocessing``: ``$DATAPROCESSING_BIN``, else the one on PATH."""
     found = os.environ.get("DATAPROCESSING_BIN") or shutil.which("dataprocessing")
@@ -183,9 +238,30 @@ def dataprocessing_binary() -> str:
     return found
 
 
+def _score_row(name: str, source: str, estimate: str, truth, result) -> dict:
+    row = {"flight": name, "source": source, "estimate": estimate, "status": "ok",
+           "duration_s": round(len(truth.elapsed_us) / truth.config["sensor"]["odr_hz"], 1)}
+    for phase in ("ground", "flight"):
+        for metric in ("total_deg", "tilt_deg", "heading_deg", "altitude_m", "vz_mps"):
+            s = result.summary[phase].get(metric)
+            if s is None:
+                continue
+            for stat in ("median", "p95", "max"):
+                row[f"{phase}_{metric}_{stat}"] = None if s[stat] is None else round(s[stat], 3)
+    return row
+
+
+#: Estimates ``tagsim batch --filter`` scores: (label, file suffix, table).
+FILTER_ESTIMATES = (("forward", "-filt", "FilterForward"),
+                    ("smoothed", "-filt", "FilterSmoothed"),
+                    ("forward-nopressure", "-filt-nop", "FilterForward"),
+                    ("smoothed-nopressure", "-filt-nop", "FilterSmoothed"))
+
+
 def cmd_batch(args: argparse.Namespace) -> int:
-    """Every log in a directory: run, dataprocessing, score, view, and a table."""
-    from .score import imu_compass_estimate, load_truth, score, write_score
+    """Every log in a directory: run, dataprocessing, score, view, and a table;
+    with ``--filter`` also the navigation filter, with and without pressure."""
+    from .score import enu_estimate, imu_compass_estimate, load_truth, score, write_score
 
     dp = dataprocessing_binary()
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -194,31 +270,43 @@ def cmd_batch(args: argparse.Namespace) -> int:
     for log in logs:
         name = "f" + (str(int(log.stem)) if log.stem.isdigit() else log.stem)
         db = args.out_dir / f"{name}.db3"
+        proc = args.out_dir / f"{name}-proc.db3"
         print(f"== {log.name} -> {db.name}", flush=True)
-        if main(["run", "--log", str(log), "-o", str(db), "--seed", str(args.seed)]) != 0:
+        if args.reuse and not (db.exists() and truth_path(db).exists() and proc.exists()):
             table.append({"flight": name, "source": log.name, "status": "not usable"})
             continue
-        proc = args.out_dir / f"{name}-proc.db3"
-        done = subprocess.run([dp, "-i", str(db), "-o", str(proc), "--if-exists", "replace",
-                               "-p", "imu-compass-orientation"], capture_output=True, text=True)
-        if done.returncode != 0:
-            raise RuntimeError(f"dataprocessing failed on {db}: {done.stderr.strip()}")
+        if not args.reuse:
+            if main(["run", "--log", str(log), "-o", str(db), "--seed", str(args.seed)]) != 0:
+                table.append({"flight": name, "source": log.name, "status": "not usable"})
+                continue
+            done = subprocess.run([dp, "-i", str(db), "-o", str(proc), "--if-exists", "replace",
+                                   "-p", "imu-compass-orientation"], capture_output=True,
+                                  text=True)
+            if done.returncode != 0:
+                raise RuntimeError(f"dataprocessing failed on {db}: {done.stderr.strip()}")
         truth = load_truth(truth_path(db))
         result = score(truth, imu_compass_estimate(proc, truth))
         write_score(score_path(db), result, truth_path(db), proc)
         main(["view", "--truth", str(truth_path(db)), "--score", str(score_path(db)),
               "-o", str(view_path(db))])
-        row = {"flight": name, "source": log.name, "status": "ok",
-               "duration_s": round(len(truth.elapsed_us) / truth.config["sensor"]["odr_hz"], 1)}
-        for phase in ("ground", "flight"):
-            for metric in ("total_deg", "tilt_deg", "heading_deg"):
-                s = result.summary[phase][metric]
-                for stat in ("median", "p95", "max"):
-                    row[f"{phase}_{metric}_{stat}"] = (None if s[stat] is None
-                                                       else round(s[stat], 2))
-        table.append(row)
-    keys = sorted({k for r in table for k in r}, key=lambda k: (k not in ("flight", "source",
-                                                                          "status"), k))
+        table.append(_score_row(name, log.name, "compass", truth, result))
+        if not args.filter:
+            continue
+        for suffix, extra in (("-filt", []), ("-filt-nop", ["--no-pressure"])):
+            out = args.out_dir / f"{name}{suffix}.db3"
+            if main(["filter", "--log", str(db), "-o", str(out), "--truth",
+                     str(truth_path(db))] + extra) != 0:
+                raise RuntimeError(f"filter failed on {db}")
+        for label, suffix, tbl in FILTER_ESTIMATES:
+            est_db = args.out_dir / f"{name}{suffix}.db3"
+            result = score(truth, enu_estimate(est_db, tbl))
+            write_score(args.out_dir / f"{name}-{label}.score.db3", result, truth_path(db), est_db)
+            table.append(_score_row(name, log.name, label, truth, result))
+        main(["view", "--truth", str(truth_path(db)), "--score",
+              str(args.out_dir / f"{name}-smoothed.score.db3"),
+              "-o", str(args.out_dir / f"{name}-smoothed.view.bin")])
+    keys = sorted({k for r in table for k in r},
+                  key=lambda k: (k not in ("flight", "source", "estimate", "status"), k))
     summary = args.out_dir / "scores.csv"
     with open(summary, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=keys)
@@ -229,11 +317,13 @@ def cmd_batch(args: argparse.Namespace) -> int:
         if r["status"] != "ok":
             print(f"{r['flight']:6} {r['status']}")
             continue
-        print(f"{r['flight']:6} ground tilt {r['ground_tilt_deg_median']} / "
+        print(f"{r['flight']:6} {r['estimate']:20} ground tilt {r['ground_tilt_deg_median']} / "
               f"{r['ground_tilt_deg_p95']}, heading {r['ground_heading_deg_median']} / "
               f"{r['ground_heading_deg_p95']};  flight tilt {r['flight_tilt_deg_median']} / "
               f"{r['flight_tilt_deg_p95']}, heading {r['flight_heading_deg_median']} / "
-              f"{r['flight_heading_deg_p95']}")
+              f"{r['flight_heading_deg_p95']}"
+              + (f"; altitude {r['flight_altitude_m_median']} m, vz {r['flight_vz_mps_median']} m/s"
+                 if r.get("flight_altitude_m_median") is not None else ""))
     return 0
 
 
@@ -280,13 +370,32 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--jerk-sigma", type=float, default=100.0, help="jerk penalty, m/s^3")
     r.set_defaults(func=cmd_run)
 
+    fl = sub.add_parser("filter", help="estimate attitude, altitude and vertical velocity "
+                                       "from an IMUTag log (forward EKF and RTS smoother)")
+    fl.add_argument("--log", type=Path, required=True, help="decoded IMUTag SQLite log")
+    fl.add_argument("-o", "--output", type=Path, required=True,
+                    help="file to write FilterForward, FilterSmoothed and FilterRun to")
+    fl.add_argument("--field-ned", type=float, nargs=3, metavar=("N", "E", "D"),
+                    help="Earth field, uT")
+    fl.add_argument("--site", type=float, nargs=3, metavar=("LAT", "LON", "ALT"),
+                    help="WMM field at this site (degrees, m) on the log's date")
+    fl.add_argument("--truth", type=Path,
+                    help="use the field a tagsim truth file was generated with")
+    fl.add_argument("--no-pressure", action="store_true",
+                    help="attitude and gyro bias only: no altitude states or pressure updates")
+    fl.add_argument("--no-smooth", action="store_true", help="forward pass only")
+    fl.add_argument("--set", action="append", metavar="NAME=VALUE",
+                    help="override one FilterConfig parameter (JSON value); repeatable")
+    fl.set_defaults(func=cmd_filter)
+
     sc = sub.add_parser("score", help="score an orientation estimate against a truth file")
     sc.add_argument("--truth", type=Path, required=True, help="NAME.truth.db3")
     sc.add_argument("--estimate", type=Path, required=True,
                     help="SQLite file holding the estimate (default: dataprocessing's "
                          "ImuCompassOrientation)")
     sc.add_argument("--table", help="score this table instead, in tagsim's convention: "
-                                    "ElapsedUs, qw qx qy qz (tag frame to ENU), optional ve vn vu")
+                                    "ElapsedUs, qw qx qy qz (tag frame to ENU), optional ve vn vu, "
+                                    "alt (m) and vz (m/s), e.g. FilterSmoothed")
     sc.add_argument("-o", "--output", type=Path, required=True, help="score file to write")
     sc.set_defaults(func=cmd_score)
 
@@ -301,6 +410,10 @@ def parser() -> argparse.ArgumentParser:
     b.add_argument("--log-dir", type=Path, required=True)
     b.add_argument("--out-dir", type=Path, required=True)
     b.add_argument("--seed", type=int, default=0)
+    b.add_argument("--filter", action="store_true",
+                   help="also run and score the navigation filter, with and without pressure")
+    b.add_argument("--reuse", action="store_true",
+                   help="reuse NAME.db3, its truth and NAME-proc.db3 instead of regenerating")
     b.set_defaults(func=cmd_batch)
     return p
 

@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, scores orientation estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.
+summary: tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, prototypes the post-processing attitude and altitude filter, scores estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.
 ---
 
 # tagsim
@@ -12,6 +12,8 @@ of the truth the tag could not know. It is testing infrastructure for the host
 tools, not a shipped tool. The plan is
 [design/proposals/imutag-simulator.md](design/proposals/imutag-simulator.md);
 how the built part works is in [design/simulator.md](design/simulator.md).
+It also holds the Python prototype of the IMUTag post-processing filter,
+`tagsim filter` ([design/navigation-filter.md](design/navigation-filter.md)).
 
 ```sh
 tagsim run --log 00000173.BIN --odr 100 --accel-range 4 --gyro-range 1000 -o f173.db3
@@ -81,21 +83,36 @@ carry flying-field GPS positions. Keep them outside the repository; the tests
 find them through `TAGSIM_LOG_DIR`. Generated logs, truth files and viewer
 files carry the same positions, so they stay out too.
 
-## Scoring and viewing
+## Filtering, scoring and viewing
 
 ```sh
 dataprocessing -i f173.db3 -o f173-proc.db3 -p imu-compass-orientation
 tagsim score --truth f173.truth.db3 --estimate f173-proc.db3 -o f173.score.db3
-tagsim view --truth f173.truth.db3 --score f173.score.db3 -o f173.view.bin
+tagsim filter --log f173.db3 --truth f173.truth.db3 -o f173-filt.db3
+tagsim score --truth f173.truth.db3 --estimate f173-filt.db3 --table FilterSmoothed -o f173-smoothed.score.db3
+tagsim view --truth f173.truth.db3 --score f173-smoothed.score.db3 -o f173.view.bin
 ```
 
+- **`tagsim filter`** estimates attitude, gyro bias, altitude relative to the
+  start and vertical velocity from the log alone: a multi-rate error-state
+  EKF, then an RTS smoother ([design](design/navigation-filter.md)). It
+  writes `FilterForward` and `FilterSmoothed` to `-o`. It needs the Earth
+  field: `--site LAT LON ALT` (the WMM there on the log's date),
+  `--field-ned N E D`, or `--truth` (the field the truth file was made with).
+  `--no-pressure` drops the altitude channel, `--no-smooth` the backward
+  pass, and `--set NAME=VALUE` overrides any `FilterConfig` parameter in
+  [navfilter.py](src/tagsim/navfilter.py).
+
 - **`tagsim score`** reports attitude error (total, tilt and heading) and,
-  where the estimate has it, velocity error: median, 95th percentile and
-  maximum, for flight and ground separately. It writes the error series and
+  where the estimate has them, velocity, altitude-change and
+  vertical-velocity error: median, 95th percentile and maximum, for flight
+  and ground separately. Altitude is compared as a change from the start,
+  the two datums matched over the estimate's first second. It writes the error series and
   summary to `NAME.score.db3` (`ScoreSeries`, `ScoreSummary`, `ScoreRun`) for
   sensorviz or a notebook. By default it scores `dataprocessing`'s
   `ImuCompassOrientation`; `--table T` scores any table with `ElapsedUs` and
-  `qw qx qy qz`, tag frame to ENU, plus optional `ve vn vu`.
+  `qw qx qy qz`, tag frame to ENU, plus optional `ve vn vu`, `alt` and `vz`,
+  such as the filter's.
 - **`tagsim view`** writes a DataFlash log that
   [UAV Log Viewer](https://github.com/ardupilot/uavlogviewer) opens: the truth
   as `POS` and `ATT` (the viewer's defaults) and, with `--score`, the estimate
@@ -104,11 +121,16 @@ tagsim view --truth f173.truth.db3 --score f173.score.db3 -o f173.view.bin
 - **`tagsim batch --log-dir DIR --out-dir OUT`** does all of it for every log
   in a directory, at the defaults: `NAME.db3`, `NAME-proc.db3`,
   `NAME.truth.db3`, `NAME.score.db3` and `NAME.view.bin` per flight, and a
-  table of every score in `OUT/scores.csv`. It needs `dataprocessing`, found
-  through `DATAPROCESSING_BIN` or on `PATH`.
+  table of every score in `OUT/scores.csv`, one row per flight and
+  estimate. `--filter` also runs the filter with and without pressure
+  (`NAME-filt.db3`, `NAME-filt-nop.db3`) and scores its forward and smoothed
+  tables (`NAME-forward.score.db3`, …, and `NAME-smoothed.view.bin`);
+  `--reuse` scores existing logs instead of regenerating them. It needs
+  `dataprocessing`, found through `DATAPROCESSING_BIN` or on `PATH`.
 
 How the compass's quaternion is decoded, and why it has to be, is in
-[design/simulator.md](design/simulator.md#scoring). The baseline scores are in
+[design/simulator.md](design/simulator.md#scoring). The compass baseline and
+the filter's scores are in
 [design/compass-baseline-results.md](design/compass-baseline-results.md).
 
 ## Running the tests
@@ -158,6 +180,7 @@ Each variable has a fallback:
 | `test_dataflash.py` | The reader's scaling agrees with the log's own `FMTU`/`MULT` unit records | a log |
 | `test_flight.py::test_log_and_truth` | `00000173.BIN` (or the first log found) end to end at 100 Hz, and its truth file | a log and `tag-log-import` |
 | `test_flight.py::test_calibrated_field_is_wmm` | `dataprocessing imu-compass-orientation` on that log: the calibrated field's median is the WMM magnitude | a log, `tag-log-import` and `dataprocessing` |
+| `test_navfilter.py` | The filter's event stream (poll offsets, ordering, the age hook) at 100, 400 and 1600 Hz; a tag at rest; constant-rate rotation about three axes; a constant-rate climb; smoothed no worse than forward on a manoeuvre; the same manoeuvre at 100 and 400 Hz; a third of the magnetometer and pressure rows dropped, a 3 s gap, and magnetometer events between IMU samples | nothing |
 | `test_score.py` | The compass decode inverts the algorithm at every attitude; the tilt and heading split; a compass at rest scores zero without sensor errors and the bias tilt with them; the viewer log reads back | nothing |
 | `test_flight.py::test_score_and_view` | The Python port of the compass matches `dataprocessing`'s quaternions on that log; the flight scores, fully decoded, and exports | a log, `tag-log-import` and `dataprocessing` |
 | `test_flight.py::test_sensorviz_loads` | sensorviz opens the generated log and writes a screenshot | a log, `tag-log-import` and sensorviz |
