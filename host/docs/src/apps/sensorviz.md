@@ -86,8 +86,8 @@ may be short for simple tags and longer for IMUTag or CompassTag logs.
 
 | Menu item | Function |
 | --- | --- |
-| **Visible Streams...** | Opens a checklist of loaded raw and generated streams. Use it to show or hide streams without reloading the log. |
-| **Axis Sides...** | Opens a dialog that assigns each visible stream to the left or right side of the plot. This is useful when streams have different units or overlapping ranges. |
+| **Visible Streams...** | Opens a checklist of loaded raw and generated streams. Use it to show or hide streams without reloading the log. Streams that share an axis, such as the IMUTag accelerometer `x/y/z` and magnitude, are listed under a group checkbox: check it to show the whole group, uncheck it to hide the group, or check members individually. The group checkbox is partly checked while only some members are shown. |
+| **Axis Sides...** | Opens a dialog that assigns each y axis to the left or right side of the plot. A group of streams sharing an axis is one row. This is useful when streams have different units or overlapping ranges. |
 | **Colors...** | Opens a dialog for changing the display color of each visible stream. Each stream can be reset to its default color. |
 | **Ranges** | Opens a submenu with one range command for each visible stream. |
 | **Reset Zoom** | Restores the full loaded time span and clears manual y-axis ranges. Fixed metadata ranges and data-derived default ranges are reapplied. |
@@ -102,6 +102,20 @@ visible; pitch, roll, dip, and magnetic field default to hidden.
 
 ![SensorViz Visible Streams dialog](../images/sensorviz-visible-streams-dialog.png)
 
+### Shared Axes and the Legend
+
+Most streams get a y axis of their own, drawn in the stream's color. Streams
+that the log records as one group with the same units share a single axis
+instead: IMUTag accelerometer, gyroscope and magnetometer `x/y/z`, each with its
+generated magnitude. A shared axis is labelled with the group name and units,
+for example **IMU accelerometer mg**, and its range covers every visible member.
+
+The members of a group are drawn in related colors (accelerometer blues,
+gyroscope reds and oranges, magnetometer greens), with the magnitude in a darker
+shade and a heavier line. While any axis is shared, a legend names its traces,
+one column per shared axis. Drag the legend, or the metadata box, to move it out
+of the way of the data; the position is kept until SensorViz is closed.
+
 ## View > Ranges Submenu
 
 The **Ranges** submenu is rebuilt from the streams currently visible on the
@@ -112,14 +126,16 @@ plot. Each item is named for one stream, for example **Pressure Range...** or
 
 | Menu item | Function |
 | --- | --- |
-| **_Stream_ Range...** | Opens a dialog for the selected stream with minimum and maximum y-axis values. The dialog uses the stream units when units are available. |
+| **_Stream_ Range...** | Opens a dialog for the selected stream with minimum and maximum y-axis values. The dialog uses the stream units when units are available. For a stream on a shared axis, the range applies to the whole axis. |
 
 Range defaults are chosen in this order:
 
 1. A manual range set by the user.
 2. A fixed display range from SensorViz metadata, such as activity `0-100`,
-   voltage `0-5 V`, or core temperature `0-50 C`.
-3. The loaded data minimum and maximum with padding.
+   voltage `0-5 V`, or core temperature `0-50 C`. On a shared axis this
+   applies only while its stream is the axis's only visible member.
+3. The loaded data minimum and maximum with padding, over every visible
+   member of a shared axis.
 
 Pressure and altitude are linked until altitude receives its own explicit
 range. If you set a pressure range while altitude is visible, SensorViz derives
@@ -177,7 +193,9 @@ raw streams.
 IMUTag logs typically contain high-rate accelerometer and gyroscope samples plus
 lower-rate magnetometer and pressure samples. SensorViz keeps the raw `x/y/z`
 component streams available in **View > Visible Streams...**, then generates
-summary magnitude streams that are easier to read on the first plot. IMUTag
+summary magnitude streams that are easier to read on the first plot. Each
+sensor's components and magnitude share one y axis when shown together; see
+[Shared Axes and the Legend](#shared-axes-and-the-legend). IMUTag
 logs use elapsed seconds on the x-axis when the SQLite file stores samples by
 elapsed time rather than UTC epoch.
 

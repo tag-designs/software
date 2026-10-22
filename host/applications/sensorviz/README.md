@@ -73,9 +73,11 @@ sensorViz is two layers:
     `PlotSpec`.
   - `plot_spec.*`: the plot's display policy as a pure function.
     `buildPlotSpec()` turns the streams, display preferences and a
-    `PlotState` into a `PlotSpec` of plain data: traces, one y axis each with
-    its range mode (auto, linked across an IMU x/y/z family, or fixed), the
-    time domain and extent, event markers, metadata-box rows and the title.
+    `PlotState` into a `PlotSpec` of plain data: traces, y axes (one per
+    axis group, see [Plotting Rules](#plotting-rules)) with their member
+    traces and range mode (auto, linked across a group's visible members, or
+    fixed), the time domain and extent, event markers, metadata-box rows and
+    the title.
     `plotspec_check` and `viewmodel_check` check the core against the fixtures
     without Qt.
 - **The Qt front end** (everything else): an adapter over the core. Menus and
@@ -108,7 +110,8 @@ The Qt front end is split by responsibility:
   [Data Model](#data-model)).
 - `stream_actions.cpp`: the stream actions (views of the ViewModel's
   visibility), visible-stream, axis-side, color and range dialogs, and range
-  coupling between related streams.
+  coupling between related streams. The visible-stream and axis-side dialogs
+  list a group of streams that share an axis together.
 - `transforms.cpp`: scalar display transforms such as altitude, activity
   low-pass, and IMUTag vector magnitudes.
 - `compass_transforms.cpp`: compass orientation samples, built from a processed
@@ -117,7 +120,8 @@ The Qt front end is split by responsibility:
   battery-forward convention, and compass-panel sample updates.
 - `plot_view.*`: `PlotView`, the only code that touches QCustomPlot. It draws
   a `PlotSpec` (converting its strings and colors to Qt's), owns the graphs, dynamic axes, elapsed/date time axis, cursors,
-  event markers, title and draggable metadata box, refills graphs from the
+  event markers, title, draggable metadata box and draggable legend (one
+  column per shared axis), refills graphs from the
   plot backend, prints, and reports the mouse through signals (`hoverTime`,
   `cursorsChanged`, `xRangeChanged`, `contextMenuRequested`). A different
   renderer could draw the same spec.
@@ -264,11 +268,26 @@ structures. Adding a simple one-column sensor table should usually start in
   `0-50 C`.
 - Other streams default to the left axis unless `defaultDisplayForStream()`
   assigns a different display policy.
-- IMUTag raw pressure/temperature and `x/y/z` component streams default hidden
-  on the right axis; derived IMUTag summary streams default visible on the left.
+- IMUTag raw pressure/temperature default hidden on the right axis. IMUTag
+  `x/y/z` component streams default hidden and their derived magnitudes
+  visible, all on the left, so a group's shared axis does not change side as
+  members are shown.
 - Autoscaled y-axes get a 5% margin.
-- Visible IMUTag `x/y/z` families share a y-axis range within each family so
-  component traces are comparable.
+- Visible streams with the same `streams.group_id` and units share one y axis
+  (`axisGroupKey()`); a derived magnitude joins its components' group. The
+  axis is labelled with the group name and units and spans the union of its
+  members' data. A member's custom range, or a side override, sets the whole
+  axis (the first member with one wins, and the Range dialog sets all
+  members). A member's default fixed range, such as |a| from 0, applies only
+  while it is alone, since it would clip signed components. Streams without a
+  group keep an axis of their own.
+- Members of a group are told apart by color: one hue family per IMU group in
+  a fixed `x/y/z` order, the magnitude a darker shade drawn heavier. Line
+  styles are not used: on a dense trace drawn as a per-pixel envelope, dashes
+  are indistinguishable from a solid line, and the cursors and event markers
+  are already dashed. A legend names the traces of each shared axis, with
+  samples two pixels wider than their traces; it is hidden while no axis is
+  shared.
 - Displayed streams can have explicit y-axis ranges set from the View menu or
   plot context menu.
 - Lines break at gaps in the data (View > Break Lines at Gaps, on by
@@ -283,8 +302,9 @@ structures. Adding a simple one-column sensor table should usually start in
   than the full path. The title is current-view state, not a saved preference.
 - The metadata box shows only contextual rows. Start time appears for
   elapsed-axis logs, declination appears when heading is visible, and sea-level
-  pressure appears when altitude is visible. The box can be dragged within the
-  plot; the position is session state and is not saved.
+  pressure appears when altitude is visible. The box and the legend can be
+  dragged within the plot; their positions are session state and are not
+  saved.
 
 ## Preferences
 
@@ -336,8 +356,9 @@ used for that calculation. For IMUTag logs, altitude is generated from
 available.
 
 IMUTag acceleration, gyroscope, and magnetic field magnitudes are generated
-automatically from their corresponding `x/y/z` streams. They appear adjacent to
-their source axes in Visible Streams.
+automatically from their corresponding `x/y/z` streams. They join their
+components' group, so they share their axis and appear with them under the
+group's checkbox in Visible Streams.
 
 Low-pass activity is controlled by Configuration instead of duplicated in the
 View menu. Compass plot streams are generated automatically on load and then
