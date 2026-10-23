@@ -52,6 +52,7 @@ set(qtmonitor_SRCS
     main.cpp
     mainwindow.cpp
     mainwindow_fixture.cpp
+    tagstatusstrip.cpp
     tagconfiguration/adxl362panel.cpp
     tagconfiguration/bittaglogpanel.cpp
     tagconfiguration/configclock.cpp

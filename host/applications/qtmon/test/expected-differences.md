@@ -10,6 +10,20 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: the Configuration tab's buttons become menu actions
+
+Change: step 1 of
+[the editor, menus and start checks proposal](../design/proposals/editor-menus-and-start-checks.md).
+The save, restore, read and start buttons, and their "Configuration File" and
+"Configure Tag" group boxes, leave the Configuration tab. The commands are now
+actions in the File and Tag menus, on the tab's popup menu, and (Start) on the
+status strip, none of which is part of `ConfigTab`.
+
+Every case's `ui` loses the two group lines and the four button lines. Nothing
+was added, and no other key changed in any case. When each command is
+available is now checked separately, by `qtmonitor --check-action-states`
+against `action-states.txt`, which matches the old buttons' rules row for row.
+
 ## 2026-10-23: one page of fixed panels
 
 Change: the fixed panels ([decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md)). The Schedule and Sensors sub-tabs, the four

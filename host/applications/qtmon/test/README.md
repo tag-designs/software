@@ -26,6 +26,7 @@ and [decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-
 | `cases/<tag>.json` | The committed cases, one file per tag type. Generated; do not edit by hand. |
 | `golden/<tag>.json` | Results from the reference build. Every comparison is made against these. |
 | `expected-differences.md` | Every accepted change to the goldens, with its reason. |
+| `action-states.txt` | Which commands are enabled in which state; see below. |
 | `probe.sh` | Runs a qtmonitor build over `cases/`. |
 | `compare.py` | Compares two result directories. |
 | `config_probe_cases.cc` | Generates `cases/`. |
@@ -125,6 +126,31 @@ tree reproduces the committed files exactly. **New cases need goldens from the
 reference build, not from the build under test.** Otherwise a change and its
 own check would come from the same code. Regenerate the goldens from the
 commit before the change, then compare the change against them.
+
+## Which commands are available when
+
+`qtmonitor --check-action-states` prints which actions
+`MainWindow::updateActions()` enables, disables or hides, for every
+combination of:
+
+- attached or detached;
+- each tag state;
+- a tag type with calibration (CompassTag) and one without (BitTag LE);
+- a configuration loaded or not;
+- a download running;
+- a self-test pending.
+
+Compare it with the committed table:
+
+```sh
+QT_QPA_PLATFORM=offscreen <qtmonitor> --check-action-states | \
+    diff - host/applications/qtmon/test/action-states.txt
+```
+
+No output means nothing changed. The table was checked, row for row, against
+the enabling rules of the buttons it replaced. A change to when a command is
+available updates the table in the same commit, so the review shows exactly
+which rows moved.
 
 ## What the probe does not cover
 

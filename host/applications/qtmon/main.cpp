@@ -187,6 +187,10 @@ int main(int argc, char *argv[])
       "dir",
       "config-probe-results"));
   parser.addOption(QCommandLineOption(
+      "check-action-states",
+      "Print which actions are enabled for every combination of tag state and "
+      "the other inputs, and exit."));
+  parser.addOption(QCommandLineOption(
       "check-config-panels",
       "Check which configuration panels each tag type shows against the tags' "
       "default configurations, print any mismatch and exit (1 on mismatch)."));
@@ -210,6 +214,16 @@ int main(int argc, char *argv[])
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     return runConfigProbe(parser.value("config-probe"),
                           parser.value("config-probe-out"));
+  }
+
+  if (parser.isSet("check-action-states")) {
+    HostStyle::apply(a);
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    MainWindowOptions options;
+    options.skipAutoAttach = true;
+    MainWindow window(options);
+    std::fputs(qPrintable(window.actionStateTable()), stdout);
+    return 0;
   }
 
   MainWindowOptions windowOptions;

@@ -150,20 +150,39 @@ public slots:
     /**
      * @brief Enables editing only while the tag is IDLE.
      *
-     * @details In IDLE the shown panels and the restore, read and start
-     *          buttons are enabled; in any other state they are disabled, so a
-     *          running tag's configuration is displayed but not editable.
+     * @details In IDLE the shown panels are enabled; in any other state they
+     *          are disabled, so a running tag's configuration is displayed but
+     *          not editable. MainWindow enables the configuration actions
+     *          (Restore, Read, Start) by the same rule.
      *
      * @param[in] state  The tag's current state.
      */
     void StateUpdate(TagState state);
 
-private slots:
+    /**
+     * @brief Asks for a file and saves the configuration Start would send
+     *        (GetConfig()) to it as protobuf JSON, every field printed.
+     */
+    void SaveToFile();
 
-    void on_configSaveButton_clicked();
-    void on_configRestoreButton_clicked();
-    void on_startButton_clicked();
-    void on_readButton_clicked();
+    /**
+     * @brief Asks for a file and restores it over the current configuration
+     *        (RestoreFromJsonText()), reporting any failure in a dialog.
+     */
+    void RestoreFromFile();
+
+    /**
+     * @brief Writes the configuration to the attached tag and starts it,
+     *        then polls until the tag leaves IDLE (see pollStartResult()).
+     *        A no-op in fixture mode.
+     */
+    void StartTag();
+
+    /**
+     * @brief Reads the attached tag's configuration and displays it. A no-op
+     *        in fixture mode.
+     */
+    void ReadFromTag();
 
 private:
 

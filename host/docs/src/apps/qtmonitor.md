@@ -6,45 +6,68 @@ verify the tag identity and firmware, synchronize the tag clock, run self-tests,
 edit the tag configuration, start logging, download finished data, and inspect
 error messages.
 
-## BitTag Walkthrough
+## Walkthrough
 
-The examples in this section use a classic BitTag so the main screens are
-consistent. Other tag types use the same Tag State and Error Log screens; only
-the Configuration tab changes by tag family.
+The main screens below show a CompassTag; the Configuration tab is shown for a
+classic BitTag, and for every tag type under [Tag Configuration](#tag-configuration).
+Other tag types use the same screens; only the Configuration tab changes by tag
+family.
 
-### Opening Screen
+### The window
 
-When Tag Monitor opens with no tag attached, the Tag State tab is visible but
-most tag-dependent fields and controls are inactive. Connect a base with an
-installed tag, then press **Attach** if the application did not attach
-automatically.
+Commands are in the menus at the top of the window, and on popup menus
+(right-click):
+
+| Menu | Commands |
+| --- | --- |
+| **File** | Save Configuration…, Restore Configuration…, Download Data…, Save Error Log…, Quit |
+| **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Calibrate (CompassTag and IMUTag), Erase… |
+| **Log** | Log Level, Clear Error Log |
+
+A command that does not apply to the tag's current state is greyed out: for
+example, Synchronize Clock and Self-Test need an IDLE tag, Stop a running one,
+and Download Data a finished one.
+
+The **status strip** below the tabs is visible on every tab. It shows
+whether a tag is **Attached** or **Detached**, the tag's type (hover over it for
+the board UUID), its state, how far its clock is from this computer's, its
+voltage, and its self-test result. **Start** and **Stop** are on the right of
+the strip.
+
+### Opening screen
+
+When Tag Monitor opens with no tag attached, the strip shows **Detached** and
+most commands are greyed out. Connect a base with an installed tag, then choose
+**Tag ▸ Attach** if the application did not attach automatically.
 
 ![Tag Monitor opening screen](../images/qtmonitor-startup.png)
 
-### Tag State
+### Tag
 
-The Tag State tab has five main areas: Status, Control, Tag Attach, Tag
-Information, and Data. The enabled controls depend on the current tag state.
+The Tag tab shows the tag's identity and how much data it holds. Right-click it
+for the tag commands.
 
-![Tag Monitor idle BitTag state](../images/qtmonitor-main-idle.png)
+![Tag Monitor with an idle CompassTag](../images/qtmonitor-main-idle.png)
 
 Check the state, voltage, self-test result, UUID, firmware version, and Git hash
 before using a tag in the field. The UUID identifies the physical tag and the
 Git hash identifies the firmware build loaded on it.
 
-Synchronize the clock and run self-tests before starting an experiment. Tags
-that support calibration, currently CompassTag and IMUTag, also show a
-calibration control when attached.
+Choose **Tag ▸ Synchronize Clock** and **Tag ▸ Self-Test** before starting an
+experiment; the strip shows the clock offset and the self-test result. The
+self-tests usually finish in well under a second, so the tag's state rarely
+shows TEST; the strip shows **Running** until the result arrives, and the Error
+Log records each run's start and result with the tag's UUID. Tags that support
+calibration, currently CompassTag and IMUTag, also have **Tag ▸ Calibrate**.
 
-When a tag is running, configuration controls are inactive and **Stop** is
+When a tag is running, the configuration cannot be edited and **Stop** is
 available.
 
-![Tag Monitor running BitTag state](../images/qtmonitor-main-running.png)
+![Tag Monitor with a running CompassTag](../images/qtmonitor-main-running.png)
 
-When a tag has finished logging, Tag Monitor enables the data controls used to
-save tag data.
+When a tag has finished logging, **File ▸ Download Data…** saves its data.
 
-![Tag Monitor finished BitTag state](../images/qtmonitor-main-finished.png)
+![Tag Monitor with a finished CompassTag](../images/qtmonitor-main-finished.png)
 
 ### Configuration
 
@@ -56,16 +79,20 @@ or the accelerometer. If the page is taller than the screen, it scrolls.
 
 ![Tag Monitor classic BitTag configuration](../images/qtmonitor-config-bittag.png)
 
-Pressing **start** writes the displayed configuration to the tag and starts the
-tag. Until then, the displayed configuration is only a planned configuration.
-Use **save** and **restore** to move configurations through files, and **read**
-to reload the current configuration from the attached tag.
+**Start** writes the displayed configuration to the tag and starts it. Until
+then, the displayed configuration is only a planned configuration. Use
+**File ▸ Save Configuration…** and **File ▸ Restore Configuration…** to move
+configurations through files (see [Configuration Files](../reference/config-files.md)),
+and **Tag ▸ Read Configuration** to reload the attached tag's own. These are
+also on the page's popup menu.
 
 ### Error Log
 
 The Error Log tab collects application and tag communication messages. If Tag
-Monitor behaves unexpectedly, check this tab first and save the log if the
-message history will help diagnose the issue.
+Monitor behaves unexpectedly, check this tab first, and save the log
+(**File ▸ Save Error Log…**) if the message history will help diagnose the
+issue. **Log ▸ Log Level** sets how much detail is recorded. Right-click the
+log to copy, save or clear it.
 
 ![Tag Monitor error log](../images/qtmonitor-error-log.png)
 
@@ -74,10 +101,11 @@ message history will help diagnose the issue.
 1. Connect the USB base with the tag installed.
 2. Attach to the tag and verify tag type, UUID, firmware, Git hash, and voltage.
 3. Synchronize the tag clock.
-4. Run self-tests and resolve any reported problem.
+4. Run the self-tests and resolve any reported problem.
 5. Configure the schedule and any sensor settings for the experiment.
-6. Press **start** to write the configuration and begin logging.
-7. After logging finishes, save the tag data before erasing or redeploying.
+6. Press **Start** to write the configuration and begin logging.
+7. After logging finishes, download the tag's data before erasing or
+   redeploying.
 8. Use the Error Log when attach, configuration, test, or download behavior is
    unexpected.
 
@@ -133,15 +161,14 @@ seconds. It has no separate sensor controls.
 IMUTag's schedule is a **Start Delay** in minutes: logging begins that long
 after **start**, and runs until the tag is stopped. The **IMU** panel configures
 the sample rate and the accelerometer and gyro ranges. Because IMUTag supports
-calibration, the Tag State tab also exposes the calibration control when an
-IMUTag is attached.
+calibration, **Tag ▸ Calibrate** is available when an IMUTag is attached.
 
 ![IMUTag configuration](../images/qtmonitor-config-imutag.png)
 
 ### CompassTag
 
 CompassTag uses the schedule for deployment timing and hibernation windows.
-Like IMUTag, it supports calibration from the Tag State tab. It has no separate
+Like IMUTag, it supports calibration (**Tag ▸ Calibrate**). It has no separate
 sensor controls in Tag Monitor.
 
 ![CompassTag configuration](../images/qtmonitor-config-compasstag.png)

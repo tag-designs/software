@@ -7,9 +7,9 @@ record of how the tags in an experiment were configured.
 
 ## Saving and Restoring
 
-The Configuration tab carries a **Save configuration to file** button and a
-matching restore button. Both open a file dialog filtered to `*.json` and
-default to your home directory.
+Use **File ▸ Save Configuration…** and **File ▸ Restore Configuration…**, also
+on the Configuration tab's popup menu. Both open a file dialog filtered to
+`*.json` and default to your home directory.
 
 Restore only replaces the values shown in the tab. Nothing reaches the tag until
 you write the configuration to it as usual, so you can restore a file, adjust a

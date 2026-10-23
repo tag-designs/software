@@ -2,15 +2,18 @@
  * @file    logwindow.cpp
  * @brief   Error Log tab implementation for qtmonitor.
  *
- * @details The tab redirects Qt/log.c messages into a read-only text edit and
- *          exposes save, clear, and log-level controls. The explicit size hints
+ * @details The tab redirects Qt/log.c messages into a read-only text edit.
+ *          Save, clear and the log level are actions, placed in MainWindow's
+ *          menus and on the text edit's popup menu. The explicit size hints
  *          keep the documentation Error Log screenshot compact without
  *          clipping the bottom of the text edit.
  */
 
 #include "logwindow.h"
 #include <QTextEdit>
-#include <QComboBox>
+#include <QAction>
+#include <QActionGroup>
+#include <QMenu>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSize>
@@ -35,19 +38,32 @@ QTextEdit *s_textEdit = nullptr;
 
 LogWindow::LogWindow(QWidget *parent) : QWidget(parent) {
     ui.setupUi(this);
-    
-    // create loglevel choices
 
-    QStringList ll;
+    save_ = new QAction(tr("Save Error Log..."), this);
+    save_->setToolTip(tr("Save the error log to a text file"));
+    connect(save_, &QAction::triggered, this, &LogWindow::saveLog);
 
-    // don't include LOG_FATAL in choices
+    clear_ = new QAction(tr("Clear Error Log"), this);
+    clear_->setToolTip(tr("Clear the error log"));
+    connect(clear_, &QAction::triggered, this, &LogWindow::clearLog);
 
+    // One checkable action per level; LOG_FATAL is not offered.
+    level_menu_ = new QMenu(tr("Log Level"), this);
+    levels_ = new QActionGroup(this);
+    levels_->setExclusive(true);
     for (int i = 0; i < LOG_FATAL; i++) {
-        ll << log_level_string(i);
+        QAction *level = level_menu_->addAction(log_level_string(i));
+        level->setCheckable(true);
+        level->setData(i);
+        levels_->addAction(level);
     }
+    connect(levels_, &QActionGroup::triggered, this, &LogWindow::setLogLevel);
+    levels_->actions().at(LOG_INFO)->setChecked(true);
+    setLogLevel(levels_->actions().at(LOG_INFO));
 
-    ui.loglevelBox->addItems(ll);
-    ui.loglevelBox->setCurrentIndex(LOG_INFO);
+    ui.logTextEdit->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui.logTextEdit, &QWidget::customContextMenuRequested, this,
+            &LogWindow::showContextMenu);
 
     // connect log text edit box to error logging system
 
@@ -108,15 +124,27 @@ void LogWindow::on_LogTagConfigButton_clicked()
 }
 */
 
-void LogWindow::on_loglevelBox_currentIndexChanged(int index)
+void LogWindow::setLogLevel(QAction *level)
 {
+  const int index = level->data().toInt();
   log_set_level(index);
   log_level = index;
 }
 
+void LogWindow::showContextMenu(const QPoint &pos)
+{
+  QMenu *menu = ui.logTextEdit->createStandardContextMenu(pos);
+  menu->addSeparator();
+  menu->addAction(save_);
+  menu->addAction(clear_);
+  menu->addMenu(level_menu_);
+  menu->exec(ui.logTextEdit->viewport()->mapToGlobal(pos));
+  delete menu;
+}
+
 // Save the log window contents as a text file
 
-void LogWindow::on_logsaveButton_clicked()
+void LogWindow::saveLog()
 {
   QString nameFile = HostFileDialog::getSaveFileName(
       this, tr("Save Log"), QDir::homePath());
@@ -139,7 +167,7 @@ void LogWindow::on_logsaveButton_clicked()
   }
 }
 
-void LogWindow::on_logclearButton_clicked()
+void LogWindow::clearLog()
 { 
   qDebug() << "Clearing log";
   ui.logTextEdit->clear();

@@ -246,9 +246,6 @@ void ConfigTab::StateUpdate(TagState state)
   const bool idle = state == IDLE;
   for (ConfigPanel *panel : panels_)
     panel->setEnabled(idle && std::find(shown_.begin(), shown_.end(), panel) != shown_.end());
-  ui.configRestoreButton->setEnabled(idle);
-  ui.startButton->setEnabled(idle);
-  ui.readButton->setEnabled(idle);
 }
 
 /*****************************************************
@@ -331,7 +328,7 @@ void ConfigTab::FitPanelPage()
  * configuration file operations
 */
 
-void ConfigTab::on_configSaveButton_clicked()
+void ConfigTab::SaveToFile()
 {
   QString fileName = HostFileDialog::getSaveFileName(
       this, tr("Save File"), QDir::homePath() + "/untitled.json",
@@ -388,7 +385,7 @@ void ConfigTab::on_configSaveButton_clicked()
 
 // Restore config from file
 
-void ConfigTab::on_configRestoreButton_clicked()
+void ConfigTab::RestoreFromFile()
 {
   QString fileName = HostFileDialog::getOpenFileName(
       this, tr("Open File"), QDir::homePath(),
@@ -445,7 +442,7 @@ void ConfigTab::on_configRestoreButton_clicked()
  * stated zero is copied, a field the tag lacks is not, and a file written for
  * another tag type contributes only that type's fields), and applies the
  * result with SetConfig(). On ParseError the current configuration is left
- * untouched. Shows no dialogs; on_configRestoreButton_clicked() reports the
+ * untouched. Shows no dialogs; RestoreFromFile() reports the
  * outcome, and the configuration probe records it.
  */
 ConfigTab::RestoreResult ConfigTab::RestoreFromJsonText(const std::string &json_text,
@@ -482,7 +479,7 @@ ConfigTab::RestoreResult ConfigTab::RestoreFromJsonText(const std::string &json_
   return RestoreResult::Restored;
 }
 
-void ConfigTab::on_startButton_clicked()
+void ConfigTab::StartTag()
 {
   if (fixture_mode_) {
     qInfo() << "Ignoring Start in qtmonitor fixture display mode";
@@ -491,7 +488,7 @@ void ConfigTab::on_startButton_clicked()
 
   Config config;
   if (!GetConfig(config)) {
-    qDebug() << "on_startButton_clicked failed to get config";
+    qDebug() << "StartTag failed to get config";
     return;
   }
 
@@ -564,7 +561,7 @@ void ConfigTab::pollStartResult(std::string start_call_message, int attempt)
   startFailedBox.exec();
 }
 
-void ConfigTab::on_readButton_clicked()
+void ConfigTab::ReadFromTag()
 {
   if (fixture_mode_) {
     qInfo() << "Ignoring Read in qtmonitor fixture display mode";

@@ -483,7 +483,7 @@ void MainWindow::captureStartupScreenshot()
     ui.mainTabWidget->setCurrentWidget(ui.targetTab);
     waitForGuiToSettle(200);
     ok = saveCurrentScreenshot(screenshotPath("qtmonitor-startup.png"),
-                               QSize(700, 760), QSize(760, 790));
+                               QSize(1000, 760), QSize(1060, 790));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -521,8 +521,8 @@ void MainWindow::captureMainScreenshots()
     applyFakeState(state);
     waitForGuiToSettle(250);
     ok = saveCurrentScreenshot(screenshotPath(
-        QString("qtmonitor-main-%1.png").arg(state)), QSize(700, 760),
-        QSize(760, 790));
+        QString("qtmonitor-main-%1.png").arg(state)), QSize(1000, 760),
+        QSize(1060, 790));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -559,7 +559,7 @@ void MainWindow::captureConfigScreenshots()
     waitForGuiToSettle(250);
     ok = saveCurrentScreenshot(
         screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
-        QSize(900, 1400));
+        QSize(1000, 1400));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -586,7 +586,71 @@ void MainWindow::captureErrorLogScreenshot()
     ui.mainTabWidget->setCurrentWidget(ui.errorTab);
     waitForGuiToSettle(200);
     ok = saveCurrentScreenshot(screenshotPath("qtmonitor-error-log.png"),
-                               QSize(700, 560));
+                               QSize(1000, 560));
   }
   qApp->exit(ok ? 0 : 1);
+}
+
+QString MainWindow::actionStateTable()
+{
+  const QList<QPair<QString, QAction *>> actions = {
+      {"attach", attach_action_},   {"detach", detach_action_},
+      {"read", read_config_action_}, {"start", start_action_},
+      {"stop", stop_action_},       {"sync", sync_action_},
+      {"test", test_action_},       {"calibrate", calibrate_action_},
+      {"erase", erase_action_},     {"download", download_action_},
+      {"save", save_config_action_}, {"restore", restore_config_action_}};
+
+  QStringList lines;
+  QString header = "attached state tagtype config downloading testpending |";
+  for (const auto &a : actions)
+    header += " " + a.first;
+  lines << header;
+
+  auto row = [&](bool attached, TagState state, TagType type, bool config,
+                 bool downloading, bool pending) {
+    attached_ui_ = attached;
+    current_state = state;
+    tag_type = type;
+    downloading_ = downloading;
+    test_pending_ = pending;
+    if (config) {
+      Config c;
+      c.set_tag_type(type);
+      ui.configtab->SetConfig(c);
+    } else {
+      ui.configtab->Detach();
+    }
+    updateActions();
+    QString line = QString("%1 %2 %3 %4 %5 %6 |")
+                       .arg(attached).arg(QString::fromStdString(std::string(TagState_Name(state))))
+                       .arg(QString::fromStdString(std::string(TagType_Name(type))))
+                       .arg(config).arg(downloading).arg(pending);
+    for (const auto &a : actions)
+      line += QString(" %1=%2").arg(a.first,
+                                    !a.second->isVisible() ? "H"
+                                    : a.second->isEnabled() ? "E" : "D");
+    lines << line;
+  };
+
+  const auto *states = TagState_descriptor();
+  for (TagType type : {BITTAG_LE, COMPASSTAG}) {
+    for (bool config : {false, true})
+      row(false, IDLE, type, config, false, false);
+    for (int i = 0; i < states->value_count(); ++i) {
+      const auto state = static_cast<TagState>(states->value(i)->number());
+      row(true, state, type, true, false, false);
+    }
+    row(true, IDLE, type, false, false, false);   // attached, no configuration
+    row(true, IDLE, type, true, false, true);     // self-test pending
+    row(true, FINISHED, type, true, true, false); // download running
+  }
+
+  // Leave the window as a detached qtmonitor.
+  attached_ui_ = false;
+  downloading_ = false;
+  test_pending_ = false;
+  ui.configtab->Detach();
+  updateActions();
+  return lines.join('\n') + '\n';
 }

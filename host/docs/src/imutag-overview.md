@@ -342,7 +342,7 @@ application guide, `host/docs/src/apps/qtcalibrate.md`.
 ### 4.3 Downloading
 
 
-Either press the save button in `qtmonitor`, or use the command-line tool:
+Either choose **File ▸ Download Data…** in `qtmonitor`, or use the command-line tool:
 
 ```
 tag-dwnld -o flight042.db3

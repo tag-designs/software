@@ -9,6 +9,11 @@
 
 
 #include <QMainWindow>
+#include <QAction>
+#include <QMenu>
+#include <QMenuBar>
+#include <QTabBar>
+#include <QTabWidget>
 #include <QApplication>
 #include <QDate>
 #include <QDateTime>
@@ -43,6 +48,7 @@
 #include "tag.pb.h"
 
 #include "tagconfiguration/configtab.h"
+#include "tagstatusstrip.h"
 #include "abstractdownload.h"
 #include "taglogwriter.h"
 
@@ -101,6 +107,16 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
     : QMainWindow(parent) {
   ui.setupUi(this);
   this->setAttribute(Qt::WA_AlwaysShowToolTips, true);
+
+  // Commands are actions in the menus and popup menus; Start and Stop are
+  // also buttons on the status strip below the tab bar.
+  createActions();
+  status_strip_ = new TagStatusStrip(start_action_, stop_action_);
+  placeStatusStripBelowTabs();
+  createMenus();
+  ui.mainToolBar->hide();  // no toolbar actions yet
+  // Spare height on the Tag page goes below its groups, not between rows.
+  qobject_cast<QBoxLayout *>(ui.widget_3->layout())->addStretch(1);
   screenshotDir = resolveScreenshotDir(options.screenshotDir);
   fakeFixturePath = options.fakeFixturePath;
   captureStartupScreenshotOnStartup = options.captureStartupScreenshot;
@@ -137,9 +153,9 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
     setAttachedUiEnabled(false);
     ui.configtab->Detach();
   } else {
-    on_Attach_clicked();
+    attachTag();
   }
-
+  updateActions();
 }
 
 MainWindow::~MainWindow()
@@ -183,21 +199,20 @@ void MainWindow::logTagDebugMessage(const QString &message)
  *
  * @details Both live mode and fixture mode use this helper so fake replay
  *          screenshots have the same broad UI affordances as a connected tag.
- *          State-specific buttons are refined later by applyStatus().
+ *          State-specific actions are refined by applyStatus(), through
+ *          updateActions().
  *
  * @param[in] enabled   true when a live or fake tag is considered attached.
  */
 void MainWindow::setAttachedUiEnabled(bool enabled)
 {
-  ui.StatusGroup->setEnabled(enabled);
+  attached_ui_ = enabled;
   ui.TagInformation->setEnabled(enabled);
-  ui.ControlGroup->setEnabled(enabled);
-  ui.Attach->setEnabled(!enabled);
-  ui.Detach->setEnabled(enabled);
   ui.datadownloadgroupBox->setEnabled(false);
   if (!enabled) {
-    ui.calibrateButton->setVisible(false);
+    status_strip_->setDetached();
   }
+  updateActions();
 }
 
 /**
@@ -222,6 +237,8 @@ void MainWindow::populateTagInfo(const TagInfo &info)
   ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
   ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
   tag_type = info.tag_type();
+  tag_uuid_ = QString::fromStdString(info.uuid());
+  status_strip_->setAttached(tag_type, tag_uuid_);
 }
 
 /**
@@ -259,8 +276,6 @@ void MainWindow::attachConfig(const Config &config, bool fixtureMode)
 void MainWindow::applyStatus(const Status &status, float voltage)
 {
   setAttachedUiEnabled(true);
-  ui.info_Voltage->setText(QString::number(static_cast<double>(voltage), 'f', 2));
-  ui.State->setText(QString::fromStdString(TagState_Name(status.state())));
   ui.internalCount->setText(QString::number(status.internal_data_count()));
   if (status.external_data_count() != 0) {
     ui.externalCount->setText(QString::number(status.external_data_count()));
@@ -275,25 +290,35 @@ void MainWindow::applyStatus(const Status &status, float voltage)
 
   double timeerr = QDateTime::currentMSecsSinceEpoch();
   timeerr = status.millis() - timeerr;
-  ui.timeError->setText(QString::number(timeerr / 1000.0, 'f', 2));
-  ui.info_testStatus->setText(
-      QString::fromStdString(TestResult_Name(status.test_status())));
-
-  ui.syncButton->setEnabled(status.state() == IDLE);
-  ui.testButton->setEnabled(status.state() == IDLE);
-  ui.calibrateButton->setVisible(tagSupportsCalibration(tag_type));
-  ui.calibrateButton->setEnabled(tagSupportsCalibration(tag_type)
-                                 && status.state() == IDLE);
-  ui.eraseButton->setEnabled((status.state() == FINISHED)
-                             || (status.state() == ABORTED));
-  ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()));
-  ui.stopButton->setEnabled((status.state() == CONFIGURED)
-                            || (status.state() == RUNNING)
-                            || (status.state() == HIBERNATING)
-                            || (status.state() == CALIBRATE));
+  status_strip_->setStatus(status.state(), timeerr / 1000.0, voltage,
+                           status.test_status());
+  if (test_pending_) {
+    // The tag runs every test in one pass, usually faster than this poll, so
+    // TEST is rarely seen. Wait for a finished result from a poll at least
+    // kTestMinimumMs after the command, so the previous run's result, which a
+    // poll can see before the tag has begun, is not taken for this one.
+    const qint64 elapsed = test_started_.msecsTo(QDateTime::currentDateTime());
+    const QString who = QString("%1 %2")
+                            .arg(QString::fromStdString(std::string(TagType_Name(tag_type))),
+                                 tag_uuid_);
+    if (elapsed >= kTestMinimumMs && status.test_status() != TEST_RUNNING) {
+      test_pending_ = false;
+      qInfo().noquote() << "Self-test on" << who << "finished:"
+                        << QString::fromStdString(std::string(TestResult_Name(status.test_status())));
+    } else if (elapsed > kTestTimeoutMs) {
+      test_pending_ = false;
+      qWarning().noquote() << "Self-test on" << who << "gave no result within"
+                           << kTestTimeoutMs / 1000 << "s";
+    } else {
+      status_strip_->setTestRunning();
+    }
+  }
+  ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()) &&
+                                      !downloading_);
 
   current_state = status.state();
   emit StateUpdate(current_state);
+  updateActions();
   if (fakeMode) {
     ui.configtab->SetFixtureMode(true);
   }
@@ -389,7 +414,7 @@ bool MainWindow::Attach()
       msgBox.setText(message);
       msgBox.setStandardButtons(QMessageBox::Ok);
       msgBox.exec();
-      on_Detach_clicked();
+      detachTag();
       return false;
     }
 
@@ -490,27 +515,176 @@ void MainWindow::TriggerUpdate(void)
 
 
 /********************************************
- *        Status Tab
+ *        Actions and menus
  ********************************************/
 
-void MainWindow::on_Attach_clicked()
+void MainWindow::createActions()
+{
+  auto make = [this](const QString &text, const QString &tip, auto slot) {
+    auto *action = new QAction(text, this);
+    action->setToolTip(tip);
+    action->setStatusTip(tip);
+    connect(action, &QAction::triggered, this, slot);
+    return action;
+  };
+
+  attach_action_ = make(tr("Attach"), tr("Find a tag base and attach to its tag"),
+                        &MainWindow::attachTag);
+  detach_action_ = make(tr("Detach"), tr("Detach from the tag"), &MainWindow::detachTag);
+  stop_action_ = make(tr("Stop"), tr("Stop the tag"), &MainWindow::stopTag);
+  sync_action_ = make(tr("Synchronize Clock"),
+                      tr("Set the tag's clock from this computer's"),
+                      &MainWindow::syncClock);
+  test_action_ = make(tr("Self-Test"), tr("Run the tag's self-tests"),
+                      &MainWindow::testTag);
+  calibrate_action_ = make(tr("Calibrate"), tr("Put the tag in its calibration state"),
+                           &MainWindow::calibrateTag);
+  erase_action_ = make(tr("Erase..."),
+                       tr("Erase the tag's data and return it to IDLE"),
+                       &MainWindow::eraseTag);
+  download_action_ = make(tr("Download Data..."),
+                          tr("Download the tag's data log to a file"),
+                          &MainWindow::downloadData);
+
+  // The configuration commands belong to the Configuration tab.
+  ConfigTab *config = ui.configtab;
+  start_action_ = new QAction(tr("Start"), this);
+  start_action_->setToolTip(tr("Write the configuration to the tag and start it"));
+  connect(start_action_, &QAction::triggered, config, &ConfigTab::StartTag);
+  read_config_action_ = new QAction(tr("Read Configuration"), this);
+  read_config_action_->setToolTip(tr("Read the tag's configuration"));
+  connect(read_config_action_, &QAction::triggered, config, &ConfigTab::ReadFromTag);
+  save_config_action_ = new QAction(tr("Save Configuration..."), this);
+  save_config_action_->setToolTip(tr("Save the configuration to a file"));
+  connect(save_config_action_, &QAction::triggered, config, &ConfigTab::SaveToFile);
+  restore_config_action_ = new QAction(tr("Restore Configuration..."), this);
+  restore_config_action_->setToolTip(
+      tr("Restore a configuration file over the tag's configuration"));
+  connect(restore_config_action_, &QAction::triggered, config,
+          &ConfigTab::RestoreFromFile);
+
+  quit_action_ = new QAction(tr("Quit"), this);
+  quit_action_->setShortcut(QKeySequence::Quit);
+  connect(quit_action_, &QAction::triggered, this, &QWidget::close);
+}
+
+void MainWindow::createMenus()
+{
+  // In the window rather than the macOS menu bar, as in sensorviz.
+  menuBar()->setNativeMenuBar(false);
+
+  QMenu *file = menuBar()->addMenu(tr("&File"));
+  file->addAction(save_config_action_);
+  file->addAction(restore_config_action_);
+  file->addSeparator();
+  file->addAction(download_action_);
+  file->addAction(ui.errorTab->saveAction());
+  file->addSeparator();
+  file->addAction(quit_action_);
+
+  QMenu *tagMenu = menuBar()->addMenu(tr("&Tag"));
+  tagMenu->addAction(attach_action_);
+  tagMenu->addAction(detach_action_);
+  tagMenu->addSeparator();
+  tagMenu->addAction(read_config_action_);
+  tagMenu->addAction(start_action_);
+  tagMenu->addAction(stop_action_);
+  tagMenu->addSeparator();
+  tagMenu->addAction(sync_action_);
+  tagMenu->addAction(test_action_);
+  tagMenu->addAction(calibrate_action_);
+  tagMenu->addSeparator();
+  tagMenu->addAction(erase_action_);
+
+  QMenu *log = menuBar()->addMenu(tr("&Log"));
+  log->addMenu(ui.errorTab->logLevelMenu());
+  log->addAction(ui.errorTab->clearAction());
+
+  // Popup menus. Children without a menu of their own (group boxes, labels)
+  // pass a right-click up to these widgets.
+  const QList<QAction *> tagCommands = {
+      attach_action_, detach_action_, sync_action_, test_action_,
+      calibrate_action_, erase_action_, download_action_};
+  ui.targetTab->setContextMenuPolicy(Qt::ActionsContextMenu);
+  ui.targetTab->addActions(tagCommands);
+  status_strip_->setContextMenuPolicy(Qt::ActionsContextMenu);
+  status_strip_->addActions(tagCommands);
+  ui.configtab->setContextMenuPolicy(Qt::ActionsContextMenu);
+  ui.configtab->addActions({read_config_action_, restore_config_action_,
+                            save_config_action_, start_action_});
+}
+
+void MainWindow::placeStatusStripBelowTabs()
+{
+  // QTabWidget draws its tab bar directly on its pages, leaving no room
+  // between them. So its own bar is hidden and a standalone QTabBar above the
+  // strip stands in for it, kept in step in both directions; code that
+  // selects a tab on mainTabWidget still works.
+  QTabWidget *tabs = ui.mainTabWidget;
+  tab_bar_ = new QTabBar();
+  tab_bar_->setExpanding(false);
+  for (int i = 0; i < tabs->count(); ++i) {
+    tab_bar_->addTab(tabs->tabText(i));
+    tab_bar_->setTabToolTip(i, tabs->tabToolTip(i));
+  }
+  tab_bar_->setCurrentIndex(tabs->currentIndex());
+  tabs->tabBar()->hide();
+  connect(tab_bar_, &QTabBar::currentChanged, tabs, &QTabWidget::setCurrentIndex);
+  connect(tabs, &QTabWidget::currentChanged, tab_bar_, &QTabBar::setCurrentIndex);
+
+  auto *tabRow = new QHBoxLayout();
+  tabRow->addStretch(1);
+  tabRow->addWidget(tab_bar_);
+  tabRow->addStretch(1);
+
+  auto *central = qobject_cast<QBoxLayout *>(ui.centralWidget->layout());
+  central->insertLayout(0, tabRow);
+  central->insertWidget(1, status_strip_);
+}
+
+void MainWindow::updateActions()
+{
+  const bool attached = attached_ui_;
+  const TagState state = current_state;
+  const bool idle = attached && state == IDLE;
+
+  attach_action_->setEnabled(!attached);
+  detach_action_->setEnabled(attached);
+  sync_action_->setEnabled(idle);
+  test_action_->setEnabled(idle && !test_pending_);
+  calibrate_action_->setVisible(attached && tagSupportsCalibration(tag_type));
+  calibrate_action_->setEnabled(idle && tagSupportsCalibration(tag_type));
+  erase_action_->setEnabled(attached && (state == FINISHED || state == ABORTED));
+  download_action_->setEnabled(attached && isDownloadableState(state) && !downloading_);
+  stop_action_->setEnabled(attached && (state == CONFIGURED || state == RUNNING ||
+                                        state == HIBERNATING || state == CALIBRATE));
+
+  // The configuration commands need a configuration in the tab; all but Save
+  // also need an IDLE tag, as editing does (ConfigTab::StateUpdate()).
+  const bool config = ui.configtab->isActive();
+  save_config_action_->setEnabled(config);
+  restore_config_action_->setEnabled(config && idle);
+  read_config_action_->setEnabled(config && idle);
+  start_action_->setEnabled(config && idle);
+}
+
+/********************************************
+ *        Tag commands
+ ********************************************/
+
+void MainWindow::attachTag()
 {
   if (fakeMode) {
     return;
   }
-  if (Attach())
-  {
-    ui.StatusGroup->setEnabled(true);
-    ui.TagInformation->setEnabled(true);
-    ui.ControlGroup->setEnabled(true);
-    ui.Attach->setEnabled(false);
-    ui.Detach->setEnabled(true);
-  } else {
+  // A successful Attach() has already shown the first status, which marked
+  // the tag attached (applyStatus()).
+  if (!Attach()) {
     setAttachedUiEnabled(false);
   }
 }
 
-void MainWindow::on_Detach_clicked()
+void MainWindow::detachTag()
 {
   if (fakeMode) {
     return;
@@ -518,12 +692,14 @@ void MainWindow::on_Detach_clicked()
   tag.Detach();
   timer.stop();
   TriggerUpdate();
+  test_pending_ = false;
   setAttachedUiEnabled(false);
   ui.configtab->Detach();
   tag_debug_line_buffer.clear();
+  updateActions();
 }
 
-void MainWindow::on_syncButton_clicked()
+void MainWindow::syncClock()
 {
   if (fakeMode) {
     return;
@@ -545,7 +721,7 @@ void MainWindow::on_syncButton_clicked()
   TriggerUpdate();
 }
 
-void MainWindow::on_stopButton_clicked()
+void MainWindow::stopTag()
 {
   if (fakeMode) {
     return;
@@ -558,7 +734,7 @@ void MainWindow::on_stopButton_clicked()
   QTimer::singleShot(250,this,[this]() { TriggerUpdate(); });
 }
 
-void MainWindow::on_calibrateButton_clicked()
+void MainWindow::calibrateTag()
 {
   if (fakeMode) {
     return;
@@ -569,7 +745,7 @@ void MainWindow::on_calibrateButton_clicked()
   tag.Calibrate();
 }
 
-void MainWindow::on_testButton_clicked()
+void MainWindow::testTag()
 {
   if (fakeMode) {
     return;
@@ -578,12 +754,17 @@ void MainWindow::on_testButton_clicked()
   {
     std::string msg;
     tag.Test(RUN_ALL); // need to check return !
-    ui.testButton->setEnabled(false);
-    ui.info_testStatus->setText("Running");
+    test_pending_ = true;
+    test_started_ = QDateTime::currentDateTime();
+    qInfo().noquote() << "Self-test started on"
+                      << QString::fromStdString(std::string(TagType_Name(tag_type)))
+                      << tag_uuid_;
+    status_strip_->setTestRunning();
+    updateActions();
   }
 }
 
-void MainWindow::on_eraseButton_clicked()
+void MainWindow::eraseTag()
 {
   if (fakeMode) {
     return;
@@ -631,7 +812,7 @@ void MainWindow::on_eraseButton_clicked()
 // download loop and file/database writing are delegated to AbstractDownload and
 // the host-lib TagLogWriter implementations.
 
-void MainWindow::on_tagLogSaveButton_clicked()
+void MainWindow::downloadData()
 {
   if (fakeMode) {
     return;
@@ -721,10 +902,14 @@ void MainWindow::on_tagLogSaveButton_clicked()
 
   const bool restart_status_timer = timer.isActive();
   timer.stop();
+  downloading_ = true;
   ui.datadownloadgroupBox->setEnabled(false);
+  updateActions();
   connect(download_thread,&QThread::finished,this,[this,restart_status_timer]() {
+    downloading_ = false;
     ui.datadownloadgroupBox->setEnabled(tag.IsAttached() &&
                                         isDownloadableState(current_state));
+    updateActions();
     if (restart_status_timer && tag.IsAttached()) {
       timer.start(400);
       TriggerUpdate();

@@ -7,6 +7,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QDateTime>
 #include <QMap>
 #include <QSize>
 #include <QString>
@@ -15,10 +16,13 @@
 #include "tagclass.h"
 #include "ui_mainwindow.h"
 
+class QAction;
+class QTabBar;
 class QWidget;
 class QTextEdit;
 class QGroupBox;
 class ConfigTab;
+class TagStatusStrip;
 
 
 
@@ -94,6 +98,20 @@ public:
    */
   bool shouldQuitAfterStartup() const;
 
+  /**
+   * @brief Which actions updateActions() enables, for every combination of
+   *        the inputs it reads; for `qtmonitor --check-action-states`.
+   *
+   * @details Sets each combination of attached, tag state, tag type (one
+   *          with calibration, one without), configuration loaded, download
+   *          running and self-test pending, calls updateActions(), and records
+   *          each action as E (enabled), D (disabled) or H (hidden). Leaves the
+   *          window detached. See host/applications/qtmon/test/README.md.
+   *
+   * @return One header line, then one line per combination.
+   */
+  QString actionStateTable();
+
 public slots:
 
   /**
@@ -102,7 +120,7 @@ public slots:
   void captureStartupScreenshot();
 
   /**
-   * @brief Capture fake fixture Tag State screenshots for idle/running/finished.
+   * @brief Capture fake fixture Tag tab screenshots for idle/running/finished.
    */
   void captureMainScreenshots();
 
@@ -138,21 +156,16 @@ private slots:
 
   void TriggerUpdate();
 
-  // control tab events
+  // Tag commands, each behind an action (see createActions()).
 
-  void on_syncButton_clicked();     // synchronize clock
-  void on_stopButton_clicked();     // stop tag
- 
-  void on_eraseButton_clicked();    // reset tag flash
-  void on_testButton_clicked();     // run tag self-test
-  void on_calibrateButton_clicked(); // enter calibration state
-
-  void on_Attach_clicked();         // attach to tag
-  void on_Detach_clicked();         // detach from tag
-
-  // data events
-
-  void on_tagLogSaveButton_clicked(); // download data from tag
+  void attachTag();      ///< Tag ▸ Attach: probe USB bases and attach.
+  void detachTag();      ///< Tag ▸ Detach.
+  void syncClock();      ///< Tag ▸ Synchronize Clock: set the tag's RTC.
+  void stopTag();        ///< Tag ▸ Stop, and the Stop button.
+  void testTag();        ///< Tag ▸ Self-Test: run every self-test.
+  void calibrateTag();   ///< Tag ▸ Calibrate: enter the calibration state.
+  void eraseTag();       ///< Tag ▸ Erase…: confirm, erase, show progress.
+  void downloadData();   ///< File ▸ Download Data…: save the log as SQLite.
 
   
 
@@ -166,10 +179,67 @@ private:
   int external_flash_size = 0;
   int sector_size = 4096;
   QString tag_debug_line_buffer;
+
+  /**
+   * @brief Builds every action and connects it to its command.
+   *
+   * @details Each command is one QAction, so the menus, the popup menus and
+   *          the status strip's Start and Stop buttons share one enabled
+   *          state, which updateActions() sets.
+   */
+  void createActions();
+  /// Builds the File, Tag and Log menus and the popup menus.
+  void createMenus();
+  /**
+   * @brief Puts the status strip between the tab bar and the pages.
+   *
+   * @details Hides mainTabWidget's own tab bar, which QTabWidget draws on top
+   *          of its pages, and adds a standalone QTabBar above the strip, kept
+   *          in step with mainTabWidget in both directions.
+   */
+  void placeStatusStripBelowTabs();
+  /**
+   * @brief Enables, disables and shows the actions for the current state.
+   *
+   * @details The single place where command availability is decided, from
+   *          whether a tag is attached, its state and type, whether a download
+   *          or self-test is in progress, and whether the Configuration tab
+   *          holds a configuration. Called after every change to those.
+   */
+  void updateActions();
+
+  QTabBar *tab_bar_ = nullptr;  ///< Stands in for mainTabWidget's hidden tab bar.
+  TagStatusStrip *status_strip_ = nullptr;  ///< Tag, state, clock, voltage, self-test; Start and Stop.
+  bool attached_ui_ = false;   ///< A live or fixture tag is attached (setAttachedUiEnabled()).
+  bool downloading_ = false;   ///< A data download is running.
+  bool test_pending_ = false;  ///< Self-Test sent; result not yet seen (see applyStatus()).
+  QDateTime test_started_;     ///< When Self-Test was sent.
+  QString tag_uuid_;           ///< Attached tag's board UUID, for log messages.
+
+  QAction *attach_action_ = nullptr;
+  QAction *detach_action_ = nullptr;
+  QAction *read_config_action_ = nullptr;
+  QAction *start_action_ = nullptr;
+  QAction *stop_action_ = nullptr;
+  QAction *sync_action_ = nullptr;
+  QAction *test_action_ = nullptr;
+  QAction *calibrate_action_ = nullptr;
+  QAction *erase_action_ = nullptr;
+  QAction *save_config_action_ = nullptr;
+  QAction *restore_config_action_ = nullptr;
+  QAction *download_action_ = nullptr;
+  QAction *quit_action_ = nullptr;
+
+  /// A self-test result is accepted only from a poll this long after Self-Test.
+  static constexpr qint64 kTestMinimumMs = 1000;
+  /// Self-Test gives up waiting for a result after this long.
+  static constexpr qint64 kTestTimeoutMs = 60000;
+
   int eraseSectorMaximum(const Status &status) const;
   void logTagDebugMessage(const QString &message);
   /**
-   * @brief Enables or disables the top-level groups that require an attachment.
+   * @brief Records whether a tag is attached, and updates the Tag page, the
+   *        status strip and the actions to match.
    */
   void setAttachedUiEnabled(bool enabled);
   /**

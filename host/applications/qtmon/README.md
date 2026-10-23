@@ -19,11 +19,31 @@ With no maintainer options, `qtmonitor` operates against real hardware:
 1. The main window probes USB tag bases during startup.
 2. `MainWindow::Attach()` reads `TagInfo`, `Config`, and `Status` through
    `tagcore::Tag`.
-3. The Tag State tab is refreshed by a 400 ms polling timer.
+3. The status strip and the Tag tab are refreshed by a 400 ms polling timer.
 4. The Configuration tab is attached to the live `Tag` object so Read and Start
    issue real monitor commands.
 
 This is the packaged user-facing mode.
+
+### Commands, menus and the status strip
+
+Every command is a `QAction`, created in `MainWindow::createActions()` and
+placed in the File, Tag and Log menus (in the window, as in sensorviz) and on
+popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
+`placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows
+Attached or Detached, the tag type, state, clock
+offset, voltage and self-test result, with Start and Stop as tool buttons
+bound to their actions. The Configuration tab's commands are `ConfigTab`
+slots (`SaveToFile()`, `RestoreFromFile()`, `ReadFromTag()`, `StartTag()`),
+and the error log's are `LogWindow` actions.
+
+`MainWindow::updateActions()` is the one place that decides which actions are
+enabled, from whether a tag is attached, its state and type, whether a
+download or self-test is pending, and whether the Configuration tab holds a
+configuration. `qtmonitor --check-action-states` prints its decisions for
+every combination of those; the expected table is
+[`test/action-states.txt`](test/action-states.txt) (see
+[`test/README.md`](test/README.md)).
 
 ### Fixture Screenshot Mode
 
@@ -42,9 +62,9 @@ messages, then populates the same widgets used by live mode:
 - `applyStatus()` applies the same state-dependent control visibility rules used
   by live polling.
 
-Fake mode intentionally leaves buttons visually enabled or disabled according
-to the selected tag state, so screenshots match the real UI. The button slots
-guard against fake mode and return without issuing hardware commands.
+Fake mode leaves actions enabled or disabled according to the selected tag
+state, so screenshots match the real UI. The command slots guard against fake
+mode and return without issuing hardware commands.
 
 Screenshot generation uses the fixture's status of the requested name
 (`idle`, `running` or `finished`) when it has one, and otherwise falls back to
@@ -83,7 +103,7 @@ commands below work as written. For `qtmonitor`, use
 `<build-dir>/bin/qtmonitor.app/Contents/MacOS/qtmonitor` in place of
 `<build-dir>/bin/qtmonitor`.
 
-Capture the representative Tag State screens:
+Capture the representative Tag tab screens, in idle, running and finished states:
 
 ```sh
 <build-dir>/bin/qtmonitor \
@@ -109,7 +129,7 @@ This writes:
 
 - `host/docs/src/images/qtmonitor-config-compasstag.png`
 
-The window is sized to show the whole panel page, up to 900 by 1400 pixels.
+The window is sized to show the whole panel page, up to 1000 by 1400 pixels.
 
 Capture the disconnected startup screen:
 

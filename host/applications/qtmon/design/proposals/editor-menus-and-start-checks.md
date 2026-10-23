@@ -82,7 +82,7 @@ enabled state from the attached tag's state and the document.
 | --- | --- |
 | **File** | New Configuration ▸ (tag types), Open Configuration…, Open Recent ▸, Save Configuration, Save Configuration As…, Download Data…, Save Error Log…, Quit |
 | **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Calibrate (tags that support it), Erase… (confirmed, since it destroys the log) |
-| **View** | Log Level ▸, Clear Error Log |
+| **Log** | Log Level ▸, Clear Error Log |
 | **Help** | qtmonitor User Guide, About |
 
 The menus are in the window, as in sensorviz (`setNativeMenuBar(false)`), so
@@ -145,7 +145,17 @@ using the same helper.
 
 Each step leaves qtmonitor working:
 
-1. **Actions and menus, behaviour unchanged.** The status display goes in;
+1. **Actions and menus, behaviour unchanged** (done 2026-10-23). The strip
+   shows Attached or Detached first, then type, state, clock, voltage and
+   self-test, and sits between the tab bar and the pages; the View menu is
+   named Log, since it holds only log settings (all at the user's request). The Tag State tab becomes "Tag",
+   holding identity and log counts. `qtmonitor --check-action-states` and
+   `test/action-states.txt` pin which commands are available when; the table
+   matched the old buttons' rules in all 32 rows. Self-test feedback was
+   added: the strip shows Running until a finished result arrives (the tag's
+   TEST state usually lasts less than one status poll), and the Error Log
+   records each run's start and result with the board UUID.
+   Planned as: The status display goes in;
    Start and Stop stay as buttons; every other button becomes an action. The
    configuration probe and its goldens are unaffected, since the panels do not
    change. The documentation screenshots gain menu captures, as sensorviz's do.
