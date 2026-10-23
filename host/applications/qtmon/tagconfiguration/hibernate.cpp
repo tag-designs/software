@@ -9,12 +9,13 @@
 #include <QTimeZone>
 
 #include "hibernate.h"
+#include "hourtime.h"
 
 Hibernate::Hibernate(int index, QWidget *parent) : QWidget(parent)
 {
     ui.setupUi(this);
-    ui.hibernate_start->setTimeZone(QTimeZone::UTC);
-    ui.hibernate_end->setTimeZone(QTimeZone::UTC);
+    HourTime::setUp(ui.hibernate_start);
+    HourTime::setUp(ui.hibernate_end);
     id = index;
     on_hibernate_in_use_toggled(ui.hibernate_in_use->isChecked());
 }
@@ -23,6 +24,8 @@ Hibernate::~Hibernate(){}
 
 void Hibernate::on_hibernate_start_dateTimeChanged(const QDateTime &dateTime)
 {
+    if (HourTime::roundBox(ui.hibernate_start, dateTime, /*down=*/true))
+        return;
     if (dateTime > ui.hibernate_end->dateTime())
         ui.hibernate_end->setDateTime(dateTime);
     
@@ -32,6 +35,8 @@ void Hibernate::on_hibernate_start_dateTimeChanged(const QDateTime &dateTime)
 
 void Hibernate::on_hibernate_end_dateTimeChanged(const QDateTime &dateTime)
 {
+    if (HourTime::roundBox(ui.hibernate_end, dateTime))
+        return;
     if (dateTime < ui.hibernate_start->dateTime())
     {
         ui.hibernate_start->setDateTime(dateTime);

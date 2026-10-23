@@ -75,7 +75,7 @@
             <item>
              <widget class="QDateTimeEdit" name="StartDateTime">
               <property name="toolTip">
-               <string>Programmed date/time to start data collection (UTC)</string>
+               <string>Programmed date/time to start data collection (UTC, whole hours)</string>
               </property>
               <property name="calendarPopup">
                <bool>true</bool>
@@ -125,10 +125,7 @@
               <item>
                <widget class="QDateTimeEdit" name="EndDateTime">
                 <property name="toolTip">
-                 <string>Programmed date/time to halt data collection (UTC)</string>
-                </property>
-                <property name="displayFormat">
-                 <string>M/d/yy h:00 AP</string>
+                 <string>Programmed date/time to halt data collection (UTC, whole hours)</string>
                 </property>
                 <property name="calendarPopup">
                  <bool>true</bool>

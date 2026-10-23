@@ -155,6 +155,13 @@ tag never hibernates for it. Check **In use** to use a row: a row with no date
 yet starts at the logging start, rounded up to the hour, and ends an hour
 later. Set its start and end inside the logging interval.
 
+Every schedule time, for logging and for hibernation, is in **UTC** and on a
+**whole hour**. The calendar button picks the date; to change the hour, click
+the hour in the box and use the arrow keys, or type it. A tag checks once an
+hour, on the hour, whether a hibernation has ended, so a hibernation always
+ends on the hour. A time read from a tag that is not on the hour is rounded
+when shown: a hibernation start down, every other time up.
+
 ### BitTag
 
 Classic BitTag exposes the full ADXL362 accelerometer configuration. The

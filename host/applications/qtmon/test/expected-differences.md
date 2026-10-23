@@ -10,6 +10,27 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: every schedule time is a whole hour in UTC
+
+Change: the four schedule date/time boxes (logging start and end, hibernation
+start and end) share `hourtime.h`: format `M/d/yy h:00 AP` and rounding to the
+hour in their change handlers. Before, logging start and hibernation end showed
+minutes, hibernation start hid them without rounding, and hibernation end kept
+them, although the firmware ends a hibernation only on the hour. A hibernation
+start now rounds down and every other time up. Tooltips say "(UTC, whole
+hours)", and the hibernation end's adds that the tag checks on the hour.
+
+653 cases differ. In `ui`, every case's four boxes change format (to
+`h:00 AP` where it was `h:mm Ap`) and tooltip, and nothing else changes except
+values in the 35 cases below. 35 cases (5 per interval tag type) differ in
+`sent`, and exactly those differ in displayed values: the cases that set a
+hibernation from the probe's now, which is not on the hour
+(`hibernate.count=1`, `hibernate.count=3`, `hibernate[0]=now-2h..now-1h`,
+`now+1h..now+2h`, `now+2h..now+1h`). Each start moves down and each end up to
+the hour; the 30-minute window in `hibernate.count=1` becomes the whole hour
+containing it instead of collapsing. Logging start and end values are
+unchanged, as they were already rounded up to the hour.
+
 ## 2026-10-23: each hibernation row has an In use checkbox
 
 Change: every hibernation row (`Hibernate`) gains an **In use** checkbox.

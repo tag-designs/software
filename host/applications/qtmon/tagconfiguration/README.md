@@ -37,6 +37,14 @@ firmware maximum (`Config.hibernate max_count:2`). Each row has an **In use**
 checkbox: an interval starting at 0 or INT32_MAX loads unchecked, and an
 unchecked row is sent as 0 to 0 (1 January 1970), which never applies.
 
+All four date/time boxes (logging start and end, each row's start and end) are
+whole hours in UTC, set up by `hourtime.h`: format `M/d/yy h:00 AP`, so no
+minutes can be typed, and each change handler rounds a loaded value to the hour
+(`HourTime::roundBox()`). A hibernation start rounds down and every other time
+up, so a rounded hibernation covers the one asked for. The firmware ends a
+hibernation only at an on-the-hour alarm (`common/core/src/time.c`,
+ALARM_HOUR).
+
 ## How a panel reads and writes Config
 
 `ConfigPanel` (`configpanel.h`) has three methods:

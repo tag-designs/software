@@ -11,6 +11,7 @@
 #include <QTimeZone>
 
 #include "configclock.h"
+#include "hourtime.h"
 
 /**
  * @brief Rounds an epoch up to a multiple of @p seconds.
@@ -34,8 +35,8 @@ static QDateTime roundDateTime(QDateTime dateTime, int64_t seconds)
 SchedulePanel::SchedulePanel(Variant variant, QWidget *parent) : ConfigPanel(parent)
 {
   ui.setupUi(this);
-  ui.StartDateTime->setTimeZone(QTimeZone::UTC);
-  ui.EndDateTime->setTimeZone(QTimeZone::UTC);
+  HourTime::setUp(ui.StartDateTime);
+  HourTime::setUp(ui.EndDateTime);
 
   interval_ = variant != Variant::StartDelay;
   period_ = variant == Variant::IntervalWithPeriod;
@@ -191,27 +192,15 @@ bool SchedulePanel::store(Config &config) const
 
 void SchedulePanel::on_StartDateTime_dateTimeChanged(const QDateTime &dateTime)
 {
-  QTime time = dateTime.time();
-  QDateTime dt = dateTime;
-  if (time.minute() != 0)
-  {
-    time.setHMS(time.hour() + 1, 0, 0, 0);
-    dt.setTime(time);
-    ui.StartDateTime->setDateTime(dt);
-  }
-  ui.EndDateTime->setMinimumDateTime(dt);
+  // Whole hours; the rounded value comes back through this handler.
+  if (HourTime::roundBox(ui.StartDateTime, dateTime))
+    return;
+  ui.EndDateTime->setMinimumDateTime(dateTime);
 }
 
 void SchedulePanel::on_EndDateTime_dateTimeChanged(const QDateTime &dateTime)
 {
-  QTime time = dateTime.time();
-  QDateTime dt = dateTime;
-  if (time.minute() != 0)
-  {
-    time.setHMS(time.hour() + 1, 0, 0, 0);
-    dt.setTime(time);
-    ui.EndDateTime->setDateTime(dt);
-  }
+  HourTime::roundBox(ui.EndDateTime, dateTime);
 }
 
 void SchedulePanel::on_runGroup_clicked()
