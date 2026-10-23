@@ -17,25 +17,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -67,25 +67,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=0",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=0 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=0 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=0 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=0 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=0 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=0 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=0 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=0 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=0",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=0",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=0",
@@ -117,25 +117,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -167,25 +167,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d09cc3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d09cc3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -217,25 +217,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -267,25 +267,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -317,25 +317,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -367,25 +367,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d09cc3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d09cc3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -417,25 +417,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -467,25 +467,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -517,25 +517,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0a79ed60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0a79ed60610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -567,25 +567,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0a79ed60610d09cc3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0a79ed60610d09cc3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -617,25 +617,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0a79ed60610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0a79ed60610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -667,25 +667,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0a79ed60610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0a79ed60610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -717,25 +717,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0caa3d60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0caa3d60610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -767,25 +767,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0caa3d60610d09cc3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0caa3d60610d09cc3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -817,25 +817,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0caa3d60610d0caa3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0caa3d60610d0caa3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -867,25 +867,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0caa3d60610d0caa3d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0caa3d60610d0caa3d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -917,25 +917,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -967,25 +967,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1017,25 +1017,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1067,25 +1067,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809121108c0958080f8ffffffff0110ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1117,25 +1117,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1167,25 +1167,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1221,20 +1221,20 @@
                         "start_epoch": 1791464523
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08cba89ed60610dbc49ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a0c08cba89ed60610dbc49ed6061a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791468123 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791464523 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
@@ -1271,20 +1271,20 @@
                         "start_epoch": 1791464523
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08cba89ed60610cba89ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a0c08cba89ed60610cba89ed6061a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791464523 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791464523 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
@@ -1321,21 +1321,21 @@
                         "start_epoch": 1791453723
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c089bd49dd60610abf09dd6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a0c089bd49dd60610abf09dd6061a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791457323 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791453723 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1493,25 +1493,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1543,25 +1543,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1594,25 +1594,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1645,25 +1645,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1696,25 +1696,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0eda8d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0eda8d6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1747,25 +1747,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610d0a79ed6061a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1798,25 +1798,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120c08d0eda8d60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120c08d0eda8d60610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1849,25 +1849,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1913,19 +1913,19 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "sent_hex": "0808120610ffffffff071a001a00320f250000003f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Logging Schedule\" enabled=1",
@@ -1936,10 +1936,10 @@
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -1986,19 +1986,19 @@
                 "bittag_log": "BITTAG_BITSPERFIVEMIN",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "BITTAG"
             },
-            "sent_hex": "0801120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed60620043215080210031802250000003f2d0000003f350000003f",
+            "sent_hex": "0801120610ffffffff071a001a0020043215080210031802250000003f2d0000003f350000003f",
             "ui": [
                 " | group title=\"Accelerometer\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -2028,10 +2028,10 @@
                 "BitTag Internal Log | radio text=\"Activity Count Per Five Minutes\" checked=1 enabled=1",
                 "BitTag Internal Log | radio text=\"Activity Count Per Four Minutes\" checked=0 enabled=1",
                 "BitTag Internal Log | radio text=\"Activity Count Per Minute\" checked=0 enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2077,19 +2077,19 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "BITTAGNG"
             },
-            "sent_hex": "0807120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320c250000003f350000c0403801",
+            "sent_hex": "0807120610ffffffff071a001a00320c250000003f350000c0403801",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Logging Schedule\" enabled=1",
@@ -2098,10 +2098,10 @@
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
                 "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2148,19 +2148,19 @@
                 "bittag_log": "BITTAG_BITSPERFIVEMIN",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "BITTAG_LE"
             },
-            "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d3333b33e3500004040",
+            "sent_hex": "0802120610ffffffff071a001a002004320f250000003f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -2176,10 +2176,10 @@
                 "BitTag Internal Log | radio text=\"Activity Count Per Five Minutes\" checked=1 enabled=1",
                 "BitTag Internal Log | radio text=\"Activity Count Per Four Minutes\" checked=0 enabled=1",
                 "BitTag Internal Log | radio text=\"Activity Count Per Minute\" checked=0 enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2262,25 +2262,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 60,
                 "start_delay": 0,
                 "tag_type": "PRESTAG"
             },
-            "sent_hex": "0803120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
+            "sent_hex": "0803120610ffffffff071a001a00383c",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2329,19 +2329,19 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
+            "sent_hex": "080b120610ffffffff071a001a00320a250000003f3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Logging Schedule\" enabled=1",
@@ -2350,10 +2350,10 @@
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
                 "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2386,25 +2386,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2438,25 +2438,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2490,25 +2490,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
@@ -2542,25 +2542,25 @@
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     },
                     {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
+                        "end_epoch": 0,
+                        "start_epoch": 0
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "COMPASSTAG"
             },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "sent_hex": "0809120610ffffffff071a001a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=0 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",

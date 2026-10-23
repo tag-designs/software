@@ -10,6 +10,23 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: an unset hibernation row is 0, not now
+
+Change: `SchedulePanel::load()` showed an unset hibernation interval (start 0
+or INT32_MAX) as now to now, and `store()` sent it back that way, so every
+default configuration sent a hibernation window at the current time, and
+editing a row's start pushed its end later into a real window. An unset row now
+shows and is sent as 0 to 0 (1 January 1970), which is what every
+`default-config.json` holds, so defaults round-trip unchanged.
+
+632 cases differ, every one in `sent` and `ui` and nowhere else. Each
+difference is an unset hibernation value changing from the probe's fixed now
+(1791460923) to 0, in both what is sent and the row's displayed date. Rows that
+were set (`now-2h..now-1h`, `now+1h..now+2h`, `now+2h..now+1h`) are unchanged;
+`forever` (start INT32_MAX) was already treated as unset and now sends 0. Of
+IMUTag's cases, which have no hibernation rows, only the `open:foreign:*`
+cases changed, since they open another tag type's file, which has them.
+
 ## 2026-10-23: the Configuration tab becomes an editor; Open replaces Restore
 
 Change: the configuration document

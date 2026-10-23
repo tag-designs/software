@@ -107,7 +107,9 @@ bool SchedulePanel::load(const Config &config)
       ui.EndDateTime->setDateTime(ui.StartDateTime->dateTime());
 
     // Hibernation: one row per interval the tag reports, up to the
-    // firmware's maximum. An unset interval (0 or INT32_MAX) shows as now.
+    // firmware's maximum. An unset interval (0 or INT32_MAX) shows, and is
+    // sent, as 0 to 0: 1 January 1970, long past, so it never applies.
+    // Showing it as now, as this once did, sent a window at the current time.
     row_count_ = std::min(config.hibernate_size(), kHibernateRows);
     for (int i = 0; i < kHibernateRows; ++i)
     {
@@ -117,8 +119,8 @@ bool SchedulePanel::load(const Config &config)
       if ((config.hibernate(i).start_epoch() == INT32_MAX) ||
           (config.hibernate(i).start_epoch() == 0))
       {
-        rows_[i]->setStartEpoch(ConfigClock::now().toSecsSinceEpoch());
-        rows_[i]->setEndEpoch(ConfigClock::now().toSecsSinceEpoch());
+        rows_[i]->setStartEpoch(0);
+        rows_[i]->setEndEpoch(0);
       }
       else
       {

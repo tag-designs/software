@@ -149,6 +149,10 @@ log to copy, save or clear it.
 The Configuration tab is intentionally tag-specific: each tag type shows the
 panels for the settings its firmware accepts, and nothing else.
 
+A hibernation row that is not in use shows **1/1/70 12:00 AM** for its start
+and end. That date is long past, so the tag never hibernates for it. To use a
+row, set its start and end inside the logging interval.
+
 ### BitTag
 
 Classic BitTag exposes the full ADXL362 accelerometer configuration. The
