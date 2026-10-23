@@ -20,7 +20,7 @@ Commands are in the menus at the top of the window, and on popup menus
 
 | Menu | Commands |
 | --- | --- |
-| **File** | Save Configuration…, Restore Configuration…, Download Data…, Save Error Log…, Quit |
+| **File** | New Configuration ▸, Open Configuration…, Open Recent ▸, Save Configuration, Save Configuration As…, Reset to Defaults, Download Data…, Save Error Log…, Quit |
 | **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Calibrate (CompassTag and IMUTag), Erase… |
 | **Log** | Log Level, Clear Error Log |
 | **Help** | Tag Monitor User Guide (opens this page), About Tag Monitor |
@@ -72,20 +72,36 @@ When a tag has finished logging, **File ▸ Download Data…** saves its data.
 
 ### Configuration
 
-The Configuration tab defines the experiment plan that will be written to the
-tag. It is one page of panels, and the attached tag's type decides which panels
-appear: every tag has a **Logging Schedule** panel, and tags with
-user-configurable settings add panels for them, such as the BitTag log format
-or the accelerometer. If the page is taller than the screen, it scrolls.
+The Configuration tab is a configuration editor. It holds one configuration,
+for one tag type, and shows it as a page of panels: every tag has a **Logging
+Schedule** panel, and tags with user-configurable settings add panels for
+them, such as the BitTag log format or the accelerometer. If the page is taller
+than the screen, it scrolls.
 
 ![Tag Monitor classic BitTag configuration](../images/qtmonitor-config-bittag.png)
 
-**Start** writes the displayed configuration to the tag and starts it. Until
-then, the displayed configuration is only a planned configuration. Use
-**File ▸ Save Configuration…** and **File ▸ Restore Configuration…** to move
-configurations through files (see [Configuration Files](../reference/config-files.md)),
-and **Tag ▸ Read Configuration** to reload the attached tag's own. These are
-also on the page's popup menu.
+A configuration can come from three places, and none of them needs a tag:
+
+- **File ▸ New Configuration ▸** a tag type starts from that type's default
+  configuration.
+- **File ▸ Open Configuration…** (or **Open Recent**) opens a saved file; see
+  [Configuration Files](../reference/config-files.md).
+- Attaching a tag, or **Tag ▸ Read Configuration**, reads the tag's own.
+
+The window title shows which configuration is open, and marks it when it has
+unsaved changes. **File ▸ Save Configuration** writes it back to its file;
+**Save Configuration As…** writes a new one. **Reset to Defaults** puts the tag
+type's default values back. Tag Monitor asks before discarding unsaved
+changes.
+
+**Start** writes the configuration to the attached tag and starts it. It needs
+an IDLE tag of the configuration's tag type, so you can prepare a
+configuration with no tag attached, attach the tag, and start it. Attaching
+keeps a configuration you opened or created; to work on the tag's own instead,
+choose **Tag ▸ Read Configuration**. While a tag is running, its own
+configuration is shown but cannot be edited.
+
+These commands are also on the page's popup menu.
 
 ### Error Log
 

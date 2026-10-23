@@ -34,7 +34,8 @@ popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
 Attached or Detached, the tag type, state, clock
 offset, voltage and self-test result, with Start and Stop as tool buttons
 bound to their actions. The Configuration tab's commands are `ConfigTab`
-slots (`SaveToFile()`, `RestoreFromFile()`, `ReadFromTag()`, `StartTag()`),
+slots (`NewFromDefaults()`, `Open()`, `Save()`, `SaveAs()`, `ResetToDefaults()`,
+`ReadFromTag()`, `StartTag()`; see `tagconfiguration/README.md`),
 and the error log's are `LogWindow` actions.
 
 `MainWindow::updateActions()` is the one place that decides which actions are

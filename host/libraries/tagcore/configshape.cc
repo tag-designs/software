@@ -177,6 +177,7 @@ public:
   struct Table
   {
     std::map<TagType, ConfigShape> shapes;  ///< One shape per tag type with a default.
+    std::map<TagType, Config> defaults;     ///< First default config per tag type.
     std::vector<std::string> errors;        ///< One message per default that was skipped.
   };
 
@@ -219,8 +220,17 @@ private:
       }
       else
       {
-        t.shapes[tag_type].paths_.insert(paths.begin(), paths.end());
-        continue;
+        Config config;
+        if (!google::protobuf::util::JsonStringToMessage(d.text, &config).ok())
+        {
+          error = "does not parse as a Config";
+        }
+        else
+        {
+          t.shapes[tag_type].paths_.insert(paths.begin(), paths.end());
+          t.defaults.emplace(tag_type, config);   // keeps the first
+          continue;
+        }
       }
       t.errors.push_back(std::string(d.name) + "/default-config.json: " + error);
       std::fprintf(stderr, "ConfigShape: skipping %s\n", t.errors.back().c_str());
@@ -264,6 +274,23 @@ std::optional<ConfigShape> ConfigShape::forFile(std::string_view json,
     }
   }
   return ConfigShapeBuilder::make(std::move(paths));
+}
+
+std::optional<Config> ConfigShape::defaultConfig(TagType tag_type)
+{
+  const auto &defaults = ConfigShapeBuilder::table().defaults;
+  const auto it = defaults.find(tag_type);
+  if (it == defaults.end())
+    return std::nullopt;
+  return it->second;
+}
+
+std::vector<TagType> ConfigShape::tagTypes()
+{
+  std::vector<TagType> types;
+  for (const auto &entry : ConfigShapeBuilder::table().shapes)
+    types.push_back(entry.first);
+  return types;
 }
 
 bool ConfigShape::isConfigPath(std::string_view path)

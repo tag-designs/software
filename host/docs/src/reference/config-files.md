@@ -1,28 +1,31 @@
 # Configuration Files
 
 Tag Monitor can save the configuration shown in the **Configuration** tab to a
-file and restore it later. Use this to apply one set of schedule and sensor
+file and open it later. Use this to apply one set of schedule and sensor
 settings to a batch of tags without re-entering it for each one, and to keep a
 record of how the tags in an experiment were configured.
 
-## Saving and Restoring
+## Saving and Opening
 
-Use **File ▸ Save Configuration…** and **File ▸ Restore Configuration…**, also
-on the Configuration tab's popup menu. Both open a file dialog filtered to
-`*.json` and default to your home directory.
+**File ▸ Save Configuration** writes the configuration to the file it came from;
+**File ▸ Save Configuration As…** asks for a new file. **File ▸ Open
+Configuration…** opens a file, and **File ▸ Open Recent** lists the last ten
+files opened or saved. These are also on the Configuration tab's popup menu.
+No tag needs to be attached.
 
-Restore only replaces the values shown in the tab. Nothing reaches the tag until
-you write the configuration to it as usual, so you can restore a file, adjust a
-date, and then write.
+Opening a file makes it the configuration being edited, for the tag type the
+file names. Nothing reaches a tag until you start one, so you can open a file,
+adjust a date, attach a tag of that type, and start it.
 
-Restore applies only the settings the attached tag has:
+A file does not have to list every setting:
 
-- A setting the file leaves out keeps its current value, so a file can hold
-  just the settings you want to change, for example only `act_thresh_g`.
-- A setting the file states is applied, including a zero.
-- A file saved from a different tag type contributes only the settings both
-  tag types have, typically the schedule. Its other settings are ignored,
-  including the defaults Tag Monitor writes for settings that type lacks.
+- A setting the file leaves out takes the tag type's default value, so a file
+  can hold just the settings you care about, for example only `act_thresh_g`.
+- A setting the file states is used, including a zero.
+- A file that does not name a tag type (`tag_type`) is opened for a tag type you
+  choose; the attached tag's type is offered first.
+- Settings a tag type does not have are ignored, including the defaults Tag
+  Monitor writes into a saved file for settings that type lacks.
 
 ## File Format
 
@@ -94,4 +97,4 @@ two hibernation windows:
 ```
 
 A file written by Tag Monitor is longer than this, because it includes the
-default-valued fields that this example leaves out. Both forms restore.
+default-valued fields that this example leaves out. Both forms open.

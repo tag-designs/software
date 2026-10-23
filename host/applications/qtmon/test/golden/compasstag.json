@@ -2,6 +2,7 @@
     "cases_file": "compasstag.json",
     "results": [
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "base",
             "layout": [
@@ -51,6 +52,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "base@RUNNING",
             "layout": [
@@ -100,6 +102,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=0..forever",
             "layout": [
@@ -149,6 +152,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=0..now+7d",
             "layout": [
@@ -198,6 +202,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=0..now-1m",
             "layout": [
@@ -247,6 +252,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=0..0",
             "layout": [
@@ -296,6 +302,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now-1h..forever",
             "layout": [
@@ -345,6 +352,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now-1h..now+7d",
             "layout": [
@@ -394,6 +402,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now-1h..now-1m",
             "layout": [
@@ -443,6 +452,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now-1h..0",
             "layout": [
@@ -492,6 +502,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1m..forever",
             "layout": [
@@ -541,6 +552,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1m..now+7d",
             "layout": [
@@ -590,6 +602,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1m..now-1m",
             "layout": [
@@ -639,6 +652,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1m..0",
             "layout": [
@@ -688,6 +702,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..forever",
             "layout": [
@@ -737,6 +752,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..now+7d",
             "layout": [
@@ -786,6 +802,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..now-1m",
             "layout": [
@@ -835,6 +852,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..0",
             "layout": [
@@ -884,6 +902,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=forever..forever",
             "layout": [
@@ -933,6 +952,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=forever..now+7d",
             "layout": [
@@ -982,6 +1002,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=forever..now-1m",
             "layout": [
@@ -1031,6 +1052,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "active_interval=forever..0",
             "layout": [
@@ -1080,6 +1102,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate[0]=unset",
             "layout": [
@@ -1129,6 +1152,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate[0]=forever",
             "layout": [
@@ -1178,6 +1202,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate[0]=now+1h..now+2h",
             "layout": [
@@ -1227,6 +1252,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate[0]=now+2h..now+1h",
             "layout": [
@@ -1276,6 +1302,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate[0]=now-2h..now-1h",
             "layout": [
@@ -1325,6 +1352,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate.count=0",
             "layout": [
@@ -1358,6 +1386,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate.count=1",
             "layout": [
@@ -1399,6 +1428,7 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
             "id": "hibernate.count=3",
             "layout": [
@@ -1448,13 +1478,13 @@
             ]
         },
         {
+            "document": "Defaults COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:own-full",
+            "id": "new",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1498,13 +1528,166 @@
             ]
         },
         {
+            "document": "Defaults COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:only:active_interval.end_epoch",
+            "id": "new@detached",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "COMPASSTAG"
+            },
+            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "ui": [
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File COMPASSTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:own-full",
+            "layout": [
+                "panel IntervalSchedule",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "COMPASSTAG"
+            },
+            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "ui": [
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File COMPASSTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:own-full@detached",
+            "layout": [
+                "panel IntervalSchedule",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "COMPASSTAG"
+            },
+            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
+            "ui": [
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File COMPASSTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:only:active_interval.end_epoch",
+            "layout": [
+                "panel IntervalSchedule",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
             "sent": {
                 "active_interval": {
                     "end_epoch": 1791637200,
@@ -1548,13 +1731,14 @@
             ]
         },
         {
+            "document": "File COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:zero:active_interval.end_epoch",
+            "id": "open:zero:active_interval.end_epoch",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "Opened",
             "sent": {
                 "active_interval": {
                     "end_epoch": 1791464400,
@@ -1598,13 +1782,14 @@
             ]
         },
         {
+            "document": "File COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:only:active_interval.start_epoch",
+            "id": "open:only:active_interval.start_epoch",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "Opened",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1648,13 +1833,14 @@
             ]
         },
         {
+            "document": "File COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:zero:active_interval.start_epoch",
+            "id": "open:zero:active_interval.start_epoch",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "Opened",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1698,13 +1884,500 @@
             ]
         },
         {
+            "document": "File BITPRESTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:foreign:BITPRESTAG",
+            "id": "open:foreign:BITPRESTAG",
+            "layout": [
+                "panel IntervalSchedule",
+                "panel Adxl362Wake",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "adxl362": {
+                    "accel_type": "AdxlType_362",
+                    "act_thresh_g": 0.5,
+                    "active_sec": 0,
+                    "channels": "AdxlChannel_UNSPECIFIED",
+                    "data_format": "DF_UNSPECIFIED",
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
+                    "inact_thresh_g": 0.35,
+                    "inactive_sec": 3,
+                    "range": "Rng_UNSPECIFIED"
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "BITPRESTAG"
+            },
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "ui": [
+                " | group title=\"Activity Wakeup\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
+                "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File BITTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:BITTAG",
+            "layout": [
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Standard",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "adxl362": {
+                    "accel_type": "AdxlType_362",
+                    "act_thresh_g": 0.5,
+                    "active_sec": 0,
+                    "channels": "AdxlChannel_UNSPECIFIED",
+                    "data_format": "DF_UNSPECIFIED",
+                    "filter": "AAquarter",
+                    "freq": "S50",
+                    "inact_thresh_g": 0.5,
+                    "inactive_sec": 0.5,
+                    "range": "R4G"
+                },
+                "bittag_log": "BITTAG_BITSPERFIVEMIN",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "BITTAG"
+            },
+            "sent_hex": "0801120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed60620043215080210031802250000003f2d0000003f350000003f",
+            "ui": [
+                " | group title=\"Accelerometer\" enabled=1",
+                " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Accelerometer > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"Wakeup threshold\"",
+                "Accelerometer > Activity Detection | double label=\"Inactive Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"Sleep threshold\"",
+                "Accelerometer > Activity Detection | double label=\"Inactivity\" value=0.5 min=0.02 max=5.1 step=0.02 decimals=2 prefix=\"\" suffix=\" sec\" enabled=1 tooltip=\"Time below wakeup threshold to become inactive\"",
+                "Accelerometer > Activity Detection | label text=\"Active Threshold\" enabled=1",
+                "Accelerometer > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
+                "Accelerometer > Activity Detection | label text=\"Inactivity\" enabled=1",
+                "Accelerometer > Filter | radio text=\"1/2 Sample Rate\" checked=0 enabled=1 tooltip=\"filter cutoff -- 1/2 sample rate\"",
+                "Accelerometer > Filter | radio text=\"1/4 Sample Rate\" checked=1 enabled=1 tooltip=\"filter cutoff -- 1/4 sample rate\"",
+                "Accelerometer > Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "Accelerometer > Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "Accelerometer > Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "Accelerometer > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1 tooltip=\"100 samples/second\"",
+                "Accelerometer > Sample Rate | radio text=\"12.5 Hz\" checked=0 enabled=1 tooltip=\"12.5 samples/second\"",
+                "Accelerometer > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1 tooltip=\"200 samples/second\"",
+                "Accelerometer > Sample Rate | radio text=\"25 Hz\" checked=0 enabled=1 tooltip=\"25 samples/second\"",
+                "Accelerometer > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1 tooltip=\"400 samples/second\"",
+                "Accelerometer > Sample Rate | radio text=\"50 Hz\" checked=1 enabled=1 tooltip=\"50 samples/second\"",
+                "Accelerometer | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
+                "Accelerometer | group title=\"Filter\" enabled=1 tooltip=\"Set Accelerometer Anti-Alias Filter\"",
+                "Accelerometer | group title=\"Range\" enabled=1 tooltip=\"Set Accelerometer Range\"",
+                "Accelerometer | group title=\"Sample Rate\" enabled=1 tooltip=\"Set Accelerometer Sample Rate\"",
+                "BitTag Internal Log | radio text=\"Activity Bit Per Second\" checked=0 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Five Minutes\" checked=1 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Four Minutes\" checked=0 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Minute\" checked=0 enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File BITTAGNG modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:BITTAGNG",
+            "layout": [
+                "panel IntervalSchedule",
+                "panel Adxl367WakeWithType",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "adxl362": {
+                    "accel_type": "AdxlType_367",
+                    "act_thresh_g": 0.5,
+                    "active_sec": 0,
+                    "channels": "AdxlChannel_UNSPECIFIED",
+                    "data_format": "DF_UNSPECIFIED",
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
+                    "inact_thresh_g": 0,
+                    "inactive_sec": 6,
+                    "range": "Rng_UNSPECIFIED"
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "BITTAGNG"
+            },
+            "sent_hex": "0807120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320c250000003f350000c0403801",
+            "ui": [
+                " | group title=\"Activity Wakeup\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=6 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
+                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.5 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
+                "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
+                "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File BITTAG_LE modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:BITTAG_LE",
+            "layout": [
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "adxl362": {
+                    "accel_type": "AdxlType_362",
+                    "act_thresh_g": 0.5,
+                    "active_sec": 0,
+                    "channels": "AdxlChannel_UNSPECIFIED",
+                    "data_format": "DF_UNSPECIFIED",
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
+                    "inact_thresh_g": 0.35,
+                    "inactive_sec": 3,
+                    "range": "Rng_UNSPECIFIED"
+                },
+                "bittag_log": "BITTAG_BITSPERFIVEMIN",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "BITTAG_LE"
+            },
+            "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d3333b33e3500004040",
+            "ui": [
+                " | group title=\"Activity Wakeup\" enabled=1",
+                " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
+                "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
+                "BitTag Internal Log | radio text=\"Activity Bit Per Second\" checked=0 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Five Minutes\" checked=1 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Four Minutes\" checked=0 enabled=1",
+                "BitTag Internal Log | radio text=\"Activity Count Per Minute\" checked=0 enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File IMUTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:IMUTAG",
+            "layout": [
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "document": "File PRESTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:PRESTAG",
+            "layout": [
+                "panel IntervalScheduleWithPeriod",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 60,
+                "start_delay": 0,
+                "tag_type": "PRESTAG"
+            },
+            "sent_hex": "0803120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
+            "ui": [
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Period | int label=\"\" value=60 min=1 max=300 step=10 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Data sample period\"",
+                "Logging Schedule > Period | label text=\"Seconds\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Period\" enabled=1 tooltip=\"Set Data Sample Period\"",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File UIUCTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:foreign:UIUCTAG",
+            "layout": [
+                "panel IntervalSchedule",
+                "panel Adxl367Wake",
+                "configtab visible=1 enabled=1"
+            ],
+            "open": "Opened",
+            "sent": {
+                "active_interval": {
+                    "end_epoch": 2147483647,
+                    "start_epoch": 0
+                },
+                "adxl362": {
+                    "accel_type": "AdxlType_362",
+                    "act_thresh_g": 0.5,
+                    "active_sec": 0,
+                    "channels": "AdxlChannel_UNSPECIFIED",
+                    "data_format": "DF_UNSPECIFIED",
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
+                    "inact_thresh_g": 0,
+                    "inactive_sec": 10,
+                    "range": "Rng_UNSPECIFIED"
+                },
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    },
+                    {
+                        "end_epoch": 1791460923,
+                        "start_epoch": 1791460923
+                    }
+                ],
+                "period": 0,
+                "start_delay": 0,
+                "tag_type": "UIUCTAG"
+            },
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
+            "ui": [
+                " | group title=\"Activity Wakeup\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=10 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
+                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.5 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
+                "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
+                "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
+                "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
+                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
+                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
+                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
+                "Logging Schedule | group title=\"Hibernation\" enabled=1",
+                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+            ]
+        },
+        {
+            "document": "File COMPASSTAG modified=0",
+            "get_config_ok": true,
+            "id": "open:empty-object",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "Opened",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1748,13 +2421,15 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:foreign:BITTAG",
+            "id": "open:malformed",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "ParseError",
+            "open_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:6 (offset 5): unexpected character: 'j'; expected ':'",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1798,13 +2473,15 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:foreign:BITTAGNG",
+            "id": "open:unknown-key",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
+            "open": "ParseError",
+            "open_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:10 (offset 9): no such field: 'bogus'",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,
@@ -1848,366 +2525,15 @@
             ]
         },
         {
+            "document": "Tag COMPASSTAG modified=0",
             "get_config_ok": true,
-            "id": "restore:foreign:BITTAG_LE",
+            "id": "open:wrong-type",
             "layout": [
                 "panel IntervalSchedule",
                 "configtab visible=1 enabled=1"
             ],
-            "restore": "Restored",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:foreign:IMUTAG",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "Restored",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:foreign:PRESTAG",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "Restored",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:foreign:UIUCTAG",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "Restored",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:empty-object",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "Restored",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:malformed",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "ParseError",
-            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:6 (offset 5): unexpected character: 'j'; expected ':'",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:unknown-key",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "ParseError",
-            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:10 (offset 9): no such field: 'bogus'",
-            "sent": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "bittag_log": "BITTAG_UNSPECIFIED",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "COMPASSTAG"
-            },
-            "sent_hex": "0809120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606",
-            "ui": [
-                " | group title=\"Logging Schedule\" enabled=1",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
-                "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
-                "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
-                "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
-                "Logging Schedule | group title=\"Hibernation\" enabled=1",
-                "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
-            ]
-        },
-        {
-            "get_config_ok": true,
-            "id": "restore:wrong-type",
-            "layout": [
-                "panel IntervalSchedule",
-                "configtab visible=1 enabled=1"
-            ],
-            "restore": "ParseError",
-            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config @ period: uint32, near 1:12 (offset 11): invalid number: 'abc'",
+            "open": "ParseError",
+            "open_detail": "INVALID_ARGUMENT: invalid JSON in Config @ period: uint32, near 1:12 (offset 11): invalid number: 'abc'",
             "sent": {
                 "active_interval": {
                     "end_epoch": 2147483647,

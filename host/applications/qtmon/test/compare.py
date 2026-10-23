@@ -5,7 +5,8 @@
 
 Matches results by case file and case id. For each case it compares:
 
-  get_config_ok, restore, restore_detail   exactly
+  get_config_ok, document,                 exactly
+  open, open_detail (restore, restore_detail in older results)
   sent                                     byte for byte (sent_hex); a
                                            difference is shown field by field
   sent_with_schedule_tab                   present in either, or different
@@ -25,7 +26,8 @@ import json
 import sys
 from pathlib import Path
 
-KEYS = ["error", "get_config_ok", "restore", "restore_detail", "sent",
+KEYS = ["error", "get_config_ok", "document", "open", "open_detail",
+        "restore", "restore_detail", "sent",
         "sent_with_schedule_tab", "ui", "ui_with_schedule_tab", "layout",
         "dialogs"]
 

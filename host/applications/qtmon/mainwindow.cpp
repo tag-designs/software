@@ -12,6 +12,8 @@
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
+#include <QCloseEvent>
+#include <QFileInfo>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QApplication>
@@ -48,6 +50,7 @@
 #include "tag.pb.h"
 
 #include "tagconfiguration/configtab.h"
+#include "configshape.h"
 #include "tagstatusstrip.h"
 #include "qtuserguide.h"
 #include "abstractdownload.h"
@@ -134,9 +137,7 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
 
   // Change Main Window title
 
-  QString title = QString::fromStdString("Tag Monitor v") + QString::number(version);
-
-  setWindowTitle(title);
+  updateTitle();
 
   // Tag state poll timer
 
@@ -242,15 +243,15 @@ void MainWindow::populateTagInfo(const TagInfo &info)
   ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
   tag_type = info.tag_type();
   tag_uuid_ = QString::fromStdString(info.uuid());
+  ui.configtab->SetAttachedTagType(tag_type);
   status_strip_->setAttached(tag_type, tag_uuid_);
 }
 
 /**
  * @brief Populates the Configuration tab from live or fixture configuration.
  *
- * @details Live mode attaches child configuration widgets to the active Tag
- *          object before setting fields. Fixture mode skips Tag attachment and
- *          marks the tab as display-only so Start and Read are guarded no-ops.
+ * @details Live mode attaches the tab to the Tag and keeps a document the
+ *          user opened or created; see mainwindow.h.
  *
  * @param[in] config       Configuration protobuf to display.
  * @param[in] fixtureMode  true for documentation replay, false for live tag IO.
@@ -258,8 +259,24 @@ void MainWindow::populateTagInfo(const TagInfo &info)
 void MainWindow::attachConfig(const Config &config, bool fixtureMode)
 {
   ui.configtab->SetFixtureMode(fixtureMode);
-  if (!fixtureMode) {
-    ui.configtab->Attach(tag);
+  if (fixtureMode) {
+    ui.configtab->SetConfig(config);
+    return;
+  }
+  ui.configtab->Attach(tag);
+  // A configuration the user opened or created stays: they may be about to
+  // start this tag with it. Otherwise the tag's own is read in, asking first
+  // if a previous tag's configuration has unsaved changes.
+  switch (ui.configtab->source()) {
+  case ConfigTab::Source::Defaults:
+  case ConfigTab::Source::File:
+    return;
+  case ConfigTab::Source::Tag:
+    if (!ui.configtab->confirmDiscard())
+      return;
+    break;
+  case ConfigTab::Source::None:
+    break;
   }
   ui.configtab->SetConfig(config);
 }
@@ -557,14 +574,39 @@ void MainWindow::createActions()
   read_config_action_ = new QAction(tr("Read Configuration"), this);
   read_config_action_->setToolTip(tr("Read the tag's configuration"));
   connect(read_config_action_, &QAction::triggered, config, &ConfigTab::ReadFromTag);
-  save_config_action_ = new QAction(tr("Save Configuration..."), this);
-  save_config_action_->setToolTip(tr("Save the configuration to a file"));
-  connect(save_config_action_, &QAction::triggered, config, &ConfigTab::SaveToFile);
-  restore_config_action_ = new QAction(tr("Restore Configuration..."), this);
-  restore_config_action_->setToolTip(
-      tr("Restore a configuration file over the tag's configuration"));
-  connect(restore_config_action_, &QAction::triggered, config,
-          &ConfigTab::RestoreFromFile);
+  open_config_action_ = new QAction(tr("Open Configuration..."), this);
+  open_config_action_->setToolTip(tr("Open a configuration file for editing"));
+  open_config_action_->setShortcut(QKeySequence::Open);
+  connect(open_config_action_, &QAction::triggered, config, &ConfigTab::Open);
+  save_config_action_ = new QAction(tr("Save Configuration"), this);
+  save_config_action_->setToolTip(tr("Save the configuration to its file"));
+  save_config_action_->setShortcut(QKeySequence::Save);
+  connect(save_config_action_, &QAction::triggered, config, &ConfigTab::Save);
+  save_as_config_action_ = new QAction(tr("Save Configuration As..."), this);
+  save_as_config_action_->setToolTip(tr("Save the configuration to a new file"));
+  save_as_config_action_->setShortcut(QKeySequence::SaveAs);
+  connect(save_as_config_action_, &QAction::triggered, config, &ConfigTab::SaveAs);
+  reset_config_action_ = new QAction(tr("Reset to Defaults"), this);
+  reset_config_action_->setToolTip(
+      tr("Replace the configuration's values with its tag type's defaults"));
+  connect(reset_config_action_, &QAction::triggered, config, &ConfigTab::ResetToDefaults);
+
+  // New ▸ one entry per tag type that has a default configuration.
+  new_config_menu_ = new QMenu(tr("New Configuration"), this);
+  for (TagType type : ConfigShape::tagTypes()) {
+    QAction *action = new_config_menu_->addAction(
+        QString::fromStdString(std::string(TagType_Name(type))));
+    action->setToolTip(tr("Start from this tag type's default configuration"));
+    connect(action, &QAction::triggered, config,
+            [config, type]() { config->NewFromDefaults(type); });
+  }
+  recent_config_menu_ = new QMenu(tr("Open Recent"), this);
+  connect(recent_config_menu_, &QMenu::aboutToShow, this, &MainWindow::fillRecentMenu);
+
+  connect(config, &ConfigTab::documentChanged, this, [this]() {
+    updateTitle();
+    updateActions();
+  });
 
   guide_action_ = make(tr("Tag Monitor User Guide"),
                        tr("Open the Tag Monitor page of the user manual"),
@@ -583,8 +625,12 @@ void MainWindow::createMenus()
   menuBar()->setNativeMenuBar(false);
 
   QMenu *file = menuBar()->addMenu(tr("&File"));
+  file->addMenu(new_config_menu_);
+  file->addAction(open_config_action_);
+  file->addMenu(recent_config_menu_);
   file->addAction(save_config_action_);
-  file->addAction(restore_config_action_);
+  file->addAction(save_as_config_action_);
+  file->addAction(reset_config_action_);
   file->addSeparator();
   file->addAction(download_action_);
   file->addAction(ui.errorTab->saveAction());
@@ -623,8 +669,45 @@ void MainWindow::createMenus()
   status_strip_->setContextMenuPolicy(Qt::ActionsContextMenu);
   status_strip_->addActions(tagCommands);
   ui.configtab->setContextMenuPolicy(Qt::ActionsContextMenu);
-  ui.configtab->addActions({read_config_action_, restore_config_action_,
-                            save_config_action_, start_action_});
+  auto *separator = new QAction(this);
+  separator->setSeparator(true);
+  ui.configtab->addActions({read_config_action_, open_config_action_,
+                            save_config_action_, save_as_config_action_,
+                            reset_config_action_, separator, start_action_});
+}
+
+void MainWindow::updateTitle()
+{
+  QString title = tr("Tag Monitor v%1").arg(version);
+  const QString name = ui.configtab->documentName();
+  if (!name.isEmpty())
+    title += QStringLiteral(" \u2014 ") + name + QStringLiteral("[*]");
+  setWindowTitle(title);
+  setWindowModified(ui.configtab->isModified());
+}
+
+void MainWindow::fillRecentMenu()
+{
+  recent_config_menu_->clear();
+  const QStringList files = ConfigTab::recentFiles();
+  if (files.isEmpty()) {
+    recent_config_menu_->addAction(tr("No recent files"))->setEnabled(false);
+    return;
+  }
+  for (const QString &path : files) {
+    QAction *action = recent_config_menu_->addAction(QFileInfo(path).fileName());
+    action->setToolTip(path);
+    connect(action, &QAction::triggered, ui.configtab,
+            [this, path]() { ui.configtab->OpenFile(path); });
+  }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+  if (ui.configtab->confirmDiscard())
+    event->accept();
+  else
+    event->ignore();
 }
 
 void MainWindow::showUserGuide()
@@ -685,13 +768,15 @@ void MainWindow::updateActions()
   stop_action_->setEnabled(attached && (state == CONFIGURED || state == RUNNING ||
                                         state == HIBERNATING || state == CALIBRATE));
 
-  // The configuration commands need a configuration in the tab; all but Save
-  // also need an IDLE tag, as editing does (ConfigTab::StateUpdate()).
-  const bool config = ui.configtab->isActive();
-  save_config_action_->setEnabled(config);
-  restore_config_action_->setEnabled(config && idle);
-  read_config_action_->setEnabled(config && idle);
-  start_action_->setEnabled(config && idle);
+  // Configuration documents need no tag. Read needs an IDLE tag; Start also
+  // needs a document of that tag's type.
+  const bool document = ui.configtab->hasDocument();
+  save_config_action_->setEnabled(document);
+  save_as_config_action_->setEnabled(document);
+  reset_config_action_->setEnabled(document);
+  read_config_action_->setEnabled(idle);
+  start_action_->setEnabled(document && idle &&
+                            ui.configtab->documentTagType() == tag_type);
 }
 
 /********************************************

@@ -46,19 +46,27 @@ firmware maximum (`Config.hibernate max_count:2`).
   a log format it has no button for, and warns for a classic BitTag with none;
 - `store()` writes those fields from the controls, whatever is on screen.
 
-`ConfigTab` keeps `current_config_`, the tag's configuration as last read or
-restored:
+`ConfigTab` is a configuration editor holding one **document**: a `Config`
+(`current_config_`), its tag type, its source (`Source::Defaults`, `File` or
+`Tag`) and, for a file, its path. It works with no tag attached.
 
-- `SetConfig()` shows the tag type's panels and calls `load()` on each;
-- `GetConfig()`, used by Save and Start, copies `current_config_` and calls
+- Loading a document (`load()`, through `LoadDefaults()`, `OpenFromJsonText()`
+  or `SetConfig()`) shows the tag type's panels and calls `load()` on each.
+- `GetConfig()`, used by Save and Start, copies the document and calls
   `store()` on each shown panel. A field no panel owns passes through
-  unchanged;
-- Restore merges a file into `current_config_` with `ConfigShape::forFile()`
-  and `ConfigShape::merge()` (see `host/libraries/tagcore/configshape.h`),
-  then calls `SetConfig()`. A field the file leaves out keeps its value, a
-  stated field is copied (zero included), and a file written for another tag
-  type contributes only that type's fields. `tag-start --merge` uses the same
-  merge.
+  unchanged.
+- Open makes a file the document: its tag type's defaults
+  (`ConfigShape::defaultConfig()`) with the file merged on top by
+  `ConfigShape::forFile()` and `ConfigShape::merge()` (see
+  `host/libraries/tagcore/configshape.h`). A file that names no tag type is
+  opened as a type the user picks.
+- Unsaved changes: just after loading, what the panels would write is kept
+  (`baseline_`); `isModified()` compares it with what they would write now.
+  Every control's change signal re-checks, and `documentChanged()` reports a
+  change, which MainWindow shows in the title.
+- Editing is disabled only while the document is the attached tag's own
+  configuration and the tag is not IDLE.
+- Recent files are kept in `QSettings` under `recentConfigurationFiles`.
 
 ## The cross-check
 
@@ -96,7 +104,7 @@ or a user could see has changed.
 5. Run `qtmonitor --check-config-panels`, regenerate the probe's cases, and
    check the goldens.
 
-Restore and `tag-start --merge` handle the new field without change.
+Open and `tag-start --merge` handle the new field without change.
 
 ## Adding A New Panel
 

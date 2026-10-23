@@ -599,33 +599,35 @@ QString MainWindow::actionStateTable()
       {"stop", stop_action_},       {"sync", sync_action_},
       {"test", test_action_},       {"calibrate", calibrate_action_},
       {"erase", erase_action_},     {"download", download_action_},
-      {"save", save_config_action_}, {"restore", restore_config_action_}};
+      {"open", open_config_action_}, {"save", save_config_action_},
+      {"saveas", save_as_config_action_}, {"reset", reset_config_action_}};
 
   QStringList lines;
-  QString header = "attached state tagtype config downloading testpending |";
+  QString header = "attached state tagtype document downloading testpending |";
   for (const auto &a : actions)
     header += " " + a.first;
   lines << header;
 
-  auto row = [&](bool attached, TagState state, TagType type, bool config,
+  // document: "none", "same" (the tag's type) or "other" (another type).
+  auto row = [&](bool attached, TagState state, TagType type, const QString &document,
                  bool downloading, bool pending) {
     attached_ui_ = attached;
     current_state = state;
     tag_type = type;
     downloading_ = downloading;
     test_pending_ = pending;
-    if (config) {
-      Config c;
-      c.set_tag_type(type);
-      ui.configtab->SetConfig(c);
+    if (document == "none") {
+      ui.configtab->Clear();
     } else {
-      ui.configtab->Detach();
+      Config c;
+      c.set_tag_type(document == "same" ? type : (type == IMUTAG ? BITTAG_LE : IMUTAG));
+      ui.configtab->SetConfig(c);
     }
     updateActions();
     QString line = QString("%1 %2 %3 %4 %5 %6 |")
                        .arg(attached).arg(QString::fromStdString(std::string(TagState_Name(state))))
                        .arg(QString::fromStdString(std::string(TagType_Name(type))))
-                       .arg(config).arg(downloading).arg(pending);
+                       .arg(document).arg(downloading).arg(pending);
     for (const auto &a : actions)
       line += QString(" %1=%2").arg(a.first,
                                     !a.second->isVisible() ? "H"
@@ -635,22 +637,23 @@ QString MainWindow::actionStateTable()
 
   const auto *states = TagState_descriptor();
   for (TagType type : {BITTAG_LE, COMPASSTAG}) {
-    for (bool config : {false, true})
-      row(false, IDLE, type, config, false, false);
+    for (const char *document : {"none", "same"})
+      row(false, IDLE, type, document, false, false);
     for (int i = 0; i < states->value_count(); ++i) {
       const auto state = static_cast<TagState>(states->value(i)->number());
-      row(true, state, type, true, false, false);
+      row(true, state, type, "same", false, false);
     }
-    row(true, IDLE, type, false, false, false);   // attached, no configuration
-    row(true, IDLE, type, true, false, true);     // self-test pending
-    row(true, FINISHED, type, true, true, false); // download running
+    row(true, IDLE, type, "none", false, false);    // attached, no document
+    row(true, IDLE, type, "other", false, false);   // document for another type
+    row(true, IDLE, type, "same", false, true);     // self-test pending
+    row(true, FINISHED, type, "same", true, false); // download running
   }
 
   // Leave the window as a detached qtmonitor.
   attached_ui_ = false;
   downloading_ = false;
   test_pending_ = false;
-  ui.configtab->Detach();
+  ui.configtab->Clear();
   updateActions();
   return lines.join('\n') + '\n';
 }

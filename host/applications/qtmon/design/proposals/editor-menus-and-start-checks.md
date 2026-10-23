@@ -163,7 +163,14 @@ Each step leaves qtmonitor working:
    `host/common/qtuserguide.h`, with the docs locations defined by the
    `host_common` target. sensorviz and qtmonitor's new Help menu (User
    Guide, About) use it.
-3. **The document model:** New, Open, Reset, Read, Save, the tab usable with
+3. **The document model** (done 2026-10-23). One refinement to section 1:
+   attaching keeps a document from a file or defaults even when it has no
+   unsaved changes, since the user may be about to start this tag with it.
+   Only a previous tag's configuration is replaced (asking if modified).
+   Defaults come from `ConfigShape::defaultConfig()`. The probe's restore
+   cases became open cases, and New and no-tag cases were added; only
+   foreign-file opens changed (see `test/expected-differences.md`).
+   Planned as: New, Open, Reset, Read, Save, the tab usable with
    no tag, and attach-while-editing. The probe gains cases for New from each
    tag type's defaults and for Open with no tag attached.
 4. **Start checks:** the three checks, the approval box, the override dialog.

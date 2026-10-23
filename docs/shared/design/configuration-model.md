@@ -15,7 +15,9 @@ The firmware compiles that file in. The host reads it through tagcore's
 
 - qtmonitor's Configuration tab shows fixed panels, chosen by tag type and
   checked against the shape;
-- Restore and `tag-start --merge` copy only fields the tag supports;
+- qtmonitor opens a configuration file as the tag type's defaults with the
+  file merged on top, and `tag-start --merge` merges a file into a tag's
+  configuration, both copying only fields the tag type supports;
 - `qtmonitor --check-config-panels` fails if the panels and the default
   configs disagree.
 
@@ -107,15 +109,23 @@ other.
 qtmonitor's **Save** writes the whole `Config` as protobuf JSON, with every
 field printed, including zeros for fields the tag does not have.
 
-**Restore** in qtmonitor, **`tag-start --merge`**, and the Python example
+qtmonitor's **Open**, **`tag-start --merge`**, and the Python example
 **`tag_start.py --merge`** use the same rule: `ConfigShape::merge()` in C++,
 and its Python counterpart `tagclient.configshape.merge()`, which is tested
-against the same cases. It copies a field into the tag's configuration only if
-the tag supports it and the file speaks for it:
+against the same cases. What it merges into differs:
+
+- **Open** merges the file into its tag type's default configuration
+  (`ConfigShape::defaultConfig()`), and the result becomes the document being
+  edited, with that tag type's panels. A file with no `tag_type` opens as a
+  type the user chooses.
+- **`--merge`** merges the file into the attached tag's own configuration.
+
+The merge copies a field only if the tag type supports it and the file speaks
+for it:
 
 - **The file speaks for its keys,** zeros included, as found by
-  `ConfigShape::forFile()`. A field the file leaves out keeps its value, so a
-  file can hold just the settings to change.
+  `ConfigShape::forFile()`. A field the file leaves out keeps the value it is
+  merged into, so a file can hold just the settings to change.
 - **A file whose `tag_type` is another tag type with a default config speaks
   only for that type's fields.** The padding Save writes for fields the file's
   own tag lacks is ignored, so a BitTagNG file's `"bittag_log":

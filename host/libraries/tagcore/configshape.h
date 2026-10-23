@@ -108,6 +108,27 @@ public:
   static bool isConfigPath(std::string_view path);
 
   /**
+   * @brief   The default configuration of a tag type, as its
+   *          `default-config.json` gives it.
+   *
+   * @details When two default configs share a tag type (PresTag and
+   *          PresTagRaw, identical today), the first by directory name is
+   *          used. For BitTag and BitTagNG this is exactly what the firmware
+   *          reports in IDLE; the other families build their IDLE
+   *          configuration in code and may differ in fields their default
+   *          config does not list.
+   *
+   * @param[in] tag_type  Tag type.
+   * @return  The configuration, or empty for a tag type with no default.
+   */
+  static std::optional<Config> defaultConfig(TagType tag_type);
+
+  /**
+   * @brief   Every tag type with a default config, in TagType order.
+   */
+  static std::vector<TagType> tagTypes();
+
+  /**
    * @brief   Problems found reading the embedded default configs.
    *
    * @return  One message per default config that was skipped, naming the

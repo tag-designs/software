@@ -132,6 +132,20 @@ void checkMatchesGenerator()
   assert(ConfigShape::forTag(TAG_UNSPECIFIED).paths().empty());
 }
 
+void checkDefaults()
+{
+  // Every tag type with a shape has a default, and it is that tag's.
+  assert(ConfigShape::tagTypes().size() == kGeneratorTable.size());
+  for (TagType type : ConfigShape::tagTypes())
+  {
+    const auto config = ConfigShape::defaultConfig(type);
+    assert(config && config->tag_type() == type);
+  }
+  assert(!ConfigShape::defaultConfig(TAG_UNSPECIFIED));
+  assert(ConfigShape::defaultConfig(PRESTAG)->period() == 60);
+  assert(ConfigShape::defaultConfig(IMUTAG)->lsm6().odr() == Lsm6dsv_ODR_S100);
+}
+
 void checkLookup()
 {
   const ConfigShape &ng = ConfigShape::forTag(BITTAGNG);
@@ -242,6 +256,7 @@ int main()
 {
   checkLoading();
   checkMatchesGenerator();
+  checkDefaults();
   checkLookup();
   checkFromJson();
   checkMerge();

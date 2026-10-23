@@ -7,7 +7,7 @@ summary: How to run qtmonitor's configuration probe over the committed cases, co
 # qtmonitor Configuration Probe
 
 The configuration screen takes in a `Config`: from the tag's `GetConfig`, a
-fixture, or a restored file. It hands one back to Start. No hardware is
+fixture, a tag type's defaults, or an opened file. It hands one back to Start. No hardware is
 involved in between. The probe runs that screen headless over a fixed set of
 cases and records, for each case:
 
@@ -62,19 +62,27 @@ code change, so a reviewer can see what moved and why.
 ## What a case and a result contain
 
 Every case has an `id`, a fixed `now` (seconds since the epoch, UTC), the tag
-`state`, the `config` as the tag would send it (zero-valued fields omitted),
-and optionally a `restore`: the text of a file restored over it.
+`state`, and the `config` as the tag would send it (zero-valued fields
+omitted). Optionally:
+
+- `"new": true`: the document is New from `config`'s tag type's defaults,
+  instead of `config` itself;
+- `"open"`: the text of a file to open (File ▸ Open), which then becomes the
+  document. A file naming no tag type opens as `config`'s type;
+- `"attached": false`: no tag is attached, so the tab is used as an editor.
 
 For each case, the probe builds a fresh `ConfigTab`, as a qtmonitor that has
-just attached this tag would. It fixes the schedule's clock at `now`, applies
-the config, the state and the restore, and calls `GetConfig()`, exactly as
-Start does. The result holds:
+just started would. It fixes the schedule's clock at `now`, loads the
+document, reports the tag's state unless the case is detached, opens the file
+if there is one, and calls `GetConfig()`, exactly as Start does. The result
+holds:
 
 | Key | Meaning |
 | --- | --- |
 | `sent`, `sent_hex` | What Start would send, as JSON with every field and as serialised bytes |
 | `get_config_ok` | `GetConfig()`'s return value |
-| `restore`, `restore_detail` | `Restored`, `ParseError` or `NotValidForTag`, and the parser's message |
+| `document` | The document's source (`Defaults`, `File` or `Tag`), tag type, and whether it has unsaved changes |
+| `open`, `open_detail` | `Opened`, `ParseError` or `NoDefaults`, and why (`restore`, `restore_detail` in results from before File ▸ Open) |
 | `ui` | One line per visible control: enclosing group titles, then kind, label, value, range, step, decimals, suffix, enabled and tooltip. Sorted, so moving a control does not change it. A control scrolled out of view counts as visible. |
 | `layout` | Which panels are shown, and whether the tab as a whole is visible and enabled; changes when the layout does |
 | `dialogs` | Text of each message box raised. The probe records and dismisses it. |
@@ -104,8 +112,9 @@ default configuration disagree.
   forever, in order, inverted, in the past, and 0, 1 or 3 rows;
 - **the ADXL362 fields that constrain each other:** range against both
   thresholds, and sample rate against inactivity time;
-- **restores:**
-  - the tag's own full file, as Save writes it;
+- **New** from the tag type's defaults, with and without a tag attached;
+- **opening files:**
+  - the tag's own full file, as Save writes it, with and without a tag;
   - each field alone;
   - each field as an explicit zero;
   - every other tag's file;

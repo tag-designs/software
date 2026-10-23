@@ -10,6 +10,43 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: the Configuration tab becomes an editor; Open replaces Restore
+
+Change: step 3 of
+[the editor, menus and start-checks proposal](../design/proposals/editor-menus-and-start-checks.md).
+The tab holds a document, from a tag type's defaults, a file or a tag.
+File ▸ Open replaces Restore: the file becomes the document, as its tag type's
+defaults with the file merged on top, instead of being merged into the tag's
+configuration.
+
+The cases change to match:
+
+- `restore:*` cases are renamed `open:*`, and their `restore` key becomes
+  `open` (`Restored` becomes `Opened`).
+- Every result gains a `document` key.
+- 24 cases are new: `new` and `new@detached` (New from defaults, with and
+  without a tag) and `open:own-full@detached`, one of each per tag type. In
+  all three the document is unmodified, every control is enabled, and what is
+  sent equals the base case, or New with a tag.
+
+Compared with the previous goldens, with ids and keys mapped, only the 56
+`open:foreign:*` cases differ. Opening another tag type's file now makes it
+the document, with that type's panels and that type's configuration sent.
+Before, its shared fields were merged into the attached tag's configuration.
+No base, field, schedule or ADXL-combination case changed. Every own-type
+`open:*` case (full file, one field, explicit zero) sends exactly what Restore
+sent.
+
+`action-states.txt` changes as designed:
+
+- the `restore` column is replaced by `open`, `saveas` and `reset`;
+- the `config` column becomes `document`, which is `none`, `same` or `other`;
+- Read needs only an attached IDLE tag;
+- Start also needs a document of the tag's type;
+- Open is always available, and Save, Save As and Reset need a document.
+
+All 34 rows were checked against these rules.
+
 ## 2026-10-23: the Configuration tab's buttons become menu actions
 
 Change: step 1 of

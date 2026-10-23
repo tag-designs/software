@@ -17,6 +17,7 @@
 #include "ui_mainwindow.h"
 
 class QAction;
+class QMenu;
 class QTabBar;
 class QWidget;
 class QTextEdit;
@@ -103,7 +104,8 @@ public:
    *        the inputs it reads; for `qtmonitor --check-action-states`.
    *
    * @details Sets each combination of attached, tag state, tag type (one
-   *          with calibration, one without), configuration loaded, download
+   *          with calibration, one without), configuration document (none, of
+   *          the tag's type, of another type), download
    *          running and self-test pending, calls updateActions(), and records
    *          each action as E (enabled), D (disabled) or H (hidden). Leaves the
    *          window detached. See host/applications/qtmon/test/README.md.
@@ -210,6 +212,12 @@ private:
    *          holds a configuration. Called after every change to those.
    */
   void updateActions();
+  /// Shows the configuration document's name and unsaved-changes mark in the title.
+  void updateTitle();
+  /// Lists the recent configuration files in File ▸ Open Recent.
+  void fillRecentMenu();
+  /// Asks about unsaved configuration changes before the window closes.
+  void closeEvent(QCloseEvent *event) override;
 
   QTabBar *tab_bar_ = nullptr;  ///< Stands in for mainTabWidget's hidden tab bar.
   TagStatusStrip *status_strip_ = nullptr;  ///< Tag, state, clock, voltage, self-test; Start and Stop.
@@ -228,8 +236,12 @@ private:
   QAction *test_action_ = nullptr;
   QAction *calibrate_action_ = nullptr;
   QAction *erase_action_ = nullptr;
+  QAction *open_config_action_ = nullptr;
   QAction *save_config_action_ = nullptr;
-  QAction *restore_config_action_ = nullptr;
+  QAction *save_as_config_action_ = nullptr;
+  QAction *reset_config_action_ = nullptr;
+  QMenu *new_config_menu_ = nullptr;     ///< One action per tag type with defaults.
+  QMenu *recent_config_menu_ = nullptr;  ///< Rebuilt each time it opens.
   QAction *download_action_ = nullptr;
   QAction *quit_action_ = nullptr;
   QAction *guide_action_ = nullptr;
@@ -254,9 +266,12 @@ private:
   /**
    * @brief Applies a configuration to the Configuration tab.
    *
-   * @details Live mode attaches the tab to @c tag before setting the config.
-   *          Fixture mode skips the live Tag attachment and puts the tab in a
-   *          display-only mode where Start and Read are no-ops.
+   * @details Live mode attaches the tab to @c tag. A configuration document
+   *          the user opened or created (from a file or defaults) is kept;
+   *          otherwise the tag's configuration becomes the document, asking
+   *          first if a previous tag's has unsaved changes. Fixture mode
+   *          always shows @p config, in a display-only mode where Start and
+   *          Read are no-ops.
    */
   void attachConfig(const Config &config, bool fixtureMode);
   /**

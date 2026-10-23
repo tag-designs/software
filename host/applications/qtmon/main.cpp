@@ -144,6 +144,9 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
+  // QSettings (recent configuration files) is stored under these names.
+  QCoreApplication::setOrganizationName(QStringLiteral("tag-designs"));
+  QCoreApplication::setApplicationName(QStringLiteral("qtmonitor"));
   QCommandLineParser parser;
   parser.setApplicationDescription("Tag monitor");
   parser.addHelpOption();

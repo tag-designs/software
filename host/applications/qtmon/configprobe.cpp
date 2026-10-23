@@ -335,8 +335,9 @@ private:
 /// What one pass through a ConfigTab produced.
 struct RunOutput
 {
-  QString restore;      ///< Restore outcome, empty when the case has none.
-  QString restore_detail;
+  QString open;         ///< Open outcome, empty when the case opens no file.
+  QString open_detail;
+  QString document;     ///< The document's source, tag type and modified flag.
   bool get_config_ok = false;
   Config sent;
   QJsonArray ui;
@@ -344,12 +345,21 @@ struct RunOutput
   QJsonArray dialogs;
 };
 
+/// One case's inputs.
+struct CaseInput
+{
+  Config config;           ///< The tag's configuration, or the type for New.
+  TagState state = IDLE;   ///< The tag's state, when attached.
+  bool attached = true;    ///< false: no tag; the tab is used as an editor.
+  bool new_document = false;  ///< true: New from config's tag type's defaults.
+  QJsonValue open;         ///< Text of a file to open, or undefined.
+};
+
 /**
  * @brief Builds a fresh ConfigTab, applies one case to it, and reads back
  *        what Start would send.
  */
-RunOutput runOnce(const Config &input, TagState state, const QJsonValue &restore,
-                  DialogCatcher &dialogs)
+RunOutput runOnce(const CaseInput &in, DialogCatcher &dialogs)
 {
   RunOutput out;
   ConfigTab tab;
@@ -358,31 +368,41 @@ RunOutput runOnce(const Config &input, TagState state, const QJsonValue &restore
   tab.show();
   QCoreApplication::processEvents();
 
-  tab.SetConfig(input);
-  tab.StateUpdate(state);
+  if (in.new_document)
+    tab.LoadDefaults(in.config.tag_type());
+  else
+    tab.SetConfig(in.config);
+  if (in.attached)
+    tab.StateUpdate(in.state);
 
-  if (restore.isString())
+  if (in.open.isString())
   {
     QString detail;
-    switch (tab.RestoreFromJsonText(restore.toString().toStdString(), &detail))
+    switch (tab.OpenFromJsonText(in.open.toString().toStdString(),
+                                 in.config.tag_type(), QString(), &detail))
     {
-    case ConfigTab::RestoreResult::Restored:
-      out.restore = "Restored";
+    case ConfigTab::OpenResult::Opened:
+      out.open = "Opened";
       break;
-    case ConfigTab::RestoreResult::ParseError:
-      out.restore = "ParseError";
+    case ConfigTab::OpenResult::ParseError:
+      out.open = "ParseError";
       break;
-    case ConfigTab::RestoreResult::NotValidForTag:
-      out.restore = "NotValidForTag";
+    case ConfigTab::OpenResult::NoDefaults:
+      out.open = "NoDefaults";
       break;
     }
     // Abseil varies the spacing of status messages from run to run so that
     // nothing depends on their exact text; collapse it for stable results.
-    out.restore_detail = detail.simplified();
+    out.open_detail = detail.simplified();
   }
 
   QCoreApplication::processEvents();
 
+  static const char *const sources[] = {"None", "Defaults", "File", "Tag"};
+  out.document = QString("%1 %2 modified=%3")
+                     .arg(sources[static_cast<int>(tab.source())])
+                     .arg(QString::fromStdString(std::string(TagType_Name(tab.documentTagType()))))
+                     .arg(tab.isModified());
   out.get_config_ok = tab.GetConfig(out.sent);
   out.ui = fingerprint(&tab);
   out.layout = layoutFacts(&tab);
@@ -418,15 +438,21 @@ QJsonObject runCase(const QJsonObject &c, DialogCatcher &dialogs)
   }
 
   ConfigClock::setFixedNow(static_cast<qint64>(c.value("now").toDouble()));
-  const QJsonValue restore = c.value("restore");
-  const RunOutput run = runOnce(input, state, restore, dialogs);
+  CaseInput in;
+  in.config = input;
+  in.state = state;
+  in.attached = c.value("attached").toBool(true);
+  in.new_document = c.value("new").toBool(false);
+  in.open = c.value("open");
+  const RunOutput run = runOnce(in, dialogs);
 
-  if (!run.restore.isEmpty())
+  if (!run.open.isEmpty())
   {
-    result["restore"] = run.restore;
-    if (run.restore != "Restored")
-      result["restore_detail"] = run.restore_detail;
+    result["open"] = run.open;
+    if (run.open != "Opened")
+      result["open_detail"] = run.open_detail;
   }
+  result["document"] = run.document;
   result["get_config_ok"] = run.get_config_ok;
   result["sent"] = configToJson(run.sent);
   result["sent_hex"] =

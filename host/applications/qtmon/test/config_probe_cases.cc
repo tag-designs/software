@@ -18,8 +18,10 @@
  *          - schedule start and end times around "now", and hibernation rows;
  *          - the ADXL362 fields that constrain each other: range against
  *            thresholds, sample rate against inactivity time;
- *          - restores: the tag's own full file, one field at a time, explicit
- *            zeros, every other tag's file, and malformed files.
+ *          - New from the tag type's defaults, with and without a tag;
+ *          - opening files: the tag's own full file (also with no tag), one
+ *            field at a time, explicit zeros, every other tag's file, and
+ *            malformed files.
  *
  *          Fields are found by walking the default config's keys against the
  *          Config descriptor, so a field added to a default config is covered
@@ -256,16 +258,22 @@ struct Case
   std::string id;
   std::string state = "IDLE";
   Config config;
-  bool has_restore = false;
-  std::string restore;
+  bool has_open = false;
+  std::string open;       ///< Text of a file to open.
+  bool is_new = false;    ///< New from the config's tag type's defaults.
+  bool attached = true;   ///< false: no tag attached.
 };
 
 std::string render(const Case &c)
 {
   std::string out = "{\"id\": " + quote(c.id) + ", \"now\": " + std::to_string(kNow) +
                     ", \"state\": " + quote(c.state) + ", \"config\": " + wireJson(c.config);
-  if (c.has_restore)
-    out += ", \"restore\": " + quote(c.restore);
+  if (c.has_open)
+    out += ", \"open\": " + quote(c.open);
+  if (c.is_new)
+    out += ", \"new\": true";
+  if (!c.attached)
+    out += ", \"attached\": false";
   return out + "}";
 }
 
@@ -439,13 +447,24 @@ std::vector<Case> casesFor(const std::string &tag, const Config &base,
     }
   }
 
-  // Restores, all in IDLE.
+  // New from defaults, with and without a tag attached.
+  add("new", base)->is_new = true;
+  {
+    Case *c = add("new@detached", base);
+    c->is_new = true;
+    c->attached = false;
+  }
+
+  // Opening files, all in IDLE. A file that names no tag type opens as the
+  // case's tag type, as qtmonitor offers the attached tag's type first.
   auto restore = [&](const std::string &id, const std::string &text) {
-    Case *c = add("restore:" + id, base);
-    c->has_restore = true;
-    c->restore = text;
+    Case *c = add("open:" + id, base);
+    c->has_open = true;
+    c->open = text;
+    return c;
   };
   restore("own-full", savedJson(base));
+  restore("own-full@detached", savedJson(base))->attached = false;
   for (const std::string &path : paths)
   {
     if (path.rfind("hibernate", 0) == 0)
