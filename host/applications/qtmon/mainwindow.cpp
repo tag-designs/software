@@ -116,6 +116,9 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
   placeStatusStripBelowTabs();
   createMenus();
   ui.mainToolBar->hide();  // no toolbar actions yet
+  // Its only use was hover text for menu items, which the tooltips carry; an
+  // empty bar reads as a strip that is not part of the window.
+  ui.statusBar->hide();
   // Spare height on the Tag page goes below its groups, not between rows.
   qobject_cast<QBoxLayout *>(ui.widget_3->layout())->addStretch(1);
   screenshotDir = resolveScreenshotDir(options.screenshotDir);
@@ -524,7 +527,6 @@ void MainWindow::createActions()
   auto make = [this](const QString &text, const QString &tip, auto slot) {
     auto *action = new QAction(text, this);
     action->setToolTip(tip);
-    action->setStatusTip(tip);
     connect(action, &QAction::triggered, this, slot);
     return action;
   };

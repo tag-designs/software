@@ -177,7 +177,8 @@ private:
   Ui::MainWindow ui;
   QTimer timer;
   TagState current_state = STATE_UNSPECIFIED;
-  const float version = 2.0;
+  /// Shown in the title and About. 2.1: menus, the status strip, Help.
+  const float version = 2.1f;
   int external_flash_size = 0;
   int sector_size = 4096;
   QString tag_debug_line_buffer;
