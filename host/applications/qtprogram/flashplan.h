@@ -40,7 +40,7 @@ struct FlashPlan
     All,              ///< Mass erase.
   };
 
-  Erase erase = Erase::Invalid;
+  Erase erase = Erase::Invalid; ///< The erase that goes with the program.
   QString error;           ///< Why the image cannot be programmed, when Invalid.
   int pageSize = 0;        ///< Flash page size the image was linked for, in bytes.
   int lastErasedPage = -1; ///< Highest page erased, for BelowCalibration.

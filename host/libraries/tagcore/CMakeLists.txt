@@ -1,7 +1,31 @@
+#[[
+  tagcore: the static C++20 library every host tool uses to talk to a tag.
+
+  It owns the USB link to a base (libusb), the tag monitor protocol
+  (tagmonitor, tagclass), log download and the SQLite/text log writers, the
+  SWD capture and recovery code under recovery/, and ConfigShape, which says
+  which Config fields each tag type supports.
+
+  Dependencies that are easy to miss:
+  - libusb-1.0: on Windows with vcpkg the import libraries are linked by
+    path, Debug and Release separately; elsewhere it is found through
+    pkg-config, statically when building with vcpkg (see the comment at
+    pkg_check_modules).
+  - sqlite3: vcpkg's unofficial-sqlite3 package when building with vcpkg, the
+    system SQLite3 otherwise.
+  - proto (the generated tag.pb.* library) and tag_monitor_interface (the
+    shared C headers in include/) are PUBLIC: consumers see their headers.
+  - embedded/proto-c/*/default-config.json are read at configure time and
+    compiled in (see the defaultconfigs.cc block below), so a configure, not
+    just a build, picks up a new tag's defaults.
+#]]
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure TagCore Library")
 
+# Times every USB bulk transfer in LinkAdapt and keeps per-direction call,
+# byte and nanosecond counters. Cheap (one steady_clock read per transfer),
+# so it is on by default; turn it off to drop the clock calls entirely.
 option(TAGCORE_ENABLE_INSTRUMENTATION
        "Enable host-side tagcore transfer timing instrumentation" ON)
 

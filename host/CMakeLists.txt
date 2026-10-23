@@ -15,6 +15,11 @@ endif()
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 set(HOST_BUNDLE_INSTALL_DIR tag_tools)
 
+# host_common: header-only helpers shared by the Qt applications, in
+# host/common (qtuserguide.h, qtfiledialog.h, qthoststyle.h). Nothing is
+# compiled here; linking it adds the include path and the two definitions
+# below. sensorviz also uses TAG_DESIGNS_DOCS_SOURCE_DIR as its default
+# directory for documentation screenshots.
 add_library(host_common INTERFACE)
 target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
 # Where qtuserguide.h looks for the built user manual, after the places beside

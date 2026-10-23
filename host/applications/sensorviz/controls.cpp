@@ -1,3 +1,21 @@
+/**
+ * @file    controls.cpp
+ * @brief   sensorViz general actions and shared display helpers that belong
+ *          to no single runtime slice.
+ *
+ * @details Holds the MainWindow members that are cross-cutting rather than
+ *          part of streams, transforms, plotting or interaction: the units
+ *          label helper, the pressure-to-altitude display transforms, the
+ *          About and User Guide actions, graph-title editing, and the
+ *          read-only compass calibration constants dialog. The file is kept
+ *          small on purpose; new behaviour normally belongs in one of
+ *          stream_actions.cpp, transforms.cpp, plotting.cpp or
+ *          interaction.cpp (see the list below the includes).
+ *
+ * @note    The altitude transforms are display-only and use the sea-level
+ *          pressure held by the ViewModel; they never alter stored samples.
+ */
+
 #include "mainwindow.h"
 
 #include "compass_calibration_dialog.h"

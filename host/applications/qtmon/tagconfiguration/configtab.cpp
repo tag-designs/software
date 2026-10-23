@@ -47,6 +47,22 @@
 namespace
 {
 
+/**
+ * @brief Sets the protobuf JSON option that prints zero-valued fields, under
+ *        whichever name this protobuf version uses.
+ *
+ * @details One of an SFINAE pair, used by writeFile() so that a saved
+ *          configuration lists every field, including those at their default.
+ *          Newer protobuf releases name the option
+ *          always_print_fields_with_no_presence; older ones call it
+ *          always_print_primitive_fields. Each overload's return type only
+ *          compiles when its member exists, so exactly one survives overload
+ *          resolution. Call with a literal @c 0: the @c int overload (new
+ *          name) is preferred over the @c long one when both are viable.
+ *
+ * @param[in,out] options  Print options to modify.
+ * @param[in]     value    true to print fields that hold their default value.
+ */
 template <typename Options>
 auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
     -> decltype(options.always_print_fields_with_no_presence = value, void())
@@ -54,6 +70,13 @@ auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
   options.always_print_fields_with_no_presence = value;
 }
 
+/**
+ * @brief Fallback of the setAlwaysPrintDefaultFields() pair for protobuf
+ *        releases that still name the option always_print_primitive_fields.
+ *
+ * @param[in,out] options  Print options to modify.
+ * @param[in]     value    true to print fields that hold their default value.
+ */
 template <typename Options>
 auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
     -> decltype(options.always_print_primitive_fields = value, void())
@@ -464,6 +487,7 @@ namespace
 {
 /// QSettings key and length of the recent configuration files.
 constexpr const char *kRecentKey = "recentConfigurationFiles";
+/// Most recent configuration files remembered; older entries are dropped.
 constexpr int kRecentMax = 10;
 } // namespace
 
@@ -714,7 +738,11 @@ void ConfigTab::StartTag()
 }
 
 namespace {
+/// Status reads pollStartResult() makes, including the first, before it
+/// reports Start as failed.
 constexpr int kStartPollAttempts = 8;
+/// Delay between those status reads, in ms; with kStartPollAttempts this
+/// gives the tag about seven seconds to reach RUNNING or CONFIGURED.
 constexpr int kStartPollIntervalMs = 1000;
 }  // namespace
 

@@ -1,3 +1,29 @@
+/**
+ * @file    mainwindow.cpp
+ * @brief   qtcalibrate main window: tag attach, magnetometer calibration,
+ *          sample capture/replay and documentation screenshots.
+ *
+ * @details Implements MainWindow, the Qt Widgets shell of the Tag Calibrator.
+ *          It attaches to a tag through its USB base, polls the calibration
+ *          sample stream, feeds magnetometer samples to CompassData (the
+ *          inherited magcal solver), shows fit quality and the live compass
+ *          and attitude views, and saves or loads calibration constants on the
+ *          tag.
+ *
+ *          The same window also records an in-memory capture of the raw
+ *          calibration stream, which can be saved as a JSON fixture
+ *          (schema tag-designs.qtcalibrate.calibration-capture.v1) and replayed
+ *          later without hardware. Replay drives the maintainer-only
+ *          screenshot options parsed in main.cpp, so the user guide's images
+ *          are produced by the real UI rather than a mock.
+ *
+ * @note    Relative replay and screenshot paths are resolved against
+ *          TAG_DESIGNS_SOURCE_DIR, a compile-time definition, so the
+ *          documentation commands work from a build directory.
+ *
+ * @see     host/applications/qtcalibrate/README.md,
+ *          host/docs/fixtures/qtcalibrate/README.md
+ */
 
 #include <QMainWindow>
 #include <QApplication>
@@ -41,11 +67,28 @@ extern "C"
 // main.cpp installs a Qt message handler that appends log output to this text
 // edit. MainWindow sets it once the generated UI exists.
 
+/**
+ * @brief   Qt message handler defined in main.cpp and installed before the
+ *          QApplication is created.
+ *
+ * @details Info messages are appended to s_textEdit as written; debug,
+ *          warning and critical messages are appended with a level tag only
+ *          when at or above log_level. Fatal messages abort.
+ *
+ * @param[in] type     Qt message category.
+ * @param[in] context  Source location, shown for filtered levels when known.
+ * @param[in] msg      Message text.
+ */
 extern void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                             const QString &msg);
+/// Minimum log.h level (LOG_DEBUG ... LOG_ERROR) shown in the log pane; defined
+/// in main.cpp and changed from the log-level combo box.
 extern int log_level;
+/// Log pane that myMessageOutput() appends to. Null until the UI is built;
+/// messages issued before then are dropped.
 QTextEdit *s_textEdit = nullptr;
 
+/// Window title and About text; carries the application version.
 #define title_string "Tag Calibrator v0.5"
 
 /// Accelerometer offset beyond which the fit is flagged rather than trusted.
@@ -61,6 +104,17 @@ static const QString kResidualPlaceholder =
 namespace
 {
 
+/**
+ * @brief   Encode one magnetometer sample for a calibration capture file.
+ *
+ * @param[in] value  Uncalibrated magnetometer reading in calibration-stream
+ *                   counts, in tag axis order. Written as received; the tag
+ *                   block's mag_constant is recorded for reference only.
+ *
+ * @return  A JSON object with keys "mx", "my" and "mz". These key names are
+ *          the capture schema that loadReplayCapture() reads back, so they
+ *          must not change without a schema version bump.
+ */
 QJsonObject magToJson(const QVector3D &value)
 {
   QJsonObject object;
@@ -70,6 +124,16 @@ QJsonObject magToJson(const QVector3D &value)
   return object;
 }
 
+/**
+ * @brief   Encode one accelerometer sample for a calibration capture file.
+ *
+ * @param[in] value  Accelerometer reading paired with a magnetometer sample,
+ *                   in calibration-stream units and tag axis order.
+ *
+ * @return  A JSON object with keys "ax", "ay" and "az", part of the same
+ *          capture schema as magToJson(). Only written when the sample's
+ *          has_accel flag is set.
+ */
 QJsonObject accelToJson(const QVector3D &value)
 {
   QJsonObject object;
@@ -89,6 +153,11 @@ QJsonObject accelToJson(const QVector3D &value)
  *          safe to commit without scrubbing. What remains is what a reader of a
  *          fixture needs: which tag produced it, which firmware, and the
  *          constants its sample units depend on.
+ *
+ * @param[in] info  TagInfo read from the attached tag at attach time.
+ *
+ * @return  The "tag" block of a capture file. A replayed capture re-emits the
+ *          block it was loaded with instead of calling this.
  */
 QJsonObject tagInfoToJson(const TagInfo &info)
 {
@@ -106,6 +175,20 @@ QJsonObject tagInfoToJson(const TagInfo &info)
   return object;
 }
 
+/**
+ * @brief   Locate a --replay-capture file given on the command line.
+ *
+ * @details A path that exists as given, or is absolute, is used unchanged.
+ *          Otherwise the path is tried relative to TAG_DESIGNS_SOURCE_DIR,
+ *          since committed fixtures live in the source tree while the
+ *          application usually runs from a build directory.
+ *
+ * @param[in] path  Capture path as typed by the user; may be relative.
+ *
+ * @return  The first candidate that exists. If neither exists, the original
+ *          path is returned so that the caller's open failure reports what
+ *          the user typed; this function never fails on its own.
+ */
 QString resolveReplayCapturePath(const QString &path)
 {
   QFileInfo requested(path);
@@ -122,9 +205,20 @@ QString resolveReplayCapturePath(const QString &path)
   return requested.filePath();
 }
 
-// Documentation commands are normally run from a build directory, while the
-// fixture files and generated images live in the source tree. Resolve relative
-// paths from TAG_DESIGNS_SOURCE_DIR so the commands work from either location.
+/**
+ * @brief   Resolve the --screenshot-dir option to a concrete directory.
+ *
+ * @details Documentation commands are normally run from a build directory,
+ *          while the fixture files and generated images live in the source
+ *          tree. Relative paths are therefore resolved from
+ *          TAG_DESIGNS_SOURCE_DIR so the commands work from either location.
+ *
+ * @param[in] path  Directory from the command line; empty selects the default.
+ *
+ * @return  @p path unchanged if absolute; otherwise @p path under
+ *          TAG_DESIGNS_SOURCE_DIR, or host/docs/src/images there when @p path
+ *          is empty. The directory is not checked or created here.
+ */
 QString resolveScreenshotDir(const QString &path)
 {
   if (path.isEmpty()) {
@@ -140,9 +234,17 @@ QString resolveScreenshotDir(const QString &path)
   return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path);
 }
 
-// Qt Quick property changes are asynchronous enough that immediate screenshots
-// can catch the previous convention or pose. A short local event loop lets QML
-// repaint before the native window is grabbed.
+/**
+ * @brief   Run a local event loop so QML can repaint before a screenshot.
+ *
+ * @details Qt Quick property changes are asynchronous enough that immediate
+ *          screenshots can catch the previous convention or pose.
+ *
+ * @param[in] milliseconds  Time to keep processing events, in ms.
+ *
+ * @warning Re-enters the event loop: timers, slots and user input can run
+ *          during the wait. Only used on the screenshot path.
+ */
 void waitForGuiToSettle(int milliseconds)
 {
   QEventLoop loop;

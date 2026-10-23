@@ -1,3 +1,11 @@
+/**
+ * @file    main.cpp
+ * @brief   Tag Programmer's entry point, log routing and command-line modes.
+ *
+ * @details Routes tagcore's log callback to the log pane and recognises
+ *          `--flash-plan` and `--capture-screenshots` (see main()).
+ */
+
 #include <QApplication>
 #include <QString>
 
@@ -32,9 +40,18 @@ extern "C"
 //  based upon:
 //  http://stackoverflow.com/questions/22485208/redirect-qdebug-to-qtextedit
 
+/// The log pane's text box, owned by LogWindow; null until it is built.
 extern QTextEdit *s_textEdit;
+/// Lowest level shown in the log pane: tagcore's LOG_* scale. Not changed after start-up.
 int log_level = LOG_ERROR;
 
+/**
+ * @brief Appends one message to the log pane, when it is at or above
+ *        log_level and the pane exists.
+ * @param[in] ll       tagcore log level (LOG_TRACE..LOG_FATAL).
+ * @param[in] context  Source location; shown when it has a line number.
+ * @param[in] msg      The message text.
+ */
 static void logOutput(int ll, const QMessageLogContext &context,
                const QString &msg)
 {
@@ -53,6 +70,10 @@ static void logOutput(int ll, const QMessageLogContext &context,
     s_textEdit->append(QString("%1 %4").arg(tag).arg(msg));
 }
 
+/**
+ * @brief tagcore log callback: formats the event and passes it to logOutput().
+ * @param[in] ev  The event; its format string and arguments are consumed.
+ */
 void log_log_callback(log_Event *ev)
 {
   QMessageLogContext context;
@@ -67,6 +88,12 @@ void log_log_callback(log_Event *ev)
   }
 }
 
+/**
+ * @brief Qt message handler mapping Qt levels to tagcore levels for logOutput().
+ * @details Installed by LogWindow's constructor (qInstallMessageHandler), so
+ *          qDebug()/qInfo()/qWarning() reach the log pane.
+ * @warning Aborts on QtFatalMsg.
+ */
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                      const QString &msg)
 {
@@ -94,6 +121,18 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
   }
 }
 
+/**
+ * @brief Starts Tag Programmer, or runs one of its command-line modes.
+ *
+ * @details `--flash-plan <elf>...` prints each image's planned erase and
+ *          exits, with no window, tag or programmer.
+ *          `--capture-screenshots <elf> [<dir>]` opens the window, captures
+ *          the user guide's screenshots (MainWindow::captureScreenshots()) and
+ *          exits. Otherwise the window runs until closed. Settings are stored
+ *          under organization `tag-designs`, application `qtprogram`.
+ *
+ * @return The application's exit code; 0 from `--flash-plan`.
+ */
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);

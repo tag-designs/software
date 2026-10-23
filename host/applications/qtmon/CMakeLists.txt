@@ -1,3 +1,17 @@
+#[[
+  qtmonitor: the Qt Widgets application for attaching to a tag through its
+  USB base, reading its status, editing and sending its configuration
+  (tagconfiguration/), starting, stopping and erasing it, and downloading its
+  log.
+
+  Built only with BUILD_QT_APPS; if Qt6 Core and Widgets are not found the
+  directory is skipped with a message rather than failing the configure.
+  Links tagcore for everything that talks to a tag and host_common for the
+  shared header-only Qt helpers (user guide lookup, file dialogs).
+  TAG_DESIGNS_SOURCE_DIR is compiled in so the fixture and screenshot options
+  work when qtmonitor runs from the build tree. The configuration-probe case
+  generator at the end is a developer tool behind BUILD_QTMON_CHECKS.
+#]]
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure qtmonitor")

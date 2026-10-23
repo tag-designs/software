@@ -61,11 +61,25 @@
 namespace
 {
 
-// Fallback for older IMUTag firmware that predates
-// Status.erase_sectors_total_plus_one. New firmware reports the erase total
-// directly, so the UI does not need tag-specific page geometry.
+/// Bytes per IMUTag data-log page, used only as a fallback for older IMUTag
+/// firmware that predates Status.erase_sectors_total_plus_one. New firmware
+/// reports the erase total directly, so the UI does not need tag-specific
+/// page geometry.
 constexpr int kImuDataLogPageBytes = 2048;
 
+/**
+ * @brief   Number of erase sectors needed to cover a byte count, rounded up.
+ *
+ * @param[in] bytes        Bytes of external flash in use, or the flash size.
+ * @param[in] sector_size  Erase sector size in bytes.
+ *
+ * @return  ceil(@p bytes / @p sector_size); 0 when either argument is zero or
+ *          negative, so a tag reporting no geometry shows no erase progress
+ *          rather than dividing by zero.
+ *
+ * @note    The result is narrowed to int; flash sizes on these tags are far
+ *          below the point where that could overflow.
+ */
 int roundedSectorCount(qint64 bytes, int sector_size)
 {
   if (bytes <= 0 || sector_size <= 0)
@@ -73,6 +87,18 @@ int roundedSectorCount(qint64 bytes, int sector_size)
   return static_cast<int>((bytes + sector_size - 1) / sector_size);
 }
 
+/**
+ * @brief   Whether a tag in @p state may be offered the download controls.
+ *
+ * @details EXCEPTION is included because the tag is no longer collecting data;
+ *          letting the user download from it avoids requiring a reset that
+ *          could erase the evidence.
+ *
+ * @param[in] state  The tag's last reported state.
+ *
+ * @return  true for FINISHED, ABORTED and EXCEPTION; false for every other
+ *          state, including those where the tag is still logging.
+ */
 bool isDownloadableState(TagState state)
 {
   // EXCEPTION is no longer collecting data, so allow users to reach the

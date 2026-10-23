@@ -17,6 +17,7 @@ namespace
 /// Every tag in this tree boots from the start of internal flash.
 constexpr quint32 kFlashBase = 0x08000000u;
 
+/// Little-endian 32-bit word at byte offset @p at; the caller has checked the bounds.
 quint32 read32(const QByteArray &d, qint64 at)
 {
   quint32 v;
@@ -24,6 +25,7 @@ quint32 read32(const QByteArray &d, qint64 at)
   return v; // ELF is little-endian, as are the hosts this runs on.
 }
 
+/// Little-endian 16-bit half-word at byte offset @p at; the caller has checked the bounds.
 quint16 read16(const QByteArray &d, qint64 at)
 {
   quint16 v;

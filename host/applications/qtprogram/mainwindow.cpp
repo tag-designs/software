@@ -1,3 +1,16 @@
+/**
+ * @file    mainwindow.cpp
+ * @brief   Tag Programmer's main window: base discovery, programmer lookup,
+ *          the Program confirmation and the program state machine.
+ *
+ * @details The sequence is in programStateMachine(), documented in
+ *          mainwindow.h; the erase rule is in flashplan.cpp. Programming
+ *          erases the tag's log and stored configuration on every target,
+ *          which confirmProgram() spells out before anything happens.
+ *
+ * @see     host/applications/qtprogram/README.md,
+ *          docs/release/release-procedure.md ("When a mass erase is needed")
+ */
 
 #include <QMainWindow>
 #include <QDate>
@@ -55,6 +68,10 @@ namespace
 // directly, so the UI does not need tag-specific page geometry.
 constexpr int kImuDataLogPageBytes = 2048;
 
+/**
+ * @brief Number of @p sector_size sectors needed to hold @p bytes, rounded up.
+ * @return The count, or 0 when either argument is not positive.
+ */
 int roundedSectorCount(qint64 bytes, int sector_size)
 {
   if (bytes <= 0 || sector_size <= 0)
@@ -94,6 +111,7 @@ void settle(int ms)
 
 } // namespace
 
+/// Window title and the version shown in About; bump with user-visible changes.
 #define title_string "Tag Programmer v1.1"
 
 

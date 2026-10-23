@@ -77,6 +77,19 @@ void allPaths(const Descriptor &type, const std::string &prefix,
   }
 }
 
+/**
+ * @brief Every dotted .proto path in Config, other than tag_type, computed
+ *        once from the compiled descriptor.
+ *
+ * @details Backs ConfigShape::isConfigPath(). The set is built on first use
+ *          (thread-safe function-local static) and lives for the program; it
+ *          follows tag.proto as compiled, not any default config, so a path is
+ *          valid here even for a tag whose shape does not include it. The
+ *          transparent comparator lets callers look up a std::string_view
+ *          without building a std::string.
+ *
+ * @return  Reference to the immutable set.
+ */
 const std::set<std::string, std::less<>> &validPaths()
 {
   static const std::set<std::string, std::less<>> paths = [] {
@@ -90,7 +103,14 @@ const std::set<std::string, std::less<>> &validPaths()
 /**
  * Records the path of every key under @p object, checked against @p type.
  * Descends into objects and into the first element of arrays of objects.
+ * A top-level tag_type key is skipped.
+ * @param[in]     object  JSON object, parsed as a protobuf Struct.
+ * @param[in]     type    Message type @p object is expected to hold.
+ * @param[in]     prefix  Dotted path of @p object, ending in '.', or empty.
+ * @param[in,out] paths   Receives each path found; existing entries are kept.
+ * @param[out]    error   Set on failure; may be null.
  * @return false, with @p error set, at the first key that is not a field.
+ *         Paths found before that key remain in @p paths.
  */
 bool walk(const google::protobuf::Struct &object, const Descriptor &type,
           const std::string &prefix, std::set<std::string, std::less<>> &paths,
@@ -123,7 +143,16 @@ bool walk(const google::protobuf::Struct &object, const Descriptor &type,
   return true;
 }
 
-/// Parses JSON text into a Struct, then walks it. @return false on any error.
+/**
+ * Parses JSON text into a Struct, then walks it against Config.
+ * @param[in]     json      Text of a default config or configuration file.
+ * @param[in,out] paths     Receives every field path present in @p json.
+ * @param[out]    tag_type  If not null, the top-level "tag_type" string, or
+ *                          empty when absent or not a string.
+ * @param[out]    error     If not null, set to the reason on failure.
+ * @return false if @p json is not a JSON object or names a field Config does
+ *         not have; true otherwise.
+ */
 bool shapeOf(std::string_view json, std::set<std::string, std::less<>> &paths,
              std::string *tag_type, std::string *error)
 {
@@ -144,7 +173,13 @@ bool shapeOf(std::string_view json, std::set<std::string, std::less<>> &paths,
   return walk(object, *Config::descriptor(), "", paths, error);
 }
 
-/// Copies one scalar or enum field's value from @p from to @p to.
+/**
+ * Copies one scalar or enum field's value from @p from to @p to.
+ * @param[in]     from  Source message.
+ * @param[in,out] to    Destination; must be the same message type as @p from.
+ * @param[in]     f     A singular field of that type. A message field is
+ *                      silently ignored; a repeated field is not supported.
+ */
 void copyScalar(const Message &from, Message &to, const FieldDescriptor *f)
 {
   const Reflection *rf = from.GetReflection();

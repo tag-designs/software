@@ -1,3 +1,16 @@
+#[[
+  sensorviz: the Qt application for viewing the SQLite logs that tagcore
+  writes, plotting their streams with qcustomplot and showing compass and
+  attitude views from sensorui.
+
+  It is split in two: sensorviz_core, a Qt-free static library holding the
+  view state and plot policy, and the sensorviz executable, the Qt front end.
+  Qt6 Core, Widgets, Concurrent, PrintSupport, Qml, Quick, QuickWidgets and
+  Svg are REQUIRED, so a missing module fails the configure. sqlite3 comes
+  from vcpkg's unofficial-sqlite3 package when building with vcpkg and from
+  the system otherwise. The user guide path and the documentation-screenshot
+  default directory come from host_common's compile definitions.
+#]]
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)

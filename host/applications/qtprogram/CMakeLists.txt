@@ -1,3 +1,11 @@
+#[[
+  qtprogram (Tag Programmer): writes firmware to a tag with STMicroelectronics'
+  STM32_Programmer_CLI, which it finds at run time (it is not a build
+  dependency), then tests the tag through its USB base.
+
+  Links tagcore (the tag protocol) and host_common (HostStyle, the user-guide
+  finder). Needs Qt6 Widgets; without Qt6 the target is skipped. See README.md.
+#]]
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure qtprogram")

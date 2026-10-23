@@ -65,6 +65,8 @@ namespace
 /// The fixed "now" every case runs at: 2026-10-08 12:02:03 UTC, deliberately
 /// not on a minute boundary so the schedule's rounding is exercised.
 constexpr int64_t kNow = 1791460923;
+/// The schedule's "never ends" sentinel: the largest epoch an int32 schedule
+/// field holds, used for open-ended starts, ends and hibernation rows.
 constexpr int64_t kForever = INT32_MAX;
 
 /// Values tried for each float field.
@@ -74,12 +76,21 @@ const std::vector<int64_t> kInts = {0, 1, 2, 59, 60, 61, 255, 256, 1440, 100000}
 /// An enum number no Config enum defines.
 constexpr int kUndefinedEnum = 99;
 
+/**
+ * @brief Report a fatal generator error on stderr and exit with status 1.
+ * @param[in] why  What went wrong, including the file or path involved.
+ */
 [[noreturn]] void fail(const std::string &why)
 {
   std::fprintf(stderr, "config_probe_cases: %s\n", why.c_str());
   std::exit(1);
 }
 
+/**
+ * @brief Read a whole file as bytes, with no newline translation.
+ * @param[in] path  File to read.
+ * @return  The file's contents. Exits through fail() if it cannot be opened.
+ */
 std::string readFile(const fs::path &path)
 {
   std::ifstream in(path, std::ios::binary);
@@ -138,17 +149,40 @@ std::string wireJson(const Config &config)
   return text;
 }
 
-/// Config as JSON, as qtmonitor's Save writes it: every field printed.
+/**
+ * @brief Turn on printing of zero-valued fields, under whichever name this
+ *        protobuf version gives the option.
+ *
+ * @details One of an SFINAE pair, the same as qtmonitor's
+ *          setAlwaysPrintDefaultFields(): newer protobuf names the option
+ *          always_print_fields_with_no_presence, older releases
+ *          always_print_primitive_fields. Only the overload whose member
+ *          exists compiles; call with a literal @c 0 so the @c int (new name)
+ *          overload wins when both would.
+ *
+ * @param[in,out] o  Print options to modify.
+ */
 template <typename Options>
 auto setAlwaysPrint(Options &o, int) -> decltype(o.always_print_fields_with_no_presence = true, void())
 {
   o.always_print_fields_with_no_presence = true;
 }
+/**
+ * @brief Fallback of the setAlwaysPrint() pair for protobuf releases that
+ *        name the option always_print_primitive_fields.
+ * @param[in,out] o  Print options to modify.
+ */
 template <typename Options>
 auto setAlwaysPrint(Options &o, long) -> decltype(o.always_print_primitive_fields = true, void())
 {
   o.always_print_primitive_fields = true;
 }
+/**
+ * @brief Config as JSON, as qtmonitor's Save writes it: .proto field names,
+ *        indented, and every field printed, including zeros.
+ * @param[in] config  Configuration to print.
+ * @return  The JSON text. Exits through fail() if protobuf cannot print it.
+ */
 std::string savedJson(const Config &config)
 {
   google::protobuf::util::JsonPrintOptions options;
@@ -161,6 +195,13 @@ std::string savedJson(const Config &config)
   return text;
 }
 
+/**
+ * @brief Parse JSON text into a Config, with protobuf's default (strict)
+ *        options, so an unknown field is an error.
+ * @param[in] json   JSON text of a Config.
+ * @param[in] where  Source of the text, for the error message.
+ * @return  The parsed Config. Exits through fail() if it does not parse.
+ */
 Config parseConfig(const std::string &json, const std::string &where)
 {
   Config config;
@@ -230,6 +271,21 @@ const FieldDescriptor *fieldAt(const std::string &path)
   return resolve(scratch, path).second;
 }
 
+/**
+ * @brief Set the numeric or enum field at a dotted .proto path.
+ *
+ * @details Parent messages are created as needed. The value is converted with
+ *          a plain cast to the field's C++ type, so out-of-range, negative and
+ *          fractional test values wrap or truncate exactly as a careless
+ *          writer would produce them; an enum receives the raw number, which
+ *          may be one the enum does not define.
+ *
+ * @param[in,out] msg    Message to modify, normally a Config.
+ * @param[in]     path   Dotted path such as "active_interval.start_epoch".
+ * @param[in]     value  Value to store.
+ *
+ * Exits through fail() for an unknown path or a non-numeric field.
+ */
 void setNumber(Message &msg, const std::string &path, double value)
 {
   auto [m, f] = resolve(msg, path);
@@ -247,6 +303,13 @@ void setNumber(Message &msg, const std::string &path, double value)
   }
 }
 
+/**
+ * @brief Whether a field takes a single number, enum, bool or string, i.e. is
+ *        neither repeated nor a sub-message. Only such fields get per-value
+ *        cases and one-field files.
+ * @param[in] f  Field to test; must not be null.
+ * @return  true for a singular non-message field.
+ */
 bool isScalar(const FieldDescriptor *f)
 {
   return !f->is_repeated() && f->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE;
@@ -255,15 +318,30 @@ bool isScalar(const FieldDescriptor *f)
 /// One case, already rendered as a JSON object.
 struct Case
 {
+  /// Unique, human-readable name, e.g. "base@RUNNING" or "field=value".
   std::string id;
+  /// Tag state the configuration is reported in, as a TagState name.
   std::string state = "IDLE";
+  /// Configuration the tag reports, written as the tag would send it.
   Config config;
+  /// Whether the case also opens the file text in @c open.
   bool has_open = false;
   std::string open;       ///< Text of a file to open.
   bool is_new = false;    ///< New from the config's tag type's defaults.
   bool attached = true;   ///< false: no tag attached.
 };
 
+/**
+ * @brief Render one case as a single-line JSON object for a case file.
+ *
+ * @details Always writes id, now (kNow), state and config (as wire JSON,
+ *          zero fields omitted); writes open, new and attached only when they
+ *          differ from their defaults, so the committed files stay small and
+ *          their diffs readable.
+ *
+ * @param[in] c  Case to render.
+ * @return  The JSON object text, without a trailing separator.
+ */
 std::string render(const Case &c)
 {
   std::string out = "{\"id\": " + quote(c.id) + ", \"now\": " + std::to_string(kNow) +

@@ -16,9 +16,14 @@ namespace
 
 /**
  * @brief A caption and a value, side by side, for one status item.
+ * @param[in,out] row      Layout the caption, value and trailing spacing are
+ *                         appended to; it takes ownership of both labels.
+ * @param[in]     caption  Dimmed label text naming the item.
+ * @param[in]     tooltip  Tooltip shown on both the caption and the value.
  * @param[in] widest  The longest value the item shows; the value is at least
  *                    this wide, so the window does not change width as the
  *                    tag's state changes.
+ * @return  The value label, initially empty, for the caller to update.
  */
 QLabel *addItem(QHBoxLayout *row, const QString &caption, const QString &tooltip,
                 const QString &widest)

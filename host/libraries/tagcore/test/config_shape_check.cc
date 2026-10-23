@@ -76,6 +76,11 @@ const std::map<TagType, std::vector<std::string>> kGeneratorTable = {
                "adxl362_inactive_sec"}},
 };
 
+/**
+ * @brief Parses test JSON into a Config with protobuf's strict options.
+ * @param[in] json  Literal configuration text from a check.
+ * @return  The Config; an unparsable literal fails the assertion.
+ */
 Config parse(const std::string &json)
 {
   Config c;
@@ -84,6 +89,12 @@ Config parse(const std::string &json)
   return c;
 }
 
+/**
+ * @brief Builds a shape from test JSON through ConfigShape::fromJson().
+ * @param[in] json  Literal configuration text that must be accepted.
+ * @return  The shape; a rejection prints fromJson()'s reason and fails the
+ *          assertion.
+ */
 ConfigShape shapeOf(const std::string &json)
 {
   std::string error;
@@ -105,6 +116,7 @@ Config restore(const Config &tag, const std::string &file)
   return out;
 }
 
+/// Proves every embedded default config loaded, printing any load error.
 void checkLoading()
 {
   for (const std::string &e : ConfigShape::loadErrors())
@@ -112,6 +124,8 @@ void checkLoading()
   assert(ConfigShape::loadErrors().empty());
 }
 
+/// Proves each tag's shape matches the retired generator's frozen table
+/// field for field, and that TAG_UNSPECIFIED has an empty shape.
 void checkMatchesGenerator()
 {
   for (const auto &[tag, trues] : kGeneratorTable)
@@ -132,6 +146,8 @@ void checkMatchesGenerator()
   assert(ConfigShape::forTag(TAG_UNSPECIFIED).paths().empty());
 }
 
+/// Proves every shaped tag type has a default config of its own type and
+/// TAG_UNSPECIFIED has none, with two spot-checked default values.
 void checkDefaults()
 {
   // Every tag type with a shape has a default, and it is that tag's.
@@ -146,6 +162,8 @@ void checkDefaults()
   assert(ConfigShape::defaultConfig(IMUTAG)->lsm6().odr() == Lsm6dsv_ODR_S100);
 }
 
+/// Proves has() tells a field the tag lacks from isConfigPath()'s non-field,
+/// and that JSON-named keys in a default config map to .proto paths.
 void checkLookup()
 {
   const ConfigShape &ng = ConfigShape::forTag(BITTAGNG);
@@ -163,6 +181,8 @@ void checkLookup()
   assert(ConfigShape::forTag(PRESTAG).has("hibernate.end_epoch"));
 }
 
+/// Proves fromJson() keeps zero-valued and empty-array keys, accepts JSON
+/// names, and rejects unknown keys, misplaced keys and malformed text.
 void checkFromJson()
 {
   const ConfigShape zero = shapeOf(R"({"period": 0, "adxl362": {"range": "R2G"}})");
@@ -179,6 +199,9 @@ void checkFromJson()
   assert(!ConfigShape::fromJson("{not json", nullptr));
 }
 
+/// Proves merge() copies exactly the fields both the tag and the file have:
+/// stated zeros copied, padding and unsupported fields not, tag_type never,
+/// partial messages field by field, and hibernate rows up to the tag's count.
 void checkMerge()
 {
   // A stated field is copied; an omitted one keeps the tag's value.

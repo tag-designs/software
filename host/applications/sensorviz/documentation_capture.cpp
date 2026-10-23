@@ -1,3 +1,25 @@
+/**
+ * @file    documentation_capture.cpp
+ * @brief   sensorViz's maintainer-only startup path that loads a log and
+ *          writes user-guide screenshots, then exits.
+ *
+ * @details Implements MainWindow::runDocumentationStartup() and the capture
+ *          functions behind the --load-log, --load-preferences,
+ *          --capture-screenshot, --capture-suite and --screenshot-dir command
+ *          line options parsed in main.cpp. Captures drive the live window,
+ *          menus and load helpers rather than a mock, so the images track the
+ *          real UI. Each screenshot is written as a PNG; see captureFileName()
+ *          for how a capture name becomes a file name.
+ *
+ * @note    When a capture was requested the application exits with status 0
+ *          only if every capture succeeded, and 1 otherwise; errors are logged
+ *          with qCritical() and are not shown in a dialog in that mode.
+ *
+ * @warning Window captures read the screen. On Wayland, where no client may
+ *          do so, they fall back to rendering the widget itself, which omits
+ *          native decorations.
+ */
+
 #include "mainwindow.h"
 
 #include <QCoreApplication>
@@ -18,6 +40,15 @@
 namespace
 {
 
+/**
+ * @brief   Directory used when --screenshot-dir is not given.
+ *
+ * @return  src/images under TAG_DESIGNS_DOCS_SOURCE_DIR (the user manual's
+ *          source tree, defined through the host_common target), or
+ *          host/docs/src/images relative to the current directory when that
+ *          definition is absent. The directory is not checked or created here;
+ *          the capture code creates it on demand.
+ */
 QString defaultScreenshotDir()
 {
 #ifdef TAG_DESIGNS_DOCS_SOURCE_DIR
@@ -28,6 +59,21 @@ QString defaultScreenshotDir()
 #endif
 }
 
+/**
+ * @brief   Map a capture name to the PNG file name it is written to.
+ *
+ * @details A name already ending in ".png" (any case) is used as given, apart
+ *          from trimming. Otherwise the name is lower-cased, underscores and
+ *          spaces become hyphens, a "sensorviz-" prefix is added if missing,
+ *          and ".png" is appended, so "File Info" and "sensorviz-file-info"
+ *          both give sensorviz-file-info.png, matching the user guide's image
+ *          names.
+ *
+ * @param[in] name  Capture name from --capture-screenshot or a suite list.
+ *
+ * @return  The file name, without a directory; an empty string if @p name is
+ *          blank. Callers reject blank names before reaching this.
+ */
 QString captureFileName(QString name)
 {
     name = name.trimmed();
@@ -47,6 +93,17 @@ QString captureFileName(QString name)
     return name + QStringLiteral(".png");
 }
 
+/**
+ * @brief   Keep processing GUI events for a fixed time so layout, plots and
+ *          popup menus are painted before a screenshot is taken.
+ *
+ * @param[in] milliseconds  Minimum time to spend, in ms. Events are processed
+ *                          at least once even for zero or negative values.
+ *
+ * @warning Re-enters the event loop, so queued slots and timers run during
+ *          the wait, and sleeps the GUI thread in 10 ms
+ *          steps. Only suitable for the non-interactive capture path.
+ */
 void processGuiEventsFor(int milliseconds)
 {
     QElapsedTimer timer;
@@ -57,6 +114,15 @@ void processGuiEventsFor(int milliseconds)
     } while (timer.elapsed() < milliseconds);
 }
 
+/**
+ * @brief   Screen to grab a widget's pixels from.
+ *
+ * @param[in] widget  Window being captured; may be null or not yet shown.
+ *
+ * @return  The screen of the widget's native window if it has one, otherwise
+ *          the primary screen. May be null on a platform with no screens, in
+ *          which case callers fall back to QWidget::grab().
+ */
 QScreen *screenForWidget(QWidget *widget)
 {
     if (widget && widget->windowHandle() && widget->windowHandle()->screen()) {

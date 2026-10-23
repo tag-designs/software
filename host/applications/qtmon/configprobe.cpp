@@ -43,13 +43,26 @@
 namespace
 {
 
-/// Result and case file format identifiers, checked on read and written out.
+/// Case file format identifier; a case file with any other "schema" is
+/// rejected.
 constexpr const char *kCasesSchema = "qtmon-config-probe-cases/1";
+/// Result file format identifier, written into every result file;
+/// test/compare.py checks it before comparing two runs.
 constexpr const char *kResultsSchema = "qtmon-config-probe-results/1";
 
 /**
  * @brief Sets the protobuf JSON option that prints zero-valued fields, under
  *        whichever name this protobuf version uses.
+ *
+ * @details One of an SFINAE pair. Newer protobuf releases name the option
+ *          always_print_fields_with_no_presence; older ones call it
+ *          always_print_primitive_fields. Each overload's return type only
+ *          compiles when its member exists, so exactly one survives overload
+ *          resolution. Call with a literal @c 0: the @c int overload (new
+ *          name) is preferred over the @c long one when both are viable.
+ *
+ * @param[in,out] options  Print options to modify.
+ * @param[in]     value    true to print fields that hold their default value.
  */
 template <typename Options>
 auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
@@ -58,7 +71,13 @@ auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
   options.always_print_fields_with_no_presence = value;
 }
 
-/// @copydoc setAlwaysPrintDefaultFields
+/**
+ * @brief Fallback of the setAlwaysPrintDefaultFields() pair for protobuf
+ *        releases that still name the option always_print_primitive_fields.
+ *
+ * @param[in,out] options  Print options to modify.
+ * @param[in]     value    true to print fields that hold their default value.
+ */
 template <typename Options>
 auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
     -> decltype(options.always_print_primitive_fields = value, void())
@@ -137,6 +156,12 @@ QString groupPath(const QWidget *w, const QWidget *root)
 /**
  * @brief Finds the QFormLayout row label for @p field, searching nested
  *        layouts of its parent widget.
+ *
+ * @param[in] layout  Layout to search, recursively; may be null.
+ * @param[in] field   Control whose label is wanted.
+ *
+ * @return  The label's text; an empty string if @p layout is null, or no form
+ *          in it labels @p field, or the label is not a QLabel.
  */
 QString formLabelIn(const QLayout *layout, const QWidget *field)
 {
@@ -159,7 +184,15 @@ QString formLabelIn(const QLayout *layout, const QWidget *field)
   return {};
 }
 
-/// @copydoc formLabelIn
+/**
+ * @brief Finds the QFormLayout row label for @p field in its parent widget's
+ *        layout, including nested layouts.
+ *
+ * @param[in] field  A control inside the configuration tab.
+ *
+ * @return  The label's text, or an empty string when @p field has no parent,
+ *          its parent has no layout, or no form row labels it with a QLabel.
+ */
 QString formLabel(const QWidget *field)
 {
   const QWidget *parent = field->parentWidget();
@@ -336,12 +369,19 @@ private:
 struct RunOutput
 {
   QString open;         ///< Open outcome, empty when the case opens no file.
+  /// Parser message for a failed open, whitespace-collapsed for stability.
   QString open_detail;
   QString document;     ///< The document's source, tag type and modified flag.
+  /// What ConfigTab::GetConfig() returned, i.e. whether Start would send.
   bool get_config_ok = false;
+  /// The Config Start would send; meaningful only when get_config_ok is set.
   Config sent;
+  /// Sorted control fingerprint from fingerprint().
   QJsonArray ui;
+  /// Panel and sub-tab arrangement from layoutFacts().
   QJsonArray layout;
+  /// Every message box raised during the run, in order, as "text" or
+  /// "text / informative text".
   QJsonArray dialogs;
 };
 
