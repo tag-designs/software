@@ -97,6 +97,7 @@ design document.
 
 ### Shared Contracts / Proposals
 
+- [Configuration Shape and Panels](shared/design/proposals/config-shape-and-panels.md) *(proposal, proposed)* — qtmonitor's configuration screen becomes fixed panels chosen by tag type, and a tagcore ConfigShape read from each tag's default config replaces the generated visibility struct, drives one merge for restore and tag-start, and cross-checks the panels; tag-reported presence is a deferred later stage.
 - [Skipped Pages in a Data-Log Download](shared/design/proposals/data-log-end-and-skip.md) *(proposal, proposed)* — The tag marks a hole in its data log with a new Ack.Err value, DATASKIPPED; every other reply without records ends the log, so host downloaders follow one rule and no longer read Status data counts, whose units differ by family.
 
 ## Shared Contracts
