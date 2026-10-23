@@ -1,6 +1,7 @@
 
 #include <QMainWindow>
 #include <QApplication>
+#include "qtuserguide.h"
 #include <QDebug>
 #include <QDir>
 #include <QEventLoop>
@@ -174,6 +175,11 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
 
   logWindowInit();
   orientationControlsInit();
+  // After orientationControlsInit(), so Help is the last menu.
+  HostUserGuide::addHelpMenu(
+      this, tr("Tag Calibrator"), QStringLiteral("qtcalibrate"),
+      tr("%1\n\nCollect magnetometer samples from a tag through its USB base, "
+         "fit its magnetometer calibration, and save it to the tag.").arg(title_string));
   resetCalibrationDisplay();
   ui.actionSave_Sample_Capture->setEnabled(false);
 
@@ -834,6 +840,12 @@ bool MainWindow::saveCurrentScreenshot(const QString &path)
   raise();
   activateWindow();
   qApp->processEvents();
+  // On a first show, macOS applies the resize after a few event-loop turns;
+  // grabbing at once captured the smaller natural size inside a 1040-wide
+  // rectangle, with the desktop beside it.
+  QEventLoop settle;
+  QTimer::singleShot(250, &settle, &QEventLoop::quit);
+  settle.exec();
   repaint();
   qApp->processEvents();
 

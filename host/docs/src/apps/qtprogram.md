@@ -1,6 +1,7 @@
 # Qt Program
 
 Use Qt Program to configure and program supported tags.
+**Help ▸ Tag Programmer User Guide** opens this page.
 
 ## Before You Start
 

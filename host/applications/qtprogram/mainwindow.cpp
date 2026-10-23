@@ -1,6 +1,7 @@
 
 #include <QMainWindow>
 #include <QDate>
+#include "qtuserguide.h"
 #include <QDateTime>
 #include <QDebug>
 #include <QFile>
@@ -63,6 +64,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   // Change Main Window title
 
   setWindowTitle(QString(title_string));
+  HostUserGuide::addHelpMenu(
+      this, tr("Tag Programmer"), QStringLiteral("qtprogram"),
+      tr("%1\n\nErase, program and test a tag's firmware through a "
+         "programmer or USB base.").arg(title_string));
 
   // Find base
 

@@ -3,6 +3,8 @@
 Use Qt Calibrate to collect calibration data and generate calibration values
 for supported sensors.
 
+**Help ▸ Tag Calibrator User Guide** opens this page.
+
 ## Before You Start
 
 - Connect the tag or base station.

@@ -178,6 +178,10 @@ The orientation view has a top-level `Configuration` menu and matching context
 menu entries for declination and battery-forward display convention. Those are
 display settings only; they do not change stored calibration constants.
 
+The menu bar is in the window, as in sensorviz and qtmonitor. **Help** (Tag
+Calibrator User Guide, About) is added by `HostUserGuide::addHelpMenu()` from
+`host/common/qtuserguide.h`, after the Configuration menu so it is last.
+
 The log level combo in the log pane selects what reaches the log window; it
 opens at `INFO`.
 
