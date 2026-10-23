@@ -18,40 +18,24 @@
     <widget class="QWidget" name="configtabForm" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_6">
       <item>
-       <widget class="QTabWidget" name="configtabWidget">
-        <property name="currentIndex">
-         <number>0</number>
+       <widget class="QScrollArea" name="panelScroll">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
         </property>
-        <widget class="QWidget" name="scheduleTab" native="true">
-         <attribute name="title">
-          <string>Schedule</string>
-         </attribute>
-         <attribute name="toolTip">
-          <string>Configure Tag Schedule</string>
-         </attribute>
-        </widget>
-        <widget class="QWidget" name="sensorTab">
-         <attribute name="title">
-          <string>Sensors</string>
-         </attribute>
-         <attribute name="toolTip">
-          <string>Configure Tag Sensors</string>
-         </attribute>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="panelPage">
+         <layout class="QVBoxLayout" name="panelLayout">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+         </layout>
         </widget>
        </widget>
-      </item>
-      <item>
-       <spacer name="verticalSpacer_10">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
       </item>
       <item>
        <widget class="QFrame" name="configControls">

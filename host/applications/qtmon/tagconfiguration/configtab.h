@@ -9,10 +9,10 @@
 #include <QMessageBox>
 //#include "host.pb.h"
 //#include "tagclass.h"
-#include "schedule.h"
-#include "adxl362config.h"
-#include "lsm6dsvconfig.h"
-#include "bittaglog.h"
+#include <QStringList>
+#include <vector>
+
+#include "configpanel.h"
 #include "ui_configtab.h"
 #include "tagclass.h"
 
@@ -25,21 +25,6 @@ public:
     bool GetConfig(Config &config);
     bool SetConfig(const Config &config);
     bool isActive();
-    /**
-     * @brief Reports whether the current tag exposes any sensor controls.
-     *
-     * @return true when at least one sensor configuration module is active;
-     *         false when the Sensors sub-tab should be hidden or skipped.
-     */
-    bool HasSensorConfiguration();
-    /**
-     * @brief Selects the inner configuration sub-tab for screenshot capture.
-     */
-    void ShowScheduleTab();
-    /**
-     * @brief Selects the inner sensor sub-tab for screenshot capture.
-     */
-    void ShowSensorTab();
     /**
      * @brief Puts the configuration tab in read-only fixture display mode.
      *
@@ -71,6 +56,14 @@ public:
     RestoreResult RestoreFromJsonText(const std::string &json_text,
                                       QString *detail);
 
+    /**
+     * @brief Checks which panels each tag type shows against every tag
+     *        type's ConfigShape; run by `qtmonitor --check-config-panels`.
+     *
+     * @return One line per mismatch; empty when they agree.
+     */
+    QStringList CheckPanelsAgainstShapes() const;
+
 public slots:
 
     bool Attach(Tag &tag);
@@ -85,15 +78,6 @@ private slots:
     void on_readButton_clicked();
 
 private:
-
-    /**
-     * @brief Shows or hides the Sensors tab to match active sensor modules.
-     *
-     * @details SetConfig() updates child module activity first, then calls this
-     *          helper so tags without user-configurable sensors do not present
-     *          an empty Sensors tab in normal UI or screenshots.
-     */
-    void UpdateSensorTabVisibility();
 
     /**
      * @brief Poll for the tag's post-Start state, retrying on a timer.
@@ -119,6 +103,11 @@ private:
      */
     void pollStartResult(std::string start_call_message, int attempt);
 
+    /// Sizes the scroll area to the shown panels; see the definition.
+    void FitPanelPage();
+    /// Height left for the main window's tabs, buttons and frame (pixels).
+    static constexpr int kWindowChrome = 260;
+
     // Helper function
 
     TagType tag_type_ = TAG_UNSPECIFIED;
@@ -126,19 +115,10 @@ private:
     Config current_config_;
     bool fixture_mode_ = false;
 
-    // Schedule tab and components
-
-    //QWidget scheduleTab;
-
-    Schedule schedule;
-    BitTagLogTab btlog;
-
-    // Sensor tab and components
-
-    //QWidget sensorTab;
-
-    Adxl362Config adxl;
-    Lsm6dsvConfig lsm;
+    /// Every panel, built once in the constructor, in page order.
+    std::vector<ConfigPanel *> panels_;
+    /// The panels the current tag type shows, in page order.
+    std::vector<ConfigPanel *> shown_;
     bool active = false;
 
     // for errors

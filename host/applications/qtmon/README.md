@@ -62,6 +62,11 @@ shows whether a change to the Configuration tab altered anything a tag or a
 user could see. Cases, goldens, scripts and procedure are in
 [`test/`](test/README.md).
 
+`--check-config-panels` checks which configuration panels each tag type shows
+against every tag's default configuration (see
+[`tagconfiguration/README.md`](tagconfiguration/README.md)), prints any
+mismatch, and exits non-zero if there is one.
+
 ## Screenshot Commands
 
 Build the app first:
@@ -101,11 +106,9 @@ Capture the idle Configuration screens for the fixture tag:
 
 This writes:
 
-- `host/docs/src/images/qtmonitor-config-compasstag-schedule.png`
+- `host/docs/src/images/qtmonitor-config-compasstag.png`
 
-The Sensors screenshot is written only when the fixture tag exposes
-user-configurable sensor controls. Tags with no active sensor controls hide the
-Sensors tab and skip that capture.
+The window is sized to show the whole panel page, up to 900 by 1400 pixels.
 
 Capture the disconnected startup screen:
 

@@ -733,9 +733,25 @@ fingerprint is the precise one.
    Without that, a BitTagNG file restored onto a BitTag copied its padded
    `BITTAG_UNSPECIFIED` log format. T4 showed 68 changed cases, all restores,
    each listed by kind in `expected-differences.md`.
-3. **Stage 1b:** the panels on one page, `kPanelsForTag`, T6. Delete the
-   modules, the adapter and `ConfigFieldVisibility`. T4 shows no differences.
-   Rebuild the screenshots. Run T7 once.
+3. **Stage 1b** (done 2026-10-23): the panels on one page, the tag-type table
+   (`panelsForTag()`), T6. The modules, the adapter and `ConfigFieldVisibility`
+   are deleted. T4: nothing a tag receives or a user sees changed, apart from
+   capping hibernation at the firmware's two rows. The screenshots are rebuilt,
+   one page per tag. As built, it differs from the plan above in three places:
+   - **The schedule panels are three variants of one class** (`SchedulePanel`),
+     not separate start-delay and period panels. All three keep today's
+     "Logging Schedule" group box, so the screen is unchanged.
+   - **There are no binding tables.** Each panel's `load()` and `store()` are
+     explicit and short. The ADXL load order and its clamping, the filter's
+     fallback to 0, the BitTag log panel hiding itself, and BitTagNG's
+     `accel_type` each needed panel-specific code to keep the output exactly
+     the same. `paths()` lists each panel's fields for the cross-check.
+   - **BitTagNG and UIUCTag use two instances of the ADXL367 variant,** one
+     owning `accel_type`. That replaces the pass-through paths described
+     above.
+
+   T7, a live smoke test, was run on a BitTag LE for steps 1 and 2, not yet on
+   the panels.
 4. **T5,** whenever convenient. It does not gate the restructure.
 
 ## Open questions

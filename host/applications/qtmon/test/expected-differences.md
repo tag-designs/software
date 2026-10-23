@@ -10,6 +10,26 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: one page of fixed panels
+
+Change: stage 1b of the proposal. The Schedule and Sensors sub-tabs, the four
+modules and the visibility table are replaced by fixed panels selected by tag
+type. The probe now runs each case once, since there are no sub-tabs to
+select.
+
+Compared with the previous goldens, nothing a tag receives changed, and nothing
+on screen changed, except:
+
+| Cases | Difference | Reason |
+| --- | --- | --- |
+| `hibernate.count=3` (7, one per tag type with hibernation) | `sent` and `ui` lose the third hibernation interval | The panel shows at most two rows, the firmware maximum (`Config.hibernate max_count:2`). Every firmware reports two, and none accepts three. |
+| 130 `restore:` cases | `ui` loses one set of hibernation rows | A probe artefact in the old goldens, not real screen content. The old `Schedule` removed the rows it replaced with `deleteLater()`, which takes effect only when control returns to the event loop, so the probe saw both sets. In each case, the old fingerprint is exactly the new one plus the base configuration's rows. |
+| `bittag_log=BITTAG_UNSPECIFIED`, `restore:zero:bittag_log` | `dialogs` lists the warning once, not twice | The probe now runs each case once. |
+| every case | `layout` lists the shown panels instead of sub-tabs | The layout changed, as intended. |
+
+`qtmonitor --check-config-panels` reports that the panels agree with every
+tag's default configuration.
+
 ## 2026-10-23: Restore copies only what the tag supports and the file states
 
 Change: stage 1 of the proposal. Restore's hand-written `mergeRestoredConfig()`

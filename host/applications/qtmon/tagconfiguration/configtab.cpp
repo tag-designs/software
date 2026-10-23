@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QGroupBox>
+#include <QScreen>
+#include <QScrollBar>
 // #include <QTextEdit>
 // #include <QTime>
 #include <QTimer>
@@ -14,16 +16,16 @@
 // #include <ctime>
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <google/protobuf/util/json_util.h>
 #include <streambuf>
 
-#include "hibernate.h"
 #include "configtab.h"
-#include "adxl362config.h"
-#include "lsm6dsvconfig.h"
-#include "bittaglog.h"
-#include "configfieldvisibility.h"
+#include "adxl362panel.h"
+#include "bittaglogpanel.h"
 #include "configshape.h"
+#include "lsm6panel.h"
+#include "schedulepanel.h"
 #include "ui_configtab.h"
 #include "qtfiledialog.h"
 
@@ -44,11 +46,57 @@ auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
   options.always_print_primitive_fields = value;
 }
 
+/**
+ * @brief The configuration panels, in page order. Each is built once.
+ */
+enum PanelId
+{
+  IntervalSchedule,            ///< start, run, hibernation
+  IntervalScheduleWithPeriod,  ///< the above plus PresTag's sampling period
+  StartDelaySchedule,          ///< IMUTag's start delay
+  BitTagLogFormat,             ///< BitTag log format
+  Adxl362Standard,             ///< classic BitTag accelerometer
+  Adxl362Wake,                 ///< BitTag LE and BitPresTag wake mode
+  Adxl367Wake,                 ///< UIUCTag ADXL367 wake-up
+  Adxl367WakeWithType,         ///< BitTagNG: the above plus accel_type
+  Lsm6Imu,                     ///< IMUTag LSM6DSV
+  PanelCount
+};
+
+/**
+ * @brief Which panels each tag type shows. A tag type with no entry shows
+ *        none. `qtmonitor --check-config-panels` checks this table against
+ *        every tag type's ConfigShape (its default configuration).
+ */
+const std::map<TagType, std::vector<PanelId>> &panelsForTag()
+{
+  static const std::map<TagType, std::vector<PanelId>> table = {
+      {BITTAG, {IntervalSchedule, BitTagLogFormat, Adxl362Standard}},
+      {BITTAG_LE, {IntervalSchedule, BitTagLogFormat, Adxl362Wake}},
+      {BITPRESTAG, {IntervalSchedule, Adxl362Wake}},
+      {BITTAGNG, {IntervalSchedule, Adxl367WakeWithType}},
+      {UIUCTAG, {IntervalSchedule, Adxl367Wake}},
+      {COMPASSTAG, {IntervalSchedule}},
+      {PRESTAG, {IntervalScheduleWithPeriod}},
+      {IMUTAG, {StartDelaySchedule, Lsm6Imu}},
+  };
+  return table;
+}
+
+/// True when @p a is @p b, or one is a field inside the other.
+bool overlaps(std::string_view a, std::string_view b)
+{
+  auto under = [](std::string_view child, std::string_view parent) {
+    return child.size() > parent.size() && child.substr(0, parent.size()) == parent &&
+           child[parent.size()] == '.';
+  };
+  return a == b || under(a, b) || under(b, a);
+}
+
 } // namespace
 
 ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
-
   ui.setupUi(this);
 
   // initialize message box
@@ -56,68 +104,37 @@ ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
   msgBox.setWindowTitle("Error");
   msgBox.setStandardButtons(QMessageBox::Ok);
 
-  // Build Schedule Tab
+  // Build every panel once, in page order, hidden until a tag selects it.
+  panels_.resize(PanelCount);
+  panels_[IntervalSchedule] = new SchedulePanel(SchedulePanel::Variant::Interval);
+  panels_[IntervalScheduleWithPeriod] =
+      new SchedulePanel(SchedulePanel::Variant::IntervalWithPeriod);
+  panels_[StartDelaySchedule] = new SchedulePanel(SchedulePanel::Variant::StartDelay);
+  panels_[BitTagLogFormat] = new BitTagLogPanel();
+  panels_[Adxl362Standard] = new Adxl362Panel(Adxl362Panel::Variant::Standard, false);
+  panels_[Adxl362Wake] = new Adxl362Panel(Adxl362Panel::Variant::Wake362, false);
+  panels_[Adxl367Wake] = new Adxl362Panel(Adxl362Panel::Variant::Wake367, false);
+  panels_[Adxl367WakeWithType] = new Adxl362Panel(Adxl362Panel::Variant::Wake367, true);
+  panels_[Lsm6Imu] = new Lsm6Panel();
 
-  QVBoxLayout *layout = new QVBoxLayout();
-  layout->addWidget(&schedule);
-  layout->addWidget(&btlog);
-  layout->addStretch(1);
-  ui.scheduleTab->setLayout(layout);
-  //int index = addTab(&scheduleTab,"Schedule");
-  //setTabToolTip(index,"Configure Tag Schedule");
-
-  // Build Sensor Tab
-
-  layout = new QVBoxLayout();
-  layout->addWidget(&adxl);
-  layout->addWidget(&lsm);
-  layout->addStretch(1);
-  ui.sensorTab->setLayout(layout);
-  // SetConfig() reveals active sensor modules; before then, keep the default
-  // sensor widgets out of the tab widget's startup size hint.
-  adxl.setVisible(false);
-  lsm.setVisible(false);
-  UpdateSensorTabVisibility();
-  //index = addTab(&sensorTab,"Sensors");
-  //setTabToolTip(index,"Configure Sensors");
-  //StateUpdate(STATE_UNSPECIFIED);
+  static const char *const names[PanelCount] = {
+      "IntervalSchedule", "IntervalScheduleWithPeriod", "StartDelaySchedule",
+      "BitTagLogFormat", "Adxl362Standard", "Adxl362Wake", "Adxl367Wake",
+      "Adxl367WakeWithType", "Lsm6Imu"};
+  for (int i = 0; i < PanelCount; ++i)
+  {
+    panels_[i]->setObjectName(names[i]);
+    panels_[i]->setVisible(false);
+    ui.panelLayout->addWidget(panels_[i]);
+  }
+  ui.panelLayout->addStretch(1);
+  ui.panelScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 
 ConfigTab::~ConfigTab(){}
 
 bool ConfigTab::isActive(){
   return active;
-}
-
-/**
- * @brief Reports whether any sensor configuration module is active.
- *
- * @return true if the current configuration exposes ADXL362 or LSM6 controls;
- *         false for tags whose Sensors tab would otherwise be empty.
- */
-bool ConfigTab::HasSensorConfiguration()
-{
-  return adxl.isActive() || lsm.isActive();
-}
-
-/**
- * @brief Selects the Schedule sub-tab for deterministic screenshot capture.
- */
-void ConfigTab::ShowScheduleTab()
-{
-  ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
-}
-
-/**
- * @brief Selects the Sensors sub-tab for deterministic screenshot capture.
- */
-void ConfigTab::ShowSensorTab()
-{
-  if (HasSensorConfiguration()) {
-    ui.configtabWidget->setCurrentWidget(ui.sensorTab);
-  } else {
-    ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
-  }
 }
 
 /**
@@ -135,43 +152,83 @@ void ConfigTab::SetFixtureMode(bool enabled)
 }
 
 /**
- * @brief Shows the Sensors sub-tab only when sensor controls are active.
+ * @brief Checks the panel table against every tag type's ConfigShape.
+ *
+ * @details For each tag type the table lists, every field a selected panel
+ *          owns must be in the tag's shape, so no panel edits a field the tag
+ *          lacks; and every field in the shape must be owned by a selected
+ *          panel, or be inside or around one it owns, so the default config
+ *          lists nothing qtmonitor ignores. Every tag type with a default
+ *          config must have a table entry, and every entry a default config.
+ *
+ * @return One line per mismatch; empty when the panels and shapes agree.
  */
-void ConfigTab::UpdateSensorTabVisibility()
+QStringList ConfigTab::CheckPanelsAgainstShapes() const
 {
-  const int sensor_index = ui.configtabWidget->indexOf(ui.sensorTab);
-  if (sensor_index < 0) {
-    return;
+  QStringList problems;
+  const auto &table = panelsForTag();
+  for (const auto &[tag_type, ids] : table)
+  {
+    const QString tag = QString::fromStdString(std::string(TagType_Name(tag_type)));
+    const ConfigShape &shape = ConfigShape::forTag(tag_type);
+    if (shape.paths().empty())
+    {
+      problems << tag + ": has panels but no default configuration";
+      continue;
+    }
+    std::vector<std::string_view> owned;
+    for (PanelId id : ids)
+    {
+      for (std::string_view path : panels_[id]->paths())
+      {
+        owned.push_back(path);
+        if (!ConfigShape::isConfigPath(path))
+          problems << QString("%1: panel %2 owns \"%3\", which is not a Config field")
+                          .arg(tag, panels_[id]->objectName(),
+                               QString::fromUtf8(path.data(), int(path.size())));
+        else if (!shape.paths().count(path))
+          problems << QString("%1: panel %2 edits %3, which the tag's default "
+                              "configuration does not list")
+                          .arg(tag, panels_[id]->objectName(),
+                               QString::fromUtf8(path.data(), int(path.size())));
+      }
+    }
+    for (const std::string &path : shape.paths())
+    {
+      bool covered = false;
+      for (std::string_view o : owned)
+        covered = covered || overlaps(path, o);
+      if (!covered)
+        problems << QString("%1: no panel edits %2, which the tag's default "
+                            "configuration lists")
+                        .arg(tag, QString::fromStdString(path));
+    }
   }
 
-  const bool has_sensor_controls = HasSensorConfiguration();
-  ui.configtabWidget->setTabVisible(sensor_index, has_sensor_controls);
-  ui.configtabWidget->setTabEnabled(sensor_index, has_sensor_controls);
-  if (!has_sensor_controls &&
-      ui.configtabWidget->currentWidget() == ui.sensorTab) {
-    ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
+  const auto *types = TagType_descriptor();
+  for (int i = 0; i < types->value_count(); ++i)
+  {
+    const auto tag_type = static_cast<TagType>(types->value(i)->number());
+    if (!ConfigShape::forTag(tag_type).paths().empty() && !table.count(tag_type))
+      problems << QString::fromStdString(std::string(types->value(i)->name())) +
+                      ": has a default configuration but no panels";
   }
+  for (const std::string &error : ConfigShape::loadErrors())
+    problems << QString::fromStdString(error);
+  return problems;
 }
 
 bool ConfigTab::Attach(Tag &t)
 {
   tag = &t;
-
-  if (schedule.Attach(t) && btlog.Attach(t) && adxl.Attach(t) &&
-      lsm.Attach(t)) {
-    return true;
-  } else {
-    qDebug() << "Attach failed\n";
-    return false;
-  }
+  return true;
 }
 
 void ConfigTab::Detach()
 {
-  schedule.Detach();
-  btlog.Detach();
-  adxl.Detach();
-  lsm.Detach();
+  for (ConfigPanel *panel : panels_)
+    panel->setVisible(false);
+  shown_.clear();
   setEnabled(false);
   setVisible(false);
   active = false;
@@ -180,30 +237,12 @@ void ConfigTab::Detach()
 void ConfigTab::StateUpdate(TagState state)
 {
   old_state_ = state;
-  {
-    if (state == IDLE ) {
-      if (schedule.isActive())
-        schedule.setEnabled(true);
-      if (btlog.isActive())
-        btlog.setEnabled(true);
-      if (adxl.isActive())
-        adxl.setEnabled(true);
-      if (lsm.isActive())
-        lsm.setEnabled(true);
-      ui.configRestoreButton->setEnabled(true);
-      ui.startButton->setEnabled(true);
-      ui.readButton->setEnabled(true);
-    } else {
-      schedule.setEnabled(false);
-      btlog.setEnabled(false);
-      adxl.setEnabled(false);
-      lsm.setEnabled(false);
-      ui.configRestoreButton->setEnabled(false);
-      ui.startButton->setEnabled(false);
-      ui.readButton->setEnabled(false);
-    }
-  }
-  //qDebug() << "StateUpdate";
+  const bool idle = state == IDLE;
+  for (ConfigPanel *panel : panels_)
+    panel->setEnabled(idle && std::find(shown_.begin(), shown_.end(), panel) != shown_.end());
+  ui.configRestoreButton->setEnabled(idle);
+  ui.startButton->setEnabled(idle);
+  ui.readButton->setEnabled(idle);
 }
 
 /*****************************************************
@@ -212,74 +251,74 @@ void ConfigTab::StateUpdate(TagState state)
 
 bool ConfigTab::GetConfig(Config &config)
 {
-
   config = current_config_;
   config.set_tag_type(tag_type_);
-  
-  // Get configuration from children
 
-  if (schedule.isActive() && !schedule.GetConfig(config)){
-    qDebug() << "failed to get schedule config";
-    return false;
-  }
-
-  if (btlog.isActive() && !btlog.GetConfig(config)){
-    qDebug() << "failed to get btlog config";
-    return false;
-  }
-
-  if (adxl.isActive() && !adxl.GetConfig(config)){
-    qDebug() << "failed to get adxl config";
-    return false;
-  }
-
-  if (lsm.isActive() && !lsm.GetConfig(config)){
-    qDebug() << "failed to get lsm config";
-    return false;
+  // Each shown panel writes the fields it owns; everything else passes
+  // through from the tag's own configuration.
+  for (ConfigPanel *panel : shown_)
+  {
+    if (!panel->store(config))
+    {
+      qDebug() << "failed to get" << panel->objectName() << "config";
+      return false;
+    }
   }
 
   current_config_ = config;
-  
   return true;
-
-  // Sanity check -- should put this in the schedule class
-
-  // int64_t end = config.active_interval().end_epoch();
-
-  // if (end < QDateTime::currentSecsSinceEpoch())
-  // {   
-  //   msgBox.setText("Configuration Error: end time < current time");
-  //   msgBox.exec();
-  //   return false;
-  // } else {
-  //   return true;
-  // }
 }
 
 bool ConfigTab::SetConfig(const Config &new_config)
 {
   current_config_ = new_config;
   tag_type_ = new_config.tag_type();
-  const ConfigFieldVisibility &visibility = configFieldVisibilityForTag(tag_type_);
-  // we need to sanity check the new and old configs !
-  // if any of these return false, this should return false
-  if (schedule.SetConfig(new_config, visibility) &&
-      btlog.SetConfig(new_config, visibility) &&
-      adxl.SetConfig(new_config, visibility) &&
-      lsm.SetConfig(new_config, visibility))
+
+  // Show the panels the tag type selects; each loads its own fields.
+  shown_.clear();
+  std::vector<PanelId> selected;
+  const auto it = panelsForTag().find(tag_type_);
+  if (it != panelsForTag().end())
+    selected = it->second;
+  for (int i = 0; i < PanelCount; ++i)
   {
-    UpdateSensorTabVisibility();
-    active = true;
-    setVisible(true);
-    setEnabled(true);
-  } else {
-    UpdateSensorTabVisibility();
-    setVisible(false);
-    setEnabled(false);
-    active = false;
-    qDebug() << "SetConfig failed\n";
+    const bool wanted =
+        std::find(selected.begin(), selected.end(), PanelId(i)) != selected.end();
+    const bool applies = wanted && panels_[i]->load(new_config);
+    panels_[i]->setVisible(applies);
+    if (applies)
+      shown_.push_back(panels_[i]);
   }
+
+  FitPanelPage();
+  active = true;
+  setVisible(true);
+  setEnabled(true);
   return active;
+}
+
+/**
+ * @brief Sizes the scroll area to the shown panels.
+ *
+ * @details QScrollArea's own size hint is capped at a few hundred pixels, so
+ *          without this the window would open short and scroll a page that
+ *          fits the screen. The area is made at least as wide as the page's
+ *          minimum, so it never needs a horizontal scroll bar, and as tall as
+ *          the page up to the screen's
+ *          available height less room for the rest of the window; a taller
+ *          page scrolls vertically.
+ */
+void ConfigTab::FitPanelPage()
+{
+  ui.panelPage->adjustSize();
+  const QSize page = ui.panelPage->sizeHint();
+  const int scrollbar = ui.panelScroll->verticalScrollBar()->sizeHint().width();
+  ui.panelScroll->setMinimumWidth(ui.panelPage->minimumSizeHint().width() + scrollbar);
+
+  int limit = page.height();
+  if (const QScreen *s = screen())
+    limit = std::min(limit, s->availableGeometry().height() - kWindowChrome);
+  ui.panelScroll->setMinimumHeight(std::max(limit, 0));
 }
 
 /*

@@ -678,6 +678,9 @@ bool MainWindow::saveCurrentScreenshot(const QString &path,
   if (maximumWindowSize.isValid()) {
     const QSize natural = sizeHint().expandedTo(minimumSizeHint());
     setFixedSize(natural.boundedTo(maximumWindowSize));
+    // The window system applies a resize asynchronously; grabbing the frame
+    // rectangle before it has would capture whatever lies behind the window.
+    waitForGuiToSettle(250);
   }
   qApp->processEvents();
 
@@ -807,19 +810,10 @@ void MainWindow::captureConfigScreenshots()
   if (ok) {
     applyFakeState("idle");
     ui.mainTabWidget->setCurrentWidget(ui.configtab);
-    ui.configtab->ShowScheduleTab();
     waitForGuiToSettle(250);
     ok = saveCurrentScreenshot(
-        screenshotPath(QString("qtmonitor-config-%1-schedule.png").arg(id)),
-        QSize(900, 760));
-  }
-  if (ok && ui.configtab->HasSensorConfiguration()) {
-    ui.mainTabWidget->setCurrentWidget(ui.configtab);
-    ui.configtab->ShowSensorTab();
-    waitForGuiToSettle(250);
-    ok = saveCurrentScreenshot(
-        screenshotPath(QString("qtmonitor-config-%1-sensors.png").arg(id)),
-        QSize(900, 760));
+        screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
+        QSize(900, 1400));
   }
   qApp->exit(ok ? 0 : 1);
 }

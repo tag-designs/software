@@ -46,7 +46,7 @@ struct MainWindowOptions {
   bool captureStartupScreenshot = false;
   /// Capture idle/running/finished Tag State screens from a fixture and exit.
   bool captureMainScreenshots = false;
-  /// Capture idle Configuration sub-tabs from a fixture and exit.
+  /// Capture the idle Configuration tab from a fixture and exit.
   bool captureConfigScreenshots = false;
   /// Capture the Error Log tab with no attached tag and exit.
   bool captureErrorLogScreenshot = false;

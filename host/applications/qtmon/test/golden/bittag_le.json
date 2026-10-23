@@ -5,8 +5,9 @@
             "get_config_ok": true,
             "id": "base",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -86,8 +87,9 @@
             "get_config_ok": true,
             "id": "base@RUNNING",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -167,8 +169,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -248,8 +251,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=0.01",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -329,8 +333,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=0.123",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -410,8 +415,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=0.2",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -491,8 +497,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=0.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -572,8 +579,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -653,8 +661,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=1.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -734,8 +743,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=3",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -815,8 +825,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=6",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -896,8 +907,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=12",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -977,8 +989,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=300",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1058,8 +1071,9 @@
             "get_config_ok": true,
             "id": "adxl362.act_thresh_g=-1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1139,8 +1153,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1220,8 +1235,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=0.01",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1301,8 +1317,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=0.123",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1382,8 +1399,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=0.2",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1463,8 +1481,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=0.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1544,8 +1563,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1625,8 +1645,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=1.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1706,8 +1727,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=3",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1787,8 +1809,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=6",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1868,8 +1891,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=12",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1949,8 +1973,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=300",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2030,8 +2055,9 @@
             "get_config_ok": true,
             "id": "adxl362.inact_thresh_g=-1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2111,8 +2137,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2192,8 +2219,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=0.01",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2273,8 +2301,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=0.123",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2354,8 +2383,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=0.2",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2435,8 +2465,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=0.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2516,8 +2547,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2597,8 +2629,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=1.5",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2678,8 +2711,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=3",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2759,8 +2793,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=6",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2840,8 +2875,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=12",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -2921,8 +2957,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=300",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3002,8 +3039,9 @@
             "get_config_ok": true,
             "id": "adxl362.inactive_sec=-1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3083,8 +3121,8 @@
             "get_config_ok": true,
             "id": "bittag_log=BITTAG_UNSPECIFIED",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3159,8 +3197,9 @@
             "get_config_ok": true,
             "id": "bittag_log=BITTAG_BITPERSEC",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3240,8 +3279,9 @@
             "get_config_ok": true,
             "id": "bittag_log=BITTAG_BITSPERMIN",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3321,8 +3361,9 @@
             "get_config_ok": true,
             "id": "bittag_log=BITTAG_BITSPERFOURMIN",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3402,8 +3443,9 @@
             "get_config_ok": true,
             "id": "bittag_log=BITTAG_BITSPERFIVEMIN",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3483,8 +3525,8 @@
             "get_config_ok": true,
             "id": "bittag_log=99",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3559,8 +3601,9 @@
             "get_config_ok": true,
             "id": "active_interval=0..forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3640,8 +3683,9 @@
             "get_config_ok": true,
             "id": "active_interval=0..now+7d",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3721,8 +3765,9 @@
             "get_config_ok": true,
             "id": "active_interval=0..now-1m",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3802,8 +3847,9 @@
             "get_config_ok": true,
             "id": "active_interval=0..0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3883,8 +3929,9 @@
             "get_config_ok": true,
             "id": "active_interval=now-1h..forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -3964,8 +4011,9 @@
             "get_config_ok": true,
             "id": "active_interval=now-1h..now+7d",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4045,8 +4093,9 @@
             "get_config_ok": true,
             "id": "active_interval=now-1h..now-1m",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4126,8 +4175,9 @@
             "get_config_ok": true,
             "id": "active_interval=now-1h..0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4207,8 +4257,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1m..forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4288,8 +4339,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1m..now+7d",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4369,8 +4421,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1m..now-1m",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4450,8 +4503,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1m..0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4531,8 +4585,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4612,8 +4667,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..now+7d",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4693,8 +4749,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..now-1m",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4774,8 +4831,9 @@
             "get_config_ok": true,
             "id": "active_interval=now+1d+1234s..0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4855,8 +4913,9 @@
             "get_config_ok": true,
             "id": "active_interval=forever..forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -4936,8 +4995,9 @@
             "get_config_ok": true,
             "id": "active_interval=forever..now+7d",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5017,8 +5077,9 @@
             "get_config_ok": true,
             "id": "active_interval=forever..now-1m",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5098,8 +5159,9 @@
             "get_config_ok": true,
             "id": "active_interval=forever..0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5179,8 +5241,9 @@
             "get_config_ok": true,
             "id": "hibernate[0]=unset",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5260,8 +5323,9 @@
             "get_config_ok": true,
             "id": "hibernate[0]=forever",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5341,8 +5405,9 @@
             "get_config_ok": true,
             "id": "hibernate[0]=now+1h..now+2h",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5422,8 +5487,9 @@
             "get_config_ok": true,
             "id": "hibernate[0]=now+2h..now+1h",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5503,8 +5569,9 @@
             "get_config_ok": true,
             "id": "hibernate[0]=now-2h..now-1h",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5584,8 +5651,9 @@
             "get_config_ok": true,
             "id": "hibernate.count=0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5649,8 +5717,9 @@
             "get_config_ok": true,
             "id": "hibernate.count=1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5722,8 +5791,9 @@
             "get_config_ok": true,
             "id": "hibernate.count=3",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -5752,17 +5822,13 @@
                     {
                         "end_epoch": 1791469923,
                         "start_epoch": 1791468123
-                    },
-                    {
-                        "end_epoch": 1791473523,
-                        "start_epoch": 1791471723
                     }
                 ],
                 "period": 0,
                 "start_delay": 0,
                 "tag_type": "BITTAG_LE"
             },
-            "sent_hex": "0802120610ffffffff071a0c08cba89ed60610d3b69ed6061a0c08dbc49ed60610e3d29ed6061a0c08ebe09ed60610f3ee9ed6062004320f250000003f2d3333b33e3500004040",
+            "sent_hex": "0802120610ffffffff071a0c08cba89ed60610d3b69ed6061a0c08dbc49ed60610e3d29ed6062004320f250000003f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -5786,14 +5852,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791466323 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791469923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791473523 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791464523 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791468123 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791471723 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -5811,8 +5873,9 @@
             "get_config_ok": true,
             "id": "restore:own-full",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -5872,18 +5935,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -5901,8 +5956,9 @@
             "get_config_ok": true,
             "id": "restore:only:active_interval.end_epoch",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -5962,18 +6018,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791637200 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -5991,8 +6039,9 @@
             "get_config_ok": true,
             "id": "restore:zero:active_interval.end_epoch",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6052,18 +6101,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6081,8 +6122,9 @@
             "get_config_ok": true,
             "id": "restore:only:active_interval.start_epoch",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6142,18 +6184,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791637200 min=1791637200 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6171,8 +6205,9 @@
             "get_config_ok": true,
             "id": "restore:zero:active_interval.start_epoch",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6232,18 +6267,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6261,8 +6288,9 @@
             "get_config_ok": true,
             "id": "restore:only:adxl362.act_thresh_g",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6322,18 +6350,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6351,8 +6371,9 @@
             "get_config_ok": true,
             "id": "restore:zero:adxl362.act_thresh_g",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6412,18 +6433,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6441,8 +6454,9 @@
             "get_config_ok": true,
             "id": "restore:only:adxl362.inact_thresh_g",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6502,18 +6516,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6531,8 +6537,9 @@
             "get_config_ok": true,
             "id": "restore:zero:adxl362.inact_thresh_g",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6592,18 +6599,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6621,8 +6620,9 @@
             "get_config_ok": true,
             "id": "restore:only:adxl362.inactive_sec",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6682,18 +6682,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6711,8 +6703,9 @@
             "get_config_ok": true,
             "id": "restore:zero:adxl362.inactive_sec",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6772,18 +6765,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6801,8 +6786,9 @@
             "get_config_ok": true,
             "id": "restore:only:bittag_log",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6862,18 +6848,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6891,8 +6869,8 @@
             "get_config_ok": true,
             "id": "restore:zero:bittag_log",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -6947,18 +6925,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -6976,8 +6946,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITPRESTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7037,18 +7008,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7066,8 +7029,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7127,18 +7091,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7156,8 +7112,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITTAGNG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7217,18 +7174,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7246,8 +7195,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:COMPASSTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7307,18 +7257,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7336,8 +7278,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:IMUTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7397,18 +7340,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7426,8 +7361,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:PRESTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7487,18 +7423,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7516,8 +7444,9 @@
             "get_config_ok": true,
             "id": "restore:foreign:UIUCTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7577,18 +7506,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7606,8 +7527,9 @@
             "get_config_ok": true,
             "id": "restore:empty-object",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -7667,18 +7589,10 @@
                 "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"End\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Stop hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
-                "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | datetime label=\"Start\" value=1791460923 min=-6857222400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Start hibernating at this date/time\"",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"End\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
-                "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
@@ -7696,8 +7610,9 @@
             "get_config_ok": true,
             "id": "restore:malformed",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",
@@ -7779,8 +7694,9 @@
             "get_config_ok": true,
             "id": "restore:unknown-key",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",
@@ -7862,8 +7778,9 @@
             "get_config_ok": true,
             "id": "restore:wrong-type",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel IntervalSchedule",
+                "panel BitTagLogFormat",
+                "panel Adxl362Wake",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",

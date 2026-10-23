@@ -49,18 +49,17 @@ save tag data.
 ### Configuration
 
 The Configuration tab defines the experiment plan that will be written to the
-tag. The **Schedule** sub-tab controls when logging starts, when it ends, and
-any hibernation periods. Some tag types also show a **Sensors** sub-tab with
-tag-specific sensor controls.
+tag. It is one page of panels, and the attached tag's type decides which panels
+appear: every tag has a **Logging Schedule** panel, and tags with
+user-configurable settings add panels for them, such as the BitTag log format
+or the accelerometer. If the page is taller than the screen, it scrolls.
 
-![Tag Monitor classic BitTag schedule configuration](../images/qtmonitor-config-bittag-schedule.png)
+![Tag Monitor classic BitTag configuration](../images/qtmonitor-config-bittag.png)
 
 Pressing **start** writes the displayed configuration to the tag and starts the
 tag. Until then, the displayed configuration is only a planned configuration.
 Use **save** and **restore** to move configurations through files, and **read**
 to reload the current configuration from the attached tag.
-
-![Tag Monitor classic BitTag sensor configuration](../images/qtmonitor-config-bittag-sensors.png)
 
 ### Error Log
 
@@ -84,8 +83,8 @@ message history will help diagnose the issue.
 
 ## Tag Configuration
 
-The Configuration tab is intentionally tag-specific. Every tag has a schedule
-view, but only tags with user-configurable sensor fields show a Sensors sub-tab.
+The Configuration tab is intentionally tag-specific: each tag type shows the
+panels for the settings its firmware accepts, and nothing else.
 
 ### BitTag
 
@@ -94,67 +93,55 @@ schedule controls define the active logging interval and optional hibernation
 periods. The BitTag log format controls how activity is binned in memory:
 shorter bins provide finer time resolution and consume storage faster.
 
-![Classic BitTag schedule configuration](../images/qtmonitor-config-bittag-schedule.png)
+The **Accelerometer** panel configures ADXL362 range, sample rate, anti-alias
+filter, and activity detection thresholds. Most experiments primarily tune the
+active and inactive thresholds plus inactivity duration; range, rate, and
+filter are usually changed only for specialized deployments.
 
-The Sensors sub-tab configures ADXL362 range, sample rate, anti-alias filter,
-and activity detection thresholds. Most experiments primarily tune the active
-and inactive thresholds plus inactivity duration; range, rate, and filter are
-usually changed only for specialized deployments.
-
-![Classic BitTag sensor configuration](../images/qtmonitor-config-bittag-sensors.png)
+![Classic BitTag configuration](../images/qtmonitor-config-bittag.png)
 
 ### BitTag LE
 
-BitTag LE uses the same schedule concepts as classic BitTag. Its low-energy
-firmware fixes some accelerometer operating parameters, so the Sensors sub-tab
-shows only the fields users are expected to tune.
+BitTag LE uses the same schedule and log format as classic BitTag. Its
+low-energy firmware fixes the accelerometer's range, rate and filter, so the
+**Activity Wakeup** panel shows only the fields users are expected to tune: the
+ADXL362 wake/activity thresholds and the inactivity sample count. In this mode,
+inactivity is a count at the wake-mode sample rate rather than a duration in
+seconds.
 
-![BitTag LE schedule configuration](../images/qtmonitor-config-bittag-le-schedule.png)
-
-The BitTag LE sensor controls expose ADXL362 wake/activity thresholds and the
-inactivity sample count. In this mode, inactivity is a count at the wake-mode
-sample rate rather than a duration in seconds.
-
-![BitTag LE sensor configuration](../images/qtmonitor-config-bittag-le-sensors.png)
+![BitTag LE configuration](../images/qtmonitor-config-bittag-le.png)
 
 ### BitPresTag
 
 BitPresTag combines BitTag-style activity logging with pressure-tag behavior.
 Use the schedule fields for the deployment interval and hibernation windows.
+The **Activity Wakeup** panel exposes the wake/activity fields that apply to
+the BitPresTag firmware. As with BitTag LE, firmware fixes the other
+accelerometer parameters.
 
-![BitPresTag schedule configuration](../images/qtmonitor-config-bitprestag-schedule.png)
-
-The Sensors sub-tab exposes the wake/activity fields that apply to the
-BitPresTag firmware. As with BitTag LE, firmware fixes the hidden accelerometer
-parameters.
-
-![BitPresTag sensor configuration](../images/qtmonitor-config-bitprestag-sensors.png)
+![BitPresTag configuration](../images/qtmonitor-config-bitprestag.png)
 
 ### PresTag
 
-PresTag currently presents the schedule view without additional user-visible
-sensor controls. If the Sensors sub-tab is absent, there is no separate sensor
-configuration step for this tag type.
+PresTag shows the schedule with one more setting, the sampling **Period** in
+seconds. It has no separate sensor controls.
 
-![PresTag schedule configuration](../images/qtmonitor-config-prestag-schedule.png)
+![PresTag configuration](../images/qtmonitor-config-prestag.png)
 
 ### IMUTag
 
-IMUTag uses the schedule view for deployment timing and hibernation windows.
-Because IMUTag supports calibration, the Tag State tab also exposes the
-calibration control when an IMUTag is attached.
+IMUTag's schedule is a **Start Delay** in minutes: logging begins that long
+after **start**, and runs until the tag is stopped. The **IMU** panel configures
+the sample rate and the accelerometer and gyro ranges. Because IMUTag supports
+calibration, the Tag State tab also exposes the calibration control when an
+IMUTag is attached.
 
-![IMUTag schedule configuration](../images/qtmonitor-config-imutag-schedule.png)
-
-The Sensors sub-tab configures the IMU fields exposed by the firmware, including
-sample rate and measurement ranges.
-
-![IMUTag sensor configuration](../images/qtmonitor-config-imutag-sensors.png)
+![IMUTag configuration](../images/qtmonitor-config-imutag.png)
 
 ### CompassTag
 
-CompassTag uses the schedule view for deployment timing. Like IMUTag, it
-supports calibration from the Tag State tab. The current CompassTag fixture does
-not expose separate user-visible sensor controls in Tag Monitor.
+CompassTag uses the schedule for deployment timing and hibernation windows.
+Like IMUTag, it supports calibration from the Tag State tab. It has no separate
+sensor controls in Tag Monitor.
 
-![CompassTag schedule configuration](../images/qtmonitor-config-compasstag-schedule.png)
+![CompassTag configuration](../images/qtmonitor-config-compasstag.png)

@@ -1,123 +1,110 @@
 ---
 type: readme
 status: current
-summary: How qtmonitor configuration modules edit Config, field visibility and Restore from ConfigShape (the tags' default configs), and adding tags, fields and modules.
+summary: How qtmonitor's Configuration tab is built from fixed panels selected by tag type, how panels read and write Config, the cross-check against the tags' default configs, and adding tags, fields and panels.
 ---
 
-# QtMonitor Configuration Modules
+# QtMonitor Configuration Panels
 
-QtMonitor uses the tag `Config` message for two related purposes:
+The Configuration tab is one page of **panels**. Every panel is built once,
+when `ConfigTab` is constructed, with its titles, labels, ranges and tooltips
+fixed for the tags it serves. The attached tag's type selects which panels are
+shown, from one table in `configtab.cpp` (`panelsForTag()`). A panel is shown
+or hidden as a whole; no panel decides per widget what to show.
 
-- current values to show, edit, save, restore, and send to a tag;
-- the shape of the configuration UI for a tag family.
+| Panel (`PanelId`) | Class and variant | Owns | Tags |
+| --- | --- | --- | --- |
+| `IntervalSchedule` | `SchedulePanel`, Interval | `active_interval`, `hibernate` | BitTag, BitTag LE, BitPresTag, BitTagNG, UIUCTag, CompassTag |
+| `IntervalScheduleWithPeriod` | `SchedulePanel`, IntervalWithPeriod | the above and `period` | PresTag |
+| `StartDelaySchedule` | `SchedulePanel`, StartDelay | `start_delay` | IMUTag |
+| `BitTagLogFormat` | `BitTagLogPanel` | `bittag_log` | BitTag, BitTag LE |
+| `Adxl362Standard` | `Adxl362Panel`, Standard | `adxl362` range, freq, filter and both thresholds, inactivity in seconds | BitTag |
+| `Adxl362Wake` | `Adxl362Panel`, Wake362 | `adxl362` thresholds, inactivity as samples | BitTag LE, BitPresTag |
+| `Adxl367Wake` | `Adxl362Panel`, Wake367 | `adxl362` threshold, inactivity as samples | UIUCTag |
+| `Adxl367WakeWithType` | `Adxl362Panel`, Wake367 with `accel_type` | the above and `adxl362.accel_type` | BitTagNG |
+| `Lsm6Imu` | `Lsm6Panel` | `lsm6` | IMUTag |
 
-Because `Config` uses proto3, scalar fields with value `0` do not carry
-presence after protobuf parsing. QtMonitor therefore does not infer scalar
-field visibility from decoded values. Instead, which fields a tag supports comes
-from tagcore's `ConfigShape`, which reads each tag's
-`embedded/proto-c/*-proto-c/default-config.json` (embedded in the build).
+The schedule variants share one class because they share the "Logging
+Schedule" group box and its controls. Hibernation shows up to two rows, the
+firmware maximum (`Config.hibernate max_count:2`).
 
-## Model Flow
+## How a panel reads and writes Config
 
-`ConfigTab` owns the editable model:
+`ConfigPanel` (`configpanel.h`) has three methods:
 
-- `current_config_` is the current editable configuration.
-- Attach, Read, and Restore replace or merge into `current_config_`.
-- Save and Start call `GetConfig()` and use the resulting model.
+- `paths()` lists the `Config` fields the panel owns, as `ConfigShape`
+  paths;
+- `load()` fills the controls from those fields. It returns false only when
+  the panel cannot show this configuration: the BitTag log panel does that for
+  a log format it has no button for, and warns for a classic BitTag with none;
+- `store()` writes those fields from the controls, whatever is on screen.
 
-Configuration modules must treat `current_config_` as the base model. A module
-should only modify the fields it owns and should leave hidden or unsupported
-fields unchanged.
+`ConfigTab` keeps `current_config_`, the tag's configuration as last read or
+restored:
 
-Restore is a value overlay. `ConfigTab::RestoreFromJsonText()` copies into
-the current config each field the attached tag supports and the file speaks
-for, using `ConfigShape::forFile()` and `ConfigShape::merge()`:
+- `SetConfig()` shows the tag type's panels and calls `load()` on each;
+- `GetConfig()`, used by Save and Start, copies `current_config_` and calls
+  `store()` on each shown panel. A field no panel owns passes through
+  unchanged;
+- Restore merges a file into `current_config_` with `ConfigShape::forFile()`
+  and `ConfigShape::merge()` (see `host/libraries/tagcore/configshape.h`),
+  then calls `SetConfig()`. A field the file leaves out keeps its value, a
+  stated field is copied (zero included), and a file written for another tag
+  type contributes only that type's fields. `tag-start --merge` uses the same
+  merge.
 
-- a field the file leaves out keeps its value;
-- a field the file states is copied, zero included;
-- a file whose `tag_type` is another tag type speaks only for that type's
-  fields, so the zeros Save pads it with are not copied.
+## The cross-check
 
-A restored file never defines the UI shape for the attached tag.
-`tag-start --merge` uses the same merge.
+`qtmonitor --check-config-panels` compares the panel table with every tag
+type's `ConfigShape`, which is read from
+`embedded/proto-c/*-proto-c/default-config.json`. It fails if:
 
-## Field Visibility
+- a panel owns a field the tag's default config does not list;
+- the default config lists a field no shown panel owns;
+- a tag type has a default config but no table entry, or the reverse.
 
-`configFieldVisibilityForTag()` (`configfieldvisibility.cpp`) fills the
-`ConfigFieldVisibility` table the modules read from
-`ConfigShape::forTag(tag_type)`, one `has("<path>")` per member. A field is
-visible for a tag type when its key appears in that type's default config,
-zero values included. This adapter is temporary: stage 1b of
-[Configuration Shape and Panels](../../../../docs/shared/design/proposals/config-shape-and-panels.md)
-replaces the modules and the table.
-
-Default config files must use a valid `tag_type`. One that does not is skipped,
-with a message on stderr, and `config_shape_check` fails on it (see
-`host/libraries/tagcore/test/README.md`).
+Run it after changing a default config or the panel table. The
+configuration probe (`../test/README.md`) then shows whether anything a tag
+or a user could see has changed.
 
 ## Adding A New Tag
 
 1. Add or update the tag's `embedded/proto-c/<tag>-proto-c/default-config.json`.
-2. Include every field the tag supports, even if the default value is `0`.
-3. Use `UNSPECIFIED` enum values only when the field should be present but have
-   no selected operational value.
-4. Update firmware `readConfig()` and `writeConfig()` for the tag.
-5. Rebuild `qtmonitor`; the default config is picked up automatically.
-6. Verify that unsupported fields from restored config files are ignored.
-
-For existing QtMonitor modules, adding a field to the default JSON is enough to
-make that field visible only if the module already has a control and a
-visibility bit for it.
+   Include every field the tag supports, even if its default value is `0`.
+   Use `UNSPECIFIED` enum values only when the field should be present but
+   have no selected operational value.
+2. Update firmware `readConfig()` and `writeConfig()` for the tag.
+3. Add a row to `panelsForTag()` in `configtab.cpp`, reusing panels where the
+   fields mean the same thing.
+4. Run `qtmonitor --check-config-panels`, regenerate the probe's cases, and
+   take goldens for the new tag (`../test/README.md`).
 
 ## Adding A New Field
 
 1. Add the field to `proto/tagdata.proto` if it does not already exist.
-2. Add a visibility bit to `ConfigFieldVisibility`, and set it in
-   `configfieldvisibility.cpp` from `has("<path>")`.
-3. Update the owning configuration module to:
-   - show/hide the control from the visibility bit;
-   - load the value from `Config` in `SetConfig()`;
-   - write the value in `GetConfig()` only when the visibility bit is true.
-4. Add the field to the appropriate tag default JSON files.
-5. Update tag firmware conversion code.
+2. Add it to the default config of each tag that supports it.
+3. Add a control to the panel that owns it: list the path in `paths()`, read
+   it in `load()`, write it in `store()`.
+4. Update tag firmware conversion code.
+5. Run `qtmonitor --check-config-panels`, regenerate the probe's cases, and
+   check the goldens.
 
 Restore and `tag-start --merge` handle the new field without change.
-Regenerate the configuration probe's cases and check the goldens
-(`host/applications/qtmon/test/README.md`).
 
-## Adding A New Module
+## Adding A New Panel
 
-Each module implements `ConfigInterface` and should also provide:
-
-```cpp
-bool SetConfig(const Config &config,
-               const ConfigFieldVisibility &visibility);
-```
-
-`ConfigTab::SetConfig()` should pass the visibility object to the
-module. The module should:
-
-- set `active = false` and hide itself when its top-level visibility bit is
-  false;
-- store the supplied visibility object;
-- use visibility bits, not scalar values, to decide which controls are visible;
-- in `GetConfig()`, modify only fields whose visibility bits are true.
-
-Keep ownership boundaries clear. For example:
-
-- `Schedule` owns `active_interval`, `hibernate`, `period`, and `start_delay`.
-- `BitTagLogTab` owns `bittag_log`.
-- `Adxl362Config` owns `adxl362`.
-- `Lsm6dsvConfig` owns `lsm6`.
-
-Do not clear another module's fields.
+Subclass `ConfigPanel`, building every control in the constructor. Give it a
+`PanelId` and an object name in `ConfigTab`'s constructor, in page order, and
+select it in `panelsForTag()`. Keep ownership disjoint: two panels shown for
+the same tag must not own the same field.
 
 ## Tag-Specific Field Semantics
 
 Prefer reusing existing `Config` fields when a new tag needs narrower ranges or
-labels but not a new wire format. The module may adapt labels, suffixes, ranges,
-and tooltips using `Config.tag_type()` or a sensor selector field, while still
-writing the same protobuf fields.
+labels but not a new wire format. Give each meaning its own panel, or its own
+variant of a panel, with its labels, suffixes, ranges and tooltips fixed at
+construction, writing the same protobuf fields. `Adxl362Panel`'s three
+variants are the example.
 
 BitTagNG is one example. It uses an ADXL367 in wake-up mode but reuses
 `Config.adxl362`:
@@ -135,8 +122,8 @@ activity detection with the existing ADXL362 protobuf fields:
 - ADXL362 range, output data rate, and anti-alias filter are fixed by firmware
   and are intentionally hidden from the QtMonitor sensor UI.
 
-Document any such semantic overload in both the QtMonitor module and the tag
-firmware conversion code.
+Document any such semantic overload in both the panel and the tag firmware
+conversion code.
 
 ## Proto3 Presence Notes
 
@@ -156,5 +143,5 @@ config.start_delay() != 0
 config.adxl362().act_thresh_g() != 0.0f
 ```
 
-Use `ConfigShape` for which fields a tag supports. Use decoded config values
-only as values.
+Use `ConfigShape` for which fields a tag supports, and the panel table for
+which controls a tag shows. Use decoded config values only as values.

@@ -346,7 +346,7 @@ design document.
 
 ### Applications / qtmon / tagconfiguration
 
-- [QtMonitor Configuration Modules](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor configuration modules edit Config, field visibility and Restore from ConfigShape (the tags' default configs), and adding tags, fields and modules.
+- [QtMonitor Configuration Panels](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor's Configuration tab is built from fixed panels selected by tag type, how panels read and write Config, the cross-check against the tags' default configs, and adding tags, fields and panels.
 
 ### Applications / qtmon / test
 

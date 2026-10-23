@@ -2,14 +2,9 @@
  * @file    configprobe.cpp
  * @brief   Implementation of `qtmonitor --config-probe`.
  *
- * @details Each case is run twice through a freshly built ConfigTab: once with
- *          the Schedule sub-tab selected and once with the Sensors sub-tab
- *          (or Schedule again when the tag has no sensor controls). A fresh
- *          tab per run models a qtmonitor that has just attached this tag, and
- *          keeps one case's widget state out of the next. The Sensors run
- *          provides the recorded result. If the Schedule run would send
- *          something different, that is recorded too, because the
- *          configuration sent should not depend on which sub-tab is on screen.
+ * @details Each case runs through a freshly built ConfigTab, as a qtmonitor
+ *          that has just attached this tag would, which also keeps one case's
+ *          widget state out of the next.
  */
 
 #include "configprobe.h"
@@ -42,6 +37,7 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "tagconfiguration/configclock.h"
+#include "tagconfiguration/configpanel.h"
 #include "tagconfiguration/configtab.h"
 
 namespace
@@ -97,14 +93,13 @@ QString num(double value)
 }
 
 /**
- * @brief Reports whether a widget would be on screen if its sub-tab were
- *        selected.
+ * @brief Reports whether a widget would be on screen, whatever is scrolled
+ *        into view or selected.
  *
  * @details Walks from @p w up to @p root. Any explicitly hidden widget on the
  *          way hides @p w, except a QTabWidget page, which is hidden only
- *          because another sub-tab is selected; such a page counts as shown
- *          when its tab itself is visible. This makes the fingerprint
- *          independent of which sub-tab the probe selected.
+ *          because another tab is selected; such a page counts as shown when
+ *          its tab itself is visible.
  */
 bool shownIgnoringTabSelection(const QWidget *w, const QWidget *root)
 {
@@ -272,11 +267,18 @@ QJsonArray fingerprint(const QWidget *root)
 
 /**
  * @brief Arrangement facts that are expected to change when the layout does:
- *        the sub-tabs and whether the tab as a whole is active.
+ *        which panels are shown, any sub-tabs, and whether the tab as a whole
+ *        is active.
  */
 QJsonArray layoutFacts(const ConfigTab *tab)
 {
   QStringList lines;
+  for (const QWidget *w : tab->findChildren<QWidget *>())
+  {
+    const auto *panel = dynamic_cast<const ConfigPanel *>(w);
+    if (panel && !panel->isHidden())
+      lines << QString("panel %1").arg(panel->objectName());
+  }
   for (const QTabWidget *tabs : tab->findChildren<QTabWidget *>())
   {
     for (int i = 0; i < tabs->count(); ++i)
@@ -345,12 +347,9 @@ struct RunOutput
 /**
  * @brief Builds a fresh ConfigTab, applies one case to it, and reads back
  *        what Start would send.
- *
- * @param[in] sensors_tab  true to select the Sensors sub-tab before reading
- *                         the configuration, false for the Schedule sub-tab.
  */
 RunOutput runOnce(const Config &input, TagState state, const QJsonValue &restore,
-                  bool sensors_tab, DialogCatcher &dialogs)
+                  DialogCatcher &dialogs)
 {
   RunOutput out;
   ConfigTab tab;
@@ -382,10 +381,6 @@ RunOutput runOnce(const Config &input, TagState state, const QJsonValue &restore
     out.restore_detail = detail.simplified();
   }
 
-  if (sensors_tab)
-    tab.ShowSensorTab();
-  else
-    tab.ShowScheduleTab();
   QCoreApplication::processEvents();
 
   out.get_config_ok = tab.GetConfig(out.sent);
@@ -424,31 +419,22 @@ QJsonObject runCase(const QJsonObject &c, DialogCatcher &dialogs)
 
   ConfigClock::setFixedNow(static_cast<qint64>(c.value("now").toDouble()));
   const QJsonValue restore = c.value("restore");
-  const RunOutput schedule = runOnce(input, state, restore, false, dialogs);
-  const RunOutput sensors = runOnce(input, state, restore, true, dialogs);
+  const RunOutput run = runOnce(input, state, restore, dialogs);
 
-  if (!sensors.restore.isEmpty())
+  if (!run.restore.isEmpty())
   {
-    result["restore"] = sensors.restore;
-    if (sensors.restore != "Restored")
-      result["restore_detail"] = sensors.restore_detail;
+    result["restore"] = run.restore;
+    if (run.restore != "Restored")
+      result["restore_detail"] = run.restore_detail;
   }
-  result["get_config_ok"] = sensors.get_config_ok;
-  result["sent"] = configToJson(sensors.sent);
+  result["get_config_ok"] = run.get_config_ok;
+  result["sent"] = configToJson(run.sent);
   result["sent_hex"] =
-      QString::fromLatin1(QByteArray::fromStdString(sensors.sent.SerializeAsString()).toHex());
-  if (schedule.sent.SerializeAsString() != sensors.sent.SerializeAsString() ||
-      schedule.get_config_ok != sensors.get_config_ok)
-    result["sent_with_schedule_tab"] = configToJson(schedule.sent);
-  result["ui"] = sensors.ui;
-  if (schedule.ui != sensors.ui)
-    result["ui_with_schedule_tab"] = schedule.ui;
-  result["layout"] = sensors.layout;
-  QJsonArray all_dialogs = schedule.dialogs;
-  for (const QJsonValue &d : sensors.dialogs)
-    all_dialogs.append(d);
-  if (!all_dialogs.isEmpty())
-    result["dialogs"] = all_dialogs;
+      QString::fromLatin1(QByteArray::fromStdString(run.sent.SerializeAsString()).toHex());
+  result["ui"] = run.ui;
+  result["layout"] = run.layout;
+  if (!run.dialogs.isEmpty())
+    result["dialogs"] = run.dialogs;
   return result;
 }
 

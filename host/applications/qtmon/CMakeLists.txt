@@ -51,15 +51,14 @@ set(qtmonitor_SRCS
     logwindow.cpp
     main.cpp
     mainwindow.cpp
-    tagconfiguration/adxl362config.cpp
-    tagconfiguration/bittaglog.cpp
+    tagconfiguration/adxl362panel.cpp
+    tagconfiguration/bittaglogpanel.cpp
     tagconfiguration/configclock.cpp
-    tagconfiguration/configfieldvisibility.cpp
     tagconfiguration/configtab.cpp
     tagconfiguration/hibernate.cpp
+    tagconfiguration/lsm6panel.cpp
     tagconfiguration/pbenumgroup.cpp
-    tagconfiguration/schedule.cpp
-    tagconfiguration/lsm6dsvconfig.cpp
+    tagconfiguration/schedulepanel.cpp
     )
 
 qt6_wrap_ui(UI_HEADERS tagconfiguration/configtab.ui

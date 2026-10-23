@@ -66,19 +66,24 @@ and optionally a `restore`: the text of a file restored over it.
 For each case, the probe builds a fresh `ConfigTab`, as a qtmonitor that has
 just attached this tag would. It fixes the schedule's clock at `now`, applies
 the config, the state and the restore, and calls `GetConfig()`, exactly as
-Start does. It does this twice, once with the Schedule sub-tab selected and
-once with the Sensors sub-tab. The result holds:
+Start does. The result holds:
 
 | Key | Meaning |
 | --- | --- |
-| `sent`, `sent_hex` | What Start would send, as JSON with every field and as serialised bytes, from the Sensors-tab run |
-| `sent_with_schedule_tab` | Present only when the Schedule-tab run would send something else |
+| `sent`, `sent_hex` | What Start would send, as JSON with every field and as serialised bytes |
 | `get_config_ok` | `GetConfig()`'s return value |
 | `restore`, `restore_detail` | `Restored`, `ParseError` or `NotValidForTag`, and the parser's message |
-| `ui` | One line per visible control: enclosing group titles, then kind, label, value, range, step, decimals, suffix, enabled and tooltip. Sorted, so moving a control does not change it. A control on an unselected sub-tab counts as visible. |
-| `ui_with_schedule_tab` | Present only when the fingerprint depends on the selected sub-tab |
-| `layout` | Sub-tab titles and whether each is shown, which changes when the layout does |
+| `ui` | One line per visible control: enclosing group titles, then kind, label, value, range, step, decimals, suffix, enabled and tooltip. Sorted, so moving a control does not change it. A control scrolled out of view counts as visible. |
+| `layout` | Which panels are shown, and whether the tab as a whole is visible and enabled; changes when the layout does |
 | `dialogs` | Text of each message box raised. The probe records and dismisses it. |
+
+Goldens from before the single-page layout (2026-10-23 and earlier entries in
+`expected-differences.md`) also had `sent_with_schedule_tab` and
+`ui_with_schedule_tab`, from running each case once per sub-tab.
+
+The panel table is checked separately, with no cases:
+`qtmonitor --check-config-panels` exits non-zero if any tag type's panels and
+default configuration disagree.
 
 ## The cases
 

@@ -18,6 +18,8 @@
 #include "ui_mainwindow.h"
 #include "qthoststyle.h"
 #include "configprobe.h"
+#include "tagconfiguration/configtab.h"
+#include <cstdio>
 
 #include "mainwindow.h"
 
@@ -117,7 +119,7 @@ int main(int argc, char *argv[])
       "Capture idle, running, and finished Tag State screenshots and exit."));
   parser.addOption(QCommandLineOption(
       "capture-config-screenshots",
-      "Capture idle Configuration schedule and sensor screenshots and exit."));
+      "Capture the idle Configuration tab screenshot and exit."));
   parser.addOption(QCommandLineOption(
       "capture-error-log-screenshot",
       "Capture the disconnected Error Log screen and exit."));
@@ -139,7 +141,24 @@ int main(int argc, char *argv[])
       "Directory for --config-probe results. Defaults to config-probe-results.",
       "dir",
       "config-probe-results"));
+  parser.addOption(QCommandLineOption(
+      "check-config-panels",
+      "Check which configuration panels each tag type shows against the tags' "
+      "default configurations, print any mismatch and exit (1 on mismatch)."));
   parser.process(a);
+
+  if (parser.isSet("check-config-panels")) {
+    HostStyle::apply(a);
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    ConfigTab tab;
+    const QStringList problems = tab.CheckPanelsAgainstShapes();
+    for (const QString &problem : problems)
+      std::fprintf(stderr, "%s\n", qPrintable(problem));
+    std::printf("config panels: %s\n",
+                problems.isEmpty() ? "agree with every tag's default configuration"
+                                   : "MISMATCH");
+    return problems.isEmpty() ? 0 : 1;
+  }
 
   if (parser.isSet("config-probe")) {
     HostStyle::apply(a);

@@ -9,6 +9,7 @@ Matches results by case file and case id. For each case it compares:
   sent                                     byte for byte (sent_hex); a
                                            difference is shown field by field
   sent_with_schedule_tab                   present in either, or different
+                                           (older results only)
   ui, ui_with_schedule_tab                 line by line
   layout                                   line by line
   dialogs                                  exactly

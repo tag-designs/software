@@ -5,8 +5,8 @@
             "get_config_ok": true,
             "id": "base",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -59,8 +59,8 @@
             "get_config_ok": true,
             "id": "base@RUNNING",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -113,8 +113,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=ACCEL_UNSPECIFIED",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -167,8 +167,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=R2G",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -221,8 +221,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=R4G",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -275,8 +275,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=R8G",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -329,8 +329,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=R16G",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -383,8 +383,8 @@
             "get_config_ok": true,
             "id": "lsm6.accel_rng=99",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -437,8 +437,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=GYRO_UNSPECIFIED",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -491,8 +491,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R125dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -545,8 +545,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R250dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -599,8 +599,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R500dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -653,8 +653,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R1000dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -707,8 +707,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R2000dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -761,8 +761,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=R4000dps",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -815,8 +815,8 @@
             "get_config_ok": true,
             "id": "lsm6.gyro_rng=99",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -869,8 +869,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=ODR_UNSPECIFIED",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -923,8 +923,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S50",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -977,8 +977,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S100",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1031,8 +1031,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S200",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1085,8 +1085,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S400",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1139,8 +1139,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S800",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1193,8 +1193,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=S1600",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1247,8 +1247,8 @@
             "get_config_ok": true,
             "id": "lsm6.odr=99",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1301,8 +1301,8 @@
             "get_config_ok": true,
             "id": "start_delay=0",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1355,8 +1355,8 @@
             "get_config_ok": true,
             "id": "start_delay=1",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1409,8 +1409,8 @@
             "get_config_ok": true,
             "id": "start_delay=2",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1463,8 +1463,8 @@
             "get_config_ok": true,
             "id": "start_delay=59",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1517,8 +1517,8 @@
             "get_config_ok": true,
             "id": "start_delay=60",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1571,8 +1571,8 @@
             "get_config_ok": true,
             "id": "start_delay=61",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1625,8 +1625,8 @@
             "get_config_ok": true,
             "id": "start_delay=255",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1679,8 +1679,8 @@
             "get_config_ok": true,
             "id": "start_delay=256",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1733,8 +1733,8 @@
             "get_config_ok": true,
             "id": "start_delay=1440",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1787,8 +1787,8 @@
             "get_config_ok": true,
             "id": "start_delay=100000",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "sent": {
@@ -1841,8 +1841,8 @@
             "get_config_ok": true,
             "id": "restore:own-full",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -1896,8 +1896,8 @@
             "get_config_ok": true,
             "id": "restore:only:lsm6.accel_rng",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -1951,8 +1951,8 @@
             "get_config_ok": true,
             "id": "restore:zero:lsm6.accel_rng",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2006,8 +2006,8 @@
             "get_config_ok": true,
             "id": "restore:only:lsm6.gyro_rng",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2061,8 +2061,8 @@
             "get_config_ok": true,
             "id": "restore:zero:lsm6.gyro_rng",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2116,8 +2116,8 @@
             "get_config_ok": true,
             "id": "restore:only:lsm6.odr",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2171,8 +2171,8 @@
             "get_config_ok": true,
             "id": "restore:zero:lsm6.odr",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2226,8 +2226,8 @@
             "get_config_ok": true,
             "id": "restore:only:start_delay",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2281,8 +2281,8 @@
             "get_config_ok": true,
             "id": "restore:zero:start_delay",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2336,8 +2336,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITPRESTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2391,8 +2391,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2446,8 +2446,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITTAGNG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2501,8 +2501,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:BITTAG_LE",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2556,8 +2556,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:COMPASSTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2611,8 +2611,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:PRESTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2666,8 +2666,8 @@
             "get_config_ok": true,
             "id": "restore:foreign:UIUCTAG",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2721,8 +2721,8 @@
             "get_config_ok": true,
             "id": "restore:empty-object",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "Restored",
@@ -2776,8 +2776,8 @@
             "get_config_ok": true,
             "id": "restore:malformed",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",
@@ -2832,8 +2832,8 @@
             "get_config_ok": true,
             "id": "restore:unknown-key",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",
@@ -2888,8 +2888,8 @@
             "get_config_ok": true,
             "id": "restore:wrong-type",
             "layout": [
-                "subtab \"Schedule\" visible=1 enabled=1",
-                "subtab \"Sensors\" visible=1 enabled=1",
+                "panel StartDelaySchedule",
+                "panel Lsm6Imu",
                 "configtab visible=1 enabled=1"
             ],
             "restore": "ParseError",
