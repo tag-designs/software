@@ -12,8 +12,8 @@ without an entry here is a defect. See [README.md](README.md).
 
 ## 2026-10-23: the Configuration tab becomes an editor; Open replaces Restore
 
-Change: step 3 of
-[the editor, menus and start-checks proposal](../design/proposals/editor-menus-and-start-checks.md).
+Change: the configuration document
+([editor design](../design/editor-and-start-checks.md), decision 0033).
 The tab holds a document, from a tag type's defaults, a file or a tag.
 File ▸ Open replaces Restore: the file becomes the document, as its tag type's
 defaults with the file merged on top, instead of being merged into the tag's
@@ -49,8 +49,8 @@ All 34 rows were checked against these rules.
 
 ## 2026-10-23: the Configuration tab's buttons become menu actions
 
-Change: step 1 of
-[the editor, menus and start checks proposal](../design/proposals/editor-menus-and-start-checks.md).
+Change: commands became actions in menus
+([editor design](../design/editor-and-start-checks.md), decision 0033).
 The save, restore, read and start buttons, and their "Configuration File" and
 "Configure Tag" group boxes, leave the Configuration tab. The commands are now
 actions in the File and Tag menus, on the tab's popup menu, and (Start) on the

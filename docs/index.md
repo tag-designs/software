@@ -76,6 +76,7 @@ design document.
 - [0030. Host: orientation is stored as a quaternion; Euler angles are display-only](decisions/0030-host-orientation-stored-as-quaternion-only.md) *(decision)* — Compass orientation is computed and stored as a quaternion only; heading, pitch and roll are a display convention derived with Qt's conversion at each point of display, dataprocessing no longer writes yaw, pitch or roll, and SensorViz builds every compass view from quaternions, stored or derived.
 - [0031. Host: dataprocessing is a plain executable without Qt](decisions/0031-host-dataprocessing-plain-executable-without-qt.md) *(decision)* — dataprocessing no longer uses Qt -- it runs on the Qt-free sensoranalysis core, bit-identical to the Qt code -- so it ships as a plain executable in tag_tools/bin like the other command line tools, and builds in a host build without the Qt applications.
 - [0032. Host: configuration shape from default configs, fixed panels per tag type](decisions/0032-host-config-shape-and-fixed-panels.md) *(decision)* — Which Config fields a tag supports comes from its default config, read at run time by tagcore's ConfigShape, which also gives Restore and tag-start --merge one merge rule; qtmonitor's configuration screen is fixed panels selected by tag type; the change was proven equivalent on the host by a probe and golden results; tag-reported presence through proto3 optional fields was deferred.
+- [0033. Host: qtmonitor as a configuration editor, with menus and Start checks](decisions/0033-host-qtmonitor-editor-menus-start-checks.md) *(decision)* — qtmonitor became a configuration editor (Open makes a file the document, replacing Restore's merge into the tag), its buttons became actions in in-window menus with Start and Stop kept beside a status strip, and Start checks clock (2 s), the tag's reported self-test and an Approved box, warning with continue or cancel rather than refusing; Help menus share one user-guide finder.
 
 ### Investigations
 
@@ -345,10 +346,7 @@ design document.
 ### Applications / qtmon
 
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
-
-### Applications / qtmon / Proposals
-
-- [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/proposals/editor-menus-and-start-checks.md) *(proposal, proposed)* — Make qtmonitor a configuration editor (new from a tag type's defaults, open, edit, save, and start a matching tag), move its commands from buttons to in-window menus and popup menus with Start and Stop kept beside a status display, have Start warn about clock sync, self-test and an approval checkbox and offer to continue or cancel, and give every app one way to open its user guide.
+- [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/editor-and-start-checks.md) — qtmonitor is a configuration editor as well as a tag monitor -- one document from defaults, a file or a tag, commands as actions in in-window menus, a status strip with Approved, Start and Stop, and Start checks (clock within 2 s, self-test ALL_PASSED, Approved) that warn and let the user continue or cancel.
 
 ### Applications / qtmon / tagconfiguration
 

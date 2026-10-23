@@ -27,6 +27,8 @@ This is the packaged user-facing mode.
 
 ### Commands, menus and the status strip
 
+Design and rationale: [Configuration Editor, Menus and Start Checks](design/editor-and-start-checks.md).
+
 Every command is a `QAction`, created in `MainWindow::createActions()` and
 placed in the File, Tag, Log and Help menus (in the window, as in sensorviz) and on
 popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
