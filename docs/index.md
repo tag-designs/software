@@ -346,6 +346,10 @@ design document.
 
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
 
+### Applications / qtmon / Proposals
+
+- [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/proposals/editor-menus-and-start-checks.md) *(proposal, proposed)* — Make qtmonitor a configuration editor (new from a tag type's defaults, open, edit, save, and start a matching tag), move its commands from buttons to in-window menus and popup menus with Start and Stop kept beside a status display, have Start warn about clock sync, self-test and an approval checkbox and offer to continue or cancel, and give every app one way to open its user guide.
+
 ### Applications / qtmon / tagconfiguration
 
 - [QtMonitor Configuration Panels](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor's Configuration tab is built from fixed panels selected by tag type, how panels read and write Config, the cross-check against the tags' default configs, and adding tags, fields and panels.
