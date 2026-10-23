@@ -16,6 +16,12 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QProcessEnvironment>
 #include <QSettings>
+#include <cstdio>
+#include <QEventLoop>
+#include <QPixmap>
+#include <QScreen>
+#include <QWindow>
+#include <QApplication>
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QDir>
@@ -54,6 +60,36 @@ int roundedSectorCount(qint64 bytes, int sector_size)
   if (bytes <= 0 || sector_size <= 0)
     return 0;
   return static_cast<int>((bytes + sector_size - 1) / sector_size);
+}
+
+/**
+ * @brief Saves @p window, frame included, as a PNG at @p path.
+ * @details Grabs the screen rectangle of the window's frame, so the title bar
+ *          is included, falling back to the widget's own grab.
+ * @return true when the file was written.
+ */
+bool saveWindowImage(QWidget *window, const QString &path)
+{
+  QPixmap pixmap;
+  if (QScreen *screen = window->windowHandle() ? window->windowHandle()->screen() : nullptr) {
+    const QRect frame = window->frameGeometry();
+    pixmap = screen->grabWindow(0, frame.x(), frame.y(), frame.width(), frame.height());
+  }
+  if (pixmap.isNull())
+    pixmap = window->grab();
+  const bool ok = !pixmap.isNull() && pixmap.save(path, "PNG");
+  // To the terminal, not the log pane, which is in the next screenshot.
+  std::fprintf(stderr, "%s %s\n", ok ? "Saved screenshot" : "Could not save screenshot",
+               qPrintable(path));
+  return ok;
+}
+
+/// Runs the event loop for @p ms, so the window can repaint or a poll arrive.
+void settle(int ms)
+{
+  QEventLoop loop;
+  QTimer::singleShot(ms, &loop, &QEventLoop::quit);
+  loop.exec();
 }
 
 } // namespace
@@ -100,6 +136,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 MainWindow::~MainWindow()
 {
   tag.Detach();
+}
+
+void MainWindow::captureScreenshots(const QString &dir, const QString &image)
+{
+  QDir().mkpath(dir);
+  raise();
+  activateWindow();
+  ui.programButton->setFocus();
+  settle(800);
+  bool ok = saveWindowImage(this, QDir(dir).filePath("qtprogram-startup.png"));
+  on_connectButton_clicked();
+  settle(1500);
+  ok = saveWindowImage(this, QDir(dir).filePath("qtprogram-connected.png")) && ok;
+  setImage(image);
+  const FlashPlan plan = planFlash(image);
+  if (plan.erase == FlashPlan::Erase::Invalid) {
+    qWarning().noquote() << plan.error;
+    ok = false;
+  } else {
+    capture_confirm_path_ = QDir(dir).filePath("qtprogram-confirm.png");
+    confirmProgram(plan);
+    capture_confirm_path_.clear();
+  }
+  Detach();
+  qApp->exit(ok ? 0 : 1);
 }
 
 bool MainWindow::findBase()
@@ -224,6 +285,15 @@ bool MainWindow::confirmProgram(const FlashPlan &plan)
   QPushButton *cancel = box.addButton(QMessageBox::Cancel);
   box.setDefaultButton(cancel);
   box.setEscapeButton(cancel);
+  if (!capture_confirm_path_.isEmpty()) {
+    const QString path = capture_confirm_path_;
+    // On macOS the box is a sheet on this window, so the window is grabbed
+    // with the sheet showing.
+    QTimer::singleShot(1000, &box, [this, &box, path]() {
+      saveWindowImage(this, path);
+      box.reject();
+    });
+  }
   box.exec();
   return box.clickedButton() == go;
 }

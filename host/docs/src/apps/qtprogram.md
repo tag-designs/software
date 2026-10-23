@@ -19,11 +19,20 @@ leave it erased and IDLE, ready to configure in Tag Monitor.
 - Have the firmware's `.elf` file. A `.bin` will not do: the `.elf` records the
   flash layout, which decides what is erased.
 
+![Tag Programmer before connecting](../images/qtprogram-startup.png)
+
+Press **Connect** to see the tag's state, clock error, voltage, self-test
+result and identity:
+
+![Tag Programmer connected to a BitTag](../images/qtprogram-connected.png)
+
 ## Program a Tag
 
 1. Choose the firmware `.elf`. The last image programmed is remembered.
 2. Press **Program**. A confirmation names the tag, its UUID and the image, and
    lists what will be lost and what will be kept. **Cancel** is the default.
+    ![The confirmation before programming a BitTag](../images/qtprogram-confirm.png)
+
 3. Choose **Erase and Program**. Tag Programmer then:
     1. stops the tag if it is running;
     2. has the tag's own firmware erase its log, whenever the tag is not IDLE;

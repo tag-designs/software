@@ -124,5 +124,15 @@ int main(int argc, char *argv[])
 
   MainWindow w;
   w.show();
+
+  // qtprogram --capture-screenshots <elf> [<dir>]: the user guide's
+  // screenshots (default dir host/docs/src/images). Connects to the tag but
+  // never erases or programs it.
+  if (args.size() > 2 && args.at(1) == QLatin1String("--capture-screenshots")) {
+    const QString dir = args.size() > 3
+        ? args.at(3)
+        : QStringLiteral(TAG_DESIGNS_SOURCE_DIR "/host/docs/src/images");
+    QTimer::singleShot(0, &w, [&w, args, dir]() { w.captureScreenshots(dir, args.at(2)); });
+  }
   return a.exec();
 }

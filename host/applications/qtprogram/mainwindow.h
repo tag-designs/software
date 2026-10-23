@@ -37,6 +37,20 @@ public:
 
   explicit MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
+
+  /**
+   * @brief Captures the user guide's screenshots, then exits the application.
+   *
+   * @details Writes `qtprogram-startup.png` (not connected), then presses
+   *          Connect and writes `qtprogram-connected.png`, then opens the
+   *          Program confirmation for @p image, writes
+   *          `qtprogram-confirm.png` and cancels it. Nothing is erased or
+   *          programmed. Connecting resets the tag, as Connect always does.
+   *
+   * @param[in] dir    Directory for the PNG files.
+   * @param[in] image  Firmware ELF named in the confirmation.
+   */
+  void captureScreenshots(const QString &dir, const QString &image);
  
 
 signals:
@@ -120,6 +134,7 @@ private:
   FlashPlan plan_;            ///< Erase for the program in progress.
   QString failure_;           ///< Why the last program failed, for the user.
   int wait_ticks_ = 0;
+  QString capture_confirm_path_; ///< When set, confirmProgram() saves itself here and cancels.
   bool have_base_ = false;    ///< A USB base was found and selected (usbdev).        ///< State-machine ticks spent in the current wait.
   int eraseSectorMaximum(const Status &status) const;
 };

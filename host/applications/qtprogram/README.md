@@ -56,6 +56,20 @@ qtprogram --flash-plan <elf>...
 Before step 1, a confirmation names the tag, UUID and image and lists what is
 lost and kept. An image for the wrong processor family is refused.
 
+## Screenshots
+
+The user guide's screenshots come from the application:
+
+```sh
+qtprogram --capture-screenshots <elf> [<dir>]
+```
+
+It writes `qtprogram-startup.png`, presses Connect and writes
+`qtprogram-connected.png`, then opens the Program confirmation for `<elf>`,
+writes `qtprogram-confirm.png` and cancels it. It needs a base with a tag, and
+connecting resets the tag; nothing is erased or programmed. `<dir>` defaults to
+`host/docs/src/images`.
+
 ## Settings
 
 Stored with `QSettings` (organization `tag-designs`, application `qtprogram`):

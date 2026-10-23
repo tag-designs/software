@@ -57,6 +57,9 @@ add_executable(
 )# resources/resources.qrc)
 
 target_include_directories(qtprogram PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+# The source tree, for --capture-screenshots' default output directory.
+target_compile_definitions(
+  qtprogram PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 set_target_properties(
   qtprogram
