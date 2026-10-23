@@ -2492,7 +2492,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 2147483647,
+                    "end_epoch": 1791464400,
                     "start_epoch": 0
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -2510,7 +2510,7 @@
                 "start_delay": 0,
                 "tag_type": "PRESTAG"
             },
-            "sent_hex": "0803120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
+            "sent_hex": "0803120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
             "ui": [
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
@@ -2538,8 +2538,8 @@
                 "Logging Schedule > Period | int label=\"\" value=60 min=1 max=300 step=10 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Data sample period\"",
                 "Logging Schedule > Period | label text=\"Seconds\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
@@ -2560,7 +2560,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 1791637200,
+                    "end_epoch": 2147483647,
                     "start_epoch": 1791637200
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -2578,7 +2578,7 @@
                 "start_delay": 0,
                 "tag_type": "PRESTAG"
             },
-            "sent_hex": "0803120c08d0eda8d60610d0eda8d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
+            "sent_hex": "0803120c08d0eda8d60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606383c",
             "ui": [
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
@@ -2606,8 +2606,8 @@
                 "Logging Schedule > Period | int label=\"\" value=60 min=1 max=300 step=10 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Data sample period\"",
                 "Logging Schedule > Period | label text=\"Seconds\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791637200 min=1791637200 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791637200 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=0 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=1 enabled=1 tooltip=\"Start data collection at a specific time.\"",

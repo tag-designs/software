@@ -1,13 +1,14 @@
 ---
 type: readme
 status: current
-summary: How to build and run the tagcore offline UIUCTag format, decoder and end-to-end assertion checks.
+summary: How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
 ---
 
-# tagcore Offline Decoder Checks
+# tagcore Offline Checks
 
-Assertion programs that drive the tagcore log decoders with synthetic payloads,
-so a log format can be developed and regression checked with no tag attached.
+Assertion programs that drive tagcore code with synthetic input, so it can be
+developed and regression checked with no tag attached: the log decoders with
+synthetic payloads, and `ConfigShape` with the embedded default configs.
 
 They are plain `main()` programs with `assert()`, not a registered test
 framework, because this repository has no test harness to register with. Build
@@ -16,7 +17,7 @@ them explicitly:
 ```sh
 cmake -DBUILD_TAGCORE_CHECKS=ON <build-dir>
 cmake --build <build-dir> --target uiuctag_format_check uiuctag_decoder_check \
-      uiuctag_end_to_end_check
+      uiuctag_end_to_end_check config_shape_check
 ```
 
 Each writes its output into the working directory by default and takes optional
@@ -79,3 +80,24 @@ Neither side's own tests can see those.
 See the
 [UIUCTag test strategy](../../../../embedded/tags/UIUCTag/design/test-strategy.md)
 for how these fit together and what remains for a hardware run.
+
+## `config_shape_check`
+
+Checks `ConfigShape` (`../configshape.h`). It takes no arguments and prints
+`CONFIG SHAPE CHECK: all assertions passed`. It asserts that:
+
+- every embedded default config loads;
+- for every tag type, the shape gives exactly the field visibility that the
+  retired build-time generator (`cmake/GenerateConfigVisibility.cmake`)
+  produced. Its last output is frozen in the check as the reference;
+- `has()` and `isConfigPath()` tell a field a tag lacks from a name that is no
+  field at all;
+- `fromJson()` keeps zero-valued keys, accepts lowerCamelCase names and rejects
+  unknown keys, and `forFile()` limits a file to its own tag type's fields;
+- `merge()` copies a stated zero, keeps fields the file leaves out, never adds
+  a field the tag lacks, never copies `tag_type`, and copies `hibernate` only up
+  to the tag's own count.
+
+A default config edited to drop or add a field will fail the frozen-table
+comparison. That is intended: decide whether the change is wanted, then update
+the table in the check.

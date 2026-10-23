@@ -11,6 +11,7 @@
 #include <google/protobuf/util/json_util.h>
 #include <tag.pb.h>
 #include <tagclass.h>
+#include <configshape.h>
 #include <cxxopts.hpp>
 
 #ifdef _WIN64
@@ -47,7 +48,9 @@ static void intHandler(int dummy)
  * @param[in]     path  JSON file to read.
  * @param[in,out] cfg   On entry the tag's current configuration; on success the
  *                      configuration to program.
- * @param[in]     merge true to overlay onto @p cfg, false to replace it.
+ * @param[in]     merge true to overlay onto @p cfg, copying only the fields the
+ *                      tag supports and the file speaks for (ConfigShape::merge(),
+ *                      so a stated zero is copied); false to replace it.
  * @return true on success; false with a message on stderr if the file cannot be
  *         read or the JSON does not parse as a Config.
  */
@@ -76,10 +79,18 @@ static bool loadConfigJson(const std::string &path, Config &cfg, bool merge)
 
     if (merge)
     {
-        // MergeFrom leaves proto3 scalar fields that are zero in the source
-        // untouched, so a merged file cannot clear a value back to zero. Use
-        // --start-now for that, or omit --merge.
-        cfg.MergeFrom(parsed);
+        // Copy only the fields this tag supports and the file speaks for
+        // (ConfigShape::forFile): a zero the file states is copied, and a
+        // field the tag does not have is never added.
+        std::string shape_error;
+        const auto file_shape = ConfigShape::forFile(text, &shape_error);
+        if (!file_shape)
+        {
+            std::cerr << "Config JSON did not parse: " << shape_error
+                      << std::endl;
+            return false;
+        }
+        ConfigShape::forTag(cfg.tag_type()).merge(cfg, parsed, *file_shape);
     }
     else
     {
@@ -115,7 +126,7 @@ int main(int argc, char **argv)
         ("c,config", "Program this protobuf-JSON configuration before starting",
          cxxopts::value<std::string>(config_path))
         ("merge", "Overlay --config onto the tag's stored configuration rather "
-                  "than replacing it",
+                  "than replacing it: only fields the tag supports are copied",
          cxxopts::value<bool>(merge_config)->default_value("false"))
         ("set-rtc", "Synchronize the tag clock from the host before starting",
          cxxopts::value<bool>(set_rtc)->default_value("false"))

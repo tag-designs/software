@@ -15,6 +15,15 @@ Restore only replaces the values shown in the tab. Nothing reaches the tag until
 you write the configuration to it as usual, so you can restore a file, adjust a
 date, and then write.
 
+Restore applies only the settings the attached tag has:
+
+- A setting the file leaves out keeps its current value, so a file can hold
+  just the settings you want to change, for example only `act_thresh_g`.
+- A setting the file states is applied, including a zero.
+- A file saved from a different tag type contributes only the settings both
+  tag types have, typically the schedule. Its other settings are ignored,
+  including the defaults Tag Monitor writes for settings that type lacks.
+
 ## File Format
 
 The file is the `Config` message from `proto/tagdata.proto`, written as

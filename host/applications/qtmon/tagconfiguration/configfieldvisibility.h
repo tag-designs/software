@@ -29,6 +29,14 @@ struct ConfigFieldVisibility
   bool lsm6_gyro_rng = false;
 };
 
-const ConfigFieldVisibility &configFieldVisibilityForTag(TagType tag_type);
+/**
+ * @brief   Which configuration controls apply to a tag type.
+ *
+ * @param[in] tag_type  Attached tag's type.
+ * @return  One flag per control group and field, read from the tag type's
+ *          ConfigShape (its default configuration); all false for a tag type
+ *          with no default configuration.
+ */
+ConfigFieldVisibility configFieldVisibilityForTag(TagType tag_type);
 
 #endif // CONFIG_FIELD_VISIBILITY_H

@@ -346,7 +346,7 @@ design document.
 
 ### Applications / qtmon / tagconfiguration
 
-- [QtMonitor Configuration Modules](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor configuration modules edit Config, build-time field visibility from default configs, and adding tags, fields and modules.
+- [QtMonitor Configuration Modules](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor configuration modules edit Config, field visibility and Restore from ConfigShape (the tags' default configs), and adding tags, fields and modules.
 
 ### Applications / qtmon / test
 
@@ -413,7 +413,7 @@ design document.
 
 ### Libraries / tagcore
 
-- [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, SWD capture and recovery code, offline decoder checks - and links to its design documents.
+- [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
 - [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 - [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - taking btviz out of the standard build, hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 
@@ -441,7 +441,7 @@ design document.
 
 ### Libraries / tagcore / test
 
-- [tagcore Offline Decoder Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline UIUCTag format, decoder and end-to-end assertion checks.
+- [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
 
 ### Proposals
 

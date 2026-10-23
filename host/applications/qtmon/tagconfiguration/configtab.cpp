@@ -23,6 +23,7 @@
 #include "lsm6dsvconfig.h"
 #include "bittaglog.h"
 #include "configfieldvisibility.h"
+#include "configshape.h"
 #include "ui_configtab.h"
 #include "qtfiledialog.h"
 
@@ -149,53 +150,6 @@ void ConfigTab::UpdateSensorTabVisibility()
   if (!has_sensor_controls &&
       ui.configtabWidget->currentWidget() == ui.sensorTab) {
     ui.configtabWidget->setCurrentWidget(ui.scheduleTab);
-  }
-}
-
-static void mergeRestoredConfig(Config &target, const Config &restored)
-{
-  if (target.has_active_interval() && restored.has_active_interval())
-  {
-    const Config_Interval &interval = restored.active_interval();
-    if ((interval.start_epoch() != 0) || (interval.end_epoch() != 0))
-    {
-      *target.mutable_active_interval() = interval;
-    }
-  }
-
-  if ((target.hibernate_size() > 0) && (restored.hibernate_size() > 0))
-  {
-    const int count = std::min(target.hibernate_size(), restored.hibernate_size());
-    for (int i = 0; i < count; i++)
-    {
-      *target.mutable_hibernate(i) = restored.hibernate(i);
-    }
-  }
-
-  if ((target.period() != 0) && (restored.period() != 0))
-  {
-    target.set_period(restored.period());
-  }
-
-  if ((target.start_delay() != 0) && (restored.start_delay() != 0))
-  {
-    target.set_start_delay(restored.start_delay());
-  }
-
-  if ((target.bittag_log() != BITTAG_UNSPECIFIED) &&
-      (restored.bittag_log() != BITTAG_UNSPECIFIED))
-  {
-    target.set_bittag_log(restored.bittag_log());
-  }
-
-  if (target.has_adxl362() && restored.has_adxl362())
-  {
-    *target.mutable_adxl362() = restored.adxl362();
-  }
-
-  if (target.has_lsm6() && restored.has_lsm6())
-  {
-    *target.mutable_lsm6() = restored.lsm6();
   }
 }
 
@@ -442,9 +396,12 @@ void ConfigTab::on_configRestoreButton_clicked()
 /**
  * @brief Overlays a JSON configuration onto the current one and redisplays it.
  *
- * @details Parses @p json_text as a Config, merges it into the current
- *          configuration with mergeRestoredConfig(), and applies the result
- *          with SetConfig(). Shows no dialogs; on_configRestoreButton_clicked()
+ * @details Parses @p json_text as a Config, then copies into the current
+ *          configuration each field that the attached tag supports and the
+ *          file speaks for (ConfigShape::forFile() and merge(): a stated zero
+ *          is copied, a field the tag lacks is not, and a file written for
+ *          another tag type contributes only that type's fields), and applies
+ *          the result with SetConfig(). Shows no dialogs; on_configRestoreButton_clicked()
  *          reports the outcome to the user, and the configuration probe
  *          records it.
  *
@@ -470,8 +427,18 @@ ConfigTab::RestoreResult ConfigTab::RestoreFromJsonText(const std::string &json_
     return RestoreResult::ParseError;
   }
 
+  std::string shape_error;
+  const std::optional<ConfigShape> file_shape =
+      ConfigShape::forFile(json_text, &shape_error);
+  if (!file_shape)
+  {
+    if (detail)
+      *detail = QString::fromStdString(shape_error);
+    return RestoreResult::ParseError;
+  }
+
   Config merged = current_config_;
-  mergeRestoredConfig(merged, configin);
+  ConfigShape::forTag(merged.tag_type()).merge(merged, configin, *file_shape);
   if (!SetConfig(merged))
   {
     if (detail)

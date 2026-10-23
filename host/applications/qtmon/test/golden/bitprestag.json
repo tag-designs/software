@@ -5182,7 +5182,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 2147483647,
+                    "end_epoch": 1791464400,
                     "start_epoch": 0
                 },
                 "adxl362": {
@@ -5212,7 +5212,7 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "sent_hex": "0808120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -5246,8 +5246,8 @@
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
@@ -5267,7 +5267,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 1791637200,
+                    "end_epoch": 2147483647,
                     "start_epoch": 1791637200
                 },
                 "adxl362": {
@@ -5297,7 +5297,7 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120c08d0eda8d60610d0eda8d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "sent_hex": "0808120c08d0eda8d60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -5331,8 +5331,8 @@
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791637200 min=1791637200 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791637200 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=0 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=1 enabled=1 tooltip=\"Start data collection at a specific time.\"",
@@ -5448,8 +5448,8 @@
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
-                    "inactive_sec": 1,
+                    "inact_thresh_g": 0.35,
+                    "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -5467,15 +5467,15 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000403f2d8fc2f53c350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000403f2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.75 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
@@ -5533,8 +5533,8 @@
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
-                    "inactive_sec": 1,
+                    "inact_thresh_g": 0.35,
+                    "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -5552,15 +5552,15 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d8fc2f53c350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d3333b33e3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
@@ -5612,14 +5612,14 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
                     "inact_thresh_g": 0.75,
-                    "inactive_sec": 1,
+                    "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -5637,15 +5637,15 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d0000403f350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d0000403f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.75 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
@@ -5697,14 +5697,14 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
                     "inact_thresh_g": 0.03,
-                    "inactive_sec": 1,
+                    "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -5722,15 +5722,15 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d8fc2f53c350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d8fc2f53c3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
@@ -5782,13 +5782,13 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
+                    "inact_thresh_g": 0.35,
                     "inactive_sec": 1,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -5807,14 +5807,14 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d8fc2f53c350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e350000803f",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
@@ -5867,13 +5867,13 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
+                    "inact_thresh_g": 0.35,
                     "inactive_sec": 1,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -5892,14 +5892,14 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f258fc2f53c2d8fc2f53c350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e350000803f",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=1 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
@@ -5956,11 +5956,11 @@
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
-                    "filter": "AAquarter",
-                    "freq": "S50",
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
                     "inact_thresh_g": 0.5,
                     "inactive_sec": 1,
-                    "range": "R4G"
+                    "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
@@ -5977,7 +5977,7 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6063215080210031802250000003f2d0000003f350000803f",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d0000003f350000803f",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -6036,14 +6036,14 @@
                     "start_epoch": 0
                 },
                 "adxl362": {
-                    "accel_type": "AdxlType_367",
+                    "accel_type": "AdxlType_362",
                     "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
+                    "inact_thresh_g": 0.35,
                     "inactive_sec": 6,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -6062,14 +6062,14 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6063211250000003f2d8fc2f53c350000c0403801",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e350000c040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=6 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",
@@ -6468,7 +6468,7 @@
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.03,
+                    "inact_thresh_g": 0.35,
                     "inactive_sec": 10,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -6487,14 +6487,14 @@
                 "start_delay": 0,
                 "tag_type": "BITPRESTAG"
             },
-            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d8fc2f53c3500002041",
+            "sent_hex": "0808120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Active Threshold\" value=0.5 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up active threshold in g\"",
-                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.03 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactive Threshold\" value=0.35 min=0.03 max=2 step=0.03125 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL362 wake-up inactive threshold in g\"",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=10 min=1 max=255 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below inactive threshold at 6 Hz\"",
                 "Activity Wakeup > Activity Detection | label text=\"Active Threshold\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Inactive Threshold\" enabled=1",

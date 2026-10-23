@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How qtmonitor configuration modules edit Config, build-time field visibility from default configs, and adding tags, fields and modules.
+summary: How qtmonitor configuration modules edit Config, field visibility and Restore from ConfigShape (the tags' default configs), and adding tags, fields and modules.
 ---
 
 # QtMonitor Configuration Modules
@@ -13,8 +13,9 @@ QtMonitor uses the tag `Config` message for two related purposes:
 
 Because `Config` uses proto3, scalar fields with value `0` do not carry
 presence after protobuf parsing. QtMonitor therefore does not infer scalar
-field visibility from decoded values. Instead, visibility is generated at build
-time from each tag's `embedded/proto-c/*-proto-c/default-config.json`.
+field visibility from decoded values. Instead, which fields a tag supports comes
+from tagcore's `ConfigShape`, which reads each tag's
+`embedded/proto-c/*-proto-c/default-config.json` (embedded in the build).
 
 ## Model Flow
 
@@ -28,29 +29,31 @@ Configuration modules must treat `current_config_` as the base model. A module
 should only modify the fields it owns and should leave hidden or unsupported
 fields unchanged.
 
-Restore is a value overlay. A restored file is merged into the current
-tag-shaped config; it does not define the UI shape for the attached tag.
+Restore is a value overlay. `ConfigTab::RestoreFromJsonText()` copies into
+the current config each field the attached tag supports and the file speaks
+for, using `ConfigShape::forFile()` and `ConfigShape::merge()`:
 
-## Generated Visibility
+- a field the file leaves out keeps its value;
+- a field the file states is copied, zero included;
+- a file whose `tag_type` is another tag type speaks only for that type's
+  fields, so the zeros Save pads it with are not copied.
 
-`host/applications/qtmon/CMakeLists.txt` runs
-`cmake/GenerateConfigVisibility.cmake` over:
+A restored file never defines the UI shape for the attached tag.
+`tag-start --merge` uses the same merge.
 
-```text
-embedded/proto-c/*-proto-c/default-config.json
-```
+## Field Visibility
 
-The generated source provides:
+`configFieldVisibilityForTag()` (`configfieldvisibility.cpp`) fills the
+`ConfigFieldVisibility` table the modules read from
+`ConfigShape::forTag(tag_type)`, one `has("<path>")` per member. A field is
+visible for a tag type when its key appears in that type's default config,
+zero values included. This adapter is temporary: stage 1b of
+[Configuration Shape and Panels](../../../../docs/shared/design/proposals/config-shape-and-panels.md)
+replaces the modules and the table.
 
-```cpp
-const ConfigFieldVisibility &configFieldVisibilityForTag(TagType tag_type);
-```
-
-`ConfigFieldVisibility` lives in `configfieldvisibility.h`. It records JSON
-field presence, including scalar fields whose default value is zero.
-
-Default config files must use `tag_type`. A missing or misspelled `tag_type`
-is a build-time error.
+Default config files must use a valid `tag_type`. One that does not is skipped,
+with a message on stderr, and `config_shape_check` fails on it (see
+`host/libraries/tagcore/test/README.md`).
 
 ## Adding A New Tag
 
@@ -59,7 +62,7 @@ is a build-time error.
 3. Use `UNSPECIFIED` enum values only when the field should be present but have
    no selected operational value.
 4. Update firmware `readConfig()` and `writeConfig()` for the tag.
-5. Rebuild `qtmonitor`; the visibility table is regenerated automatically.
+5. Rebuild `qtmonitor`; the default config is picked up automatically.
 6. Verify that unsupported fields from restored config files are ignored.
 
 For existing QtMonitor modules, adding a field to the default JSON is enough to
@@ -69,15 +72,18 @@ visibility bit for it.
 ## Adding A New Field
 
 1. Add the field to `proto/tagdata.proto` if it does not already exist.
-2. Add a visibility bit to `ConfigFieldVisibility`.
-3. Update `GenerateConfigVisibility.cmake` to detect the JSON key. Include both
-   snake_case and lowerCamelCase spellings if both may appear in defaults.
-4. Update the owning configuration module to:
+2. Add a visibility bit to `ConfigFieldVisibility`, and set it in
+   `configfieldvisibility.cpp` from `has("<path>")`.
+3. Update the owning configuration module to:
    - show/hide the control from the visibility bit;
    - load the value from `Config` in `SetConfig()`;
    - write the value in `GetConfig()` only when the visibility bit is true.
-5. Add the field to the appropriate tag default JSON files.
-6. Update tag firmware conversion code.
+4. Add the field to the appropriate tag default JSON files.
+5. Update tag firmware conversion code.
+
+Restore and `tag-start --merge` handle the new field without change.
+Regenerate the configuration probe's cases and check the goldens
+(`host/applications/qtmon/test/README.md`).
 
 ## Adding A New Module
 
@@ -88,7 +94,7 @@ bool SetConfig(const Config &config,
                const ConfigFieldVisibility &visibility);
 ```
 
-`ConfigTab::SetConfig()` should pass the generated visibility object to the
+`ConfigTab::SetConfig()` should pass the visibility object to the
 module. The module should:
 
 - set `active = false` and hide itself when its top-level visibility bit is
@@ -150,5 +156,5 @@ config.start_delay() != 0
 config.adxl362().act_thresh_g() != 0.0f
 ```
 
-Use generated visibility for scalar-supported fields. Use decoded config values
+Use `ConfigShape` for which fields a tag supports. Use decoded config values
 only as values.

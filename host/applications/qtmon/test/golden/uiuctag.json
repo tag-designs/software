@@ -4158,7 +4158,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 2147483647,
+                    "end_epoch": 1791464400,
                     "start_epoch": 0
                 },
                 "adxl362": {
@@ -4188,7 +4188,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
+            "sent_hex": "080b120610d0a79ed6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -4220,8 +4220,8 @@
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791464400 min=1791464400 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791464400 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=1 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=0 enabled=1 tooltip=\"Start data collection at a specific time.\"",
@@ -4241,7 +4241,7 @@
             "restore": "Restored",
             "sent": {
                 "active_interval": {
-                    "end_epoch": 1791637200,
+                    "end_epoch": 2147483647,
                     "start_epoch": 1791637200
                 },
                 "adxl362": {
@@ -4271,7 +4271,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120c08d0eda8d60610d0eda8d6061a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
+            "sent_hex": "080b120c08d0eda8d60610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -4303,8 +4303,8 @@
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Hibernation | label text=\"Start\" enabled=1",
                 "Logging Schedule > Run | datetime label=\"\" value=1791637200 min=1791637200 max=253402300799 format=\"M/d/yy h:00 AP\" enabled=1 tooltip=\"Programmed date/time to halt data collection (UTC)\"",
-                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=0 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
-                "Logging Schedule > Run | radio text=\"Until\" checked=1 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
+                "Logging Schedule > Run | radio text=\"Indefinitely\" checked=1 enabled=1 tooltip=\"Collect data for as long as possible, until either battery or storage runs out.\"",
+                "Logging Schedule > Run | radio text=\"Until\" checked=0 enabled=1 tooltip=\"Stop collecting data at a specific time.\"",
                 "Logging Schedule > Start | datetime label=\"\" value=1791637200 min=1791460980 max=253402300799 format=\"M/d/yy h:mm Ap\" enabled=1 tooltip=\"Programmed date/time to start data collection (UTC)\"",
                 "Logging Schedule > Start | radio text=\"Immediately\" checked=0 enabled=1 tooltip=\"Start data collection as soon as possible.\"",
                 "Logging Schedule > Start | radio text=\"On   \" checked=1 enabled=1 tooltip=\"Start data collection at a specific time.\"",
@@ -4419,7 +4419,7 @@
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
                     "inact_thresh_g": 0,
-                    "inactive_sec": 3,
+                    "inactive_sec": 10,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -4437,13 +4437,13 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a253333333f3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a253333333f3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=10 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
                 "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.7 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
@@ -4502,7 +4502,7 @@
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
                     "inact_thresh_g": 0,
-                    "inactive_sec": 3,
+                    "inactive_sec": 10,
                     "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
@@ -4520,13 +4520,13 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a25cdcc4c3e3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a25cdcc4c3e3500002041",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
-                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
+                "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=10 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
                 "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.2 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
@@ -4578,7 +4578,7 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.2,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
@@ -4603,14 +4603,14 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a25cdcc4c3e3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
-                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.2 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.5 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
                 "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
@@ -4661,7 +4661,7 @@
                 },
                 "adxl362": {
                     "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.2,
+                    "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
@@ -4686,14 +4686,14 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a25cdcc4c3e3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
                 " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Activity Wakeup > Activity Detection | double label=\"Inactivity Samples\" value=3 min=3 max=12 step=1 decimals=0 prefix=\"\" suffix=\" samples\" enabled=1 tooltip=\"Samples below the inactivity threshold before the ADXL367 declares inactivity. Counted at its 6.25 Hz wake rate, so one sample is ~160 ms (e.g. 3 samples ≈ 0.48 s, 12 samples ≈ 1.92 s) -- not seconds directly.\"",
-                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.2 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
+                "Activity Wakeup > Activity Detection | double label=\"Wakeup Threshold\" value=0.5 min=0.2 max=0.7 step=0.05 decimals=2 prefix=\"\" suffix=\" g\" enabled=1 tooltip=\"ADXL367 wake-up threshold in g\"",
                 "Activity Wakeup > Activity Detection | label text=\"Inactivity Samples\" enabled=1",
                 "Activity Wakeup > Activity Detection | label text=\"Wakeup Threshold\" enabled=1",
                 "Activity Wakeup | group title=\"Activity Detection\" enabled=1 tooltip=\"Set Activity Detection Parameters\"",
@@ -4750,7 +4750,7 @@
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.35,
+                    "inact_thresh_g": 0,
                     "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -4769,7 +4769,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -4831,11 +4831,11 @@
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
                     "data_format": "DF_UNSPECIFIED",
-                    "filter": "AAquarter",
-                    "freq": "S50",
-                    "inact_thresh_g": 0.5,
+                    "filter": "Aa_UNSPESIFIED",
+                    "freq": "Odr_UNSPECIFIED",
+                    "inact_thresh_g": 0,
                     "inactive_sec": 3,
-                    "range": "R4G"
+                    "range": "Rng_UNSPECIFIED"
                 },
                 "bittag_log": "BITTAG_UNSPECIFIED",
                 "hibernate": [
@@ -4852,7 +4852,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6063215080210031802250000003f2d0000003f3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -4909,7 +4909,7 @@
                     "start_epoch": 0
                 },
                 "adxl362": {
-                    "accel_type": "AdxlType_367",
+                    "accel_type": "AdxlType_362",
                     "act_thresh_g": 0.5,
                     "active_sec": 0,
                     "channels": "AdxlChannel_UNSPECIFIED",
@@ -4935,7 +4935,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320c250000003f350000c0403801",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f350000c040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
@@ -4999,7 +4999,7 @@
                     "data_format": "DF_UNSPECIFIED",
                     "filter": "Aa_UNSPESIFIED",
                     "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.35,
+                    "inact_thresh_g": 0,
                     "inactive_sec": 3,
                     "range": "Rng_UNSPECIFIED"
                 },
@@ -5018,7 +5018,7 @@
                 "start_delay": 0,
                 "tag_type": "UIUCTAG"
             },
-            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320f250000003f2d3333b33e3500004040",
+            "sent_hex": "080b120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed606320a250000003f3500004040",
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",

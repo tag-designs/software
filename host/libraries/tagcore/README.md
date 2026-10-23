@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore responsibilities - USB and monitor communication, log writers, SWD capture and recovery code, offline decoder checks - and links to its design documents.
+summary: tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
 ---
 
 # TagCore Library
@@ -15,6 +15,11 @@ Responsibilities:
 - Log writing and storage interfaces: `taglogwriter.*`, `txtlogs.*`,
   `sqlitelog.*`
 - Host logging helpers: `log.*`
+- Which configuration fields each tag type supports, and merging a
+  configuration file into a tag's configuration: `configshape.*`. The shapes
+  come from the tags' `embedded/proto-c/*-proto-c/default-config.json`, which
+  this directory's `CMakeLists.txt` embeds as text in a generated
+  `defaultconfigs.cc`.
 - Shared protocol-facing definitions used by CLI tools and Qt apps
 
 SQLite log writing is split between the public `sqlitelog.*` wrapper and the
@@ -44,7 +49,8 @@ path:
 - `capturesource`: rebuilds a download from a capture, behind `tag-rebuild`;
 - `sha256`: hashes captured regions for the manifest.
 
-`test/` holds standalone offline decoder checks; see
+`test/` holds standalone offline checks, of the decoders and of `ConfigShape`;
+see
 [`test/README.md`](test/README.md).
 
 Design documents:

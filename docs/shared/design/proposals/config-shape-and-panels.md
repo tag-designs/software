@@ -255,7 +255,7 @@ sets:
 
 ```cpp
 std::string error;
-auto file_shape = ConfigShape::fromJson(text, &error);
+auto file_shape = ConfigShape::forFile(text, &error);   // fromJson(), limited to the file's own tag type
 Config file_config;   // the same text, parsed into Config
 ...
 shape.merge(current_config_, file_config, *file_shape);
@@ -726,9 +726,13 @@ fingerprint is the precise one.
    69 cases, `sent` differed between tabs. The four `isVisible()` tests are now
    `!isHidden()`. Exactly those 69 cases changed, each to the configuration the
    Sensors tab already sent.
-2. **Stage 1:** `ConfigShape`, the merge in qtmonitor and `tag-start`, the
-   adapter, T1. Delete the generator. T4 shows only the restore-zero
-   differences.
+2. **Stage 1** (done 2026-10-23): `ConfigShape`, the merge in qtmonitor and
+   `tag-start`, the adapter, T1. The generator is deleted. Building it surfaced
+   one addition, `ConfigShape::forFile()`. Save pads a file with zeros for
+   fields its tag lacks, so a file speaks only for its own tag type's fields.
+   Without that, a BitTagNG file restored onto a BitTag copied its padded
+   `BITTAG_UNSPECIFIED` log format. T4 showed 68 changed cases, all restores,
+   each listed by kind in `expected-differences.md`.
 3. **Stage 1b:** the panels on one page, `kPanelsForTag`, T6. Delete the
    modules, the adapter and `ConfigFieldVisibility`. T4 shows no differences.
    Rebuild the screenshots. Run T7 once.
