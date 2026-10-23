@@ -29,7 +29,8 @@ This is the packaged user-facing mode.
 
 Fixture mode is a maintainer-only path for generating documentation screenshots
 from captured fake-tag data. It is enabled with `--fake-fixture` and never calls
-`Tag::Attach()`.
+`Tag::Attach()`. Its code, with the screenshot capture, is in
+`mainwindow_fixture.cpp`, apart from the live window in `mainwindow.cpp`.
 
 The fixture loader reads `host/docs/fixtures/qtmonitor/*.json`, parses the
 embedded protobuf JSON objects into `TagInfo`, `Config`, and named `Status`
