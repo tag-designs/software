@@ -7,6 +7,7 @@
 #include <QProcess>
 #include "tagclass.h"
 #include "ui_mainwindow.h"
+#include "flashplan.h"
 
 class QWidget;
 class QTextEdit;
@@ -19,6 +20,7 @@ class LogScreen;
      STOPPING,
      ERASING,
      PROGRAMMING,
+     CONNECTING,   ///< Waiting for the newly programmed tag to answer.
      TESTING,
      FINISHED,
      FAILED
@@ -75,6 +77,29 @@ private slots:
   // Programming helpers
 
   void programStateMachine(bool erase);
+  /**
+   * @brief Looks for USB tag bases and selects one, asking when there are
+   *        several. With none, the window stays open and says so; Connect
+   *        looks again.
+   * @return true when a base is selected.
+   */
+  bool findBase();
+  /**
+   * @brief Finds STM32_Programmer_CLI: the location saved from an earlier
+   *        choice, then STM32CUBEPROGRAMMER (the tool's path),
+   *        STM32_PRG_PATH (its directory), the PATH, and the usual install
+   *        directories, as embedded/tools/flash_release.py does.
+   * @return The tool's path, or an empty string when none was found.
+   */
+  QString findProgrammer() const;
+  /// Shows @p path as the image to program, enabling Program when it exists.
+  void setImage(const QString &path);
+  /**
+   * @brief Asks the user to confirm, naming the tag, the image, the erase
+   *        and what is lost and kept.
+   * @return true to program.
+   */
+  bool confirmProgram(const FlashPlan &plan);
   void processOutput();
   int flashTag();
 
@@ -92,6 +117,10 @@ private:
   UsbDev usbdev;
   QProcess *process;
   QString program;
+  FlashPlan plan_;            ///< Erase for the program in progress.
+  QString failure_;           ///< Why the last program failed, for the user.
+  int wait_ticks_ = 0;
+  bool have_base_ = false;    ///< A USB base was found and selected (usbdev).        ///< State-machine ticks spent in the current wait.
   int eraseSectorMaximum(const Status &status) const;
 };
 

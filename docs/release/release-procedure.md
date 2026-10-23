@@ -260,6 +260,10 @@ it no longer understands, is not reported. So:
 - **Other STM32L432 tags, or any upgrade that changes the calibration
   format:** mass erase and reprovision.
 
+qtprogram applies the same rule, read from the image's linker symbols
+(`host/applications/qtprogram/flashplan.cpp`); `qtprogram --flash-plan
+<elf>...` prints the erase it would use.
+
 **Erase and program in one invocation.** `flash_release.py --erase` passes
 `-e all` and `-d <image>` to the same programmer call, which is what avoids the
 bootloader problem rather than recovering from it: two separate invocations

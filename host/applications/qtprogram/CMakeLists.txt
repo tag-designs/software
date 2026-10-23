@@ -43,6 +43,7 @@ endif()
 
 set(qtprogram_SRCS
     custommessagebox.cpp
+    flashplan.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp)

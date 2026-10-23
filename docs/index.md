@@ -357,6 +357,10 @@ design document.
 - [qtmonitor Configuration Probe](../host/applications/qtmon/test/README.md) — How to run qtmonitor's configuration probe over the committed cases, compare the results with the golden set, and regenerate cases or goldens.
 - [Expected Differences in the Configuration Probe](../host/applications/qtmon/test/expected-differences.md) *(results)* — Every accepted change to the qtmonitor configuration-probe goldens, newest first, with the commit, the cases affected and the reason.
 
+### Applications / qtprogram
+
+- [qtprogram](../host/applications/qtprogram/README.md) — qtprogram (Tag Programmer) source layout, how it chooses the internal-flash erase from the image's linker symbols, its program sequence, and its remembered settings.
+
 ### Applications / sensorviz
 
 - [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.

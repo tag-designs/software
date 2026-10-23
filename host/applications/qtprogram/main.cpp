@@ -13,6 +13,9 @@
 #include "tagclass.h" */
 
 #include "mainwindow.h"
+#include "flashplan.h"
+#include <QFileInfo>
+#include <cstdio>
 #include "ui_mainwindow.h"
 #include "qthoststyle.h"
 
@@ -94,6 +97,20 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
+  QCoreApplication::setOrganizationName(QStringLiteral("tag-designs"));
+  QCoreApplication::setApplicationName(QStringLiteral("qtprogram"));
+
+  // qtprogram --flash-plan <elf>...: print the erase each image would get, and
+  // exit. Checks the plan without a tag or programmer.
+  const QStringList args = QCoreApplication::arguments();
+  if (args.size() > 1 && args.at(1) == QLatin1String("--flash-plan")) {
+    for (const QString &path : args.mid(2)) {
+      const FlashPlan plan = planFlash(path);
+      std::printf("%s | %s | %s\n", qPrintable(QFileInfo(path).fileName()),
+                  qPrintable(plan.eraseArgs().join(' ')), qPrintable(plan.summary()));
+    }
+    return 0;
+  }
   HostStyle::apply(a);
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;

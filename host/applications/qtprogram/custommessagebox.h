@@ -26,6 +26,8 @@ public slots:
     void setText(QString text);
     void setMaximum(int max);
     void setValue(int value);
+    /// Starts without waiting for OK, for a caller that has already confirmed.
+    void start() { onOkButtonClicked(); }
 
 private slots:
     

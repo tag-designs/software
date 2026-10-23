@@ -15,6 +15,12 @@
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
 #include <QProcessEnvironment>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QFileInfo>
+#include <QDir>
+#include <QPushButton>
+#include <algorithm>
 
 #include <QFuture>
 
@@ -52,7 +58,7 @@ int roundedSectorCount(qint64 bytes, int sector_size)
 
 } // namespace
 
-#define title_string "Tag Programmer v1.0"
+#define title_string "Tag Programmer v1.1"
 
 
 // main window
@@ -69,51 +75,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
       tr("%1\n\nErase, program and test a tag's firmware through a "
          "programmer or USB base.").arg(title_string));
 
-  // Find base
+  // Find base. With none, the window still opens, so it can be looked at
+  // and its programmer and image set; Connect looks again.
 
-  std::vector<UsbDev> usbdevs;
-  if (!tag.Available(usbdevs) || (usbdevs.size() == 0))
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Warning");
-    msgBox.setText("No Tag Bases Found");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-    QTimer::singleShot(0, this, SLOT(close()));;
-  }
-
-  int index = 0;
-  if (usbdevs.size() > 1)
-  {
-    QStringList items;
-
-    for (int j = 0; j < usbdevs.size(); j++)
-    {
-      QString bus = QString::number(usbdevs[j].bus).rightJustified(3, '0');
-      QString address = QString::number(usbdevs[j].address).rightJustified(3, '0');
-      QString vid = QString::number(usbdevs[j].vid, 16); //.rightJustified(4,'0');
-      QString pid = QString::number(usbdevs[j].pid, 16); //.rightJustified(4,'0');
-      QString s = QString("%1:%2    0x%3:0x%4").arg(bus, address, vid, pid);
-      items << s;
-    }
-
-    QInputDialog *inputDialog = new QInputDialog();
-    inputDialog->setOption(QInputDialog::UseListViewForComboBoxItems);
-    inputDialog->setComboBoxItems(items);
-    inputDialog->setWindowTitle("Available Bases");
-    inputDialog->setLabelText("Please select a base");
-    if (!inputDialog->exec())
-      QTimer::singleShot(0, this, SLOT(close()));;
-    QString item = inputDialog->textValue();
-    if (!item.isEmpty())
-    {
-      index = items.indexOf(item);
-    }
-    if (index > usbdevs.size())
-      index = 0;
-
-    usbdev = usbdevs[index];
-  }
+  findBase();
 
   // Tag state poll timer
 
@@ -121,22 +86,146 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 
   // attach if possible to collect tag information
 
-  QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-  program = env.value("STM32CUBEPROGRAMMER");
-
-  if (program.isEmpty())
-    program = "Set Environment Variable STM32CUBEPROGAMMER to programming tool";
-
+  program = findProgrammer();
   ui.programmingTool->setText(program);
+  ui.programmingTool->setPlaceholderText(
+      tr("STM32_Programmer_CLI not found: choose it with the button"));
+  ui.fileName->setPlaceholderText(tr("Choose the firmware .elf to program"));
+  setImage(QSettings().value("lastImage").toString());
 
-  //ui.programButton->setEnabled(true);
-  if (Attach())
+  if (have_base_ && Attach())
     tag.Detach();
 }
 
 MainWindow::~MainWindow()
 {
   tag.Detach();
+}
+
+bool MainWindow::findBase()
+{
+  std::vector<UsbDev> usbdevs;
+  have_base_ = false;
+  if (!tag.Available(usbdevs) || usbdevs.empty()) {
+    ui.statusBar->showMessage(tr("No tag base found. Connect one and press Connect."));
+    qInfo() << "No tag base found";
+    return false;
+  }
+
+  size_t index = 0;
+  if (usbdevs.size() > 1) {
+    QStringList items;
+    for (const UsbDev &dev : usbdevs) {
+      QString bus = QString::number(dev.bus).rightJustified(3, '0');
+      QString address = QString::number(dev.address).rightJustified(3, '0');
+      items << QString("%1:%2    0x%3:0x%4")
+                   .arg(bus, address, QString::number(dev.vid, 16),
+                        QString::number(dev.pid, 16));
+    }
+    bool ok = false;
+    const QString item = QInputDialog::getItem(this, tr("Available Bases"),
+                                               tr("Please select a base"), items, 0,
+                                               false, &ok);
+    if (!ok)
+      return false;
+    index = std::max<qsizetype>(0, items.indexOf(item));
+  }
+  usbdev = usbdevs[index];
+  have_base_ = true;
+  ui.statusBar->clearMessage();
+  return true;
+}
+
+QString MainWindow::findProgrammer() const
+{
+  auto usable = [](const QString &path) {
+    const QFileInfo info(path);
+    return !path.isEmpty() && info.isFile() && info.isExecutable();
+  };
+  const QString saved = QSettings().value("programmer").toString();
+  if (usable(saved))
+    return saved;
+  const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+  if (usable(env.value("STM32CUBEPROGRAMMER")))
+    return env.value("STM32CUBEPROGRAMMER");
+#ifdef Q_OS_WIN
+  const QString cli = QStringLiteral("STM32_Programmer_CLI.exe");
+#else
+  const QString cli = QStringLiteral("STM32_Programmer_CLI");
+#endif
+  if (env.contains("STM32_PRG_PATH") && usable(QDir(env.value("STM32_PRG_PATH")).filePath(cli)))
+    return QDir(env.value("STM32_PRG_PATH")).filePath(cli);
+  const QString onPath = QStandardPaths::findExecutable(cli);
+  if (!onPath.isEmpty())
+    return onPath;
+  QStringList roots;
+#if defined(Q_OS_MACOS)
+  const QString bundle =
+      "STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin";
+  roots << QDir::home().filePath("Software/" + bundle)
+        << "/Applications/STMicroelectronics/" + bundle;
+#elif defined(Q_OS_WIN)
+  roots << "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin";
+#else
+  roots << QDir::home().filePath("Software/STM32CubeProgrammer/bin")
+        << "/opt/st/stm32cubeprog/bin";
+#endif
+  for (const QString &root : roots)
+    if (usable(QDir(root).filePath(cli)))
+      return QDir(root).filePath(cli);
+  return QString();
+}
+
+void MainWindow::setImage(const QString &path)
+{
+  const bool exists = !path.isEmpty() && QFileInfo::exists(path);
+  ui.fileName->setText(exists ? path : QString());
+  ui.programButton->setEnabled(exists);
+}
+
+bool MainWindow::confirmProgram(const FlashPlan &plan)
+{
+  const bool attached = tag.IsAttached();
+  const bool calibrated = attached && (tag_type == COMPASSTAG || tag_type == IMUTAG);
+  const QString bullet = QStringLiteral("\u2022 ");
+  QStringList lost, kept;
+  if (attached)
+    lost << tr("The tag's log. Download it first with Tag Monitor.");
+  lost << tr("The tag's stored configuration.");
+  if (calibrated && !plan.keepsCalibration())
+    lost << tr("Its calibration constants: this image keeps no calibration page. "
+               "Is it the right image for this tag?");
+  if (calibrated && plan.keepsCalibration())
+    kept << tr("Its calibration constants.");
+  kept << tr("The RTC trim and the board UUID.");
+
+  QString text = attached
+      ? tr("Erase and program %1 %2?")
+            .arg(QString::fromStdString(std::string(TagType_Name(tag_type))),
+                 ui.info_uuid->text())
+      : tr("Program the tag on the programmer?");
+  QString detail = tr("Image: %1\n%2\n\nLost:\n%3\n\nKept:\n%4")
+                       .arg(QFileInfo(ui.fileName->text()).fileName(), plan.summary(),
+                            bullet + lost.join("\n" + bullet),
+                            bullet + kept.join("\n" + bullet));
+  if (!attached)
+    detail += tr("\n\nNo tag answers through a base, so its log cannot be "
+                 "erased by its own firmware first.");
+  if (plan.erase == FlashPlan::Erase::All)
+    detail += tr("\n\nIf the tag does not answer afterwards, power-cycle it "
+                 "and press Connect.");
+
+  QMessageBox box(this);
+  box.setIcon(QMessageBox::Warning);
+  box.setWindowTitle(tr("Program Tag"));
+  box.setText(text);
+  box.setInformativeText(detail);
+  QPushButton *go = box.addButton(tr("Erase and Program"), QMessageBox::AcceptRole);
+  QPushButton *cancel = box.addButton(QMessageBox::Cancel);
+  box.setDefaultButton(cancel);
+  box.setEscapeButton(cancel);
+  box.exec();
+  return box.clickedButton() == go;
 }
 
 int MainWindow::eraseSectorMaximum(const Status &status) const
@@ -279,7 +368,11 @@ int MainWindow::flashTag(){
   // program arguments
 
   QStringList args;
-  args << "-c" << "port=SWD" << "mode=UR" << "-d" << ui.fileName->text() << "-q" << "-g" << "0x08000000";
+  // Erase and program in one invocation: two leave a reset between them with
+  // the flash empty, which latches FLASH_SR.PEMPTY (release procedure).
+  args << "-c" << "port=SWD" << "mode=UR" << plan_.eraseArgs() << "-d"
+       << ui.fileName->text() << "-q" << "-g" << "0x08000000";
+  qInfo().noquote() << "Programming:" << program << args.join(' ');
 
   // connect process output 
 
@@ -305,89 +398,106 @@ int MainWindow::flashTag(){
 
 void MainWindow::programStateMachine(bool erase_only)
 {
-  bool attached = tag.IsAttached();
+  // Called once a second. A tag that is not IDLE is stopped if it is running
+  // and then erased by its own firmware, which knows its log's layout, before
+  // the new image is written.
+  const bool attached = tag.IsAttached();
+  const TagState state = current_state;
+  auto fail = [this](const QString &why) {
+    failure_ = why;
+    qWarning().noquote() << "Programming failed:" << why;
+    programming_state = ProgrammingState::FAILED;
+  };
   Config config;
   switch (programming_state) {
      case ProgrammingState::READY:
-        qDebug() << "Ready";
+        failure_.clear();
+        wait_ticks_ = 0;
         programming_state = ProgrammingState::STOPPING;
-        if (attached && ((current_state == RUNNING) || (current_state == HIBERNATING))) 
-        { 
-          qDebug() << "tag.IsAttached() " << tag.IsAttached() << " tag.Stop() "  << tag.Stop();
+        if (attached && state != IDLE && state != ABORTED && state != FINISHED &&
+            state != TEST && state != sRESET) {
+          qInfo() << "Stopping the tag, which is" << TagState_Name(state).c_str();
+          tag.Stop();
         }
-        qDebug() << "Stopping";
         break;
       case ProgrammingState::STOPPING:
-        
-        if (attached && ((current_state == RUNNING) || (current_state == HIBERNATING)))
-        {
+        if (attached && state != IDLE) {
+          if (state == ABORTED || state == FINISHED) {
+            qInfo() << "Erasing the tag's log";
+            if (!tag.Erase()) {
+              fail(tr("The tag refused the erase."));
+              break;
+            }
+            wait_ticks_ = 0;
+            programming_state = ProgrammingState::ERASING;
+            break;
+          }
+          // Still stopping, testing, or finishing an earlier erase.
+          if (++wait_ticks_ > 30)
+            fail(tr("The tag stayed %1. Stop and erase it in Tag Monitor, then "
+                    "program again.").arg(TagState_Name(state).c_str()));
           break;
         }
         programming_state = ProgrammingState::ERASING;
-        if (attached && ((current_state == ABORTED) || (current_state == FINISHED)))
-        {
-          qDebug() << "Erasing";
-          if (!tag.Erase())
-          {
-            qDebug() << "tag reset returned false";
-            return;  // exit state machine
-          } 
-          break;
-        }     
+        [[fallthrough]];
       case ProgrammingState::ERASING:
-        if (attached && ((current_state == sRESET) || (current_state == ABORTED) || (current_state == FINISHED)))
+        if (attached && (state == sRESET || state == ABORTED || state == FINISHED))
+          break;  // the erase sweep is still running
+        if (attached && state != IDLE) {
+          fail(tr("The tag did not return to IDLE after its erase (it is %1).")
+                   .arg(TagState_Name(state).c_str()));
           break;
-        if (attached){
-          Detach();
         }
+        if (attached)
+          Detach();
         // Here we check if this is an erase only run (no programming or testing)
         if (erase_only) {
           programming_state = ProgrammingState::FINISHED;
           qDebug() << "Finished";
           break;
-        } else {
-          programming_state = ProgrammingState::PROGRAMMING;
-          qDebug() << "Programming";
         }
+        programming_state = ProgrammingState::PROGRAMMING;
+        qDebug() << "Programming";
+        [[fallthrough]];
       case ProgrammingState::PROGRAMMING:
         if (flashTag()) {
-          programming_state = ProgrammingState::FAILED;
+          fail(tr("STM32_Programmer_CLI failed; its output is in the log below."));
           break;
         }
-        Attach();
-        
-        if (attached) 
-        {
-          qDebug() << "Testing";
-          tag.SetRtc();
-          tag.Test(RUN_ALL);
-          programming_state = ProgrammingState::TESTING;
-          break;
-        } 
-        else 
-        {
-          programming_state = ProgrammingState::FAILED;
+        wait_ticks_ = 0;
+        programming_state = ProgrammingState::CONNECTING;
+        break;
+      case ProgrammingState::CONNECTING:
+        // The new image needs a moment to start before it answers.
+        if (!tag.IsAttached() && !(have_base_ && Attach())) {
+          if (++wait_ticks_ > 5)
+            fail(plan_.erase == FlashPlan::Erase::All
+                     ? tr("Programmed, but the tag does not answer. Power-cycle it "
+                          "and press Connect.")
+                     : tr("Programmed, but the tag does not answer through the base."));
           break;
         }
+        qDebug() << "Testing";
+        tag.SetRtc();
+        tag.Test(RUN_ALL);
+        programming_state = ProgrammingState::TESTING;
+        break;
       case ProgrammingState::TESTING:
-        if (attached && (current_state == TEST))
-        {
-          if (current_state == TEST)
-            break;
-          // reset clock
-          tag.SetRtc();
-        }
+        if (attached && state == TEST)
+          break;
         qDebug() << "Tests Complete";
-       
+        tag.SetRtc();
+        // Start and stop once, then erase through the state machine again
+        // (erase_only), so the new firmware lays out its own log and
+        // persistent region before the tag is deployed.
         if (tag.GetConfig(config)) {
           tag.Start(config);
           programming_state = ProgrammingState::READY;
-          erase_only = true; 
+          erase_only = true;
         } else {
-          programming_state = ProgrammingState::FAILED;
+          fail(tr("The programmed tag did not report its configuration."));
         }
         break;
-        //programming_state = ProgrammingState::FINISHED;
       case ProgrammingState::FINISHED:
         qDebug() << "Finished";
         Detach();
@@ -403,22 +513,37 @@ void MainWindow::programStateMachine(bool erase_only)
 
 void MainWindow::on_programButton_clicked(){
   programming_state = ProgrammingState::READY;
-  if (!tag.IsAttached())
+  if (!have_base_)
+    findBase();
+  if (have_base_ && !tag.IsAttached())
     Attach();
-  //int ret;
 
-  // check if programming tool exists
   if (program.isEmpty() || !QFile::exists(program)){
-    QMessageBox msgBox;
-    msgBox.setText("Programming Tool not found");
-    msgBox.exec();
-    qDebug() << "no program: " << program;
+    QMessageBox::warning(this, tr("Program Tag"),
+                         tr("STM32_Programmer_CLI was not found. Choose it with the "
+                            "programming tool button."));
     return;
-  } 
+  }
+
+  plan_ = planFlash(ui.fileName->text());
+  if (plan_.erase == FlashPlan::Erase::Invalid) {
+    QMessageBox::warning(this, tr("Program Tag"), plan_.error);
+    return;
+  }
+  if (tag.IsAttached() && (tag_type == IMUTAG) != (plan_.pageSize == 4096)) {
+    QMessageBox::warning(
+        this, tr("Program Tag"),
+        tr("This image is for an %1 tag, and the attached tag is %2.")
+            .arg(plan_.pageSize == 4096 ? "STM32U375 (IMUTag)" : "STM32L432",
+                 QString::fromStdString(std::string(TagType_Name(tag_type)))));
+    return;
+  }
+  if (!confirmProgram(plan_))
+    return;
+  QSettings().setValue("lastImage", ui.fileName->text());
 
   CustomMessageBox msgBox = CustomMessageBox("Programming Tag",this);
-
-  // connect signals
+  msgBox.setWindowTitle(tr("Programming Tag"));
 
   if (tag.IsAttached()) {
     Status status;
@@ -446,6 +571,9 @@ void MainWindow::on_programButton_clicked(){
         case ProgrammingState::PROGRAMMING:
           msgBox.setText("Programming");
           break;
+        case ProgrammingState::CONNECTING:
+          msgBox.setText("Connecting");
+          break;
         case ProgrammingState::TESTING:
           msgBox.setText("Testing");
           break;
@@ -457,42 +585,43 @@ void MainWindow::on_programButton_clicked(){
     }
   });
 
+  // Confirmed already: start at once rather than asking again.
+  QTimer::singleShot(0, &msgBox, &CustomMessageBox::start);
   msgBox.exec();
   if (programming_state == ProgrammingState::FAILED) {
-    QMessageBox msgBox;
-    msgBox.setText("Programming Failed");
-    msgBox.exec();
+    QMessageBox::warning(this, tr("Program Tag"),
+                         tr("Programming failed.\n\n%1").arg(failure_));
+  } else if (ui.info_testStatus->text() != "ALL_PASSED") {
+    QMessageBox::warning(this, tr("Program Tag"),
+                         tr("Programmed, but the self-test reported %1.")
+                             .arg(ui.info_testStatus->text()));
   } else {
-    if (ui.info_testStatus->text() != "ALL_PASSED"){
-      QMessageBox msgBox;
-      msgBox.setText("Test Failed");
-      msgBox.exec();
-    }
+    QMessageBox::information(this, tr("Program Tag"),
+                             tr("Programmed and tested: ALL_PASSED. The tag is "
+                                "erased and IDLE."));
   }
 }
 
 void MainWindow::on_fileSelectButton_clicked()
 {
- 
+  const QString last = ui.fileName->text();
   QString filename = HostFileDialog::getOpenFileName(
-      this, tr("binary file to program"), QDir::homePath(),
-      tr("Binary (*.bin *.elf);;All Files (*)"));
-  if (!filename.isNull()) {
-    ui.fileName->setText(filename);
-    ui.programButton->setEnabled(true);
-  } else {
-    ui.programButton->setEnabled(false);
-  }
+      this, tr("Firmware image to program"),
+      last.isEmpty() ? QDir::homePath() : QFileInfo(last).absolutePath(),
+      tr("Firmware ELF (*.elf);;All Files (*)"));
+  if (!filename.isNull())
+    setImage(filename);
 }
 
 void MainWindow::on_toolSelectButton_clicked()
 {
- 
   QString filename = HostFileDialog::getOpenFileName(
-      this, tr("STM32 Programming CLI Tool"), QDir::homePath());
+      this, tr("STM32 Programming CLI Tool"),
+      program.isEmpty() ? QDir::homePath() : QFileInfo(program).absolutePath());
   if (!filename.isNull()) {
     ui.programmingTool->setText(filename);
     program = filename;
+    QSettings().setValue("programmer", filename);
   }
 }
 
@@ -509,7 +638,10 @@ void MainWindow::processOutput(){
 }
 
 void MainWindow::on_connectButton_clicked(){
-  Attach();
+  if (!have_base_ && !findBase())
+    return;
+  if (!Attach())
+    ui.statusBar->showMessage(tr("No tag answers through the base."));
 }
 void MainWindow::on_disconnectButton_clicked(){
   Detach();
