@@ -27,6 +27,7 @@ and [decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-
 | `golden/<tag>.json` | Results from the reference build. Every comparison is made against these. |
 | `expected-differences.md` | Every accepted change to the goldens, with its reason. |
 | `action-states.txt` | Which commands are enabled in which state; see below. |
+| `start-checks.txt` | Which start checks fail for which clock, self-test and approval; see below. |
 | `probe.sh` | Runs a qtmonitor build over `cases/`. |
 | `compare.py` | Compares two result directories. |
 | `config_probe_cases.cc` | Generates `cases/`. |
@@ -160,6 +161,20 @@ No output means nothing changed. The table was checked, row for row, against
 the enabling rules of the buttons it replaced. A change to when a command is
 available updates the table in the same commit, so the review shows exactly
 which rows moved.
+
+## Which start checks fail when
+
+`qtmonitor --check-start-checks` prints which of Start's checks fail
+(`MainWindow::startCheckFailures()`) for every combination of a clock offset
+on and either side of the 2 s tolerance, a reported self-test result, and
+Approved ticked or not:
+
+```sh
+QT_QPA_PLATFORM=offscreen <qtmonitor> --check-start-checks | \
+    diff - host/applications/qtmon/test/start-checks.txt
+```
+
+No output means nothing changed.
 
 ## What the probe does not cover
 

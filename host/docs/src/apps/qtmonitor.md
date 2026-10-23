@@ -32,8 +32,9 @@ and Download Data a finished one.
 The **status strip** below the tabs is visible on every tab. It shows
 whether a tag is **Attached** or **Detached**, the tag's type (hover over it for
 the board UUID), its state, how far its clock is from this computer's, its
-voltage, and its self-test result. **Start** and **Stop** are on the right of
-the strip.
+voltage, and its self-test result. A clock more than 2 s off, or a self-test
+result other than ALL_PASSED, is shown in red. **Approved**, **Start** and
+**Stop** are on the right of the strip.
 
 ### Opening screen
 
@@ -101,6 +102,22 @@ keeps a configuration you opened or created; to work on the tag's own instead,
 choose **Tag ▸ Read Configuration**. While a tag is running, its own
 configuration is shown but cannot be edited.
 
+### Start checks
+
+Before it starts a tag, **Start** checks that:
+
+- the tag's clock is within 2 s of this computer's;
+- the tag reports its self-test as ALL_PASSED;
+- **Approved** is ticked in the status strip.
+
+Tick **Approved** once you have reviewed the configuration. Any change to the
+configuration's values clears it: an edit, New, Open, Read Configuration or
+Reset. Saving does not.
+
+If a check fails, Start lists what failed and asks whether to **Start Anyway**
+or **Cancel**; Cancel is the default. A tag started anyway is recorded in the
+Error Log with its type, UUID and the checks that failed.
+
 These commands are also on the page's popup menu.
 
 ### Error Log
@@ -120,10 +137,11 @@ log to copy, save or clear it.
 3. Synchronize the tag clock.
 4. Run the self-tests and resolve any reported problem.
 5. Configure the schedule and any sensor settings for the experiment.
-6. Press **Start** to write the configuration and begin logging.
-7. After logging finishes, download the tag's data before erasing or
+6. Review the configuration and tick **Approved**.
+7. Press **Start** to write the configuration and begin logging.
+8. After logging finishes, download the tag's data before erasing or
    redeploying.
-8. Use the Error Log when attach, configuration, test, or download behavior is
+9. Use the Error Log when attach, configuration, test, or download behavior is
    unexpected.
 
 ## Tag Configuration

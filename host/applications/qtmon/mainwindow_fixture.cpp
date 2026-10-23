@@ -34,6 +34,7 @@
 #include "tag.pb.h"
 
 #include "tagconfiguration/configtab.h"
+#include "tagstatusstrip.h"
 
 namespace
 {
@@ -483,7 +484,7 @@ void MainWindow::captureStartupScreenshot()
     ui.mainTabWidget->setCurrentWidget(ui.targetTab);
     waitForGuiToSettle(200);
     ok = saveCurrentScreenshot(screenshotPath("qtmonitor-startup.png"),
-                               QSize(1000, 760), QSize(1060, 790));
+                               QSize(1100, 760), QSize(1160, 790));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -521,8 +522,8 @@ void MainWindow::captureMainScreenshots()
     applyFakeState(state);
     waitForGuiToSettle(250);
     ok = saveCurrentScreenshot(screenshotPath(
-        QString("qtmonitor-main-%1.png").arg(state)), QSize(1000, 760),
-        QSize(1060, 790));
+        QString("qtmonitor-main-%1.png").arg(state)), QSize(1100, 760),
+        QSize(1160, 790));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -559,7 +560,7 @@ void MainWindow::captureConfigScreenshots()
     waitForGuiToSettle(250);
     ok = saveCurrentScreenshot(
         screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
-        QSize(1000, 1400));
+        QSize(1100, 1400));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -586,7 +587,7 @@ void MainWindow::captureErrorLogScreenshot()
     ui.mainTabWidget->setCurrentWidget(ui.errorTab);
     waitForGuiToSettle(200);
     ok = saveCurrentScreenshot(screenshotPath("qtmonitor-error-log.png"),
-                               QSize(1000, 560));
+                               QSize(1100, 560));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -655,5 +656,37 @@ QString MainWindow::actionStateTable()
   test_pending_ = false;
   ui.configtab->Clear();
   updateActions();
+  return lines.join('\n') + '\n';
+}
+
+QString MainWindow::startCheckTable()
+{
+  QStringList lines;
+  lines << "clock_offset_s self_test approved | failing checks";
+  const double offsets[] = {0.0, 1.99, -2.0, 2.01, -30.0, -1.45e9};
+  const TestResult tests[] = {ALL_PASSED, TEST_UNSPECIFIED, TEST_RUNNING, RTC_FAILED};
+  for (double offset : offsets) {
+    for (TestResult test : tests) {
+      for (bool approved : {true, false}) {
+        clock_offset_s_ = offset;
+        last_test_ = test;
+        status_strip_->setApprovalAvailable(true);
+        status_strip_->setApproved(approved);
+        QStringList failing;
+        const QStringList failures = startCheckFailures();
+        for (const QString &f : failures)
+          failing << (f.startsWith("Clock") ? "clock"
+                      : f.startsWith("Self-test") ? "self-test" : "approval");
+        lines << QString("%1 %2 %3 | %4")
+                     .arg(offset, 0, 'g', 4)
+                     .arg(QString::fromStdString(std::string(TestResult_Name(test))))
+                     .arg(approved)
+                     .arg(failing.isEmpty() ? QStringLiteral("none") : failing.join(' '));
+      }
+    }
+  }
+  clock_offset_s_ = 0.0;
+  last_test_ = TEST_UNSPECIFIED;
+  status_strip_->setApproved(false);
   return lines.join('\n') + '\n';
 }

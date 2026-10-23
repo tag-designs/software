@@ -32,8 +32,12 @@ placed in the File, Tag, Log and Help menus (in the window, as in sensorviz) and
 popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
 `placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows
 Attached or Detached, the tag type, state, clock
-offset, voltage and self-test result, with Start and Stop as tool buttons
-bound to their actions. The Configuration tab's commands are `ConfigTab`
+offset, voltage and self-test result, with the Approved box and Start and
+Stop as tool buttons bound to their actions. Start runs
+`MainWindow::startWithChecks()`: `startCheckFailures()` lists any failing
+check (clock beyond `TagStatusStrip::kClockToleranceS`, a reported self-test
+other than ALL_PASSED, Approved not ticked), and the user may start anyway,
+which is logged. `ConfigTab::contentChanged` clears Approved. The Configuration tab's commands are `ConfigTab`
 slots (`NewFromDefaults()`, `Open()`, `Save()`, `SaveAs()`, `ResetToDefaults()`,
 `ReadFromTag()`, `StartTag()`; see `tagconfiguration/README.md`),
 and the error log's are `LogWindow` actions.
@@ -130,7 +134,7 @@ This writes:
 
 - `host/docs/src/images/qtmonitor-config-compasstag.png`
 
-The window is sized to show the whole panel page, up to 1000 by 1400 pixels.
+The window is sized to show the whole panel page, up to 1100 by 1400 pixels.
 
 Capture the disconnected startup screen:
 

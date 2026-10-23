@@ -114,6 +114,18 @@ public:
    */
   QString actionStateTable();
 
+  /**
+   * @brief Which start checks fail, for every combination of their inputs;
+   *        for `qtmonitor --check-start-checks`.
+   *
+   * @details Sets each combination of clock offset, reported self-test
+   *          result and approval, and records startCheckFailures(). See
+   *          host/applications/qtmon/test/README.md.
+   *
+   * @return One header line, then one line per combination.
+   */
+  QString startCheckTable();
+
 public slots:
 
   /**
@@ -170,6 +182,11 @@ private slots:
   void downloadData();   ///< File ▸ Download Data…: save the log as SQLite.
   void showUserGuide();  ///< Help ▸ Tag Monitor User Guide: open the manual page.
   void showAbout();      ///< Help ▸ About Tag Monitor.
+  /**
+   * @brief Tag ▸ Start and the Start button: runs the start checks, warns
+   *        about any that fail, and starts the tag unless the user cancels.
+   */
+  void startWithChecks();
 
   
 
@@ -212,6 +229,15 @@ private:
    *          holds a configuration. Called after every change to those.
    */
   void updateActions();
+  /**
+   * @brief The start checks that fail now, one line each, empty when all pass.
+   *
+   * @details Start warns, and asks whether to continue, when the clock at the
+   *          latest status is more than TagStatusStrip::kClockToleranceS from
+   *          this computer's, when the tag's reported self-test result is not
+   *          ALL_PASSED, or when "Approved" is not ticked.
+   */
+  QStringList startCheckFailures() const;
   /// Shows the configuration document's name and unsaved-changes mark in the title.
   void updateTitle();
   /// Lists the recent configuration files in File ▸ Open Recent.
@@ -225,6 +251,8 @@ private:
   bool downloading_ = false;   ///< A data download is running.
   bool test_pending_ = false;  ///< Self-Test sent; result not yet seen (see applyStatus()).
   QDateTime test_started_;     ///< When Self-Test was sent.
+  double clock_offset_s_ = 0.0;           ///< Tag clock minus host clock at the last status.
+  TestResult last_test_ = TEST_UNSPECIFIED;  ///< Self-test result the last status reported.
   QString tag_uuid_;           ///< Attached tag's board UUID, for log messages.
 
   QAction *attach_action_ = nullptr;

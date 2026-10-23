@@ -2,7 +2,7 @@
  * @file    tagstatusstrip.h
  * @brief   The strip below qtmonitor's tab bar: whether a tag is attached, its
  *          type, state, clock offset, voltage and self-test result, with the
- *          Start and Stop buttons.
+ *          Start and Stop buttons, and the "Approved" box Start checks.
  *
  * @details The tag's board UUID is in the tag type's tooltip, and on the Tag
  *          page. It is visible from every tab, so the tag's state is never out of
@@ -20,6 +20,7 @@
 #include "tag.pb.h"
 
 class QAction;
+class QCheckBox;
 class QLabel;
 class QToolButton;
 
@@ -32,6 +33,9 @@ class TagStatusStrip : public QFrame
   Q_OBJECT
 
 public:
+  /// Largest clock offset, in seconds, that Start's clock check accepts.
+  static constexpr double kClockToleranceS = 2.0;
+
   /**
    * @param[in] start   Action the Start button triggers and mirrors.
    * @param[in] stop    Action the Stop button triggers and mirrors.
@@ -57,6 +61,14 @@ public:
   /// Shows the self-test as running until the next setStatus().
   void setTestRunning();
 
+  /// Whether "Approved" is ticked.
+  bool isApproved() const;
+  /// Ticks or clears "Approved".
+  void setApproved(bool approved);
+  /// Enables "Approved" (there is a configuration to approve) or disables
+  /// and clears it.
+  void setApprovalAvailable(bool available);
+
 private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).
   QLabel *tag_ = nullptr;
@@ -64,6 +76,7 @@ private:
   QLabel *clock_ = nullptr;
   QLabel *voltage_ = nullptr;
   QLabel *test_ = nullptr;
+  QCheckBox *approved_ = nullptr;  ///< "Approved": the user reviewed the configuration.
   QToolButton *start_ = nullptr;
   QToolButton *stop_ = nullptr;
 };

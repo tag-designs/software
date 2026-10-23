@@ -6,6 +6,7 @@
 #include "tagstatusstrip.h"
 
 #include <QAction>
+#include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QToolButton>
@@ -74,6 +75,13 @@ TagStatusStrip::TagStatusStrip(QAction *start, QAction *stop, QWidget *parent)
                   "EXT_FLASH_FAILED");
   row->addStretch(1);
 
+  approved_ = new QCheckBox(tr("Approved"));
+  approved_->setToolTip(
+      tr("Tick when you have reviewed the configuration. Start warns if it is not "
+         "ticked; any change to the configuration clears it."));
+  row->addWidget(approved_);
+  row->addSpacing(6);
+
   start_ = actionButton(start);
   stop_ = actionButton(stop);
   row->addWidget(start_);
@@ -97,8 +105,10 @@ void TagStatusStrip::setDetached()
   tag_->setToolTip(tr("Attached tag type and board UUID"));
   state_->clear();
   clock_->clear();
+  clock_->setStyleSheet(QString());
   voltage_->clear();
   test_->clear();
+  test_->setStyleSheet(QString());
 }
 
 void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
@@ -110,6 +120,10 @@ void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
   clock_->setText(qAbs(clock_offset_s) < 1000.0
                       ? QString::asprintf("%+.2f s", clock_offset_s)
                       : QString::asprintf("%+.3g s", clock_offset_s));
+  // Red marks what Start would warn about.
+  const QString warn = QStringLiteral("color: #c62828; font-weight: bold;");
+  clock_->setStyleSheet(qAbs(clock_offset_s) > kClockToleranceS ? warn : QString());
+  test_->setStyleSheet(test != ALL_PASSED ? warn : QString());
   voltage_->setText(QString::number(static_cast<double>(voltage), 'f', 2) + " V");
   test_->setText(QString::fromStdString(std::string(TestResult_Name(test))));
 }
@@ -117,4 +131,22 @@ void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
 void TagStatusStrip::setTestRunning()
 {
   test_->setText(tr("Running"));
+  test_->setStyleSheet(QString());
+}
+
+bool TagStatusStrip::isApproved() const
+{
+  return approved_->isChecked();
+}
+
+void TagStatusStrip::setApproved(bool approved)
+{
+  approved_->setChecked(approved);
+}
+
+void TagStatusStrip::setApprovalAvailable(bool available)
+{
+  approved_->setEnabled(available);
+  if (!available)
+    approved_->setChecked(false);
 }

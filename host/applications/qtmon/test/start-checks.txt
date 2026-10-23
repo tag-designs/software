@@ -1,0 +1,49 @@
+clock_offset_s self_test approved | failing checks
+0 ALL_PASSED 1 | none
+0 ALL_PASSED 0 | approval
+0 TEST_UNSPECIFIED 1 | self-test
+0 TEST_UNSPECIFIED 0 | self-test approval
+0 TEST_RUNNING 1 | self-test
+0 TEST_RUNNING 0 | self-test approval
+0 RTC_FAILED 1 | self-test
+0 RTC_FAILED 0 | self-test approval
+1.99 ALL_PASSED 1 | none
+1.99 ALL_PASSED 0 | approval
+1.99 TEST_UNSPECIFIED 1 | self-test
+1.99 TEST_UNSPECIFIED 0 | self-test approval
+1.99 TEST_RUNNING 1 | self-test
+1.99 TEST_RUNNING 0 | self-test approval
+1.99 RTC_FAILED 1 | self-test
+1.99 RTC_FAILED 0 | self-test approval
+-2 ALL_PASSED 1 | none
+-2 ALL_PASSED 0 | approval
+-2 TEST_UNSPECIFIED 1 | self-test
+-2 TEST_UNSPECIFIED 0 | self-test approval
+-2 TEST_RUNNING 1 | self-test
+-2 TEST_RUNNING 0 | self-test approval
+-2 RTC_FAILED 1 | self-test
+-2 RTC_FAILED 0 | self-test approval
+2.01 ALL_PASSED 1 | clock
+2.01 ALL_PASSED 0 | clock approval
+2.01 TEST_UNSPECIFIED 1 | clock self-test
+2.01 TEST_UNSPECIFIED 0 | clock self-test approval
+2.01 TEST_RUNNING 1 | clock self-test
+2.01 TEST_RUNNING 0 | clock self-test approval
+2.01 RTC_FAILED 1 | clock self-test
+2.01 RTC_FAILED 0 | clock self-test approval
+-30 ALL_PASSED 1 | clock
+-30 ALL_PASSED 0 | clock approval
+-30 TEST_UNSPECIFIED 1 | clock self-test
+-30 TEST_UNSPECIFIED 0 | clock self-test approval
+-30 TEST_RUNNING 1 | clock self-test
+-30 TEST_RUNNING 0 | clock self-test approval
+-30 RTC_FAILED 1 | clock self-test
+-30 RTC_FAILED 0 | clock self-test approval
+-1.45e+09 ALL_PASSED 1 | clock
+-1.45e+09 ALL_PASSED 0 | clock approval
+-1.45e+09 TEST_UNSPECIFIED 1 | clock self-test
+-1.45e+09 TEST_UNSPECIFIED 0 | clock self-test approval
+-1.45e+09 TEST_RUNNING 1 | clock self-test
+-1.45e+09 TEST_RUNNING 0 | clock self-test approval
+-1.45e+09 RTC_FAILED 1 | clock self-test
+-1.45e+09 RTC_FAILED 0 | clock self-test approval

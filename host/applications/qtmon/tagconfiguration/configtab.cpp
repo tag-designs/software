@@ -204,6 +204,7 @@ void ConfigTab::Clear()
   baseline_.clear();
   placeholder_->setVisible(true);
   was_modified_ = false;
+  emit contentChanged();
   emit documentChanged();
 }
 
@@ -233,6 +234,7 @@ void ConfigTab::controlChanged()
 {
   if (loading_ || !hasDocument())
     return;
+  emit contentChanged();
   const bool modified = isModified();
   if (modified != was_modified_)
   {
@@ -426,6 +428,7 @@ void ConfigTab::load(const Config &config, Source source, const QString &path,
   FitPanelPage();
   setVisible(true);
   setEnabled(true);
+  emit contentChanged();
   emit documentChanged();
 }
 

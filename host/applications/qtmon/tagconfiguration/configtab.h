@@ -195,6 +195,12 @@ public:
 signals:
     /// The document was loaded, cleared, saved, or became modified or not.
     void documentChanged();
+    /**
+     * @brief The values to be sent may have changed: a control was changed,
+     *        or a document was loaded, reset or cleared. Not emitted by Save,
+     *        which changes no values. Clears the Start approval.
+     */
+    void contentChanged();
 
 public slots:
 

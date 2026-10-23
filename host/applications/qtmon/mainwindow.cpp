@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPushButton>
 #include <QCloseEvent>
 #include <QFileInfo>
 #include <QTabBar>
@@ -311,7 +312,9 @@ void MainWindow::applyStatus(const Status &status, float voltage)
 
   double timeerr = QDateTime::currentMSecsSinceEpoch();
   timeerr = status.millis() - timeerr;
-  status_strip_->setStatus(status.state(), timeerr / 1000.0, voltage,
+  clock_offset_s_ = timeerr / 1000.0;
+  last_test_ = status.test_status();
+  status_strip_->setStatus(status.state(), clock_offset_s_, voltage,
                            status.test_status());
   if (test_pending_) {
     // The tag runs every test in one pass, usually faster than this poll, so
@@ -570,7 +573,7 @@ void MainWindow::createActions()
   ConfigTab *config = ui.configtab;
   start_action_ = new QAction(tr("Start"), this);
   start_action_->setToolTip(tr("Write the configuration to the tag and start it"));
-  connect(start_action_, &QAction::triggered, config, &ConfigTab::StartTag);
+  connect(start_action_, &QAction::triggered, this, &MainWindow::startWithChecks);
   read_config_action_ = new QAction(tr("Read Configuration"), this);
   read_config_action_->setToolTip(tr("Read the tag's configuration"));
   connect(read_config_action_, &QAction::triggered, config, &ConfigTab::ReadFromTag);
@@ -606,6 +609,11 @@ void MainWindow::createActions()
   connect(config, &ConfigTab::documentChanged, this, [this]() {
     updateTitle();
     updateActions();
+  });
+  // Approval is of the values to be sent: any change to them withdraws it.
+  connect(config, &ConfigTab::contentChanged, this, [this]() {
+    if (status_strip_)
+      status_strip_->setApproved(false);
   });
 
   guide_action_ = make(tr("Tag Monitor User Guide"),
@@ -674,6 +682,45 @@ void MainWindow::createMenus()
   ui.configtab->addActions({read_config_action_, open_config_action_,
                             save_config_action_, save_as_config_action_,
                             reset_config_action_, separator, start_action_});
+}
+
+QStringList MainWindow::startCheckFailures() const
+{
+  QStringList failures;
+  if (qAbs(clock_offset_s_) > TagStatusStrip::kClockToleranceS)
+    failures << tr("Clock is %1 s off (limit %2 s).")
+                    .arg(QString::number(clock_offset_s_, 'g', 3))
+                    .arg(TagStatusStrip::kClockToleranceS);
+  if (last_test_ != ALL_PASSED)
+    failures << tr("Self-test is %1.")
+                    .arg(QString::fromStdString(std::string(TestResult_Name(last_test_))));
+  if (!status_strip_->isApproved())
+    failures << tr("Configuration is not approved.");
+  return failures;
+}
+
+void MainWindow::startWithChecks()
+{
+  const QStringList failures = startCheckFailures();
+  if (!failures.isEmpty()) {
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Warning);
+    box.setWindowTitle(tr("Start Tag"));
+    box.setText(tr("Start the tag anyway?"));
+    box.setInformativeText(QStringLiteral("\u2022 ") +
+                           failures.join(QStringLiteral("\n\u2022 ")));
+    QPushButton *anyway = box.addButton(tr("Start Anyway"), QMessageBox::AcceptRole);
+    QPushButton *cancel = box.addButton(QMessageBox::Cancel);
+    box.setDefaultButton(cancel);
+    box.setEscapeButton(cancel);
+    box.exec();
+    if (box.clickedButton() != anyway)
+      return;
+    qWarning().noquote() << "Starting"
+                         << QString::fromStdString(std::string(TagType_Name(tag_type)))
+                         << tag_uuid_ << "although:" << failures.join(" ");
+  }
+  ui.configtab->StartTag();
 }
 
 void MainWindow::updateTitle()
@@ -777,6 +824,7 @@ void MainWindow::updateActions()
   read_config_action_->setEnabled(idle);
   start_action_->setEnabled(document && idle &&
                             ui.configtab->documentTagType() == tag_type);
+  status_strip_->setApprovalAvailable(document);
 }
 
 /********************************************
