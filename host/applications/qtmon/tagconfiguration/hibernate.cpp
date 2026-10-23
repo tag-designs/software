@@ -16,6 +16,7 @@ Hibernate::Hibernate(int index, QWidget *parent) : QWidget(parent)
     ui.hibernate_start->setTimeZone(QTimeZone::UTC);
     ui.hibernate_end->setTimeZone(QTimeZone::UTC);
     id = index;
+    on_hibernate_in_use_toggled(ui.hibernate_in_use->isChecked());
 }
 
 Hibernate::~Hibernate(){}
@@ -36,6 +37,27 @@ void Hibernate::on_hibernate_end_dateTimeChanged(const QDateTime &dateTime)
         ui.hibernate_start->setDateTime(dateTime);
     }  
     emit endDateTimeChanged(id);
+}
+
+void Hibernate::on_hibernate_in_use_toggled(bool checked)
+{
+    ui.hibernate_start->setEnabled(checked);
+    ui.hibernate_end->setEnabled(checked);
+}
+
+void Hibernate::on_hibernate_in_use_clicked()
+{
+    emit inUseClicked(id);
+}
+
+bool Hibernate::inUse() const
+{
+    return ui.hibernate_in_use->isChecked();
+}
+
+void Hibernate::setInUse(bool inUse)
+{
+    ui.hibernate_in_use->setChecked(inUse);
 }
 
 void Hibernate::set_minimum_start_dateTime(const QDateTime &dateTime)

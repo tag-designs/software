@@ -14,17 +14,27 @@
    <string>Form</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
-   <item row="0" column="0">
+   <item row="0" column="0" colspan="2">
+    <widget class="QCheckBox" name="hibernate_in_use">
+     <property name="toolTip">
+      <string>Hibernate between the start and end below. Unchecked, the row is not used.</string>
+     </property>
+     <property name="text">
+      <string>In use</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
     <widget class="QLabel" name="startLabel">
      <property name="text">
       <string>Start</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="1">
+   <item row="1" column="1">
     <widget class="QDateTimeEdit" name="hibernate_start">
      <property name="toolTip">
-      <string>Start hibernating at this date/time</string>
+      <string>Start hibernating at this date/time (UTC)</string>
      </property>
      <property name="time">
       <time>
@@ -41,17 +51,17 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="0">
+   <item row="2" column="0">
     <widget class="QLabel" name="stopLabel">
      <property name="text">
       <string>End</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="1">
+   <item row="2" column="1">
     <widget class="QDateTimeEdit" name="hibernate_end">
      <property name="toolTip">
-      <string>Stop hibernating at this date/time</string>
+      <string>Stop hibernating at this date/time (UTC)</string>
      </property>
      <property name="calendarPopup">
       <bool>true</bool>

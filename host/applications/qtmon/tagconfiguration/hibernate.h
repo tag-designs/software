@@ -18,6 +18,12 @@ class QDateTimeEdit;
  * @details The end is kept at or after the start: moving either past the
  *          other drags the other with it. SchedulePanel builds two of these
  *          once and shows as many as the tag reports.
+ *
+ *          An **In use** checkbox says whether the row applies. Unchecked,
+ *          the date pickers are disabled and keep whatever they show; the
+ *          panel then sends the row as 0 to 0 (1 January 1970), which never
+ *          applies. Checking the box enables the pickers but changes no date
+ *          itself: inUseClicked() lets the panel fill in a starting date.
  */
 class Hibernate : public QWidget
 {
@@ -43,6 +49,21 @@ public:
     /// The end time, in seconds since the Unix epoch.
     int32_t EndEpoch();
 
+    /**
+     * @brief   Whether the row is in use, i.e. its checkbox is checked.
+     * @return  true if the row's dates apply, false if the row is unused.
+     */
+    bool inUse() const;
+
+    /**
+     * @brief   Checks or unchecks the row's checkbox, enabling or disabling
+     *          the date pickers to match.
+     * @details Leaves the dates alone and does not emit inUseClicked(), so
+     *          a load sets the dates and the checkbox independently.
+     * @param[in] inUse  true to use the row, false to leave it unused.
+     */
+    void setInUse(bool inUse);
+
 public slots:
 
     /**
@@ -57,10 +78,19 @@ signals:
     void startDateTimeChanged(int);
     /// The end time changed; the argument is this row's index.
     void endDateTimeChanged(int);
+    /**
+     * @brief The user clicked the In use checkbox; the argument is this
+     *        row's index. Not emitted by setInUse().
+     */
+    void inUseClicked(int);
 
 private slots:
     void on_hibernate_start_dateTimeChanged(const QDateTime &dateTime);
     void on_hibernate_end_dateTimeChanged(const QDateTime &dateTime);
+    /// Enables the date pickers when the row is in use, disables them when not.
+    void on_hibernate_in_use_toggled(bool checked);
+    /// Reports a user click on the checkbox as inUseClicked().
+    void on_hibernate_in_use_clicked();
 
 private:
     Ui::Hibernate ui;

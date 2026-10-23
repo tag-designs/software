@@ -33,7 +33,9 @@ or hidden as a whole; no panel decides per widget what to show.
 
 The schedule variants share one class because they share the "Logging
 Schedule" group box and its controls. Hibernation shows up to two rows, the
-firmware maximum (`Config.hibernate max_count:2`).
+firmware maximum (`Config.hibernate max_count:2`). Each row has an **In use**
+checkbox: an interval starting at 0 or INT32_MAX loads unchecked, and an
+unchecked row is sent as 0 to 0 (1 January 1970), which never applies.
 
 ## How a panel reads and writes Config
 

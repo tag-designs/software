@@ -10,6 +10,27 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: each hibernation row has an In use checkbox
+
+Change: every hibernation row (`Hibernate`) gains an **In use** checkbox.
+`SchedulePanel::load()` checks it for an interval with a real start and leaves
+it unchecked for one starting at 0 or INT32_MAX, which it already loaded as 0
+to 0; an unchecked row's date pickers are disabled, and `store()` sends it as 0
+to 0. Checking a row with no date fills in the logging start, rounded up to the
+hour, and an hour after it; the probe does not click, so that is not exercised
+here. The rows' date pickers' tooltips also gain "(UTC)", matching the logging
+start and end.
+
+646 cases differ, every one in `ui` only; no `sent` or other key changed. In
+each, the only changes are one `check text="In use"` line per hibernation row,
+the enabled state of the rows' date pickers (`enabled=0` for an unchecked row,
+`enabled=1` for a checked one), and " (UTC)" at the end of their tooltips.
+Checked rows are exactly the rows sent with a nonzero start, in every case. The
+7 `base@RUNNING` cases, where the tab is disabled, gain only the checkbox lines
+and the tooltip text. Of IMUTag's cases, which have no hibernation rows, only
+the `open:foreign:*` cases changed, since they open another tag type's file,
+which has them. `action-states.txt` and `start-checks.txt` are unchanged.
+
 ## 2026-10-23: an unset hibernation row is 0, not now
 
 Change: `SchedulePanel::load()` showed an unset hibernation interval (start 0

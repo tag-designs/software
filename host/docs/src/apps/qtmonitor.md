@@ -149,9 +149,11 @@ log to copy, save or clear it.
 The Configuration tab is intentionally tag-specific: each tag type shows the
 panels for the settings its firmware accepts, and nothing else.
 
-A hibernation row that is not in use shows **1/1/70 12:00 AM** for its start
-and end. That date is long past, so the tag never hibernates for it. To use a
-row, set its start and end inside the logging interval.
+Each hibernation row has an **In use** checkbox. A row that is not in use has
+its dates greyed out and is sent to the tag as 1/1/70, a date long past, so the
+tag never hibernates for it. Check **In use** to use a row: a row with no date
+yet starts at the logging start, rounded up to the hour, and ends an hour
+later. Set its start and end inside the logging interval.
 
 ### BitTag
 

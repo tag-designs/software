@@ -28,7 +28,9 @@
  *
  *          Hibernation shows up to two rows, the firmware's maximum
  *          (`Config.hibernate max_count:2`). load() shows one row per interval
- *          the tag reports, and store() writes back that many.
+ *          the tag reports, and store() writes back that many. Each row has
+ *          an In use checkbox: an interval starting at 0 or INT32_MAX loads
+ *          unchecked, and store() writes an unchecked row as 0 to 0.
  *
  *          `start_delay` is stored as minutes + 1: proto3 cannot send a zero,
  *          and IMUTag's firmware reads the field that way. The control shows
@@ -69,6 +71,20 @@ private slots:
   void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
   void on_startGroup_clicked();
   void on_runGroup_clicked();
+
+  /**
+   * @brief Gives a hibernation row a starting date when the user puts it in
+   *        use.
+   *
+   * @details If @p row was just checked and still shows no date (start at or
+   *          before 1 January 1970), its start is set to the logging start
+   *          rounded up to the hour, and its end an hour later. A row that
+   *          already has a date, such as one unchecked and checked again,
+   *          keeps it. Unchecking changes no date.
+   *
+   * @param[in] row  Index of the row whose checkbox was clicked.
+   */
+  void hibernateInUseClicked(int row);
 
 private:
   /// Maximum hibernation intervals any firmware accepts.

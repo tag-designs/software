@@ -45,6 +45,8 @@ SchedulePanel::SchedulePanel(Variant variant, QWidget *parent) : ConfigPanel(par
   {
     rows_[i] = new Hibernate(i);
     ui.hibernationGroup->layout()->addWidget(rows_[i]);
+    connect(rows_[i], &Hibernate::inUseClicked,
+            this, &SchedulePanel::hibernateInUseClicked);
   }
 
   ui.startGroup->setVisible(interval_);
@@ -107,9 +109,10 @@ bool SchedulePanel::load(const Config &config)
       ui.EndDateTime->setDateTime(ui.StartDateTime->dateTime());
 
     // Hibernation: one row per interval the tag reports, up to the
-    // firmware's maximum. An unset interval (0 or INT32_MAX) shows, and is
-    // sent, as 0 to 0: 1 January 1970, long past, so it never applies.
-    // Showing it as now, as this once did, sent a window at the current time.
+    // firmware's maximum. An unset interval (0 or INT32_MAX) loads as an
+    // unused row showing 0 to 0, and store() sends an unused row as 0 to 0:
+    // 1 January 1970, long past, so it never applies. Showing it as now, as
+    // this once did, sent a window at the current time.
     row_count_ = std::min(config.hibernate_size(), kHibernateRows);
     for (int i = 0; i < kHibernateRows; ++i)
     {
@@ -121,11 +124,13 @@ bool SchedulePanel::load(const Config &config)
       {
         rows_[i]->setStartEpoch(0);
         rows_[i]->setEndEpoch(0);
+        rows_[i]->setInUse(false);
       }
       else
       {
         rows_[i]->setStartEpoch(config.hibernate(i).start_epoch());
         rows_[i]->setEndEpoch(config.hibernate(i).end_epoch());
+        rows_[i]->setInUse(true);
       }
     }
   }
@@ -167,8 +172,9 @@ bool SchedulePanel::store(Config &config) const
     for (int i = 0; i < row_count_; i++)
     {
       Config_Interval *interval = config.add_hibernate();
-      interval->set_start_epoch(rows_[i]->StartEpoch());
-      interval->set_end_epoch(rows_[i]->EndEpoch());
+      const bool used = rows_[i]->inUse();
+      interval->set_start_epoch(used ? rows_[i]->StartEpoch() : 0);
+      interval->set_end_epoch(used ? rows_[i]->EndEpoch() : 0);
     }
   }
 
@@ -230,4 +236,19 @@ void SchedulePanel::on_startGroup_clicked()
     if (ui.StartDateTime->dateTime() < now)
       ui.StartDateTime->setDateTime(now);
   }
+}
+
+// Hibernation rows
+
+void SchedulePanel::hibernateInUseClicked(int row)
+{
+  Hibernate *hibernate = rows_[row];
+  if (!hibernate->inUse() || hibernate->StartEpoch() > 0)
+    return;
+
+  // A row that has never had a date starts at the logging start, rounded up
+  // to the hour, and lasts an hour, rather than at 1 January 1970.
+  QDateTime start = roundDateTime(ui.StartDateTime->dateTime(), 3600);
+  hibernate->setStartEpoch(static_cast<int32_t>(start.toSecsSinceEpoch()));
+  hibernate->setEndEpoch(static_cast<int32_t>(start.toSecsSinceEpoch() + 3600));
 }
