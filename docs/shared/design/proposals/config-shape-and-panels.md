@@ -722,9 +722,10 @@ fingerprint is the precise one.
    goldens. These change no behaviour. Two probe runs give identical output,
    and a deliberate label change and `start_delay` change both showed up in
    every IMUTag case.
-1. **`isVisible()` fix.** The probe confirmed the defect: in 69 cases, `sent`
-   differs between tabs. Replace the four `isVisible()` tests with
-   `!isHidden()`, regenerate the goldens, and list the changed cases.
+1. **`isVisible()` fix** (done 2026-10-23). The probe confirmed the defect: in
+   69 cases, `sent` differed between tabs. The four `isVisible()` tests are now
+   `!isHidden()`. Exactly those 69 cases changed, each to the configuration the
+   Sensors tab already sent.
 2. **Stage 1:** `ConfigShape`, the merge in qtmonitor and `tag-start`, the
    adapter, T1. Delete the generator. T4 shows only the restore-zero
    differences.

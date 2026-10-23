@@ -1176,38 +1176,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d8fc2f53c3500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -1289,38 +1257,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d8fc2f53c3500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.01,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -1402,38 +1338,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d8fc2f53d3500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0.123,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -1839,38 +1743,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d000000403500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 3,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -1952,38 +1824,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d000000403500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 6,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -2065,38 +1905,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d000000403500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 12,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -2178,38 +1986,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d000000403500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 300,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -2291,38 +2067,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d8fc2f53c3500004040",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": -1,
-                    "inactive_sec": 3,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -6555,38 +6299,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000403f2d8fc2f53c350000803f",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.75,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 1,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -6677,38 +6389,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f258fc2f53c2d8fc2f53c350000803f",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 1,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -6889,38 +6569,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f258fc2f53c2d8fc2f53c350000803f",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 1,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -7011,38 +6659,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f258fc2f53c2d8fc2f53c350000803f",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 1,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -7133,38 +6749,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f258fc2f53c2d8fc2f53c350000803f",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.03,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 1,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -7615,38 +7199,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed60620043211250000003f2d8fc2f53c350000c0403801",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_367",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 6,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",
@@ -8007,38 +7559,6 @@
                 "tag_type": "BITTAG_LE"
             },
             "sent_hex": "0802120610ffffffff071a0c08bb8c9ed60610bb8c9ed6061a0c08bb8c9ed60610bb8c9ed6062004320f250000003f2d8fc2f53c3500002041",
-            "sent_with_schedule_tab": {
-                "active_interval": {
-                    "end_epoch": 2147483647,
-                    "start_epoch": 0
-                },
-                "adxl362": {
-                    "accel_type": "AdxlType_362",
-                    "act_thresh_g": 0.5,
-                    "active_sec": 0,
-                    "channels": "AdxlChannel_UNSPECIFIED",
-                    "data_format": "DF_UNSPECIFIED",
-                    "filter": "Aa_UNSPESIFIED",
-                    "freq": "Odr_UNSPECIFIED",
-                    "inact_thresh_g": 0,
-                    "inactive_sec": 10,
-                    "range": "Rng_UNSPECIFIED"
-                },
-                "bittag_log": "BITTAG_BITSPERFIVEMIN",
-                "hibernate": [
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    },
-                    {
-                        "end_epoch": 1791460923,
-                        "start_epoch": 1791460923
-                    }
-                ],
-                "period": 0,
-                "start_delay": 0,
-                "tag_type": "BITTAG_LE"
-            },
             "ui": [
                 " | group title=\"Activity Wakeup\" enabled=1",
                 " | group title=\"BitTag Internal Log\" enabled=1 tooltip=\"Set format for BitTag log\"",

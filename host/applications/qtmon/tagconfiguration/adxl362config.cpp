@@ -129,14 +129,14 @@ bool Adxl362Config::GetConfig(Config &config)
     }
   }
 
-  if (visibility_.adxl362_freq && sample_rate_ && sample_rate_->isVisible())
+  if (visibility_.adxl362_freq && sample_rate_ && !sample_rate_->isHidden())
   {
     id = sample_rate_->checkedId();
     if (Adxl362_Odr_IsValid(id))
       adxl.set_freq((Adxl362_Odr)id);
   }
 
-  if (visibility_.adxl362_range && range_ && range_->isVisible())
+  if (visibility_.adxl362_range && range_ && !range_->isHidden())
   {
     id = range_->checkedId();
     if (Adxl362_Rng_IsValid(id))
@@ -145,7 +145,7 @@ bool Adxl362Config::GetConfig(Config &config)
 
   // set tag specific info
 
-  if (visibility_.adxl362_filter && filter_ && filter_->isVisible()){
+  if (visibility_.adxl362_filter && filter_ && !filter_->isHidden()){
     id = filter_->checkedId();
     if (Adxl362_Aa_IsValid(id)) {
         adxl.set_filter((Adxl362_Aa)id);
@@ -154,7 +154,7 @@ bool Adxl362Config::GetConfig(Config &config)
     }
   }
 
-  if (visibility_.adxl362_inact_thresh_g && inact_thresh_->isVisible()){
+  if (visibility_.adxl362_inact_thresh_g && !inact_thresh_->isHidden()){
     adxl.set_inact_thresh_g(inact_thresh_->value());
   }
   if (visibility_.adxl362_inactive_sec) {

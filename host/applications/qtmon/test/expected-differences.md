@@ -10,6 +10,19 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-10-23: what Start sends no longer depends on the selected sub-tab
+
+Change: `Adxl362Config::GetConfig()` tested sample rate, range, filter and
+inactive threshold with `isVisible()`. It now tests `!isHidden()`, which is
+true whenever `SetConfig()` showed the control for this tag, whichever sub-tab
+is on screen. Rollout step 1 of the proposal.
+
+Differences from the previous goldens, all in `sent_with_schedule_tab`: that
+key disappears from the 69 cases listed under "goldens created" below
+(`bittag.json` 39, `bittag_le.json` 15, `bitprestag.json` 15). In each of them,
+what is sent now equals the previous Sensors-tab `sent`, which is unchanged. No
+other key changed in any case.
+
 ## 2026-10-23: goldens created
 
 Reference build: qtmonitor at the commit that added the probe (rollout step 0
@@ -18,7 +31,7 @@ Its configuration code is today's, apart from two changes that do not alter
 behaviour: the schedule reads the clock through `ConfigClock`, and Restore's
 parse-and-merge moved into `ConfigTab::RestoreFromJsonText()`.
 
-The goldens record one known defect, which rollout step 1 will fix.
+The goldens record one known defect, fixed in the entry above.
 
 **What Start sends depends on the selected sub-tab, in 69 cases.**
 `Adxl362Config::GetConfig()` writes sample rate, range, filter and the inactive
