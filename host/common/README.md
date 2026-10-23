@@ -12,6 +12,11 @@ large enough to justify a library of their own.
 Current files:
 
 - `qtfiledialog.h`: shared host file-dialog helper.
+- `qtuserguide.h`: `HostUserGuide::open()`, which finds an application's page
+  of the user manual (packaged beside the application, in the build tree, or
+  built in the source tree) and opens it; used by every Help menu. The
+  `host_common` target defines `TAG_DESIGNS_DOCS_BUILD_DIR` and
+  `TAG_DESIGNS_DOCS_SOURCE_DIR` for it.
 - `qthoststyle.h`: shared visual style setup for Qt applications.
 - `windows_tool_launcher.cpp`: Windows package launcher source used by
   `host/CMakeLists.txt`.

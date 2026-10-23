@@ -17,6 +17,11 @@ set(HOST_BUNDLE_INSTALL_DIR tag_tools)
 
 add_library(host_common INTERFACE)
 target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
+# Where qtuserguide.h looks for the built user manual, after the places beside
+# the application: this build's site, then a site built in the source tree.
+target_compile_definitions(host_common INTERFACE
+  TAG_DESIGNS_DOCS_BUILD_DIR="${HOST_DOCS_BUILD_DIR}"
+  TAG_DESIGNS_DOCS_SOURCE_DIR="${HOST_DOCS_SOURCE_DIR}")
 
 add_subdirectory(libraries/tagcore)
 # Always added: its Qt-free core is what dataprocessing links. The Qt library

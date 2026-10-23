@@ -23,6 +23,7 @@ Commands are in the menus at the top of the window, and on popup menus
 | **File** | Save Configuration…, Restore Configuration…, Download Data…, Save Error Log…, Quit |
 | **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Calibrate (CompassTag and IMUTag), Erase… |
 | **Log** | Log Level, Clear Error Log |
+| **Help** | Tag Monitor User Guide (opens this page), About Tag Monitor |
 
 A command that does not apply to the tag's current state is greyed out: for
 example, Synchronize Clock and Self-Test need an IDLE tag, Stop a running one,

@@ -59,9 +59,6 @@ set_target_properties(sensorviz_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC 
 
 qt_add_executable(sensorviz MACOSX_BUNDLE WIN32 ${sensorviz_SRCS})
 target_include_directories(sensorviz PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
-target_compile_definitions(sensorviz PRIVATE
-  SENSORVIZ_DOCS_BUILD_DIR="${HOST_DOCS_BUILD_DIR}"
-  SENSORVIZ_DOCS_SOURCE_DIR="${HOST_DOCS_SOURCE_DIR}")
 set_target_properties(sensorviz
     PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin

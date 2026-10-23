@@ -20,8 +20,8 @@ namespace
 
 QString defaultScreenshotDir()
 {
-#ifdef SENSORVIZ_DOCS_SOURCE_DIR
-    return QDir(QStringLiteral(SENSORVIZ_DOCS_SOURCE_DIR))
+#ifdef TAG_DESIGNS_DOCS_SOURCE_DIR
+    return QDir(QStringLiteral(TAG_DESIGNS_DOCS_SOURCE_DIR))
         .filePath(QStringLiteral("src/images"));
 #else
     return QDir::current().filePath(QStringLiteral("host/docs/src/images"));

@@ -16,54 +16,9 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include "qtuserguide.h"
+
 #include <cmath>
-
-namespace {
-
-QStringList sensorVizDocsPages()
-{
-    return {
-        QStringLiteral("apps/sensorviz.html"),
-        QStringLiteral("apps/sensorviz/index.html"),
-    };
-}
-
-QStringList sensorVizDocumentationRoots()
-{
-    QStringList roots;
-    QDir probe_dir(QCoreApplication::applicationDirPath());
-
-    for (int level = 0; level < 6; ++level) {
-        roots << probe_dir.filePath(QStringLiteral("docs"));
-        roots << probe_dir.filePath(QStringLiteral("host/docs/site"));
-        roots << probe_dir.filePath(QStringLiteral("share/UltralightTags/docs"));
-        if (!probe_dir.cdUp()) {
-            break;
-        }
-    }
-
-#ifdef SENSORVIZ_DOCS_BUILD_DIR
-    roots << QStringLiteral(SENSORVIZ_DOCS_BUILD_DIR);
-#endif
-
-#ifdef SENSORVIZ_DOCS_SOURCE_DIR
-    roots << QDir(QStringLiteral(SENSORVIZ_DOCS_SOURCE_DIR))
-                 .filePath(QStringLiteral("site"));
-#endif
-
-    QStringList unique_roots;
-    for (const QString &root : roots) {
-        const QString clean_root = QDir::cleanPath(root);
-        if (!clean_root.isEmpty()
-            && clean_root != QStringLiteral(".")
-            && !unique_roots.contains(clean_root)) {
-            unique_roots << clean_root;
-        }
-    }
-    return unique_roots;
-}
-
-} // namespace
 
 // This file intentionally stays small. It contains only cross-cutting helpers
 // and general actions that do not belong to one of the runtime slices:
@@ -109,29 +64,7 @@ void MainWindow::showAbout()
 
 void MainWindow::showUserGuide()
 {
-    const QStringList docs_pages = sensorVizDocsPages();
-    const QStringList docs_roots = sensorVizDocumentationRoots();
-
-    for (const QString &root : docs_roots) {
-        for (const QString &docs_page : docs_pages) {
-            const QString path = QDir(root).filePath(docs_page);
-            if (QFileInfo::exists(path)) {
-                QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-                return;
-            }
-        }
-    }
-
-    QMessageBox message(this);
-    message.setIcon(QMessageBox::Information);
-    message.setWindowTitle(tr("SensorViz User Guide"));
-    message.setText(tr("The SensorViz user guide was not found."));
-    message.setInformativeText(
-        tr("Build the host documentation target and try again:\n"
-           "cmake --build <build-dir> --target docs"));
-    message.setDetailedText(
-        tr("Looked in:\n%1").arg(docs_roots.join(QStringLiteral("\n"))));
-    message.exec();
+    HostUserGuide::open(this, tr("SensorViz User Guide"), QStringLiteral("sensorviz"));
 }
 
 void MainWindow::editGraphTitle()

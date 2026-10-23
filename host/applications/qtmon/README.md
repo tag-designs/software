@@ -28,7 +28,7 @@ This is the packaged user-facing mode.
 ### Commands, menus and the status strip
 
 Every command is a `QAction`, created in `MainWindow::createActions()` and
-placed in the File, Tag and Log menus (in the window, as in sensorviz) and on
+placed in the File, Tag, Log and Help menus (in the window, as in sensorviz) and on
 popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
 `placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows
 Attached or Detached, the tag type, state, clock

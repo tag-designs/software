@@ -49,6 +49,7 @@
 
 #include "tagconfiguration/configtab.h"
 #include "tagstatusstrip.h"
+#include "qtuserguide.h"
 #include "abstractdownload.h"
 #include "taglogwriter.h"
 
@@ -563,6 +564,12 @@ void MainWindow::createActions()
   connect(restore_config_action_, &QAction::triggered, config,
           &ConfigTab::RestoreFromFile);
 
+  guide_action_ = make(tr("Tag Monitor User Guide"),
+                       tr("Open the Tag Monitor page of the user manual"),
+                       &MainWindow::showUserGuide);
+  about_action_ = make(tr("About Tag Monitor"), tr("Version and purpose"),
+                       &MainWindow::showAbout);
+
   quit_action_ = new QAction(tr("Quit"), this);
   quit_action_->setShortcut(QKeySequence::Quit);
   connect(quit_action_, &QAction::triggered, this, &QWidget::close);
@@ -600,6 +607,10 @@ void MainWindow::createMenus()
   log->addMenu(ui.errorTab->logLevelMenu());
   log->addAction(ui.errorTab->clearAction());
 
+  QMenu *help = menuBar()->addMenu(tr("&Help"));
+  help->addAction(guide_action_);
+  help->addAction(about_action_);
+
   // Popup menus. Children without a menu of their own (group boxes, labels)
   // pass a right-click up to these widgets.
   const QList<QAction *> tagCommands = {
@@ -612,6 +623,19 @@ void MainWindow::createMenus()
   ui.configtab->setContextMenuPolicy(Qt::ActionsContextMenu);
   ui.configtab->addActions({read_config_action_, restore_config_action_,
                             save_config_action_, start_action_});
+}
+
+void MainWindow::showUserGuide()
+{
+  HostUserGuide::open(this, tr("Tag Monitor User Guide"), QStringLiteral("qtmonitor"));
+}
+
+void MainWindow::showAbout()
+{
+  QMessageBox::about(this, tr("About Tag Monitor"),
+                     tr("Tag Monitor v%1\n\nAttach to a tag through its USB base, check "
+                        "it, configure and start it, and download its data.")
+                         .arg(version));
 }
 
 void MainWindow::placeStatusStripBelowTabs()

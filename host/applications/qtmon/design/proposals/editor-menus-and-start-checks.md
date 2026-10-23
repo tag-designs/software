@@ -159,7 +159,10 @@ Each step leaves qtmonitor working:
    Start and Stop stay as buttons; every other button becomes an action. The
    configuration probe and its goldens are unaffected, since the panels do not
    change. The documentation screenshots gain menu captures, as sensorviz's do.
-2. **The help helper,** moved to `host/common` and used by qtmonitor.
+2. **The help helper** (done 2026-10-23): `HostUserGuide::open()` in
+   `host/common/qtuserguide.h`, with the docs locations defined by the
+   `host_common` target. sensorviz and qtmonitor's new Help menu (User
+   Guide, About) use it.
 3. **The document model:** New, Open, Reset, Read, Save, the tab usable with
    no tag, and attach-while-editing. The probe gains cases for New from each
    tag type's defaults and for Open with no tag attached.

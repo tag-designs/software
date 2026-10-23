@@ -166,6 +166,8 @@ private slots:
   void calibrateTag();   ///< Tag ▸ Calibrate: enter the calibration state.
   void eraseTag();       ///< Tag ▸ Erase…: confirm, erase, show progress.
   void downloadData();   ///< File ▸ Download Data…: save the log as SQLite.
+  void showUserGuide();  ///< Help ▸ Tag Monitor User Guide: open the manual page.
+  void showAbout();      ///< Help ▸ About Tag Monitor.
 
   
 
@@ -188,7 +190,7 @@ private:
    *          state, which updateActions() sets.
    */
   void createActions();
-  /// Builds the File, Tag and Log menus and the popup menus.
+  /// Builds the File, Tag, Log and Help menus and the popup menus.
   void createMenus();
   /**
    * @brief Puts the status strip between the tab bar and the pages.
@@ -229,6 +231,8 @@ private:
   QAction *restore_config_action_ = nullptr;
   QAction *download_action_ = nullptr;
   QAction *quit_action_ = nullptr;
+  QAction *guide_action_ = nullptr;
+  QAction *about_action_ = nullptr;
 
   /// A self-test result is accepted only from a poll this long after Self-Test.
   static constexpr qint64 kTestMinimumMs = 1000;
