@@ -93,8 +93,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   ui.fileName->setPlaceholderText(tr("Choose the firmware .elf to program"));
   setImage(QSettings().value("lastImage").toString());
 
-  if (have_base_ && Attach())
-    tag.Detach();
+  // No attach here: attaching resets the tag, which would end a running
+  // tag's deployment just for opening the program. Connect or Program attach.
 }
 
 MainWindow::~MainWindow()

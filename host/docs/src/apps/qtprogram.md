@@ -14,7 +14,8 @@ leave it erased and IDLE, ready to configure in Tag Monitor.
   `STM32_PRG_PATH` (its folder) environment variables. If it is not found,
   choose it with the programming tool button; the choice is remembered.
 - Connect the base station or programmer, with the tag installed. Tag
-  Programmer opens without one; press **Connect** once it is plugged in.
+  Programmer opens without one. It does not connect to the tag until you press
+  **Connect** or **Program**, because connecting restarts a running tag.
 - Have the firmware's `.elf` file. A `.bin` will not do: the `.elf` records the
   flash layout, which decides what is erased.
 

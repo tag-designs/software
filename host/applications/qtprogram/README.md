@@ -64,4 +64,7 @@ Stored with `QSettings` (organization `tag-designs`, application `qtprogram`):
 `findProgrammer()` tries `STM32CUBEPROGRAMMER`, `STM32_PRG_PATH`, the `PATH`
 and the usual install directories, as `flash_release.py` does.
 
-qtprogram opens with no base connected; Connect looks for one again.
+qtprogram does not attach when it opens, since attaching resets a tag and
+would end a running deployment; Connect attaches, and so does Program, to name
+the tag in its confirmation. It opens with no base connected; Connect looks
+for one again.
