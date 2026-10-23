@@ -214,6 +214,11 @@ private:
    * @brief Resolves a generated screenshot filename under the capture directory.
    */
   QString screenshotPath(const QString &filename) const;
+  /**
+   * @brief Resolves the directory screenshots are written to; see
+   *        mainwindow_fixture.cpp.
+   */
+  static QString resolveScreenshotDir(const QString &path);
 
   QString screenshotDir;
   QString fakeFixturePath;

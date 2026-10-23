@@ -1,0 +1,578 @@
+/**
+ * @file    mainwindow_fixture.cpp
+ * @brief   MainWindow's maintainer-only test support: fixture replay and
+ *          documentation screenshot capture.
+ *
+ * @details None of this runs when qtmonitor attaches a real tag. Fixture mode
+ *          (`--fake-fixture`) loads a captured tag from protobuf JSON and
+ *          drives the same widgets live mode uses, so screenshots show the
+ *          real UI; the `--capture-*` options save those screens for the user
+ *          manual and exit. The live window is in mainwindow.cpp. The
+ *          Configuration tab's headless test mode is separate, in
+ *          configprobe.cpp. See README.md in this directory.
+ */
+
+#include <QApplication>
+#include <QDebug>
+#include <QDir>
+#include <QEventLoop>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QPixmap>
+#include <QScreen>
+#include <QSize>
+#include <QTimer>
+#include <QWindow>
+
+#include <google/protobuf/util/json_util.h>
+
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+#include "tag.pb.h"
+
+#include "tagconfiguration/configtab.h"
+
+namespace
+{
+
+/**
+ * @brief Resolves fixture paths supplied relative to the source tree.
+ *
+ * @details Maintainer screenshot commands are usually launched from the build
+ *          tree, but fixtures live in the repository. Existing paths and
+ *          absolute paths are returned unchanged; otherwise the path is tried
+ *          relative to @c TAG_DESIGNS_SOURCE_DIR.
+ *
+ * @param[in] path   User-supplied fixture or config path.
+ *
+ * @return The existing absolute/relative path when found, the source-tree
+ *         path when that exists, or the original path for caller diagnostics.
+ */
+QString resolveSourceRelativePath(const QString &path)
+{
+  const QFileInfo requested(path);
+  if (requested.exists() || requested.isAbsolute()) {
+    return requested.filePath();
+  }
+
+  const QFileInfo sourceRelative(
+      QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path));
+  if (sourceRelative.exists()) {
+    return sourceRelative.filePath();
+  }
+
+  return requested.filePath();
+}
+
+
+/**
+ * @brief Serializes one Qt JSON object for protobuf JSON parsing.
+ *
+ * @param[in] object   Fixture sub-object containing protobuf JSON.
+ *
+ * @return Compact UTF-8 JSON text suitable for JsonStringToMessage().
+ */
+std::string jsonObjectString(const QJsonObject &object)
+{
+  return QJsonDocument(object).toJson(QJsonDocument::Compact).toStdString();
+}
+
+/**
+ * @brief Parses one fixture JSON object into a protobuf message.
+ *
+ * @details The fixture files store captured monitor responses as protobuf JSON.
+ *          This helper centralizes error logging so the replay path reports
+ *          whether tag info, config, or a named status failed to parse.
+ *
+ * @param[in] object    Fixture JSON object to parse.
+ * @param[out] message  Destination protobuf message.
+ * @param[in] context   Human-readable parse context for diagnostics.
+ *
+ * @return true if parsing succeeded; false if protobuf JSON validation failed.
+ */
+template <typename Message>
+bool parseJsonMessage(const QJsonObject &object, Message &message,
+                      const QString &context)
+{
+  google::protobuf::util::JsonParseOptions options;
+  const auto status =
+      google::protobuf::util::JsonStringToMessage(jsonObjectString(object),
+                                                  &message, options);
+  if (!status.ok()) {
+    qWarning().noquote() << "Could not parse" << context
+                         << QString::fromStdString(status.ToString());
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Allows pending Qt paint/layout events to complete before capture.
+ *
+ * @param[in] milliseconds   Minimum event-loop delay before the caller grabs
+ *                           the window contents.
+ *
+ * @warning This spins a local event loop and is intended only for screenshot
+ *          automation, not for interactive command handling.
+ */
+void waitForGuiToSettle(int milliseconds)
+{
+  QEventLoop loop;
+  QTimer::singleShot(milliseconds, &loop, &QEventLoop::quit);
+  loop.exec();
+}
+
+/**
+ * @brief Converts a fixture id or tag type name into a stable filename token.
+ *
+ * @param[in] value   Fixture id, label, or tag type name.
+ *
+ * @return Lower-case token with spaces and underscores mapped to hyphens.
+ */
+QString safeFileId(QString value)
+{
+  value = value.toLower();
+  value.replace('_', '-');
+  value.replace(' ', '-');
+  return value;
+}
+
+} // namespace
+
+/**
+ * @brief Resolves the directory where generated screenshots should be written.
+ *
+ * @details An empty path uses the checked-in user-documentation image
+ *          directory. Relative override paths are interpreted relative to the
+ *          source tree so repeated runs from the build tree update the same
+ *          documentation assets.
+ *
+ * @param[in] path   Optional command-line screenshot directory.
+ *
+ * @return Absolute or source-tree-relative directory path for screenshot files.
+ */
+QString MainWindow::resolveScreenshotDir(const QString &path)
+{
+  if (path.isEmpty()) {
+    return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR))
+        .filePath("host/docs/src/images");
+  }
+
+  const QFileInfo requested(path);
+  if (requested.isAbsolute()) {
+    return requested.filePath();
+  }
+
+  return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path);
+}
+
+/**
+ * @brief Reports whether a one-shot screenshot capture was requested.
+ *
+ * @return true if main.cpp should schedule a capture slot and exit afterward;
+ *         false for interactive qtmonitor sessions.
+ */
+bool MainWindow::shouldQuitAfterStartup() const
+{
+  return captureStartupScreenshotOnStartup || captureMainScreenshotsOnStartup
+      || captureConfigScreenshotsOnStartup || captureErrorLogScreenshotOnStartup;
+}
+
+/**
+ * @brief Loads a qtmonitor fake-tag fixture from protobuf JSON.
+ *
+ * @details The fixture supplies TagInfo, Config, voltage, and one or more
+ *          named Status messages. Inline config is preferred; a `$ref` config
+ *          path is accepted for fixture files that store defaults externally.
+ *
+ * @param[in] path   Fixture path from the command line, absolute or
+ *                   source-tree relative.
+ *
+ * @return true if all required fixture sections parsed; false otherwise.
+ */
+bool MainWindow::loadFakeFixture(const QString &path)
+{
+  const QString resolvedPath = resolveSourceRelativePath(path);
+  QFile file(resolvedPath);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qWarning() << "Unable to open qtmonitor fake fixture" << path
+               << "resolved as" << resolvedPath;
+    return false;
+  }
+
+  QJsonParseError parseError;
+  const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+  if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+    qWarning() << "Unable to parse qtmonitor fake fixture" << resolvedPath
+               << parseError.errorString();
+    return false;
+  }
+
+  const QJsonObject root = document.object();
+  fakeFixtureId = root.value("id").toString("fixture");
+  fakeVoltage = static_cast<float>(root.value("voltage").toDouble(0.0));
+  if (!parseJsonMessage(root.value("info").toObject(), fakeInfo, "fixture info")) {
+    return false;
+  }
+
+  const QJsonObject configObject = root.value("config").toObject();
+  if (configObject.contains("value")) {
+    fakeConfigLoaded =
+        parseJsonMessage(configObject.value("value").toObject(), fakeConfig,
+                         "fixture config");
+  } else if (configObject.contains("$ref")) {
+    QFile configFile(resolveSourceRelativePath(configObject.value("$ref").toString()));
+    if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      qWarning() << "Unable to open fixture config ref" << configFile.fileName();
+      return false;
+    }
+    QJsonParseError configError;
+    const QJsonDocument configDocument =
+        QJsonDocument::fromJson(configFile.readAll(), &configError);
+    if (configError.error != QJsonParseError::NoError || !configDocument.isObject()) {
+      qWarning() << "Unable to parse fixture config ref" << configError.errorString();
+      return false;
+    }
+    fakeConfigLoaded =
+        parseJsonMessage(configDocument.object(), fakeConfig, "fixture config ref");
+  }
+
+  if (!fakeConfigLoaded) {
+    qWarning() << "qtmonitor fake fixture has no usable config";
+    return false;
+  }
+
+  fakeStatuses.clear();
+  const QJsonObject statuses = root.value("statuses").toObject();
+  for (auto it = statuses.begin(); it != statuses.end(); ++it) {
+    Status status;
+    if (parseJsonMessage(it.value().toObject(), status,
+                         QString("fixture status %1").arg(it.key()))) {
+      fakeStatuses.insert(it.key().toLower(), status);
+    }
+  }
+  if (fakeStatuses.isEmpty()) {
+    qWarning() << "qtmonitor fake fixture has no statuses";
+    return false;
+  }
+
+  qInfo() << "Loaded qtmonitor fake fixture" << resolvedPath;
+  return true;
+}
+
+/**
+ * @brief Applies already-loaded fixture metadata to the qtmonitor widgets.
+ *
+ * @details This switches the window into fake mode, stops live polling, fills
+ *          tag information and configuration, and disables the Error Log tab
+ *          because it depends on a live Tag attachment.
+ *
+ * @return true after the fixture state has been applied.
+ *
+ * @pre loadFakeFixture() has populated fakeInfo, fakeConfig, and statuses.
+ */
+bool MainWindow::setupFakeFixture()
+{
+  fakeMode = true;
+  timer.stop();
+  populateTagInfo(fakeInfo);
+  attachConfig(fakeConfig, true);
+  ui.errorTab->setEnabled(false);
+  setAttachedUiEnabled(true);
+  return true;
+}
+
+/**
+ * @brief Selects or derives a fixture status for screenshot replay.
+ *
+ * @details If the requested state is not present in the fixture, the idle or
+ *          current status is reused and adjusted for display. This keeps early
+ *          fixtures useful while allowing future captures to provide real
+ *          running or finished Status samples.
+ *
+ * @param[in] name   Requested fixture status name.
+ *
+ * @return Status message suitable for applyStatus().
+ */
+Status MainWindow::fakeStatusForName(const QString &name) const
+{
+  const QString key = name.toLower();
+  Status status;
+  if (fakeStatuses.contains(key)) {
+    status = fakeStatuses.value(key);
+  } else if (fakeStatuses.contains("idle")) {
+    status = fakeStatuses.value("idle");
+  } else if (fakeStatuses.contains("current")) {
+    status = fakeStatuses.value("current");
+  } else {
+    status = fakeStatuses.first();
+  }
+
+  const qint64 now = QDateTime::currentMSecsSinceEpoch();
+  status.set_millis(now);
+  if (key == "idle") {
+    status.set_state(IDLE);
+    status.set_internal_data_count(0);
+    status.set_external_data_count(0);
+  } else if (key == "running") {
+    status.set_state(RUNNING);
+    if (status.internal_data_count() == 0) {
+      status.set_internal_data_count(42);
+    }
+    if (status.external_data_count() == 0) {
+      status.set_external_data_count(7);
+    }
+  } else if (key == "finished") {
+    status.set_state(FINISHED);
+    if (status.internal_data_count() == 0) {
+      status.set_internal_data_count(128);
+    }
+    if (status.external_data_count() == 0) {
+      status.set_external_data_count(512);
+    }
+  }
+  if (status.test_status() == TEST_UNSPECIFIED) {
+    status.set_test_status(ALL_PASSED);
+  }
+  return status;
+}
+
+/**
+ * @brief Renders one named fixture status in the live qtmonitor widgets.
+ *
+ * @param[in] name   Fixture status name such as idle, running, or finished.
+ *
+ * @return true if fake mode was active and the status was applied; false if no
+ *         fixture is loaded.
+ */
+bool MainWindow::applyFakeState(const QString &name)
+{
+  if (!fakeMode) {
+    qWarning() << "qtmonitor fake state requested without a fake fixture";
+    return false;
+  }
+  applyStatus(fakeStatusForName(name), fakeVoltage);
+  return true;
+}
+
+/**
+ * @brief Builds the output path for one generated screenshot filename.
+ *
+ * @param[in] filename   Basename for the PNG file to write.
+ *
+ * @return Path under the resolved screenshot directory.
+ */
+QString MainWindow::screenshotPath(const QString &filename) const
+{
+  return QDir(screenshotDir).filePath(filename);
+}
+
+/**
+ * @brief Captures the current window frame into a PNG file.
+ *
+ * @details The helper first lets Qt compute the natural size with
+ *          adjustSize(), using the active widgets' sizeHint() and
+ *          minimumSizeHint(). The optional maximums are documentation
+ *          guardrails for tabs whose designer geometry or expanding child
+ *          widgets request more blank area than is useful in the guide. The
+ *          native-screen grab includes the window frame when the platform
+ *          allows it, which avoids the clipped widget-grab screenshots that
+ *          prompted this hook. Widget capture is retained as a fallback.
+ *
+ * @param[in] path               Destination PNG path.
+ * @param[in] maximumWindowSize  Optional maximum client-area size after Qt
+ *                               computes the natural window size.
+ * @param[in] maximumImageSize   Optional maximum saved pixel size. Used only
+ *                               when the native frame still contains excess
+ *                               blank layout space.
+ *
+ * @return true if a non-null pixmap was saved; false on capture or write error.
+ */
+bool MainWindow::saveCurrentScreenshot(const QString &path,
+                                       const QSize &maximumWindowSize,
+                                       const QSize &maximumImageSize)
+{
+  showNormal();
+  raise();
+  activateWindow();
+  qApp->processEvents();
+
+  if (ui.mainTabWidget->currentWidget()) {
+    ui.mainTabWidget->currentWidget()->adjustSize();
+  }
+  ui.mainTabWidget->adjustSize();
+  adjustSize();
+  qApp->processEvents();
+
+  if (maximumWindowSize.isValid()) {
+    const QSize natural = sizeHint().expandedTo(minimumSizeHint());
+    setFixedSize(natural.boundedTo(maximumWindowSize));
+    // The window system applies a resize asynchronously; grabbing the frame
+    // rectangle before it has would capture whatever lies behind the window.
+    waitForGuiToSettle(250);
+  }
+  qApp->processEvents();
+
+  repaint();
+  qApp->processEvents();
+
+  QPixmap pixmap;
+  if (QScreen *screen = windowHandle() ? windowHandle()->screen() : nullptr) {
+    const QRect frame = frameGeometry();
+    pixmap = screen->grabWindow(0, frame.x(), frame.y(), frame.width(),
+                                frame.height());
+    if (pixmap.isNull()) {
+      pixmap = screen->grabWindow(winId());
+    }
+  }
+  if (pixmap.isNull()) {
+    pixmap = grab();
+  }
+  if (pixmap.isNull()) {
+    qWarning() << "Unable to capture screenshot" << path;
+    return false;
+  }
+
+  if (maximumImageSize.isValid()) {
+    const QSize croppedSize(qMin(pixmap.width(), maximumImageSize.width()),
+                            qMin(pixmap.height(), maximumImageSize.height()));
+    pixmap = pixmap.copy(QRect(QPoint(0, 0), croppedSize));
+  }
+
+  if (!pixmap.save(path, "PNG")) {
+    qWarning() << "Unable to save screenshot" << path;
+    return false;
+  }
+
+  qInfo() << "Saved screenshot" << path;
+  return true;
+}
+
+/**
+ * @brief Captures the disconnected Tag State screen and exits the app.
+ *
+ * @post The process exits with status 0 on success and 1 on failure.
+ */
+void MainWindow::captureStartupScreenshot()
+{
+  bool ok = true;
+  QDir dir(screenshotDir);
+  if (!dir.exists() && !dir.mkpath(".")) {
+    qWarning() << "Unable to create screenshot directory" << screenshotDir;
+    ok = false;
+  }
+
+  if (ok) {
+    ui.mainTabWidget->setCurrentWidget(ui.targetTab);
+    waitForGuiToSettle(200);
+    ok = saveCurrentScreenshot(screenshotPath("qtmonitor-startup.png"),
+                               QSize(700, 760), QSize(760, 790));
+  }
+  qApp->exit(ok ? 0 : 1);
+}
+
+/**
+ * @brief Captures representative Tag State screenshots from a fake fixture.
+ *
+ * @details The current implementation renders idle, running, and finished in
+ *          sequence. Missing running or finished samples are derived by
+ *          fakeStatusForName() so one idle fixture can still demonstrate state
+ *          dependent controls.
+ *
+ * @post The process exits with status 0 on success and 1 on failure.
+ */
+void MainWindow::captureMainScreenshots()
+{
+  bool ok = true;
+  if (!fakeMode) {
+    qWarning() << "qtmonitor main screenshots require --fake-fixture";
+    ok = false;
+  }
+
+  QDir dir(screenshotDir);
+  if (ok && !dir.exists() && !dir.mkpath(".")) {
+    qWarning() << "Unable to create screenshot directory" << screenshotDir;
+    ok = false;
+  }
+
+  const QString states[] = {"idle", "running", "finished"};
+  for (const QString &state : states) {
+    if (!ok) {
+      break;
+    }
+    ui.mainTabWidget->setCurrentWidget(ui.targetTab);
+    applyFakeState(state);
+    waitForGuiToSettle(250);
+    ok = saveCurrentScreenshot(screenshotPath(
+        QString("qtmonitor-main-%1.png").arg(state)), QSize(700, 760),
+        QSize(760, 790));
+  }
+  qApp->exit(ok ? 0 : 1);
+}
+
+/**
+ * @brief Captures idle Configuration-tab screenshots from a fake fixture.
+ *
+ * @details The fixture id is used in output filenames, and the inner Schedule
+ *          and Sensors tabs are selected explicitly before capture.
+ *
+ * @post The process exits with status 0 on success and 1 on failure.
+ */
+void MainWindow::captureConfigScreenshots()
+{
+  bool ok = true;
+  if (!fakeMode) {
+    qWarning() << "qtmonitor config screenshots require --fake-fixture";
+    ok = false;
+  }
+
+  QDir dir(screenshotDir);
+  if (ok && !dir.exists() && !dir.mkpath(".")) {
+    qWarning() << "Unable to create screenshot directory" << screenshotDir;
+    ok = false;
+  }
+
+  const QString id =
+      safeFileId(fakeFixtureId.isEmpty()
+                     ? QString::fromStdString(TagType_Name(tag_type))
+                     : fakeFixtureId);
+  if (ok) {
+    applyFakeState("idle");
+    ui.mainTabWidget->setCurrentWidget(ui.configtab);
+    waitForGuiToSettle(250);
+    ok = saveCurrentScreenshot(
+        screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
+        QSize(900, 1400));
+  }
+  qApp->exit(ok ? 0 : 1);
+}
+
+/**
+ * @brief Captures the Error Log tab and exits the app.
+ *
+ * @details This capture uses no attached tag, which shows the user-facing log
+ *          pane and file-save affordance without requiring hardware or fixture
+ *          data.
+ *
+ * @post The process exits with status 0 on success and 1 on failure.
+ */
+void MainWindow::captureErrorLogScreenshot()
+{
+  bool ok = true;
+  QDir dir(screenshotDir);
+  if (!dir.exists() && !dir.mkpath(".")) {
+    qWarning() << "Unable to create screenshot directory" << screenshotDir;
+    ok = false;
+  }
+
+  if (ok) {
+    ui.mainTabWidget->setCurrentWidget(ui.errorTab);
+    waitForGuiToSettle(200);
+    ok = saveCurrentScreenshot(screenshotPath("qtmonitor-error-log.png"),
+                               QSize(700, 560));
+  }
+  qApp->exit(ok ? 0 : 1);
+}
