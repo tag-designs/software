@@ -52,6 +52,16 @@ zero log counts are replaced with placeholder counts for `running` and
 `finished`, so a fixture with only an `idle` status still yields all three
 screens.
 
+### Configuration Probe Mode
+
+`--config-probe <cases> --config-probe-out <dir>` runs the Configuration tab
+headless over a set of test cases, with no tag attached. For each case it
+records what Start would send, a fingerprint of the visible controls, and any
+dialog raised, then exits. Comparing the results with the committed goldens
+shows whether a change to the Configuration tab altered anything a tag or a
+user could see. Cases, goldens, scripts and procedure are in
+[`test/`](test/README.md).
+
 ## Screenshot Commands
 
 Build the app first:

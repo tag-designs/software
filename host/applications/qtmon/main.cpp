@@ -17,6 +17,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "qthoststyle.h"
+#include "configprobe.h"
 
 #include "mainwindow.h"
 
@@ -127,7 +128,25 @@ int main(int argc, char *argv[])
   parser.addOption(QCommandLineOption(
       "no-auto-attach",
       "Open without probing USB tag bases."));
+  parser.addOption(QCommandLineOption(
+      "config-probe",
+      "Run configuration-screen test cases (a case file or a directory of "
+      "them) with no tag attached, write results and exit. See "
+      "host/applications/qtmon/test/README.md.",
+      "cases"));
+  parser.addOption(QCommandLineOption(
+      "config-probe-out",
+      "Directory for --config-probe results. Defaults to config-probe-results.",
+      "dir",
+      "config-probe-results"));
   parser.process(a);
+
+  if (parser.isSet("config-probe")) {
+    HostStyle::apply(a);
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    return runConfigProbe(parser.value("config-probe"),
+                          parser.value("config-probe-out"));
+  }
 
   MainWindowOptions windowOptions;
   windowOptions.fakeFixturePath = parser.value("fake-fixture");

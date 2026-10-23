@@ -50,6 +50,27 @@ public:
      */
     void SetFixtureMode(bool enabled);
 
+    /**
+     * @brief Outcome of RestoreFromJsonText().
+     */
+    enum class RestoreResult {
+        Restored,        ///< The file was merged and applied.
+        ParseError,      ///< The text is not a valid Config; nothing changed.
+        NotValidForTag,  ///< Parsed and merged, but SetConfig() rejected it.
+    };
+
+    /**
+     * @brief Overlays a configuration file's contents onto the current
+     *        configuration, as the Restore button does, without dialogs.
+     *
+     * @param[in]  json_text  Contents of a configuration file.
+     * @param[out] detail     Parser status or rejected configuration text on
+     *                        failure. May be null.
+     * @return The outcome; see RestoreResult.
+     */
+    RestoreResult RestoreFromJsonText(const std::string &json_text,
+                                      QString *detail);
+
 public slots:
 
     bool Attach(Tag &tag);

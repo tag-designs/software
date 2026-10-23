@@ -74,7 +74,9 @@ The firmware comes on top of that.
   ancestor is hidden, and `QTabWidget` hides the pages that are not selected.
   Start, Save and Restore sit below the tabs. So, as far as can be read from
   the code, a range changed on the Sensors tab is not sent if the user goes back
-  to the Schedule tab before pressing Start. Not yet reproduced; rollout step 1 settles it.
+  to the Schedule tab before pressing Start. The probe (rollout step 0) confirmed
+  it on 2026-10-23, in 69 cases; see
+  `host/applications/qtmon/test/expected-differences.md`.
 
 ## Stage 1: `ConfigShape`
 
@@ -510,8 +512,9 @@ File by file:
 | `host/libraries/tagcore/configshape.{h,cc}` | 1 | new |
 | `host/libraries/tagcore/CMakeLists.txt` | 1 | globs the default configs into `defaultconfigs.cc`, about 20 lines |
 | `host/libraries/tagcore/test/config_shape_check.cc` | 1 | new standalone check (T1) |
-| `qtmon/tagconfiguration/configclock.h` | 0 | one clock for the schedule code |
-| `host/applications/qtmon/test/` | 0 | `make_config_cases.py`, `compare.sh`, `golden/`, `expected-differences.md`, README |
+| `qtmon/tagconfiguration/configclock.{h,cpp}` | 0 | one clock for the schedule code |
+| `qtmon/configprobe.{h,cpp}` | 0 | the probe |
+| `host/applications/qtmon/test/` | 0 | `config_probe_cases.cc` (behind `BUILD_QTMON_CHECKS`), `cases/`, `probe.sh`, `compare.py`, `golden/`, `expected-differences.md`, README |
 | `host/commandline/tag-start.cc` | 1 | `--merge` uses `ConfigShape::merge()`; the stale comment goes |
 | `qtmon/tagconfiguration/configtab.cpp` | 1, 1b | stage 1: adapter in place of the generated table, `mergeRestoredConfig()` deleted. Stage 1b: holds panels and `kPanelsForTag` |
 | `qtmon/tagconfiguration/configpanel.{h,cpp}` | 1b | new: `ConfigPanel`, `BoundPanel`, `Binding` |
@@ -608,9 +611,10 @@ fixture mode's "ignore Start" guard is reused as it stands.
 
 ### T3. A generated case corpus
 
-`host/applications/qtmon/test/make_config_cases.py` writes the cases. It is
-plain Python with no dependencies beyond the protobuf runtime `config-gen.py`
-already needs.
+`host/applications/qtmon/test/config_probe_cases.cc` writes the cases. It is a
+small C++ program, built with `-DBUILD_QTMON_CHECKS=ON`, because it walks the
+fields through protobuf reflection, and the host Python has no protobuf
+module. The cases are committed, so it is needed only to change them.
 
 - **Base inputs.** Inputs come from the configs captured from real tags in
   `host/docs/fixtures/qtmonitor/`, which is to say real firmware output:
@@ -646,7 +650,7 @@ as golden files under `host/applications/qtmon/test/golden/`, so later stages,
 and later changes, compare against them without rebuilding the baseline.
 
 ```sh
-host/applications/qtmon/test/compare.sh <baseline-results> <new-results>
+host/applications/qtmon/test/compare.py <baseline-results> <new-results>
 ```
 
 The script diffs `sent` byte for byte, and `ui` line by line. **Every
@@ -656,7 +660,7 @@ stage is not done. The differences the proposal expects:
 | Stage | Expected differences |
 | --- | --- |
 | `isVisible()` fix | In the baseline, a case's `sent` may depend on the selected tab. After the fix it must not. The goldens are regenerated once, with the list of changed cases. |
-| 1 | Restores with explicit zeros now copy them. No other `sent` or `ui` change. |
+| 1 | Restores only. A file's explicit zeros are now copied. Fields outside the tag's shape are no longer copied from another tag's file: today's merge copies whole sub-messages such as `adxl362`. No other `sent` or `ui` change. |
 | 1b | None in `sent` or `ui`. The tab selection disappears from the cases. |
 
 User edits are covered by the corpus without driving widgets, because widget
@@ -713,13 +717,14 @@ fingerprint is the precise one.
 
 ## Rollout
 
-0. **Test scaffolding, on today's code:** `ConfigClock`, `--config-probe`, the
-   fingerprint, the corpus generator, the goldens. These change no behaviour.
-   Check by running the probe twice and getting identical output.
-1. **`isVisible()` fix.** The probe answers the open question directly: if any
-   baseline case's `sent` differs between tabs, the defect is real. If it is,
-   replace the four `isVisible()` tests with `!isHidden()`, regenerate the
-   goldens, and list the changed cases.
+0. **Test scaffolding, on today's code** (done 2026-10-23): `ConfigClock`,
+   `--config-probe`, the fingerprint, the case generator (686 cases), the
+   goldens. These change no behaviour. Two probe runs give identical output,
+   and a deliberate label change and `start_delay` change both showed up in
+   every IMUTag case.
+1. **`isVisible()` fix.** The probe confirmed the defect: in 69 cases, `sent`
+   differs between tabs. Replace the four `isVisible()` tests with
+   `!isHidden()`, regenerate the goldens, and list the changed cases.
 2. **Stage 1:** `ConfigShape`, the merge in qtmonitor and `tag-start`, the
    adapter, T1. Delete the generator. T4 shows only the restore-zero
    differences.

@@ -1,0 +1,533 @@
+/**
+ * @file    configprobe.cpp
+ * @brief   Implementation of `qtmonitor --config-probe`.
+ *
+ * @details Each case is run twice through a freshly built ConfigTab: once with
+ *          the Schedule sub-tab selected and once with the Sensors sub-tab
+ *          (or Schedule again when the tag has no sensor controls). A fresh
+ *          tab per run models a qtmonitor that has just attached this tag, and
+ *          keeps one case's widget state out of the next. The Sensors run
+ *          provides the recorded result. If the Schedule run would send
+ *          something different, that is recorded too, because the
+ *          configuration sent should not depend on which sub-tab is on screen.
+ */
+
+#include "configprobe.h"
+
+#include <QAbstractButton>
+#include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDateTimeEdit>
+#include <QDir>
+#include <QDoubleSpinBox>
+#include <QFile>
+#include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QSpinBox>
+#include <QStackedWidget>
+#include <QTabWidget>
+#include <QTimer>
+
+#include <algorithm>
+#include <cstdio>
+#include <google/protobuf/util/json_util.h>
+
+#include "tagconfiguration/configclock.h"
+#include "tagconfiguration/configtab.h"
+
+namespace
+{
+
+/// Result and case file format identifiers, checked on read and written out.
+constexpr const char *kCasesSchema = "qtmon-config-probe-cases/1";
+constexpr const char *kResultsSchema = "qtmon-config-probe-results/1";
+
+/**
+ * @brief Sets the protobuf JSON option that prints zero-valued fields, under
+ *        whichever name this protobuf version uses.
+ */
+template <typename Options>
+auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
+    -> decltype(options.always_print_fields_with_no_presence = value, void())
+{
+  options.always_print_fields_with_no_presence = value;
+}
+
+/// @copydoc setAlwaysPrintDefaultFields
+template <typename Options>
+auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
+    -> decltype(options.always_print_primitive_fields = value, void())
+{
+  options.always_print_primitive_fields = value;
+}
+
+/**
+ * @brief Converts a Config to a JSON object with every field printed.
+ *
+ * @details Field names are the .proto names, and zero values are included, so
+ *          two results differ only where the sent configurations differ.
+ */
+QJsonObject configToJson(const Config &config)
+{
+  google::protobuf::util::JsonPrintOptions options;
+  options.preserve_proto_field_names = true;
+  setAlwaysPrintDefaultFields(options, true, 0);
+  std::string text;
+  if (!google::protobuf::util::MessageToJsonString(config, &text, options).ok())
+    return QJsonObject{{"error", "MessageToJsonString failed"}};
+  return QJsonDocument::fromJson(QByteArray::fromStdString(text)).object();
+}
+
+/**
+ * @brief Number formatting used throughout the fingerprint: up to nine
+ *        significant digits, enough to tell any two floats apart.
+ */
+QString num(double value)
+{
+  return QString::number(value, 'g', 9);
+}
+
+/**
+ * @brief Reports whether a widget would be on screen if its sub-tab were
+ *        selected.
+ *
+ * @details Walks from @p w up to @p root. Any explicitly hidden widget on the
+ *          way hides @p w, except a QTabWidget page, which is hidden only
+ *          because another sub-tab is selected; such a page counts as shown
+ *          when its tab itself is visible. This makes the fingerprint
+ *          independent of which sub-tab the probe selected.
+ */
+bool shownIgnoringTabSelection(const QWidget *w, const QWidget *root)
+{
+  for (const QWidget *x = w; x != nullptr && x != root; x = x->parentWidget())
+  {
+    if (!x->isHidden())
+      continue;
+    const auto *stack = qobject_cast<const QStackedWidget *>(x->parentWidget());
+    const auto *tabs = stack ? qobject_cast<const QTabWidget *>(stack->parentWidget())
+                             : nullptr;
+    if (tabs == nullptr)
+      return false;
+    const int index = tabs->indexOf(const_cast<QWidget *>(x));
+    if (index < 0 || !tabs->isTabVisible(index))
+      return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Titles of the group boxes enclosing @p w, outermost first.
+ */
+QString groupPath(const QWidget *w, const QWidget *root)
+{
+  QStringList titles;
+  for (const QWidget *x = w->parentWidget(); x != nullptr && x != root;
+       x = x->parentWidget())
+  {
+    if (const auto *box = qobject_cast<const QGroupBox *>(x))
+      titles.prepend(box->title());
+  }
+  return titles.join(" > ");
+}
+
+/**
+ * @brief Finds the QFormLayout row label for @p field, searching nested
+ *        layouts of its parent widget.
+ */
+QString formLabelIn(const QLayout *layout, const QWidget *field)
+{
+  if (layout == nullptr)
+    return {};
+  if (const auto *form = qobject_cast<const QFormLayout *>(layout))
+  {
+    if (QWidget *label = form->labelForField(const_cast<QWidget *>(field)))
+    {
+      if (const auto *text = qobject_cast<const QLabel *>(label))
+        return text->text();
+    }
+  }
+  for (int i = 0; i < layout->count(); ++i)
+  {
+    const QString found = formLabelIn(layout->itemAt(i)->layout(), field);
+    if (!found.isEmpty())
+      return found;
+  }
+  return {};
+}
+
+/// @copydoc formLabelIn
+QString formLabel(const QWidget *field)
+{
+  const QWidget *parent = field->parentWidget();
+  return parent ? formLabelIn(parent->layout(), field) : QString();
+}
+
+/**
+ * @brief Describes one control, or returns an empty string for a widget that
+ *        carries nothing a user can see or set.
+ */
+QString describe(const QWidget *w)
+{
+  QStringList parts;
+  if (const auto *box = qobject_cast<const QGroupBox *>(w))
+  {
+    parts << "group" << QString("title=\"%1\"").arg(box->title());
+    if (box->isCheckable())
+      parts << QString("checked=%1").arg(box->isChecked());
+  }
+  else if (const auto *label = qobject_cast<const QLabel *>(w))
+  {
+    if (label->text().isEmpty())
+      return {};
+    parts << "label" << QString("text=\"%1\"").arg(label->text());
+  }
+  else if (const auto *radio = qobject_cast<const QRadioButton *>(w))
+  {
+    parts << "radio" << QString("text=\"%1\"").arg(radio->text())
+          << QString("checked=%1").arg(radio->isChecked());
+  }
+  else if (const auto *check = qobject_cast<const QCheckBox *>(w))
+  {
+    parts << "check" << QString("text=\"%1\"").arg(check->text())
+          << QString("checked=%1").arg(check->isChecked());
+  }
+  else if (const auto *push = qobject_cast<const QPushButton *>(w))
+  {
+    parts << "button" << QString("text=\"%1\"").arg(push->text());
+  }
+  else if (const auto *dspin = qobject_cast<const QDoubleSpinBox *>(w))
+  {
+    parts << "double" << QString("label=\"%1\"").arg(formLabel(w))
+          << "value=" + num(dspin->value()) << "min=" + num(dspin->minimum())
+          << "max=" + num(dspin->maximum()) << "step=" + num(dspin->singleStep())
+          << QString("decimals=%1").arg(dspin->decimals())
+          << QString("prefix=\"%1\"").arg(dspin->prefix())
+          << QString("suffix=\"%1\"").arg(dspin->suffix());
+  }
+  else if (const auto *spin = qobject_cast<const QSpinBox *>(w))
+  {
+    parts << "int" << QString("label=\"%1\"").arg(formLabel(w))
+          << QString("value=%1").arg(spin->value())
+          << QString("min=%1").arg(spin->minimum())
+          << QString("max=%1").arg(spin->maximum())
+          << QString("step=%1").arg(spin->singleStep())
+          << QString("prefix=\"%1\"").arg(spin->prefix())
+          << QString("suffix=\"%1\"").arg(spin->suffix());
+  }
+  else if (const auto *dt = qobject_cast<const QDateTimeEdit *>(w))
+  {
+    parts << "datetime" << QString("label=\"%1\"").arg(formLabel(w))
+          << QString("value=%1").arg(dt->dateTime().toSecsSinceEpoch())
+          << QString("min=%1").arg(dt->minimumDateTime().toSecsSinceEpoch())
+          << QString("max=%1").arg(dt->maximumDateTime().toSecsSinceEpoch())
+          << QString("format=\"%1\"").arg(dt->displayFormat());
+  }
+  else if (const auto *combo = qobject_cast<const QComboBox *>(w))
+  {
+    QStringList items;
+    for (int i = 0; i < combo->count(); ++i)
+      items << combo->itemText(i);
+    parts << "combo" << QString("current=\"%1\"").arg(combo->currentText())
+          << QString("items=\"%1\"").arg(items.join("|"));
+  }
+  else
+  {
+    return {};
+  }
+
+  parts << QString("enabled=%1").arg(w->isEnabled());
+  if (!w->toolTip().isEmpty())
+    parts << QString("tooltip=\"%1\"").arg(w->toolTip());
+  return parts.join(' ');
+}
+
+/**
+ * @brief Fingerprint of every visible control under @p root, sorted so that
+ *        moving a control within the page does not change it.
+ */
+QJsonArray fingerprint(const QWidget *root)
+{
+  QStringList lines;
+  for (const QWidget *w : root->findChildren<QWidget *>())
+  {
+    if (!shownIgnoringTabSelection(w, root))
+      continue;
+    const QString what = describe(w);
+    if (what.isEmpty())
+      continue;
+    lines << groupPath(w, root) + " | " + what;
+  }
+  std::sort(lines.begin(), lines.end());
+  return QJsonArray::fromStringList(lines);
+}
+
+/**
+ * @brief Arrangement facts that are expected to change when the layout does:
+ *        the sub-tabs and whether the tab as a whole is active.
+ */
+QJsonArray layoutFacts(const ConfigTab *tab)
+{
+  QStringList lines;
+  for (const QTabWidget *tabs : tab->findChildren<QTabWidget *>())
+  {
+    for (int i = 0; i < tabs->count(); ++i)
+      lines << QString("subtab \"%1\" visible=%2 enabled=%3")
+                   .arg(tabs->tabText(i))
+                   .arg(tabs->isTabVisible(i))
+                   .arg(tabs->isTabEnabled(i));
+  }
+  lines << QString("configtab visible=%1 enabled=%2")
+               .arg(!tab->isHidden())
+               .arg(tab->isEnabled());
+  return QJsonArray::fromStringList(lines);
+}
+
+/**
+ * @brief Records and dismisses any modal message box, so a case that raises
+ *        one does not block the probe.
+ */
+class DialogCatcher : public QObject
+{
+public:
+  DialogCatcher()
+  {
+    timer_.setInterval(10);
+    QObject::connect(&timer_, &QTimer::timeout, [this]() { poll(); });
+    timer_.start();
+  }
+
+  /// Returns and clears the dialogs seen since the last call.
+  QJsonArray take()
+  {
+    QJsonArray seen = seen_;
+    seen_ = QJsonArray();
+    return seen;
+  }
+
+private:
+  void poll()
+  {
+    auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+    if (box == nullptr)
+      return;
+    QString text = box->text();
+    if (!box->informativeText().isEmpty())
+      text += " / " + box->informativeText();
+    seen_.append(text);
+    box->done(0);
+  }
+
+  QTimer timer_;
+  QJsonArray seen_;
+};
+
+/// What one pass through a ConfigTab produced.
+struct RunOutput
+{
+  QString restore;      ///< Restore outcome, empty when the case has none.
+  QString restore_detail;
+  bool get_config_ok = false;
+  Config sent;
+  QJsonArray ui;
+  QJsonArray layout;
+  QJsonArray dialogs;
+};
+
+/**
+ * @brief Builds a fresh ConfigTab, applies one case to it, and reads back
+ *        what Start would send.
+ *
+ * @param[in] sensors_tab  true to select the Sensors sub-tab before reading
+ *                         the configuration, false for the Schedule sub-tab.
+ */
+RunOutput runOnce(const Config &input, TagState state, const QJsonValue &restore,
+                  bool sensors_tab, DialogCatcher &dialogs)
+{
+  RunOutput out;
+  ConfigTab tab;
+  tab.SetFixtureMode(true);
+  tab.resize(1000, 800);
+  tab.show();
+  QCoreApplication::processEvents();
+
+  tab.SetConfig(input);
+  tab.StateUpdate(state);
+
+  if (restore.isString())
+  {
+    QString detail;
+    switch (tab.RestoreFromJsonText(restore.toString().toStdString(), &detail))
+    {
+    case ConfigTab::RestoreResult::Restored:
+      out.restore = "Restored";
+      break;
+    case ConfigTab::RestoreResult::ParseError:
+      out.restore = "ParseError";
+      break;
+    case ConfigTab::RestoreResult::NotValidForTag:
+      out.restore = "NotValidForTag";
+      break;
+    }
+    // Abseil varies the spacing of status messages from run to run so that
+    // nothing depends on their exact text; collapse it for stable results.
+    out.restore_detail = detail.simplified();
+  }
+
+  if (sensors_tab)
+    tab.ShowSensorTab();
+  else
+    tab.ShowScheduleTab();
+  QCoreApplication::processEvents();
+
+  out.get_config_ok = tab.GetConfig(out.sent);
+  out.ui = fingerprint(&tab);
+  out.layout = layoutFacts(&tab);
+  out.dialogs = dialogs.take();
+  return out;
+}
+
+/**
+ * @brief Runs one case and returns its result object.
+ */
+QJsonObject runCase(const QJsonObject &c, DialogCatcher &dialogs)
+{
+  QJsonObject result;
+  result["id"] = c.value("id");
+
+  Config input;
+  const QByteArray config_text =
+      QJsonDocument(c.value("config").toObject()).toJson(QJsonDocument::Compact);
+  const auto parsed =
+      google::protobuf::util::JsonStringToMessage(config_text.toStdString(), &input);
+  if (!parsed.ok())
+  {
+    result["error"] = "case config does not parse: " +
+                      QString::fromStdString(parsed.ToString());
+    return result;
+  }
+
+  TagState state = IDLE;
+  if (!TagState_Parse(c.value("state").toString("IDLE").toStdString(), &state))
+  {
+    result["error"] = "unknown state " + c.value("state").toString();
+    return result;
+  }
+
+  ConfigClock::setFixedNow(static_cast<qint64>(c.value("now").toDouble()));
+  const QJsonValue restore = c.value("restore");
+  const RunOutput schedule = runOnce(input, state, restore, false, dialogs);
+  const RunOutput sensors = runOnce(input, state, restore, true, dialogs);
+
+  if (!sensors.restore.isEmpty())
+  {
+    result["restore"] = sensors.restore;
+    if (sensors.restore != "Restored")
+      result["restore_detail"] = sensors.restore_detail;
+  }
+  result["get_config_ok"] = sensors.get_config_ok;
+  result["sent"] = configToJson(sensors.sent);
+  result["sent_hex"] =
+      QString::fromLatin1(QByteArray::fromStdString(sensors.sent.SerializeAsString()).toHex());
+  if (schedule.sent.SerializeAsString() != sensors.sent.SerializeAsString() ||
+      schedule.get_config_ok != sensors.get_config_ok)
+    result["sent_with_schedule_tab"] = configToJson(schedule.sent);
+  result["ui"] = sensors.ui;
+  if (schedule.ui != sensors.ui)
+    result["ui_with_schedule_tab"] = schedule.ui;
+  result["layout"] = sensors.layout;
+  QJsonArray all_dialogs = schedule.dialogs;
+  for (const QJsonValue &d : sensors.dialogs)
+    all_dialogs.append(d);
+  if (!all_dialogs.isEmpty())
+    result["dialogs"] = all_dialogs;
+  return result;
+}
+
+/**
+ * @brief Runs every case in one file and writes the matching result file.
+ */
+bool runCaseFile(const QString &path, const QDir &out, DialogCatcher &dialogs)
+{
+  QFile in(path);
+  if (!in.open(QIODevice::ReadOnly))
+  {
+    std::fprintf(stderr, "config-probe: cannot open %s\n", qPrintable(path));
+    return false;
+  }
+  QJsonParseError error;
+  const QJsonDocument doc = QJsonDocument::fromJson(in.readAll(), &error);
+  if (error.error != QJsonParseError::NoError || !doc.isObject() ||
+      doc.object().value("schema").toString() != kCasesSchema)
+  {
+    std::fprintf(stderr, "config-probe: %s is not a %s file\n", qPrintable(path),
+                 kCasesSchema);
+    return false;
+  }
+
+  QJsonArray results;
+  for (const QJsonValue &c : doc.object().value("cases").toArray())
+    results.append(runCase(c.toObject(), dialogs));
+
+  QJsonObject root;
+  root["schema"] = kResultsSchema;
+  root["cases_file"] = QFileInfo(path).fileName();
+  root["results"] = results;
+
+  QFile file(out.filePath(QFileInfo(path).fileName()));
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+  {
+    std::fprintf(stderr, "config-probe: cannot write %s\n",
+                 qPrintable(file.fileName()));
+    return false;
+  }
+  file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+  std::printf("config-probe: %s: %d cases\n", qPrintable(QFileInfo(path).fileName()),
+              static_cast<int>(results.size()));
+  return true;
+}
+
+} // namespace
+
+int runConfigProbe(const QString &cases_path, const QString &out_dir)
+{
+  QStringList files;
+  const QFileInfo info(cases_path);
+  if (info.isDir())
+  {
+    for (const QString &name :
+         QDir(cases_path).entryList({"*.json"}, QDir::Files, QDir::Name))
+      files << QDir(cases_path).filePath(name);
+  }
+  else
+  {
+    files << cases_path;
+  }
+  if (files.isEmpty())
+  {
+    std::fprintf(stderr, "config-probe: no case files in %s\n", qPrintable(cases_path));
+    return 1;
+  }
+
+  QDir out(out_dir);
+  if (!out.mkpath("."))
+  {
+    std::fprintf(stderr, "config-probe: cannot create %s\n", qPrintable(out_dir));
+    return 1;
+  }
+
+  DialogCatcher dialogs;
+  bool ok = true;
+  for (const QString &file : files)
+    ok = runCaseFile(file, out, dialogs) && ok;
+  ConfigClock::clearFixedNow();
+  return ok ? 0 : 1;
+}

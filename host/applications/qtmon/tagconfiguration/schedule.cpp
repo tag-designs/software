@@ -5,6 +5,7 @@
 #include "schedule.h"
 #include "ui_schedule.h"
 #include "hibernate.h"
+#include "configclock.h"
 #include "tag.pb.h"
 
 /**
@@ -69,7 +70,7 @@ bool Schedule::SetConfig(const Config &config)
 bool Schedule::SetConfig(const Config &config,
                          const ConfigFieldVisibility &visibility)
 {
-  QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
+  QDateTime now = roundDateTime(ConfigClock::now(), 60);
   visibility_ = visibility;
 
   if (visibility_.active_interval)
@@ -136,8 +137,8 @@ bool Schedule::SetConfig(const Config &config,
       if ((config.hibernate(i).start_epoch() == INT32_MAX) ||
           (config.hibernate(i).start_epoch() == 0))
       {
-        h->setStartEpoch(now.currentSecsSinceEpoch());
-        h->setEndEpoch(now.currentSecsSinceEpoch());
+        h->setStartEpoch(ConfigClock::now().toSecsSinceEpoch());
+        h->setEndEpoch(ConfigClock::now().toSecsSinceEpoch());
       }
       else
       {
@@ -177,7 +178,7 @@ bool Schedule::GetConfig(Config &config)
   if (!active)
     return true;
 
-  QDateTime now = QDateTime::currentDateTime();
+  QDateTime now = ConfigClock::now();
   QDateTime start = ui.StartDateTime->dateTime();
   QDateTime end = ui.EndDateTime->dateTime();
   QDateTime maxdt = QDateTime::fromSecsSinceEpoch(INT32_MAX);
@@ -259,7 +260,7 @@ void Schedule::on_EndDateTime_dateTimeChanged(const QDateTime &dateTime)
 
 void Schedule::on_runGroup_clicked()
 {
-  QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
+  QDateTime now = roundDateTime(ConfigClock::now(), 60);
   QDateTime maxdt = QDateTime::fromSecsSinceEpoch(INT32_MAX);
 
   if (ui.RunIndefinitely->isChecked())
@@ -281,7 +282,7 @@ void Schedule::on_runGroup_clicked()
 
 void Schedule::on_startGroup_clicked()
 {
-  QDateTime now = roundDateTime(QDateTime::currentDateTime(), 60);
+  QDateTime now = roundDateTime(ConfigClock::now(), 60);
   if (ui.StartNow->isChecked())
   {
     ui.StartDateTime->setDateTime(now);

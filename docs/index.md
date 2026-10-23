@@ -348,6 +348,11 @@ design document.
 
 - [QtMonitor Configuration Modules](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor configuration modules edit Config, build-time field visibility from default configs, and adding tags, fields and modules.
 
+### Applications / qtmon / test
+
+- [qtmonitor Configuration Probe](../host/applications/qtmon/test/README.md) — How to run qtmonitor's configuration probe over the committed cases, compare the results with the golden set, and regenerate cases or goldens.
+- [Expected Differences in the Configuration Probe](../host/applications/qtmon/test/expected-differences.md) *(results)* — Every accepted change to the qtmonitor configuration-probe goldens, newest first, with the commit, the cases affected and the reason.
+
 ### Applications / sensorviz
 
 - [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.

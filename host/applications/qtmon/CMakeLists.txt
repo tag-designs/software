@@ -66,11 +66,13 @@ add_custom_command(
 set(qtmonitor_SRCS
     ${CONFIG_VISIBILITY_SOURCE}
     abstractdownload.cpp
+    configprobe.cpp
     logwindow.cpp
     main.cpp
     mainwindow.cpp
     tagconfiguration/adxl362config.cpp
     tagconfiguration/bittaglog.cpp
+    tagconfiguration/configclock.cpp
     tagconfiguration/configtab.cpp
     tagconfiguration/hibernate.cpp
     tagconfiguration/pbenumgroup.cpp
@@ -118,6 +120,27 @@ endif()
 # Use the Widgets module from Qt 5
 
 target_link_libraries(qtmonitor PRIVATE tagcore host_common Qt6::Widgets)
+
+#[[
+  @brief  Case generator for the configuration probe.
+
+  @details `qtmonitor --config-probe` runs the configuration screen over case
+           files with no tag attached; config_probe_cases writes those files
+           from the tags' default configs and captured fixtures. The cases are
+           committed, so this is needed only to change the corpus. Off by
+           default because it is a developer tool, not a shipped binary. See
+           test/README.md.
+#]]
+option(BUILD_QTMON_CHECKS
+       "Build the qtmonitor configuration-probe case generator (developer tool)"
+       OFF)
+
+if(BUILD_QTMON_CHECKS)
+  add_executable(config_probe_cases test/config_probe_cases.cc)
+  target_link_libraries(config_probe_cases PRIVATE proto)
+  set_target_properties(config_probe_cases PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+endif()
 
 if(WIN32)
   # why the opengle extensions ????

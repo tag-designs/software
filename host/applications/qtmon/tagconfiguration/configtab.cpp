@@ -391,8 +391,6 @@ void ConfigTab::on_configSaveButton_clicked()
 
 void ConfigTab::on_configRestoreButton_clicked()
 {
-  Config configin;
-
   QString fileName = HostFileDialog::getOpenFileName(
       this, tr("Open File"), QDir::homePath(),
       tr("Protobuf (*.json);;All Files (*)"));
@@ -415,30 +413,72 @@ void ConfigTab::on_configRestoreButton_clicked()
                   std::istreambuf_iterator<char>());
 
   fin.close();
-  google::protobuf::util::JsonParseOptions options2;
-  auto status = JsonStringToMessage(str, &configin, options2);
-  if (status.ok())
+  QString detail;
+  switch (RestoreFromJsonText(str, &detail))
   {
-    Config merged = current_config_;
-    mergeRestoredConfig(merged, configin);
-    if (!SetConfig(merged))
-    {
-      QMessageBox msgBox;
-      msgBox.setText("Config file parsed but is not valid for this tag");
-      msgBox.exec();
-      qDebug().noquote() << "Config file restore parsed but SetConfig failed:"
-                         << QString::fromStdString(merged.DebugString());
-    }
-  }
-  else
+  case RestoreResult::Restored:
+    break;
+  case RestoreResult::NotValidForTag:
   {
-    QString statusText = QString::fromStdString(status.ToString());
     QMessageBox msgBox;
-    msgBox.setText("Couldn't Read " + fileName + "\n\n" + statusText);
+    msgBox.setText("Config file parsed but is not valid for this tag");
+    msgBox.exec();
+    qDebug().noquote() << "Config file restore parsed but SetConfig failed:"
+                       << detail;
+    break;
+  }
+  case RestoreResult::ParseError:
+  {
+    QMessageBox msgBox;
+    msgBox.setText("Couldn't Read " + fileName + "\n\n" + detail);
     msgBox.exec();
     qDebug().noquote() << "Config file restore couldn't read" << fileName
-                       << statusText;
+                       << detail;
+    break;
   }
+  }
+}
+
+/**
+ * @brief Overlays a JSON configuration onto the current one and redisplays it.
+ *
+ * @details Parses @p json_text as a Config, merges it into the current
+ *          configuration with mergeRestoredConfig(), and applies the result
+ *          with SetConfig(). Shows no dialogs; on_configRestoreButton_clicked()
+ *          reports the outcome to the user, and the configuration probe
+ *          records it.
+ *
+ * @param[in]  json_text  Contents of a configuration file.
+ * @param[out] detail     On ParseError, the protobuf parser's status text; on
+ *                        NotValidForTag, the merged configuration in protobuf
+ *                        debug form; unchanged on success. May be null.
+ *
+ * @return Restored when the merged configuration was applied; ParseError when
+ *         the text is not a valid Config (the current configuration is left
+ *         untouched); NotValidForTag when SetConfig() rejected the merge.
+ */
+ConfigTab::RestoreResult ConfigTab::RestoreFromJsonText(const std::string &json_text,
+                                                        QString *detail)
+{
+  Config configin;
+  google::protobuf::util::JsonParseOptions options2;
+  auto status = JsonStringToMessage(json_text, &configin, options2);
+  if (!status.ok())
+  {
+    if (detail)
+      *detail = QString::fromStdString(status.ToString());
+    return RestoreResult::ParseError;
+  }
+
+  Config merged = current_config_;
+  mergeRestoredConfig(merged, configin);
+  if (!SetConfig(merged))
+  {
+    if (detail)
+      *detail = QString::fromStdString(merged.DebugString());
+    return RestoreResult::NotValidForTag;
+  }
+  return RestoreResult::Restored;
 }
 
 void ConfigTab::on_startButton_clicked()

@@ -1,0 +1,2945 @@
+{
+    "cases_file": "imutag.json",
+    "results": [
+        {
+            "get_config_ok": true,
+            "id": "base",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "base@RUNNING",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=0",
+                " | group title=\"Logging Schedule\" enabled=0",
+                "Configuration File | button text=\"restore\" enabled=0 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=0 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=0 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=0",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=0",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=0",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=0",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=0",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=0",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=0",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=0",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=0",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=0",
+                "IMU | group title=\"Accelerometer Range\" enabled=0",
+                "IMU | group title=\"Gyro Range\" enabled=0",
+                "IMU | group title=\"Sample Rate\" enabled=0",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=0 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=0",
+                "Logging Schedule | group title=\"Start Delay\" enabled=0"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=ACCEL_UNSPECIFIED",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R2G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100118044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=R2G",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R2G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100118044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=R4G",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=R8G",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R8G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100318044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=R16G",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R16G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100418044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.accel_rng=99",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R2G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100118044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=GYRO_UNSPECIFIED",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R125dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218014801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R125dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R125dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218014801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R250dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R250dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218024801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R500dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R500dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218034801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R1000dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R2000dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R2000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218054801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=R4000dps",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R4000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218064801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.gyro_rng=99",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R125dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218014801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=ODR_UNSPECIFIED",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S50",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S100",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S200",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S200"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a420708c801100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S400",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S400"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a4207089003100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S800",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S800"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a420708a006100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=1 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=S1600",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S1600"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a420708c00c100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "lsm6.odr=99",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=0",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=1",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=2",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 2,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044802",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=1 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=59",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 59,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a4206086410021804483b",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=58 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=60",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 60,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a4206086410021804483c",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=59 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=61",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 61,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a4206086410021804483d",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=60 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=255",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 121,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044879",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=120 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=256",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 121,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044879",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=120 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=1440",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 121,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044879",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=120 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "start_delay=100000",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 121,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044879",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=120 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:own-full",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:only:lsm6.accel_rng",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R16G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100418044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:zero:lsm6.accel_rng",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:only:lsm6.gyro_rng",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R4000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218064801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:zero:lsm6.gyro_rng",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:only:lsm6.odr",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S1600"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a420708c00c100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:zero:lsm6.odr",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:only:start_delay",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 7,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044807",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=6 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:zero:start_delay",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:BITPRESTAG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:BITTAG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:BITTAGNG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:BITTAG_LE",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:COMPASSTAG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:PRESTAG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:foreign:UIUCTAG",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:empty-object",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "Restored",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:malformed",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "ParseError",
+            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:6 (offset 5): unexpected character: 'j'; expected ':'",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:unknown-key",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "ParseError",
+            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config, near 1:10 (offset 9): no such field: 'bogus'",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        },
+        {
+            "get_config_ok": true,
+            "id": "restore:wrong-type",
+            "layout": [
+                "subtab \"Schedule\" visible=1 enabled=1",
+                "subtab \"Sensors\" visible=1 enabled=1",
+                "configtab visible=1 enabled=1"
+            ],
+            "restore": "ParseError",
+            "restore_detail": "INVALID_ARGUMENT: invalid JSON in Config @ period: uint32, near 1:12 (offset 11): invalid number: 'abc'",
+            "sent": {
+                "bittag_log": "BITTAG_UNSPECIFIED",
+                "hibernate": [
+                ],
+                "lsm6": {
+                    "accel_rng": "R4G",
+                    "gyro_rng": "R1000dps",
+                    "odr": "S100"
+                },
+                "period": 0,
+                "start_delay": 1,
+                "tag_type": "IMUTAG"
+            },
+            "sent_hex": "080a42060864100218044801",
+            "ui": [
+                " | group title=\"Configuration File\" enabled=1 tooltip=\"Save/restore configuration to/from file\"",
+                " | group title=\"Configure Tag\" enabled=1 tooltip=\"Read or Write (Start) tag configuration\"",
+                " | group title=\"IMU\" enabled=1",
+                " | group title=\"Logging Schedule\" enabled=1",
+                "Configuration File | button text=\"restore\" enabled=1 tooltip=\"Restore configuration from file\"",
+                "Configuration File | button text=\"save\" enabled=1 tooltip=\"Save configuration to file\"",
+                "Configure Tag | button text=\"read\" enabled=1 tooltip=\"read configuration from tag\"",
+                "Configure Tag | button text=\"start\" enabled=1 tooltip=\"Write configuration to tag -- starts tag\"",
+                "IMU > Accelerometer Range | radio text=\"+/- 16g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 2g\" checked=0 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 4g\" checked=1 enabled=1",
+                "IMU > Accelerometer Range | radio text=\"+/- 8g\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 1000dps\" checked=1 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 125dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 2000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 250dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 4000dps\" checked=0 enabled=1",
+                "IMU > Gyro Range | radio text=\"+/- 500dps\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"100 Hz\" checked=1 enabled=1",
+                "IMU > Sample Rate | radio text=\"1600 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"200 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"400 Hz\" checked=0 enabled=1",
+                "IMU > Sample Rate | radio text=\"800 Hz\" checked=0 enabled=1",
+                "IMU | group title=\"Accelerometer Range\" enabled=1",
+                "IMU | group title=\"Gyro Range\" enabled=1",
+                "IMU | group title=\"Sample Rate\" enabled=1",
+                "Logging Schedule > Start Delay | int label=\"\" value=0 min=0 max=120 step=1 prefix=\"\" suffix=\"\" enabled=1 tooltip=\"Start delay in minutes -- rounded to next minute\"",
+                "Logging Schedule > Start Delay | label text=\"Minutes\" enabled=1",
+                "Logging Schedule | group title=\"Start Delay\" enabled=1"
+            ]
+        }
+    ],
+    "schema": "qtmon-config-probe-results/1"
+}
