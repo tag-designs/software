@@ -122,6 +122,15 @@ firmware's two intervals (7 cases). 130 restore cases differed only by stale
 rows in the old goldens, an artefact of the old `deleteLater()`; each was
 checked to be exactly the new rows plus the base configuration's.
 
+Live, on the same BitTag LE:
+
+- in the new panels, the inactive threshold was set to 0.40 g, the inactivity
+  count to 5 samples, and the log format to bit per second;
+- the configuration was saved, the active threshold changed as a decoy, the
+  file restored, and the tag started;
+- the saved file and the tag's stored configuration both held exactly those
+  values, with the active threshold back at 0.50 g (stored as 0.498).
+
 ## Consequences
 
 **Adding a field takes four places:** the proto, the default configs that list
