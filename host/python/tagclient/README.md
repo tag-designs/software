@@ -58,6 +58,14 @@ to a `proto/` directory.
 - The client does not page data logs: how the index advances depends on the
   tag's log format (see `tag-dwnld`), so `get_data_log(index)` returns one raw
   page.
+- **`tagclient.configshape`** gives which `Config` fields each tag type
+  supports, read from the tags' default configs in the checkout, and
+  `merge()`, the same rule `tag-start --merge` and qtmonitor's Restore use: copy
+  only fields the tag supports and the file speaks for, zeros included. It is
+  the Python counterpart of tagcore's `ConfigShape`; see
+  [Tag Configuration Model](../../../docs/shared/design/configuration-model.md).
+  Set `TAGCLIENT_DEFAULT_CONFIG_DIR` to an `embedded/proto-c` directory for a
+  copy installed outside the checkout.
 
 ## Examples
 
@@ -71,7 +79,12 @@ status monitor.
 TAG_SERVER_BIN=<build-dir>/Release/bin/tag-server pytest host/python/tagclient
 ```
 
-Each test starts its own `tag-server` on a temporary socket.
+[`tests/test_configshape.py`](tests/test_configshape.py) needs neither a
+server nor a tag, and runs without `TAG_SERVER_BIN`. It holds
+`tagclient.configshape` to the same cases and the same frozen reference table
+as tagcore's `config_shape_check`.
+
+Each server test starts its own `tag-server` on a temporary socket.
 [`tests/test_server.py`](tests/test_server.py) needs no tag: it covers errors,
 the debug switch, attaching to a missing base, TCP, shutdown and a second
 server on a busy socket. [`tests/test_hardware.py`](tests/test_hardware.py)

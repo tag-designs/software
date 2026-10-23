@@ -9,6 +9,8 @@ from pathlib import Path
 
 from google.protobuf import json_format
 
+from tagclient import configshape
+
 from _common import TagState, fail, open_tag, parser, run, state_name, wait_for_state, wait_settled, pb
 
 
@@ -17,7 +19,8 @@ def main() -> int:
     p.add_argument("-c", "--config", type=Path,
                    help="program this protobuf-JSON configuration before starting")
     p.add_argument("--merge", action="store_true",
-                   help="overlay --config onto the tag's stored configuration")
+                   help="overlay --config onto the tag's stored configuration: "
+                        "only fields the tag supports are copied, zeros included")
     p.add_argument("--set-rtc", action="store_true",
                    help="synchronise the tag clock from the server's before starting")
     p.add_argument("--start-now", action="store_true",
@@ -42,9 +45,12 @@ def main() -> int:
         # Start from what the tag holds, never from an empty Config.
         config = tag.get_config()
         if args.config:
-            parsed = json_format.Parse(args.config.read_text(), pb.tagdata.Config())
+            text = args.config.read_text()
+            parsed = json_format.Parse(text, pb.tagdata.Config())
             if args.merge:
-                config.MergeFrom(parsed)
+                # As tag-start --merge and qtmonitor's Restore: copy only the
+                # fields the tag supports and the file speaks for.
+                configshape.merge(config, parsed, configshape.for_file(text))
             else:
                 config = parsed
         if args.start_now:

@@ -15,7 +15,7 @@ those tools reliable, so they double as worked examples of using
 | Example | Counterpart | What it does |
 | --- | --- | --- |
 | [`tag_info.py`](tag_info.py) | `tag-info` | Information, configuration, status and state log; `--json` for one record |
-| [`tag_start.py`](tag_start.py) | `tag-start` | Start an IDLE tag, optionally with a JSON config (`--config`, `--merge`, `--start-now`, `--set-rtc`) |
+| [`tag_start.py`](tag_start.py) | `tag-start` | Start an IDLE tag, optionally with a JSON config (`--config`, `--merge`, `--start-now`, `--set-rtc`). `--merge` copies only fields the tag supports, as `tag-start` does |
 | [`tag_stop.py`](tag_stop.py) | `tag-stop` | Stop and wait for FINISHED or ABORTED |
 | [`tag_reset.py`](tag_reset.py) | `tag-reset` | Stop if running, erase, wait for IDLE. Discards the log |
 | [`tag_dwnld.py`](tag_dwnld.py) | `tag-dwnld` | Download the data log as raw pages, one JSON object per line |

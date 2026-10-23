@@ -107,8 +107,10 @@ other.
 qtmonitor's **Save** writes the whole `Config` as protobuf JSON, with every
 field printed, including zeros for fields the tag does not have.
 
-**Restore** in qtmonitor and **`tag-start --merge`** use the same rule,
-`ConfigShape::merge()`. It copies a field into the tag's configuration only if
+**Restore** in qtmonitor, **`tag-start --merge`**, and the Python example
+**`tag_start.py --merge`** use the same rule: `ConfigShape::merge()` in C++,
+and its Python counterpart `tagclient.configshape.merge()`, which is tested
+against the same cases. It copies a field into the tag's configuration only if
 the tag supports it and the file speaks for it:
 
 - **The file speaks for its keys,** zeros included, as found by
