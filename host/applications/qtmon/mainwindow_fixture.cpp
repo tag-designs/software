@@ -408,7 +408,21 @@ bool MainWindow::saveCurrentScreenshot(const QString &path,
   qApp->processEvents();
 
   if (maximumWindowSize.isValid()) {
-    const QSize natural = sizeHint().expandedTo(minimumSizeHint());
+    QSize natural = sizeHint().expandedTo(minimumSizeHint());
+    // QTabWidget is as tall as its tallest page, so a short page would be
+    // captured in a window sized for another tab. Take the difference between
+    // the tallest page and the page on screen back off the window's height.
+    if (const QWidget *current = ui.mainTabWidget->currentWidget()) {
+      int tallest = 0;
+      for (int i = 0; i < ui.mainTabWidget->count(); ++i) {
+        const QWidget *page = ui.mainTabWidget->widget(i);
+        tallest = qMax(tallest,
+                       page->sizeHint().expandedTo(page->minimumSizeHint()).height());
+      }
+      const int own =
+          current->sizeHint().expandedTo(current->minimumSizeHint()).height();
+      natural.setHeight(natural.height() - (tallest - own));
+    }
     setFixedSize(natural.boundedTo(maximumWindowSize));
     // The window system applies a resize asynchronously; grabbing the frame
     // rectangle before it has would capture whatever lies behind the window.
