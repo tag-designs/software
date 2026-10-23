@@ -21,6 +21,10 @@ class PBEnumGroup;
 class BitTagLogPanel : public ConfigPanel
 {
 public:
+  /**
+   * @brief Builds the log format buttons.
+   * @param[in] parent  Qt parent.
+   */
   explicit BitTagLogPanel(QWidget *parent = nullptr);
 
   std::vector<std::string_view> paths() const override;

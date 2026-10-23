@@ -26,8 +26,11 @@ struct EmbeddedDefaultConfig
   const char *text;  ///< contents of that directory's default-config.json
 };
 
-// Defined in the generated defaultconfigs.cc (see CMakeLists.txt).
+/// Every tag's default-config.json, in directory-name order. Defined in the
+/// generated defaultconfigs.cc (see this directory's CMakeLists.txt).
 extern const EmbeddedDefaultConfig kEmbeddedDefaultConfigs[];
+/// Number of entries in kEmbeddedDefaultConfigs (one placeholder entry, not
+/// counted, when there are none).
 extern const std::size_t kEmbeddedDefaultConfigCount;
 
 namespace
@@ -163,22 +166,31 @@ void copyScalar(const Message &from, Message &to, const FieldDescriptor *f)
 
 } // namespace
 
-/// Builds the per-tag shapes; a friend of ConfigShape so it can fill them.
+/**
+ * @brief Builds the per-tag shapes from the embedded default configs; a friend
+ *        of ConfigShape so it can fill them.
+ */
 class ConfigShapeBuilder
 {
 public:
+  /// Everything read from the embedded default configs.
   struct Table
   {
-    std::map<TagType, ConfigShape> shapes;
-    std::vector<std::string> errors;
+    std::map<TagType, ConfigShape> shapes;  ///< One shape per tag type with a default.
+    std::vector<std::string> errors;        ///< One message per default that was skipped.
   };
 
+  /**
+   * @brief The table, built on first use and kept for the program's life.
+   * @note  Thread-safe: a function-local static.
+   */
   static const Table &table()
   {
     static const Table built = build();
     return built;
   }
 
+  /// A shape holding exactly @p paths, for fromJson() and forFile().
   static ConfigShape make(std::set<std::string, std::less<>> paths)
   {
     ConfigShape shape;

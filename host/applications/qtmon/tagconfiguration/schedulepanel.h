@@ -47,6 +47,16 @@ public:
     StartDelay,          ///< start_delay only (IMUTag)
   };
 
+  /**
+   * @brief Builds the schedule controls and shows the groups @p variant owns.
+   *
+   * @details Two hibernation rows are built and stay hidden until load()
+   *          shows the ones the tag reports. Start and end times are shown and
+   *          entered in UTC.
+   *
+   * @param[in] variant  Which fields the panel owns; fixed.
+   * @param[in] parent   Qt parent.
+   */
   explicit SchedulePanel(Variant variant, QWidget *parent = nullptr);
 
   std::vector<std::string_view> paths() const override;

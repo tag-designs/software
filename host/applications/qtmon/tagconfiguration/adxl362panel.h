@@ -34,6 +34,12 @@
  *
  *          The semantic reuse is documented in each family's firmware
  *          `config.c` and in tagconfiguration/README.md.
+ *
+ * @note    Standard variant: a range, rate or filter the panel has no button
+ *          for, including `UNSPECIFIED`, leaves the group showing its first
+ *          button (or the one a previous load() checked), and store() writes
+ *          that button's value. The threshold and inactivity limits are then
+ *          sized for 2 g and 12.5 Hz.
  */
 class Adxl362Panel : public ConfigPanel
 {

@@ -15,6 +15,7 @@ here or a single link from here. The code stays where it is: `proto/` and
 | --- | --- | --- |
 | Monitor protocol (configuration, status, download RPC over SWD) | `proto/tag.proto`, [`include/monitor.h`](../../include/monitor.h) | [monitor-interface.md](monitor-interface.md) |
 | Protobuf schema and nanopb generation | [`proto/`](../../proto/README.md) | [proto README](../../proto/README.md) |
+| Tag configuration: the `Config` message, which fields each tag supports (its default config), and fields with tag-specific meanings | `proto/tagdata.proto`, `embedded/proto-c/*-proto-c/default-config.json`, [`configshape.h`](../../host/libraries/tagcore/configshape.h) | [configuration-model.md](design/configuration-model.md) |
 | Packed binary log records | [`include/imutag_log_format.h`](../../include/imutag_log_format.h), [`prestag_log_format.h`](../../include/prestag_log_format.h), [`uiuctag_log_format.h`](../../include/uiuctag_log_format.h) | [binary-datalogs.md](binary-datalogs.md) and the Doxygen in each header |
 | External-flash loader service block | [`include/loader_service.h`](../../include/loader_service.h) | [loader runtime](../../embedded/loaders/design/loader-runtime.md), [SWD capture library](../../host/libraries/tagcore/design/swd-recovery.md) |
 | SQLite download schema | `host/libraries/tagcore/sqlitelog` | [user reference](../../host/docs/src/reference/sqlite-logs.md) (authoritative), [writer internals](../../host/libraries/tagcore/sqlitelog/README.md) |

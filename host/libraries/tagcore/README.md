@@ -55,6 +55,9 @@ see
 
 Design documents:
 
+- [Tag Configuration Model](../../../docs/shared/design/configuration-model.md):
+  which configuration fields each tag supports, `ConfigShape`, the merge used
+  by Restore and `tag-start --merge`, and how it is checked.
 - [`design/swd-recovery.md`](design/swd-recovery.md): design of the SWD capture
   and recovery library -- capture without booting the firmware, external flash
   through the loaders, tag identification, and the layered API. Its bring-up

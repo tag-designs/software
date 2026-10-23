@@ -75,6 +75,7 @@ design document.
 - [0029. Host: a Linux package, as a tarball carrying its own Qt](decisions/0029-host-linux-package-tarball-with-bundled-qt.md) *(decision)* — The host tools ship for Linux as an x86_64 tarball carrying its own Qt 6.10.3, built on Ubuntu 24.04 with Wayland and X11 support and tested in clean containers before release; the preferred Linux developer build is the same configuration, and a Qt other than HOST_QT_VERSION warns.
 - [0030. Host: orientation is stored as a quaternion; Euler angles are display-only](decisions/0030-host-orientation-stored-as-quaternion-only.md) *(decision)* — Compass orientation is computed and stored as a quaternion only; heading, pitch and roll are a display convention derived with Qt's conversion at each point of display, dataprocessing no longer writes yaw, pitch or roll, and SensorViz builds every compass view from quaternions, stored or derived.
 - [0031. Host: dataprocessing is a plain executable without Qt](decisions/0031-host-dataprocessing-plain-executable-without-qt.md) *(decision)* — dataprocessing no longer uses Qt -- it runs on the Qt-free sensoranalysis core, bit-identical to the Qt code -- so it ships as a plain executable in tag_tools/bin like the other command line tools, and builds in a host build without the Qt applications.
+- [0032. Host: configuration shape from default configs, fixed panels per tag type](decisions/0032-host-config-shape-and-fixed-panels.md) *(decision)* — Which Config fields a tag supports comes from its default config, read at run time by tagcore's ConfigShape, which also gives Restore and tag-start --merge one merge rule; qtmonitor's configuration screen is fixed panels selected by tag type; the change was proven equivalent on the host by a probe and golden results; tag-reported presence through proto3 optional fields was deferred.
 
 ### Investigations
 
@@ -93,12 +94,13 @@ design document.
 - [Magnetometer and Accelerometer Axes](shared/sensor-axes.md) — Tag firmware rotates each magnetometer and accelerometer part into a common tag frame, and the host orientation code assumes one fixed magnetometer-to-accelerometer alignment; what each family applies, and how to check a capture against it.
 - [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile: naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
 - [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
+- [Tag Configuration Model](shared/design/configuration-model.md) — How a tag's configuration is defined, which fields each tag supports (its default config, read by tagcore's ConfigShape), how qtmonitor shows and writes it with fixed panels per tag type, how files are merged, the fields with tag-specific meanings, and how all of it is checked without hardware.
 - [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
 
 ### Shared Contracts / Proposals
 
-- [Configuration Shape and Panels](shared/design/proposals/config-shape-and-panels.md) *(proposal, proposed)* — qtmonitor's configuration screen becomes fixed panels chosen by tag type, and a tagcore ConfigShape read from each tag's default config replaces the generated visibility struct, drives one merge for restore and tag-start, and cross-checks the panels; tag-reported presence is a deferred later stage.
 - [Skipped Pages in a Data-Log Download](shared/design/proposals/data-log-end-and-skip.md) *(proposal, proposed)* — The tag marks a hole in its data log with a new Ack.Err value, DATASKIPPED; every other reply without records ends the log, so host downloaders follow one rule and no longer read Status data counts, whose units differ by family.
+- [Tag-Reported Configuration Presence](shared/design/proposals/tag-reported-config-presence.md) *(proposal, proposed)* — Deferred. Let each tag report which Config fields it supports, through proto3 optional fields and a config_schema marker, instead of the host reading it from the tag's default config; tags already in the field keep working by falling back to the default config.
 
 ## Shared Contracts
 

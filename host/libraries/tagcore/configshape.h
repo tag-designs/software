@@ -18,7 +18,7 @@
  *            supports and the file actually sets. qtmonitor's Restore and
  *            `tag-start --merge` both use it.
  *
- * @see     docs/shared/design/proposals/config-shape-and-panels.md
+ * @see     docs/shared/design/configuration-model.md
  */
 
 #ifndef TAGCORE_CONFIGSHAPE_H

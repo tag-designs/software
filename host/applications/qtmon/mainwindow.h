@@ -1,3 +1,8 @@
+/**
+ * @file    mainwindow.h
+ * @brief   qtmonitor's main window and its startup options.
+ */
+
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
@@ -17,6 +22,7 @@ class ConfigTab;
 
 
 
+/// The Error Log tab's text box, defined in logwindow.cpp; null until created.
 extern QTextEdit *s_textEdit;
 class LogScreen;
 
@@ -52,6 +58,16 @@ struct MainWindowOptions {
   bool captureErrorLogScreenshot = false;
 };
 
+/**
+ * @class   MainWindow
+ * @brief   qtmonitor's window: Tag State, Configuration and Error Log tabs
+ *          for one attached tag.
+ *
+ * @details In live mode it attaches through tagcore's Tag, polls the tag's
+ *          status every 400 ms, and passes each state to the Configuration tab
+ *          (ConfigTab) through StateUpdate(). In fixture mode it fills the
+ *          same widgets from a captured fixture and issues no tag commands.
+ */
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
@@ -103,9 +119,13 @@ public slots:
 
 signals:
 
+  /// Every status poll: the tag's current state. Connected to ConfigTab::StateUpdate().
   void StateUpdate(TagState state);
+  /// During an erase: sectors erased so far.
   void SectorsErased(int);
+  /// During an erase: sectors erased so far and the total to erase.
   void EraseProgress(int value, int maximum);
+  /// A status poll found the tag IDLE; closes the erase progress dialog.
   void IdleState(void);
 
 private slots:

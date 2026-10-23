@@ -9,11 +9,13 @@
 #include <QGridLayout>
 #include <QVBoxLayout>
 
+/// Range buttons, ids from Adxl362::Rng (Standard variant only).
 static const std::vector<PBEnumGroup::binfo> adxl_range_buttons{
     {Adxl362_Rng_R2G, "+/- 2g", nullptr},
     {Adxl362_Rng_R4G, "+/- 4g", nullptr},
     {Adxl362_Rng_R8G, "+/- 8g", nullptr}};
 
+/// Sample rate buttons, ids from Adxl362::Odr (Standard variant only).
 static const std::vector<PBEnumGroup::binfo> adxl_odr_buttons{
     {Adxl362_Odr_S12_5, "12.5 Hz", "12.5 samples/second"},
     {Adxl362_Odr_S25, "25 Hz", "25 samples/second"},
@@ -22,6 +24,7 @@ static const std::vector<PBEnumGroup::binfo> adxl_odr_buttons{
     {Adxl362_Odr_S200, "200 Hz", "200 samples/second"},
     {Adxl362_Odr_S400, "400 Hz", "400 samples/second"}};
 
+/// Anti-alias filter buttons, ids from Adxl362::Aa (Standard variant only).
 static const std::vector<PBEnumGroup::binfo> adxl_filter_buttons{
     {Adxl362_Aa_AAquarter, "1/4 Sample Rate", "filter cutoff -- 1/4 sample rate"},
     {Adxl362_Aa_AAhalf, "1/2 Sample Rate", "filter cutoff -- 1/2 sample rate"}};

@@ -14,7 +14,7 @@
  *          writes exactly those fields back, whatever is on screen. Fields no
  *          panel owns pass through from the tag's own configuration unchanged.
  *
- * @see     docs/shared/design/proposals/config-shape-and-panels.md
+ * @see     docs/shared/design/configuration-model.md, tagconfiguration/README.md
  */
 
 #ifndef CONFIGPANEL_H

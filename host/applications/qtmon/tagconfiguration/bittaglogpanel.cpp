@@ -12,6 +12,7 @@
 
 #include "pbenumgroup.h"
 
+/// Log format buttons, ids from BitTagLogFmt (BITTAG_UNSPECIFIED has none).
 static const std::vector<PBEnumGroup::binfo> bittag_internal_log_buttons{
     {BITTAG_BITPERSEC, "Activity Bit Per Second", nullptr},
     {BITTAG_BITSPERMIN, "Activity Count Per Minute", nullptr},

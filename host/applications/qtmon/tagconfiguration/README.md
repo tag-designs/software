@@ -6,6 +6,13 @@ summary: How qtmonitor's Configuration tab is built from fixed panels selected b
 
 # QtMonitor Configuration Panels
 
+This README covers the panels. The configuration model as a whole (where a
+tag's supported fields come from, the merge, the fields with tag-specific
+meanings, and how it is checked) is in
+[Tag Configuration Model](../../../../docs/shared/design/configuration-model.md);
+the decisions behind it are in
+[decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md).
+
 The Configuration tab is one page of **panels**. Every panel is built once,
 when `ConfigTab` is constructed, with its titles, labels, ranges and tooltips
 fixed for the tags it serves. The attached tag's type selects which panels are

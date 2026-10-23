@@ -14,13 +14,18 @@ class PBEnumGroup;
  * @class   Lsm6Panel
  * @brief   Edits `Config.lsm6`: sample rate, accelerometer range and gyro range.
  *
- * @details store() leaves a field unchanged when its control holds no valid
- *          choice, which happens only when the tag reported a value the panel
- *          has no button for.
+ * @note    A value the panel has no button for, including `UNSPECIFIED`,
+ *          leaves the group showing its first button (or the button a
+ *          previous load() checked), and store() then writes that button's
+ *          value. For example, an unknown accelerometer range is sent as 2 g.
  */
 class Lsm6Panel : public ConfigPanel
 {
 public:
+  /**
+   * @brief Builds the sample rate and range button groups, in one row.
+   * @param[in] parent  Qt parent.
+   */
   explicit Lsm6Panel(QWidget *parent = nullptr);
 
   std::vector<std::string_view> paths() const override;

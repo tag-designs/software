@@ -234,6 +234,10 @@ void checkMerge()
 
 } // namespace
 
+/**
+ * @brief Runs every check; any failure aborts on its assertion.
+ * @return 0 when every assertion passed.
+ */
 int main()
 {
   checkLoading();

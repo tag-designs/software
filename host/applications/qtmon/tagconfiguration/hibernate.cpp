@@ -1,3 +1,8 @@
+/**
+ * @file    hibernate.cpp
+ * @brief   One hibernation row: start and end times kept in order.
+ */
+
 #include <QWidget>
 #include <QDateTimeEdit>
 #include <QFormLayout>

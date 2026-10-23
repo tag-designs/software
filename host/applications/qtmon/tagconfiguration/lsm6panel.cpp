@@ -11,12 +11,14 @@
 
 #include "pbenumgroup.h"
 
+/// Accelerometer range buttons, ids from Lsm6dsv::ACCEL.
 static const std::vector<PBEnumGroup::binfo> accel_range_buttons{
     {Lsm6dsv_ACCEL_R2G, "+/- 2g", nullptr},
     {Lsm6dsv_ACCEL_R4G, "+/- 4g", nullptr},
     {Lsm6dsv_ACCEL_R8G, "+/- 8g", nullptr},
     {Lsm6dsv_ACCEL_R16G, "+/- 16g", nullptr}};
 
+/// Gyro range buttons, ids from Lsm6dsv::GYRO.
 static const std::vector<PBEnumGroup::binfo> gyro_range_buttons{
     {Lsm6dsv_GYRO_R125dps, "+/- 125dps", nullptr},
     {Lsm6dsv_GYRO_R250dps, "+/- 250dps", nullptr},
@@ -25,6 +27,7 @@ static const std::vector<PBEnumGroup::binfo> gyro_range_buttons{
     {Lsm6dsv_GYRO_R2000dps, "+/- 2000dps", nullptr},
     {Lsm6dsv_GYRO_R4000dps, "+/- 4000dps", nullptr}};
 
+/// Sample rate buttons, ids from Lsm6dsv::ODR.
 static const std::vector<PBEnumGroup::binfo> odr_buttons{
     {Lsm6dsv_ODR_S100, "100 Hz", nullptr},
     {Lsm6dsv_ODR_S200, "200 Hz", nullptr},

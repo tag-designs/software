@@ -487,6 +487,15 @@ std::vector<Case> casesFor(const std::string &tag, const Config &base,
 
 } // namespace
 
+/**
+ * @brief Writes one case file per tag type.
+ *
+ * @param[in] argc  Must be 3.
+ * @param[in] argv  argv[1]: repository root; argv[2]: output directory,
+ *                  created if missing.
+ * @return 0 on success; 2 on a usage error; 1, with a message on stderr, if a
+ *         default config or fixture cannot be read or parsed.
+ */
 int main(int argc, char **argv)
 {
   if (argc != 3)

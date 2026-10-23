@@ -1,3 +1,13 @@
+/**
+ * @file    configtab.h
+ * @brief   qtmonitor's Configuration tab: a page of fixed panels, selected by
+ *          the attached tag's type, plus save, restore, read and start.
+ *
+ * @see     tagconfiguration/README.md for the panels and how to add tags,
+ *          fields and panels; docs/shared/design/configuration-model.md for
+ *          the configuration model as a whole.
+ */
+
 #ifndef CONFIG_H
 #define CONFIG_H
 
@@ -16,14 +26,65 @@
 #include "ui_configtab.h"
 #include "tagclass.h"
 
+/**
+ * @class   ConfigTab
+ * @brief   Shows, edits and sends the attached tag's configuration.
+ *
+ * @details Every ConfigPanel is built once, in the constructor, and placed on
+ *          a single scrolling page. SetConfig() shows the panels the tag type
+ *          selects (`panelsForTag()` in configtab.cpp) and loads each from the
+ *          configuration; GetConfig() starts from that configuration and lets
+ *          each shown panel write the fields it owns, so fields no panel owns
+ *          pass through unchanged. Save and Start both use GetConfig().
+ *
+ *          Live qtmonitor calls Attach() before SetConfig(), so Read and Start
+ *          can reach the tag. Fixture mode (SetFixtureMode()) and the
+ *          configuration probe use the tab without a tag.
+ *
+ *          Not thread-safe: use from the GUI thread only.
+ */
 class ConfigTab :  public QWidget {
     Q_OBJECT
 
 public:
+    /**
+     * @brief Builds the page with every panel hidden.
+     * @param[in] parent  Qt parent.
+     */
     explicit ConfigTab(QWidget *parent = nullptr);
     ~ConfigTab();
+
+    /**
+     * @brief The configuration Start and Save would send.
+     *
+     * @details Copies the current configuration, sets its tag type, and has
+     *          each shown panel write its fields from its controls, whatever
+     *          is on screen. On success the result also becomes the current
+     *          configuration.
+     *
+     * @param[out] config  Receives the configuration.
+     * @return false when a panel holds a value it cannot write (only the
+     *         BitTag log panel can); @p config must then not be sent.
+     */
     bool GetConfig(Config &config);
+
+    /**
+     * @brief Displays a configuration, normally the tag's own.
+     *
+     * @details Stores @p config as the current configuration, shows the panels
+     *          its tag type selects, loads each from it, and sizes the page.
+     *          A tag type with no panels shows an empty page. Shows the tab and
+     *          enables it; StateUpdate() then decides what is editable.
+     *
+     * @param[in] config  Configuration to display.
+     * @return Always true.
+     *
+     * @note The BitTag log panel shows a modal warning when a classic BitTag
+     *       reports no log format.
+     */
     bool SetConfig(const Config &config);
+
+    /// True after SetConfig(), false after Detach().
     bool isActive();
     /**
      * @brief Puts the configuration tab in read-only fixture display mode.
@@ -48,6 +109,13 @@ public:
      * @brief Overlays a configuration file's contents onto the current
      *        configuration, as the Restore button does, without dialogs.
      *
+     * @details Copies each field that the attached tag supports and the file
+     *          speaks for (ConfigShape::forFile() and ConfigShape::merge()): a
+     *          field the file leaves out keeps its value, a stated field is
+     *          copied (zero included), and a file whose `tag_type` is another
+     *          tag type contributes only that type's fields. Then redisplays
+     *          with SetConfig().
+     *
      * @param[in]  json_text  Contents of a configuration file.
      * @param[out] detail     Parser status or rejected configuration text on
      *                        failure. May be null.
@@ -66,8 +134,28 @@ public:
 
 public slots:
 
+    /**
+     * @brief Remembers the live tag that Read and Start talk to.
+     * @param[in] tag  Attached tag; must outlive its use by this tab.
+     * @return Always true.
+     */
     bool Attach(Tag &tag);
+
+    /**
+     * @brief Hides every panel and the tab, and marks it inactive, when the
+     *        tag is detached.
+     */
     void Detach();
+
+    /**
+     * @brief Enables editing only while the tag is IDLE.
+     *
+     * @details In IDLE the shown panels and the restore, read and start
+     *          buttons are enabled; in any other state they are disabled, so a
+     *          running tag's configuration is displayed but not editable.
+     *
+     * @param[in] state  The tag's current state.
+     */
     void StateUpdate(TagState state);
 
 private slots:
@@ -110,22 +198,22 @@ private:
 
     // Helper function
 
-    TagType tag_type_ = TAG_UNSPECIFIED;
-    TagState old_state_ = STATE_UNSPECIFIED;
-    Config current_config_;
-    bool fixture_mode_ = false;
+    TagType tag_type_ = TAG_UNSPECIFIED;  ///< Tag type of the current configuration.
+    TagState old_state_ = STATE_UNSPECIFIED;  ///< Last state from StateUpdate() or a Start poll.
+    Config current_config_;  ///< The tag's configuration as last read, restored or sent.
+    bool fixture_mode_ = false;  ///< Read and Start are no-ops; see SetFixtureMode().
 
     /// Every panel, built once in the constructor, in page order.
     std::vector<ConfigPanel *> panels_;
     /// The panels the current tag type shows, in page order.
     std::vector<ConfigPanel *> shown_;
-    bool active = false;
+    bool active = false;  ///< See isActive().
 
     // for errors
 
-    QMessageBox msgBox;
-    Tag *tag;
-    Ui::ConfigTab ui;
+    QMessageBox msgBox;  ///< Reused for "Tag config read failed".
+    Tag *tag;            ///< Live tag from Attach(). Uninitialised before then; fixture mode never uses it.
+    Ui::ConfigTab ui;    ///< Page, scroll area and file/tag buttons.
     
 };
 

@@ -16,9 +16,10 @@ cases and records, for each case:
 - any dialog raised.
 
 Comparing two builds' results shows whether a change to the screen changed
-anything a tag or a user could see. This is how the restructure in
-[Configuration Shape and Panels](../../../../docs/shared/design/proposals/config-shape-and-panels.md)
-is checked without testing every tag on the bench.
+anything a tag or a user could see. It is how the configuration screen is
+checked without testing every tag on the bench; see
+[Tag Configuration Model](../../../../docs/shared/design/configuration-model.md)
+and [decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md).
 
 | Path | What it is |
 | --- | --- |

@@ -1,3 +1,17 @@
+/**
+ * @file    tag-start.cc
+ * @brief   `tag-start`: program a configuration into an IDLE tag and start it.
+ *
+ * @details Waits for the tag to report a definite state, optionally syncs its
+ *          clock (`--set-rtc`), then starts from the configuration the tag
+ *          already holds. `--config` replaces it with a JSON file, or with
+ *          `--merge` overlays the file using ConfigShape::merge(): only fields
+ *          the tag supports and the file speaks for are copied, zeros
+ *          included. `--start-now` forces `start_delay` to 0. It then polls
+ *          until the tag leaves IDLE and prints the resulting status, since an
+ *          acknowledged Start is not proof the tag started.
+ */
+
 #include <algorithm>
 #include <stdint.h>
 #include <string>
@@ -25,10 +39,13 @@ extern "C"
 #include "log.h"
 }
 
+/// Shared command line handling for the tag tools (options.cc): adds the base
+/// selection options, parses, and attaches to the tag.
 extern bool parse_options(int argc, char **argv, cxxopts::Options &options, Tag &tag, UsbDev &dev);
 using namespace google::protobuf;
-using MS = std::chrono::milliseconds;
+using MS = std::chrono::milliseconds;  ///< Shorthand for poll intervals.
 
+/// SIGINT handler: exit at once with status 1.
 static void intHandler(int dummy)
 {
     (void)dummy;
@@ -38,12 +55,10 @@ static void intHandler(int dummy)
 /**
  * @brief Load a Config from a protobuf-JSON file.
  *
- * @details The default configurations under embedded/proto-c/<tag>-proto-c/
- *          are partial: they carry tag_type, start_delay and sensor settings but
- *          no schedule. Pass merge=true to overlay such a file onto the
- *          configuration already stored on the tag; pass false to program
- *          exactly what the file specifies, which is what a reproducible
- *          experiment wants.
+ * @details Pass merge=true to overlay a partial file, such as one stating
+ *          only a threshold, onto the configuration already stored on the tag;
+ *          pass false to program exactly what the file specifies, which is
+ *          what a reproducible experiment wants.
  *
  * @param[in]     path  JSON file to read.
  * @param[in,out] cfg   On entry the tag's current configuration; on success the
@@ -99,6 +114,13 @@ static bool loadConfigJson(const std::string &path, Config &cfg, bool merge)
     return true;
 }
 
+/**
+ * @brief Runs tag-start; see the file description.
+ * @return 0 when the tag reached RUNNING or CONFIGURED, was already in one of
+ *         them (no start is sent), or accepted the start but answered no
+ *         status read within --start-timeout (reported as "not confirmed");
+ *         1 otherwise, with the reason on stderr.
+ */
 int main(int argc, char **argv)
 {
     Tag tag;

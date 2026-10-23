@@ -12,7 +12,7 @@ without an entry here is a defect. See [README.md](README.md).
 
 ## 2026-10-23: one page of fixed panels
 
-Change: stage 1b of the proposal. The Schedule and Sensors sub-tabs, the four
+Change: the fixed panels ([decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md)). The Schedule and Sensors sub-tabs, the four
 modules and the visibility table are replaced by fixed panels selected by tag
 type. The probe now runs each case once, since there are no sub-tabs to
 select.
@@ -32,7 +32,7 @@ tag's default configuration.
 
 ## 2026-10-23: Restore copies only what the tag supports and the file states
 
-Change: stage 1 of the proposal. Restore's hand-written `mergeRestoredConfig()`
+Change: `ConfigShape` and the shared merge ([decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md)). Restore's hand-written `mergeRestoredConfig()`
 is replaced by `ConfigShape::forFile()` and `ConfigShape::merge()` in tagcore.
 The visibility table now comes from `ConfigShape` instead of the build-time
 generator (`config_shape_check` confirms it is identical for every tag type).
@@ -56,7 +56,7 @@ range. Now both reflect 4 g. What is sent is unchanged.
 Change: `Adxl362Config::GetConfig()` tested sample rate, range, filter and
 inactive threshold with `isVisible()`. It now tests `!isHidden()`, which is
 true whenever `SetConfig()` showed the control for this tag, whichever sub-tab
-is on screen. Rollout step 1 of the proposal.
+is on screen ([decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md)).
 
 Differences from the previous goldens, all in `sent_with_schedule_tab`: that
 key disappears from the 69 cases listed under "goldens created" below
@@ -66,8 +66,8 @@ other key changed in any case.
 
 ## 2026-10-23: goldens created
 
-Reference build: qtmonitor at the commit that added the probe (rollout step 0
-of [Configuration Shape and Panels](../../../../docs/shared/design/proposals/config-shape-and-panels.md)).
+Reference build: qtmonitor at the commit that added the probe, the first step
+of the work recorded in [decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-panels.md).
 Its configuration code is today's, apart from two changes that do not alter
 behaviour: the schedule reads the clock through `ConfigClock`, and Restore's
 parse-and-merge moved into `ConfigTab::RestoreFromJsonText()`.

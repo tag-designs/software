@@ -1,3 +1,8 @@
+/**
+ * @file    pbenumgroup.cpp
+ * @brief   Radio-button group for a protobuf enum.
+ */
+
 #include <QDebug>
 #include <QGroupBox>
 #include <QRadioButton>

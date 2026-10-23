@@ -1,3 +1,9 @@
+/**
+ * @file    configtab.cpp
+ * @brief   ConfigTab: the panel table, building and showing panels, reading
+ *          and writing Config, file save and restore, and Start.
+ */
+
 //#include <QDate>
 #include <QDateTime>
 #include <QDebug>
@@ -432,26 +438,15 @@ void ConfigTab::on_configRestoreButton_clicked()
   }
 }
 
-/**
- * @brief Overlays a JSON configuration onto the current one and redisplays it.
- *
- * @details Parses @p json_text as a Config, then copies into the current
- *          configuration each field that the attached tag supports and the
- *          file speaks for (ConfigShape::forFile() and merge(): a stated zero
- *          is copied, a field the tag lacks is not, and a file written for
- *          another tag type contributes only that type's fields), and applies
- *          the result with SetConfig(). Shows no dialogs; on_configRestoreButton_clicked()
- *          reports the outcome to the user, and the configuration probe
- *          records it.
- *
- * @param[in]  json_text  Contents of a configuration file.
- * @param[out] detail     On ParseError, the protobuf parser's status text; on
- *                        NotValidForTag, the merged configuration in protobuf
- *                        debug form; unchanged on success. May be null.
- *
- * @return Restored when the merged configuration was applied; ParseError when
- *         the text is not a valid Config (the current configuration is left
- *         untouched); NotValidForTag when SetConfig() rejected the merge.
+/*
+ * RestoreFromJsonText() (documented in configtab.h): parses the text as a
+ * Config, copies into the current configuration each field that the attached
+ * tag supports and the file speaks for (ConfigShape::forFile() and merge(): a
+ * stated zero is copied, a field the tag lacks is not, and a file written for
+ * another tag type contributes only that type's fields), and applies the
+ * result with SetConfig(). On ParseError the current configuration is left
+ * untouched. Shows no dialogs; on_configRestoreButton_clicked() reports the
+ * outcome, and the configuration probe records it.
  */
 ConfigTab::RestoreResult ConfigTab::RestoreFromJsonText(const std::string &json_text,
                                                         QString *detail)

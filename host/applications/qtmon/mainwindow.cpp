@@ -1,3 +1,9 @@
+/**
+ * @file    mainwindow.cpp
+ * @brief   qtmonitor's main window: attach, status polling, tag commands,
+ *          downloads, fixture replay and screenshot capture.
+ */
+
 
 #include <QMainWindow>
 #include <QApplication>
@@ -222,10 +228,8 @@ QString safeFileId(QString value)
  * @details With default options the constructor follows normal qtmonitor
  *          behavior by probing USB and attaching to a live tag. Fixture options
  *          load captured protobuf JSON, populate the same widgets, and avoid
- *          starting the live status timer.
- *
- * @param[in] options   Startup and screenshot-capture behavior.
- * @param[in] parent    Optional Qt parent widget.
+ *          starting the live status timer. Parameters are documented in
+ *          mainwindow.h.
  */
 MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
     : QMainWindow(parent) {

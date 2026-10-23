@@ -1,3 +1,16 @@
+/**
+ * @file    main.cpp
+ * @brief   qtmonitor entry point: command line, logging hooks, and the
+ *          headless modes that run without a window.
+ *
+ * @details Normal startup opens MainWindow, which probes USB and attaches to a
+ *          tag. Two options exit before any window opens:
+ *          `--check-config-panels` (ConfigTab::CheckPanelsAgainstShapes()) and
+ *          `--config-probe` (runConfigProbe()). The `--fake-fixture` and
+ *          `--capture-*` options drive documentation screenshots; see
+ *          README.md in this directory.
+ */
+
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -34,9 +47,21 @@ extern "C"
 //  based upon:
 //  http://stackoverflow.com/questions/22485208/redirect-qdebug-to-qtextedit
 
+/// The Error Log tab's text box, defined in logwindow.cpp; null until created.
 extern QTextEdit *s_textEdit;
+/// Lowest level (LOG_TRACE..LOG_FATAL) shown in the Error Log tab.
 int log_level = LOG_ERROR;
 
+/**
+ * @brief Appends one message to the Error Log tab's text box.
+ *
+ * @param[in] ll       Level, LOG_TRACE..LOG_FATAL; below log_level is dropped.
+ * @param[in] context  Source location; the function and line are shown when
+ *                     the line is set.
+ * @param[in] msg      Message text.
+ *
+ * @note Does nothing until the Error Log tab has created s_textEdit.
+ */
 static void logOutput(int ll, const QMessageLogContext &context,
                const QString &msg)
 {
@@ -55,6 +80,11 @@ static void logOutput(int ll, const QMessageLogContext &context,
     s_textEdit->append(QString("%1 %4").arg(tag).arg(msg));
 }
 
+/**
+ * @brief tagcore log callback: forwards tagcore's C log messages at or above
+ *        log_level to the Error Log tab.
+ * @param[in] ev  The log event, with printf-style format and arguments.
+ */
 void log_log_callback(log_Event *ev)
 {
   QMessageLogContext context;
@@ -69,6 +99,16 @@ void log_log_callback(log_Event *ev)
   }
 }
 
+/**
+ * @brief Qt message handler, installed by the Error Log tab: forwards
+ *        qDebug(), qInfo(), qWarning() and qCritical() to it.
+ *
+ * @param[in] type     Qt message type, mapped to LOG_DEBUG..LOG_ERROR.
+ * @param[in] context  Source location.
+ * @param[in] msg      Message text.
+ *
+ * @warning A QtFatalMsg aborts the process, as Qt's default handler does.
+ */
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                      const QString &msg)
 {
@@ -96,6 +136,11 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
   }
 }
 
+/**
+ * @brief Parses the command line, then runs a headless mode or opens the
+ *        main window.
+ * @return The headless mode's status, or the Qt event loop's exit code.
+ */
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
