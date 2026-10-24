@@ -62,6 +62,21 @@ inline QString getSaveFileName(QWidget *parent, const QString &caption,
   return dialog.selectedFiles().value(0);
 }
 
+inline QString getExistingDirectory(QWidget *parent, const QString &caption,
+                                    const QString &directory)
+{
+  QFileDialog dialog(parent);
+  setMacDialogOptions(dialog);
+  dialog.setWindowTitle(caption);
+  dialog.setDirectory(directory);
+  dialog.setAcceptMode(QFileDialog::AcceptOpen);
+  dialog.setFileMode(QFileDialog::Directory);
+  dialog.setOption(QFileDialog::ShowDirsOnly, true);
+  if (dialog.exec() != QDialog::Accepted)
+    return QString();
+  return dialog.selectedFiles().value(0);
+}
+
 } // namespace HostFileDialog
 
 #endif // HOST_QTFILEDIALOG_H

@@ -77,6 +77,7 @@ design document.
 - [0031. Host: dataprocessing is a plain executable without Qt](decisions/0031-host-dataprocessing-plain-executable-without-qt.md) *(decision)* — dataprocessing no longer uses Qt -- it runs on the Qt-free sensoranalysis core, bit-identical to the Qt code -- so it ships as a plain executable in tag_tools/bin like the other command line tools, and builds in a host build without the Qt applications.
 - [0032. Host: configuration shape from default configs, fixed panels per tag type](decisions/0032-host-config-shape-and-fixed-panels.md) *(decision)* — Which Config fields a tag supports comes from its default config, read at run time by tagcore's ConfigShape, which also gives Restore and tag-start --merge one merge rule; qtmonitor's configuration screen is fixed panels selected by tag type; the change was proven equivalent on the host by a probe and golden results; tag-reported presence through proto3 optional fields was deferred.
 - [0033. Host: qtmonitor as a configuration editor, with menus and Start checks](decisions/0033-host-qtmonitor-editor-menus-start-checks.md) *(decision)* — qtmonitor became a configuration editor (Open makes a file the document, replacing Restore's merge into the tag), its buttons became actions in in-window menus with Start and Stop kept beside a status strip, and Start checks clock (2 s), the tag's reported self-test and an Approved box, warning with continue or cancel rather than refusing; Help menus share one user-guide finder.
+- [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
 
 ### Investigations
 
@@ -359,11 +360,12 @@ design document.
 
 ### Applications / qtprogram
 
-- [qtprogram](../host/applications/qtprogram/README.md) — qtprogram (Tag Programmer) source layout, how it chooses the internal-flash erase from the image's linker symbols, its program sequence, and its remembered settings.
+- [qtprogram](../host/applications/qtprogram/README.md) — qtprogram (Tag Programmer) source layout, how it chooses the internal-flash erase from the image's linker symbols, its program sequence, its command-line modes, and its remembered settings.
+- [qtprogram as a batch programming station](../host/applications/qtprogram/design/batch-station.md) — qtprogram is a batch programming station -- it finds STM32_Programmer_CLI, the base and the tag itself, offers verified GitHub firmware releases, identifies tags and images by their identity records, programs and tests each tag, and records every attempt in a CSV.
 
-### Applications / qtprogram / Proposals
+### Applications / qtprogram / test
 
-- [qtprogram as a batch programming station](../host/applications/qtprogram/design/proposals/batch-programming.md) *(proposal, proposed)* — Rearchitecting qtprogram into a programming station that finds its own tools, base and firmware, steps through a batch of tags, and records every attempt in a CSV.
+- [qtprogram Offline Checks](../host/applications/qtprogram/test/README.md) — How to build and run qtprogram_checks, the offline checks of the CLI parsers, the record CSV, the release-archive member filter, the release list, and the download-extract-verify path.
 
 ### Applications / sensorviz
 

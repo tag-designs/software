@@ -3,7 +3,7 @@
  * @brief   Tag Programmer's entry point, log routing and command-line modes.
  *
  * @details Routes tagcore's log callback to the log pane and recognises
- *          `--flash-plan` and `--capture-screenshots` (see main()).
+ *          `--flash-plan`, `--verify` and `--capture-screenshots` (see main()).
  */
 
 #include <QApplication>
@@ -16,18 +16,13 @@
 #include "tag.pb.h"
 #include "tagclass.h"
 
-/* #include "tag.pb.h"
-#include "host.pb.h"
-#include "tagclass.h" */
-
-#include "mainwindow.h"
+#include "firmwareimage.h"
 #include "flashplan.h"
+#include "mainwindow.h"
+#include <QDir>
 #include <QFileInfo>
 #include <cstdio>
-#include "ui_mainwindow.h"
 #include "qthoststyle.h"
-
-#include "mainwindow.h"
 
 extern "C"
 {
@@ -126,12 +121,21 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
  *
  * @details `--flash-plan <elf>...` prints each image's planned erase and
  *          exits, with no window, tag or programmer.
- *          `--capture-screenshots <elf> [<dir>]` opens the window, captures
- *          the user guide's screenshots (MainWindow::captureScreenshots()) and
- *          exits. Otherwise the window runs until closed. Settings are stored
- *          under organization `tag-designs`, application `qtprogram`.
+ *          `--verify <elf|release dir>...` loads each image as Program would:
+ *          its identity record, its erase, and its hash against the build
+ *          manifest beside it (as `flash_release.py --verify-only` does), and
+ *          prints the result; a directory is a release's `firmware/<Target>`
+ *          or the `firmware` directory holding several.
+ *          `--capture-screenshots [<dir>]` opens the window, captures the user
+ *          guide's screenshots (MainWindow::captureScreenshots()) and exits.
+ *          `--bench-program <label>` runs the checks, programs the tag on the
+ *          base as Program does and exits with the result
+ *          (MainWindow::benchProgram()); it erases the tag.
+ *          Otherwise the window runs until closed. Settings are stored under
+ *          organization `tag-designs`, application `qtprogram`.
  *
- * @return The application's exit code; 0 from `--flash-plan`.
+ * @return The application's exit code; from `--verify`, 1 if any image is
+ *         refused.
  */
 int main(int argc, char *argv[])
 {
@@ -150,6 +154,49 @@ int main(int argc, char *argv[])
     }
     return 0;
   }
+  if (args.size() > 1 && args.at(1) == QLatin1String("--verify")) {
+    int status = 0;
+    QStringList images;
+    for (const QString &path : args.mid(2)) {
+      const QFileInfo info(path);
+      if (!info.isDir()) {
+        images << path;
+        continue;
+      }
+      const QString own = QDir(path).filePath(info.fileName() + ".elf");
+      if (QFileInfo::exists(own)) {
+        images << own;
+        continue;
+      }
+      // Directories without their own ELF (firmware/licenses) are not images.
+      for (const QString &target : QDir(path).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QString elf = QDir(QDir(path).filePath(target)).filePath(target + ".elf");
+        if (QFileInfo::exists(elf))
+          images << elf;
+      }
+    }
+    for (const QString &path : images) {
+      const FirmwareImage image = loadFirmwareImage(path);
+      const QString target = image.identity.found ? image.identity.target
+                                                  : QStringLiteral("no identity record");
+      const QString manifest = image.manifestVerified        ? QStringLiteral("verified")
+                               : image.manifestPath.isEmpty() ? QStringLiteral("none")
+                                                              : QStringLiteral("REFUSED");
+      std::printf("%s\n  target    %s (%s, TagType %d)\n  commit    %s\n  sha256    %s\n"
+                  "  manifest  %s\n  erase     %s\n",
+                  qPrintable(path), qPrintable(target), qPrintable(image.identity.boardDesc),
+                  image.identity.tagType, qPrintable(image.identity.gitHash),
+                  qPrintable(image.sha256), qPrintable(manifest),
+                  qPrintable(image.plan.summary()));
+      if (!image.warning.isEmpty())
+        std::printf("  warning   %s\n", qPrintable(image.warning));
+      if (!image.usable()) {
+        std::printf("  REFUSED   %s\n", qPrintable(image.error));
+        status = 1;
+      }
+    }
+    return status;
+  }
   HostStyle::apply(a);
   //vsLogMsg.logMessage = DisplayMessage;
 	//vsLogMsg.initProgressBar = InitPBar;
@@ -163,15 +210,20 @@ int main(int argc, char *argv[])
 
   MainWindow w;
   w.show();
+  QTimer::singleShot(0, &w, &MainWindow::start);
 
-  // qtprogram --capture-screenshots <elf> [<dir>]: the user guide's
-  // screenshots (default dir host/docs/src/images). Connects to the tag but
-  // never erases or programs it.
-  if (args.size() > 2 && args.at(1) == QLatin1String("--capture-screenshots")) {
-    const QString dir = args.size() > 3
-        ? args.at(3)
+  // qtprogram --capture-screenshots [<dir>]: the user guide's screenshots
+  // (default dir host/docs/src/images). Attaches to the tag when attaching
+  // automatically is allowed, but never erases or programs it.
+  // qtprogram --bench-program <label>: a bench smoke test of the whole
+  // station. Erases and programs the tag on the base, then exits.
+  if (args.size() > 2 && args.at(1) == QLatin1String("--bench-program"))
+    QTimer::singleShot(100, &w, [&w, args]() { w.benchProgram(args.at(2)); });
+  if (args.size() > 1 && args.at(1) == QLatin1String("--capture-screenshots")) {
+    const QString dir = args.size() > 2
+        ? args.at(2)
         : QStringLiteral(TAG_DESIGNS_SOURCE_DIR "/host/docs/src/images");
-    QTimer::singleShot(0, &w, [&w, args, dir]() { w.captureScreenshots(dir, args.at(2)); });
+    QTimer::singleShot(100, &w, [&w, dir]() { w.captureScreenshots(dir); });
   }
   return a.exec();
 }
