@@ -197,6 +197,12 @@ function(add_embedded_target name proto_target)
   if(REPRODUCIBLE_BUILD)
     set(_manifest_reproducible "true")
   endif()
+  # A distributed image must name the tag type and board it is for, read from
+  # its identity record; a prototype without a record still gets a manifest.
+  set(_manifest_require_identity "false")
+  if(ARG_DISTRIBUTE)
+    set(_manifest_require_identity "true")
+  endif()
 
   add_custom_target(${name}
     BYPRODUCTS ${target_firmware_artifacts}
@@ -214,6 +220,7 @@ function(add_embedded_target name proto_target)
             "-DREPRODUCIBLE_BUILD=${_manifest_reproducible}"
             "-DREGENERATE_SOURCES=${REGENERATE_SOURCES}"
             "-DSOURCES_COMMITTED=${_manifest_sources_committed}"
+            "-DREQUIRE_IDENTITY=${_manifest_require_identity}"
             -P "${CMAKE_SOURCE_DIR}/cmake/WriteBuildManifest.cmake"
     WORKING_DIRECTORY ${tag_source_dir}
     COMMENT "Building ${name}")

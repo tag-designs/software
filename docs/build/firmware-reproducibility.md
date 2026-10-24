@@ -197,7 +197,11 @@ about scratch files would make the warning routine and so ignorable.
 output, whether the tree was dirty, the ChibiOS commit, its `describe` and the
 branch it tracks, whether it was dirty, the toolchain path and version, the
 nanopb runtime and generator versions, both build modes, whether that variant's
-sources are committed, and the SHA-256 and size of the `.elf`, `.bin` and `.hex`.
+sources are committed, the SHA-256 and size of the `.elf`, `.bin` and `.hex`,
+and which tag the image is for: `tag_type` (the `TagType` name) and `board` (the
+`BOARD_NAME` that `tag-info` reports as `board_desc`), both read from the
+identity record in the `.bin`. An image without a record -- a base or a loader --
+records `null` for those two; for a `DISTRIBUTE` tag that is a build error.
 Git facts are read when the manifest is written rather than at configure time,
 because the tree can change in between and the manifest should describe the image
 that exists. A missing artifact is recorded as `null` rather than omitted, so a

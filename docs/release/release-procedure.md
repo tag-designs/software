@@ -55,6 +55,16 @@ the SHA-256 of the image itself. That hash, not the commit, is what identifies a
 build: a `-D` leaves no trace in the git hash, so two materially different
 images can report the same commit.
 
+The manifest also says which tag the image is for: `tag_type`, the protobuf
+`TagType` name from `proto/tagdata.proto` (e.g. `COMPASSTAG`), and `board`, the
+board description the image reports as `TagInfo.board_desc` (its `BOARD_NAME`,
+e.g. `CompassTagv1`). One `TagType` covers several build targets -- `IMUTAG` is
+both `IMUTagNand` and `IMUTagNandBmp581` -- so a tool matching a release image to
+an attached tag needs both. Both are read from the tag identity record compiled
+into the `.bin`, the same bytes `tag-info` reports, so they cannot disagree with
+the image; a distributed target whose image has no usable record fails the
+build. Releases up to and including `fw-v0.7` predate these fields.
+
 The job never regenerates. It configures with `-DREGENERATE_SOURCES=OFF
 -DREPRODUCIBLE_BUILD=ON`, so the committed generated sources are used as they
 are, and a stale one -- along with a dirty tree, a submodule off the branch
