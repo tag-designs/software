@@ -17,6 +17,26 @@ Monitor, and records the result in a CSV file.
   **Choose…** on the Programmer line (or **Station ▸ Choose Programmer…**)
   and pick `STM32CubeProgrammer.app` on a Mac, or `STM32_Programmer_CLI`
   itself. The choice is remembered.
+
+    Where the installer puts it on each system (version 2.22 and 2.23):
+
+    | System | `STM32_Programmer_CLI` |
+    | --- | --- |
+    | macOS | `/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin/STM32_Programmer_CLI` |
+    | Windows | `C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin\STM32_Programmer_CLI.exe` |
+    | Linux | `~/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI` |
+
+    On a Mac the tool is inside the application bundle, which the Finder and
+    file dialogs show as a single file. Choosing `STM32CubeProgrammer.app` is
+    enough. To see the folder in the Finder, right-click the app and choose
+    **Show Package Contents**. Some releases keep `bin` under
+    `Contents/MacOs` rather than `Contents/Resources`; Tag Programmer looks
+    in both. From Terminal, the tool's version shows whether you have the
+    right path:
+
+    ```sh
+    "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin/STM32_Programmer_CLI" --version
+    ```
 - Plug in the base station or programmer. With one base plugged in, it is
   used. With several, Tag Programmer asks which; **Station ▸ Choose Base…**
   switches to another at any time.
