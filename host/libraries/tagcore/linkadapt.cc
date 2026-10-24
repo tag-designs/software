@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -274,13 +275,17 @@ static bool isSTlink(uint16_t vid, uint16_t pid)
  *
  * @details Opens the device only to read its string descriptor; no interface
  *          is claimed and nothing is sent over SWD, so the tag on the base is
- *          not reset. A serial with any character outside printable ASCII
- *          (old ST-LINK/V2 firmware reports binary) is returned empty.
+ *          not reset. Old ST-LINK/V2 firmware reports its 12-byte serial as
+ *          raw bytes, one per UTF-16 code unit; that is returned as 24
+ *          upper-case hex digits, the form STM32_Programmer_CLI lists and
+ *          accepts as `sn=` (OpenOCD decodes it the same way). Any other
+ *          serial with a character outside printable ASCII is returned empty.
  *
  * @param[in] dev   Device from libusb_get_device_list().
  * @param[in] desc  Its device descriptor.
  * @return  The serial, or an empty string when it is absent, cannot be read
- *          (for example, the device is held by another driver) or is binary.
+ *          (for example, the device is held by another driver) or is binary
+ *          in a form other than the old ST-LINK/V2 one.
  */
 static std::string readSerial(libusb_device *dev, const libusb_device_descriptor &desc)
 {
@@ -289,17 +294,34 @@ static std::string readSerial(libusb_device *dev, const libusb_device_descriptor
     libusb_device_handle *h = nullptr;
     if (libusb_open(dev, &h) != 0 || h == nullptr)
         return std::string();
-    unsigned char text[128] = {0};
-    const int n = libusb_get_string_descriptor_ascii(h, desc.iSerialNumber, text,
-                                                     sizeof(text));
+    // The raw descriptor: bLength, bDescriptorType, then UTF-16LE code units.
+    unsigned char raw[256] = {0};
+    const int n = libusb_get_string_descriptor(h, desc.iSerialNumber, 0x0409, raw,
+                                               sizeof(raw));
     libusb_close(h);
-    if (n <= 0)
+    if (n < 4 || raw[1] != LIBUSB_DT_STRING)
         return std::string();
-    std::string serial(reinterpret_cast<const char *>(text), n);
-    for (char c : serial)
-        if (c < 0x21 || c > 0x7e || c == '?')
-            return std::string();
-    return serial;
+    const int units = (std::min<int>(n, raw[0]) - 2) / 2;
+    std::string serial;
+    bool printable = true;
+    for (int i = 0; i < units; ++i) {
+        const unsigned lo = raw[2 + 2 * i], hi = raw[3 + 2 * i];
+        if (hi != 0 || lo < 0x21 || lo > 0x7e)
+            printable = false;
+        serial.push_back(static_cast<char>(lo));
+    }
+    if (printable)
+        return serial;
+    if (units != 12)
+        return std::string();
+    static const char hex[] = "0123456789ABCDEF";
+    std::string decoded;
+    for (int i = 0; i < units; ++i) {
+        const unsigned lo = raw[2 + 2 * i];
+        decoded.push_back(hex[lo >> 4]);
+        decoded.push_back(hex[lo & 0x0f]);
+    }
+    return decoded;
 }
 
 bool LinkAdapt::Available(std::vector<UsbDev> &usbdevs)

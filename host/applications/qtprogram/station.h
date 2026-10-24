@@ -115,6 +115,12 @@ public:
   const std::vector<UsbDev> &bases() const { return bases_; }
   /// Selects base @p index of bases(), saves its serial, and continues the checks.
   void chooseBase(int index);
+  /**
+   * @brief Detaches from the tag and lists the ST-LINKs on USB again, for
+   *        choosing a base by hand.
+   * @return Whether there is anything to choose; false while a session runs.
+   */
+  bool listBases();
   /// The selected base's ST-LINK serial, or empty.
   QString baseSerial() const { return serial_; }
 
@@ -161,6 +167,12 @@ public:
   bool targetDetected() const { return targetDetected_; }
   /// Chooses the build target by hand.
   void chooseTarget(const QString &target);
+  /**
+   * @brief The serial to name the base to STM32_Programmer_CLI by: empty when
+   *        it is the only ST-LINK on USB, so the CLI uses the only probe and a
+   *        serial it would not recognise cannot stand in the way.
+   */
+  QString cliSerial() const;
   /**
    * @brief Why the chosen firmware is not known to be qualified for the
    *        chosen target, or empty when it is.

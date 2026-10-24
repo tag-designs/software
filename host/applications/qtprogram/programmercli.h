@@ -84,9 +84,13 @@ ConnectInfo parseConnect(const QString &output, int exitCode);
 /**
  * @brief   Finds STM32_Programmer_CLI.
  *
- * @details Tries @p saved, then STM32CUBEPROGRAMMER (the tool's path),
- *          STM32_PRG_PATH (its directory), the PATH, and the usual install
- *          directories, as embedded/tools/flash_release.py does.
+ * @details Tries @p saved, then STM32CUBEPROGRAMMER and STM32_PRG_PATH (each
+ *          either the tool or a directory programmerInDirectory() accepts),
+ *          the PATH, and the usual install directories: on macOS the bundle
+ *          under /Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer
+ *          (ST's default), ~/Applications or ~/Software. A macOS app started
+ *          from the Finder inherits no shell variables, so there the search is
+ *          what normally finds the tool.
  *
  * @param[in] saved  A path chosen earlier, or empty.
  * @return  The tool's path, or an empty string when none was found.
@@ -94,10 +98,11 @@ ConnectInfo parseConnect(const QString &output, int exitCode);
 QString findProgrammer(const QString &saved);
 
 /**
- * @brief   The tool's path inside a directory the user chose.
- * @details Accepts the `bin` directory, the STM32CubeProgrammer install
- *          directory, or (on macOS) the application bundle.
- * @param[in] dir  The chosen directory.
+ * @brief   The tool's path given the tool itself or a directory holding it.
+ * @details Accepts the tool, its `bin` directory, the STM32CubeProgrammer
+ *          install directory, or (on macOS) the application bundle, whose
+ *          `bin` has been under `Contents/MacOs` or `Contents/Resources`.
+ * @param[in] dir  The chosen path; empty gives an empty result.
  * @return  The tool's path, or an empty string when it is not there.
  */
 QString programmerInDirectory(const QString &dir);

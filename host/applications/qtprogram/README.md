@@ -102,5 +102,8 @@ Stored with `QSettings` (organization `tag-designs`, application `qtprogram`):
 `programmer`, `firmwareRelease` or `firmwareFile`, `recentFiles`, `target`,
 `recordPath`, `baseSerial`, `resetsAcknowledged` and `lastLabel`. Releases are
 cached under the application data directory, in `firmware/`. Without a saved
-programmer, `findProgrammer()` tries `STM32CUBEPROGRAMMER`, `STM32_PRG_PATH`,
-the `PATH` and the usual install directories, as `flash_release.py` does.
+programmer, `findProgrammer()` tries `STM32CUBEPROGRAMMER`, `STM32_PRG_PATH`
+(each the tool or a folder holding it), the `PATH` and the usual install
+directories, as `flash_release.py` does. On macOS that includes the bundle
+under `/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer`, ST's
+default, and an app started from the Finder sees no shell variables.

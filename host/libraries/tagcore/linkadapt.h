@@ -32,9 +32,9 @@ struct UsbDev
      *
      * @details The same string STM32_Programmer_CLI lists as `ST-LINK SN`
      *          and accepts as `sn=`, so a base found here can be named to the
-     *          programmer. Old ST-LINK/V2 firmware reports a binary serial,
-     *          which the CLI shows hex-encoded; that is left empty rather than
-     *          guessed. Not used by Attach().
+     *          programmer. Old ST-LINK/V2 firmware reports a 12-byte binary
+     *          serial, which is hex-encoded here as the CLI shows it; any other
+     *          unreadable serial is left empty. Not used by Attach().
      */
     std::string serial;
 };

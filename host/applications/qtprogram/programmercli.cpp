@@ -31,6 +31,10 @@ bool usable(const QString &path)
 /// The connection arguments every target call starts with.
 QStringList connectArgs(const QString &serial)
 {
+  // Without a serial the CLI uses the first probe, which the station allows
+  // only when exactly one ST-LINK is on USB.
+  if (serial.isEmpty())
+    return {"-c", "port=SWD", "mode=UR"};
   return {"-c", "port=SWD", "sn=" + serial, "mode=UR"};
 }
 
@@ -96,37 +100,58 @@ QString findProgrammer(const QString &saved)
 {
   if (usable(saved))
     return saved;
+  // Either variable may name the tool or a directory holding it. A macOS app
+  // started from the Finder sees neither, so the search below is what
+  // normally finds it there.
   const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-  if (usable(env.value("STM32CUBEPROGRAMMER")))
-    return env.value("STM32CUBEPROGRAMMER");
-  if (env.contains("STM32_PRG_PATH") && usable(QDir(env.value("STM32_PRG_PATH")).filePath(kCli)))
-    return QDir(env.value("STM32_PRG_PATH")).filePath(kCli);
+  for (const char *name : {"STM32CUBEPROGRAMMER", "STM32_PRG_PATH"}) {
+    const QString found = programmerInDirectory(env.value(QString::fromLatin1(name)));
+    if (!found.isEmpty())
+      return found;
+  }
   const QString onPath = QStandardPaths::findExecutable(kCli);
   if (!onPath.isEmpty())
     return onPath;
   QStringList roots;
 #if defined(Q_OS_MACOS)
-  const QString bundle =
-      "STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin";
-  roots << QDir::home().filePath("Software/" + bundle)
-        << "/Applications/STMicroelectronics/" + bundle;
+  // ST's installer puts the bundle under /Applications/STMicroelectronics/
+  // STM32Cube/STM32CubeProgrammer by default; people also move it.
+  for (const QString &base : {QStringLiteral("/Applications"),
+                              QDir::home().filePath("Applications"),
+                              QDir::home().filePath("Software")})
+    for (const QString &rel : {QStringLiteral("STMicroelectronics/STM32Cube/STM32CubeProgrammer"),
+                               QStringLiteral("STMicroelectronics/STM32CubeProgrammer"),
+                               QStringLiteral("STM32CubeProgrammer"), QStringLiteral(".")})
+      roots << QDir(base).filePath(rel);
 #elif defined(Q_OS_WIN)
-  roots << "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin";
+  roots << "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer"
+        << "C:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeProgrammer";
 #else
-  roots << QDir::home().filePath("Software/STM32CubeProgrammer/bin")
-        << "/opt/st/stm32cubeprog/bin";
+  roots << QDir::home().filePath("STMicroelectronics/STM32Cube/STM32CubeProgrammer")
+        << QDir::home().filePath("Software/STM32CubeProgrammer")
+        << "/opt/st/stm32cubeprog" << "/usr/local/STMicroelectronics/STM32Cube/STM32CubeProgrammer";
 #endif
-  for (const QString &root : roots)
-    if (usable(QDir(root).filePath(kCli)))
-      return QDir(root).filePath(kCli);
+  for (const QString &root : roots) {
+    const QString found = programmerInDirectory(root);
+    if (!found.isEmpty())
+      return found;
+  }
   return QString();
 }
 
 QString programmerInDirectory(const QString &dir)
 {
+  if (dir.isEmpty())
+    return QString();
+  if (QFileInfo(dir).fileName() == kCli && usable(dir))
+    return QDir::cleanPath(dir);
   const QDir d(dir);
+  // The macOS bundle has kept the tool in Contents/MacOs/bin and in
+  // Contents/Resources/bin, depending on the release.
   for (const QString &rel : {QStringLiteral("."), QStringLiteral("bin"),
+                             QStringLiteral("Contents/MacOs/bin"),
                              QStringLiteral("Contents/Resources/bin"),
+                             QStringLiteral("STM32CubeProgrammer.app/Contents/MacOs/bin"),
                              QStringLiteral("STM32CubeProgrammer.app/Contents/Resources/bin")}) {
     const QString candidate = QDir(d.filePath(rel)).filePath(kCli);
     if (usable(candidate))

@@ -118,7 +118,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
   autoAttachAction_->setCheckable(true);
   autoAttachAction_->setChecked(station_.autoAttach());
   connect(autoAttachAction_, &QAction::toggled, &station_, &Station::setAutoAttach);
-  stationMenu->addAction(tr("Choose Programmer Folder..."), this, &MainWindow::chooseProgrammer);
+  stationMenu->addAction(tr("Choose Programmer..."), this, &MainWindow::chooseProgrammer);
+  stationMenu->addAction(tr("Choose Base..."), this, [this]() {
+    if (!station_.listBases()) {
+      QMessageBox::information(this, tr("Choose a Base"),
+                               tr("No ST-LINK is on USB, or programming is in progress."));
+      return;
+    }
+    chooseBase();
+  });
   stationMenu->addAction(tr("Choose Record File..."), this, &MainWindow::chooseRecord);
   stationMenu->addAction(tr("Refresh Firmware Releases"), this,
                          [this]() { station_.catalog().refresh(); });
@@ -483,27 +491,42 @@ void MainWindow::updateButtons()
 
 void MainWindow::chooseProgrammer()
 {
-  const QString dir = HostFileDialog::getExistingDirectory(
-      this, tr("STM32CubeProgrammer folder (the one containing bin)"), QDir::homePath());
-  if (dir.isEmpty())
+  // A file, not a folder: the file dialog shows a macOS application bundle
+  // as a file, so STM32CubeProgrammer.app can be chosen but not entered.
+#ifdef Q_OS_MACOS
+  const QString start = QStringLiteral("/Applications");
+  const QString caption = tr("Choose STM32CubeProgrammer.app or STM32_Programmer_CLI");
+#else
+  const QString start = QDir::homePath();
+  const QString caption = tr("Choose STM32_Programmer_CLI (in STM32CubeProgrammer's bin folder)");
+#endif
+  const QString path = HostFileDialog::getOpenFileName(this, caption, start);
+  if (path.isEmpty())
     return;
-  if (!station_.setProgrammerDirectory(dir))
+  if (!station_.setProgrammerDirectory(path))
     QMessageBox::warning(this, tr("STM32CubeProgrammer"),
-                         tr("STM32_Programmer_CLI is not in %1 or its bin folder.").arg(dir));
+                         tr("STM32_Programmer_CLI is not %1, nor inside it.")
+                             .arg(QDir::toNativeSeparators(path)));
 }
 
 void MainWindow::chooseBase()
 {
   QStringList items;
-  for (const UsbDev &dev : station_.bases())
+  int current = 0;
+  for (const UsbDev &dev : station_.bases()) {
+    const QString serial = QString::fromStdString(dev.serial);
+    if (!serial.isEmpty() && serial == station_.baseSerial())
+      current = static_cast<int>(items.size());
     items << tr("ST-LINK %1  (bus %2, address %3)")
-                 .arg(dev.serial.empty() ? tr("serial unknown") : QString::fromStdString(dev.serial))
+                 .arg(serial.isEmpty() ? tr("serial unknown") : serial)
                  .arg(dev.bus)
                  .arg(dev.address);
+  }
   bool ok = false;
-  const QString item = QInputDialog::getItem(this, tr("Choose a Base"),
-                                             tr("Several bases are connected. Use:"), items, 0,
-                                             false, &ok);
+  const QString item = QInputDialog::getItem(
+      this, tr("Choose a Base"),
+      items.size() > 1 ? tr("Several bases are connected. Use:") : tr("Use:"), items, current,
+      false, &ok);
   if (ok)
     station_.chooseBase(static_cast<int>(items.indexOf(item)));
 }

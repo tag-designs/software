@@ -10,11 +10,16 @@ Monitor, and records the result in a CSV file.
 ## Before You Start
 
 - Install STMicroelectronics' STM32CubeProgrammer. Tag Programmer finds its
-  command-line tool, `STM32_Programmer_CLI`, in the usual install folders, on
-  the `PATH`, and in the `STM32CUBEPROGRAMMER` and `STM32_PRG_PATH` environment
-  variables. If it is not found, press **Choose…** on the Programmer line and
-  pick the STM32CubeProgrammer folder. The choice is remembered.
-- Plug in the base station or programmer.
+  command-line tool, `STM32_Programmer_CLI`, in the usual install folders
+  (on a Mac, `STM32CubeProgrammer.app` under `/Applications`, `~/Applications`
+  or `~/Software`), on the `PATH`, and in the `STM32CUBEPROGRAMMER` and
+  `STM32_PRG_PATH` environment variables. If it is not found, press
+  **Choose…** on the Programmer line (or **Station ▸ Choose Programmer…**)
+  and pick `STM32CubeProgrammer.app` on a Mac, or `STM32_Programmer_CLI`
+  itself. The choice is remembered.
+- Plug in the base station or programmer. With one base plugged in, it is
+  used. With several, Tag Programmer asks which; **Station ▸ Choose Base…**
+  switches to another at any time.
 - The first time Tag Programmer opens, it asks whether to **attach
   automatically**. Connecting to a tag restarts it, which ends a deployment
   that is running. On a programming bench, answer **Yes**. You can change this

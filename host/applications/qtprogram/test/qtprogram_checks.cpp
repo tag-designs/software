@@ -103,6 +103,35 @@ void checkCliParsers()
   check(!silent.ok && !silent.error.isEmpty(), "exit 0 without a device ID is a failure");
 }
 
+/// The programmer lookup inside a bundle or folder the operator chose.
+void checkProgrammerLookup(const QString &dir)
+{
+#ifdef Q_OS_WIN
+  const QString cli = QStringLiteral("STM32_Programmer_CLI.exe");
+#else
+  const QString cli = QStringLiteral("STM32_Programmer_CLI");
+#endif
+  for (const QString &rel : {QStringLiteral("Contents/MacOs/bin"),
+                             QStringLiteral("Contents/Resources/bin")}) {
+    const QString app = QDir(dir).filePath("lookup-" + QString(rel).replace('/', '-') +
+                                           "/STM32CubeProgrammer.app");
+    const QString bin = QDir(app).filePath(rel);
+    QDir().mkpath(bin);
+    QFile tool(QDir(bin).filePath(cli));
+    check(tool.open(QIODevice::WriteOnly), "fake CLI written");
+    tool.close();
+    tool.setPermissions(tool.permissions() | QFileDevice::ExeOwner);
+    const QString expected = QDir::cleanPath(tool.fileName());
+    check(programmerInDirectory(app) == expected,
+          qPrintable("the CLI found inside the bundle's " + rel));
+    check(programmerInDirectory(QFileInfo(app).path()) == expected,
+          qPrintable("the CLI found from the folder holding the bundle, " + rel));
+    check(programmerInDirectory(expected) == expected, "the CLI itself accepted");
+  }
+  check(programmerInDirectory(QString()).isEmpty(), "an empty path finds nothing");
+  check(programmerInDirectory(dir).isEmpty(), "a folder without the CLI finds nothing");
+}
+
 void checkRecord(const QString &dir)
 {
   check(RecordLog::quote("plain") == "plain", "plain field unquoted");
@@ -332,6 +361,7 @@ int main(int argc, char **argv)
   QCoreApplication app(argc, argv);
   QTemporaryDir dir;
   checkCliParsers();
+  checkProgrammerLookup(dir.path());
   checkRecord(dir.path());
   checkMembers();
   checkReleaseList();

@@ -33,9 +33,9 @@ record checks stand alone.
 
 | Check | Passes when | Otherwise |
 | --- | --- | --- |
-| **Programmer** | The saved path, or `findProgrammer()`'s search, runs `--version` | Red. **Choose…** takes the STM32CubeProgrammer folder: its `bin`, the install folder or the macOS bundle |
-| **Base** | One ST-LINK is on USB, and its serial is read | No base: amber, and USB is polled every second, without attaching. Several: the operator picks one, and the serial is saved |
-| **SWD** | `-c port=SWD sn=<serial> mode=UR` reports a device ID | Red, with the CLI's first `Error:` line |
+| **Programmer** | The saved path, or `findProgrammer()`'s search, runs `--version` | Red. **Choose…** takes the tool itself, or a folder or bundle holding it: its `bin`, the install folder or the macOS bundle (a file dialog, since Qt's dialog shows a bundle as a file and cannot enter it) |
+| **Base** | An ST-LINK is on USB and, when there are several, it can be named | No base: amber, and USB is polled every second, without attaching. Several: the operator picks one, and the serial is saved; **Station ▸ Choose Base…** picks again at any time |
+| **SWD** | `-c port=SWD mode=UR` (with `sn=<serial>` when several ST-LINKs are on USB) reports a device ID | Red, with the CLI's first `Error:` line |
 | **Supply** | The ST-LINK's target voltage is in range | Red above 3.6 V on an STM32L432 (its absolute maximum), and Program is disabled. Amber below 1.8 V |
 | **Tag** | tagcore attaches and `GetTagInfo` answers | Amber: a blank board, one in its bootloader, or foreign firmware. The tag type must then be chosen by hand |
 | **Tag state** | IDLE | FINISHED or ABORTED: amber, with **Erase**, which the tag's own firmware does. Deployed: amber, with **Stop**. Program does both in any case |
@@ -58,8 +58,14 @@ serial from the USB descriptor in `LinkAdapt::Available()`, which opens the
 device without claiming it, so the tag is not reset. On the bench base, an
 ST-LINK/V2 with firmware V2J37S7, macOS, tagcore and `STM32_Programmer_CLI -l
 st-link` all report `0037001A5556431520303537`. Old ST-LINK/V2 firmware reports
-a binary serial. tagcore leaves that empty, and the station asks the CLI's
-probe list instead, which works only when one probe is attached.
+its 12-byte serial as raw bytes; tagcore hex-encodes it as the CLI and OpenOCD
+do. A serial tagcore still cannot read is taken from the CLI's probe list when
+exactly one listed probe is not already named by another base.
+
+With a single ST-LINK on USB the serial is recorded but not passed: the CLI is
+called without `sn=` and uses the only probe, so no serial, and no difference
+between tagcore's and the CLI's reading of one, can keep a lone base from
+working. The serial matters only for telling several bases apart.
 
 ## Identifying images and tags
 

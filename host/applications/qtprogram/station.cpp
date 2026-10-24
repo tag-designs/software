@@ -214,6 +214,15 @@ void Station::checkBase()
   emit baseChoiceNeeded();
 }
 
+bool Station::listBases()
+{
+  if (session_.running() || cli_.busy() || attaching_)
+    return false;
+  forgetTag();
+  tag_.Available(bases_);
+  return !bases_.empty();
+}
+
 void Station::chooseBase(int index)
 {
   if (index < 0 || index >= static_cast<int>(bases_.size()))
@@ -227,19 +236,35 @@ void Station::chooseBase(int index)
     baseReady();
     return;
   }
-  // Old ST-LINK/V2 firmware reports a binary serial; ask the programmer,
-  // which can name it only when it is the only probe.
+  // No serial from USB (it could not be read). A lone base needs none: the
+  // programmer is then called without one and uses the only probe. Ask the
+  // programmer anyway, for the record; with several bases, it is needed.
   set(Check::Base, Level::Pending, tr("Reading the ST-LINK serial"));
   cli_.listProbes([this](int code, const QString &output) {
     const QList<ProbeInfo> probes = parseProbeList(output);
-    if (code != 0 || probes.size() != 1) {
+    // The probes the programmer lists that no base on USB already names;
+    // with this base the only one unnamed, the one left over is this base.
+    QStringList unclaimed;
+    for (const ProbeInfo &p : probes)
+      if (std::none_of(bases_.begin(), bases_.end(), [&p](const UsbDev &d) {
+            return QString::fromStdString(d.serial) == p.serial;
+          }))
+        unclaimed << p.serial;
+    const auto unnamed = std::count_if(bases_.begin(), bases_.end(),
+                                       [](const UsbDev &d) { return d.serial.empty(); });
+    if (code == 0 && unclaimed.size() == 1 && unnamed == 1) {
+      serial_ = unclaimed.first();
+      QSettings().setValue(kBaseKey, serial_);
+      set(Check::Base, Level::Ok, tr("ST-LINK %1").arg(serial_));
+    } else if (bases_.size() == 1) {
+      set(Check::Base, Level::Ok, tr("ST-LINK (serial not readable; the only base)"));
+    } else {
       haveBase_ = false;
       set(Check::Base, Level::Fail,
-          tr("Cannot read the base's ST-LINK serial; unplug the other bases."));
+          tr("Cannot read this base's ST-LINK serial, so it cannot be told from the "
+             "others; unplug the other bases."));
       return;
     }
-    serial_ = probes.first().serial;
-    set(Check::Base, Level::Ok, tr("ST-LINK %1").arg(serial_));
     baseReady();
   });
 }
@@ -263,6 +288,11 @@ bool Station::reattach()
       return tag_.Attach(base_);
     }
   return false;
+}
+
+QString Station::cliSerial() const
+{
+  return bases_.size() == 1 ? QString() : serial_;
 }
 
 QString Station::tagTarget() const
@@ -310,11 +340,13 @@ void Station::attach()
     return;
   }
   base_ = *it;
-  set(Check::Base, Level::Ok, tr("ST-LINK %1").arg(serial_));
+  set(Check::Base, Level::Ok,
+      serial_.isEmpty() ? tr("ST-LINK (serial not readable; the only base)")
+                        : tr("ST-LINK %1").arg(serial_));
   for (Check c : {Check::Supply, Check::Tag, Check::TagState})
     set(c, Level::Pending, QString());
   set(Check::Swd, Level::Pending, tr("Connecting over SWD"));
-  cli_.connectCheck(serial_, [this](int code, const QString &output) {
+  cli_.connectCheck(cliSerial(), [this](int code, const QString &output) {
     connect_ = parseConnect(output, code);
     if (!connect_.ok) {
       set(Check::Swd, Level::Fail,
@@ -678,7 +710,7 @@ void Station::program(const QString &label)
   sessionVoltage_ = connect_.voltage;
   sessionRetest_ = false;
   statusPoll_.stop();
-  session_.start(image_, serial_, [this]() { return reattach(); });
+  session_.start(image_, cliSerial(), [this]() { return reattach(); });
 }
 
 void Station::retest(const QString &label)
@@ -711,7 +743,7 @@ void Station::retest(const QString &label)
   sessionVoltage_ = connect_.voltage;
   sessionRetest_ = true;
   statusPoll_.stop();
-  session_.retest(sessionImage_, serial_, [this]() { return reattach(); });
+  session_.retest(sessionImage_, cliSerial(), [this]() { return reattach(); });
 }
 
 void Station::writeRecord(const SessionResult &result)
