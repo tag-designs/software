@@ -138,6 +138,18 @@ set(DEVELOPER_DOCS_SITE_DIR "${CMAKE_BINARY_DIR}/docs/developer/site")
 set(DEVELOPER_DOXYGEN_OUTPUT_DIR "${DEVELOPER_DOCS_SITE_DIR}")
 set(DEVELOPER_DOXYGEN_CONFIG "${CMAKE_BINARY_DIR}/docs/Doxyfile.developer")
 set(DEVELOPER_DOXYGEN_WARN_LOG "${CMAKE_BINARY_DIR}/docs/developer-doxygen-warnings.log")
+set(DEVELOPER_DOXYGEN_TAGFILE "${CMAKE_BINARY_DIR}/docs/developer-api.tag")
+# Host applications with their own API reference, as name|source dir|title|
+# brief. Each is a separate Doxygen run (docs/developer/Doxyfile-app.in),
+# published at api/<name>/ and listed on the portal's API Reference page, which
+# has a placeholder docs/developer/src/api/<name>/index.md for each. btdataviz
+# is left out: it is being deprecated.
+set(DEVELOPER_DOXYGEN_APPS
+  "qtmonitor|host/applications/qtmon|Tag Monitor (qtmonitor)|Attach, configure, start and download tags"
+  "qtprogram|host/applications/qtprogram|Tag Programmer (qtprogram)|Program, test and erase tag firmware"
+  "qtcalibrate|host/applications/qtcalibrate|Tag Calibrator (qtcalibrate)|Magnetometer calibration"
+  "sensorviz|host/applications/sensorviz|SensorViz (sensorviz)|View downloaded tag logs"
+  "commandline|host/commandline|Command-line tools|tag-info, tag-start, dataprocessing and the other command-line tools")
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
 # The developer documents staged into the portal are not listed here.
 # docs/tools/docs.py finds every Markdown file carrying developer-doc front
@@ -251,6 +263,41 @@ configure_file(
 
 find_package(Doxygen QUIET)
 
+# The applications link to the library reference through a tag file listing
+# only the host libraries' symbols, written by a pass with no HTML: the library
+# configuration with its INPUT narrowed. Page names and anchors come from the
+# symbols, so they match the full library run's pages. Including the firmware
+# would link common words in application code (start, stop, test, main) to
+# unrelated firmware functions.
+set(DEVELOPER_DOXYGEN_TAG_CONFIG "${CMAKE_BINARY_DIR}/docs/Doxyfile.hosttag")
+file(WRITE "${DEVELOPER_DOXYGEN_TAG_CONFIG}"
+  "@INCLUDE = ${DEVELOPER_DOXYGEN_CONFIG}\n"
+  "INPUT = ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/host/libraries/tagcore "
+  "${PROJECT_SOURCE_DIR}/host/libraries/sensoranalysis ${PROJECT_SOURCE_DIR}/host/libraries/sensorui "
+  "${PROJECT_SOURCE_DIR}/host/common\n"
+  "EXCLUDE_PATTERNS += */test/*\n"
+  "GENERATE_HTML = NO\n"
+  "GENERATE_TAGFILE = ${DEVELOPER_DOXYGEN_TAGFILE}\n"
+  "WARN_LOGFILE = ${CMAKE_BINARY_DIR}/docs/developer-doxygen-hosttag-warnings.log\n")
+
+# The library reference, the host tag file, then one run per application.
+# Used by both api_docs and developer_docs.
+set(developer_doxygen_runs
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_DOCS_SITE_DIR}"
+  COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_CONFIG}"
+  COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_TAG_CONFIG}")
+foreach(app IN LISTS DEVELOPER_DOXYGEN_APPS)
+  string(REPLACE "|" ";" app_fields "${app}")
+  list(GET app_fields 0 APP_DOC_NAME)
+  list(GET app_fields 1 APP_DOC_DIR)
+  list(GET app_fields 2 APP_DOC_TITLE)
+  list(GET app_fields 3 APP_DOC_BRIEF)
+  set(APP_DOC_WARN_LOG "${CMAKE_BINARY_DIR}/docs/developer-doxygen-${APP_DOC_NAME}-warnings.log")
+  set(app_doxyfile "${CMAKE_BINARY_DIR}/docs/Doxyfile.${APP_DOC_NAME}")
+  configure_file("${DEVELOPER_DOCS_SOURCE_DIR}/Doxyfile-app.in" "${app_doxyfile}" @ONLY)
+  list(APPEND developer_doxygen_runs COMMAND "${DOXYGEN_EXECUTABLE}" "${app_doxyfile}")
+endforeach()
+
 set(developer_docs_all)
 if(BUILD_DEVELOPER_DOCS)
   set(developer_docs_all ALL)
@@ -268,8 +315,7 @@ add_custom_target(
 if(DOXYGEN_FOUND)
   add_custom_target(
     api_docs
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_DOCS_SITE_DIR}"
-    COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_CONFIG}"
+    ${developer_doxygen_runs}
     DEPENDS "${DEVELOPER_DOXYGEN_CONFIG}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building developer Doxygen API reference"
@@ -288,10 +334,7 @@ endif()
 if(HOST_MKDOCS_COMMAND)
   set(developer_docs_doxygen_commands)
   if(DOXYGEN_FOUND)
-    set(
-      developer_docs_doxygen_commands
-      COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_DOCS_SITE_DIR}"
-      COMMAND "${DOXYGEN_EXECUTABLE}" "${DEVELOPER_DOXYGEN_CONFIG}")
+    set(developer_docs_doxygen_commands ${developer_doxygen_runs})
   endif()
 
   add_custom_target(

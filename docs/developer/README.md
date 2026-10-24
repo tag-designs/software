@@ -29,6 +29,18 @@ cmake --build build-host --target all_docs
 it is available. `developer_docs` builds the MkDocs portal and, when Doxygen is
 available, places the API reference under `api/`.
 
+The API reference is several Doxygen runs. `Doxyfile.in` covers the libraries
+and firmware and writes `api/`, plus a tag file. `Doxyfile-app.in` is
+configured once per entry in `DEVELOPER_DOXYGEN_APPS` (top-level
+`CMakeLists.txt`) and writes `api/<name>/`, linking library symbols back to
+`api/` through that tag file. The applications are separate because several
+define classes of the same name (`MainWindow`, `LogWindow`). Each application
+has a placeholder `src/api/<name>/index.md`, so the portal's navigation and
+links resolve, which Doxygen overwrites. To add an application, add an entry,
+a placeholder, and a line in `src/api.md` and the `nav:` of `mkdocs.yml`.
+Warnings go to `developer-doxygen-warnings.log` and
+`developer-doxygen-<name>-warnings.log` in the build's `docs/` directory.
+
 ## Published GitHub Pages
 
 The `.github/workflows/docs.yml` workflow builds the combined repository

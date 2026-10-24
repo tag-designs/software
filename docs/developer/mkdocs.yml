@@ -66,5 +66,10 @@ nav:
       # @GENERATED_NAV@
   - API Reference:
       - Overview: api.md
-      - Doxygen Output: api/index.md
+      - Libraries and Firmware: api/index.md
+      - Tag Monitor (qtmonitor): api/qtmonitor/index.md
+      - Tag Programmer (qtprogram): api/qtprogram/index.md
+      - Tag Calibrator (qtcalibrate): api/qtcalibrate/index.md
+      - SensorViz (sensorviz): api/sensorviz/index.md
+      - Command-line tools: api/commandline/index.md
   - Documentation Guide: reference/docs/documentation-guide.md
