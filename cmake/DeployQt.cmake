@@ -222,7 +222,9 @@ function(install_macos_qt_plugins target)
         set(_plugin_files
             \"${_qt_plugins_dir}/platforms/libqcocoa.dylib\"
             \"${_qt_plugins_dir}/printsupport/libcocoaprintersupport.dylib\"
-            \"${_qt_plugins_dir}/iconengines/libqsvgicon.dylib\")
+            \"${_qt_plugins_dir}/iconengines/libqsvgicon.dylib\"
+            \"${_qt_plugins_dir}/tls/libqsecuretransportbackend.dylib\"
+            \"${_qt_plugins_dir}/tls/libqcertonlybackend.dylib\")
 
         file(GLOB _imageformat_plugins \"${_qt_plugins_dir}/imageformats/*.dylib\")
         list(APPEND _plugin_files \${_imageformat_plugins})
@@ -235,6 +237,11 @@ function(install_macos_qt_plugins target)
                 file(COPY \"\${_plugin_file}\" DESTINATION \"\${_bundle_plugins_dir}/\${_plugin_type}\")
             endif()
         endforeach()
+        # Without a TLS backend every HTTPS request fails at run time, which
+        # nothing at build time would notice: qtprogram's release listing.
+        if(NOT EXISTS \"\${_bundle_plugins_dir}/tls/libqsecuretransportbackend.dylib\")
+            message(FATAL_ERROR \"the SecureTransport TLS plugin is not in ${_qt_plugins_dir}/tls\")
+        endif()
     ")
 endfunction()
 
