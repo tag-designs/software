@@ -193,6 +193,14 @@ void ProgrammerCli::connectCheck(const QString &serial, Done done)
   run(connectArgs(serial), std::move(done));
 }
 
+void ProgrammerCli::readMemory(const QString &serial, quint32 address, quint32 size,
+                               const QString &file, Done done)
+{
+  run(connectArgs(serial) + QStringList{"-u", QStringLiteral("0x%1").arg(address, 8, 16, QLatin1Char('0')),
+                                        QString::number(size), file},
+      std::move(done));
+}
+
 void ProgrammerCli::program(const QString &serial, const QString &elf,
                             const QStringList &eraseArgs, Done done)
 {

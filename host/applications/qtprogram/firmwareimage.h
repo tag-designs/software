@@ -18,6 +18,7 @@
 #ifndef FIRMWAREIMAGE_H
 #define FIRMWAREIMAGE_H
 
+#include <QByteArray>
 #include <QString>
 
 #include "flashplan.h"
@@ -97,6 +98,43 @@ FirmwareImage loadFirmwareImage(const QString &elfPath, const QString &release =
  * @return  The identity; ImageIdentity::found is false without a record.
  */
 ImageIdentity readImageIdentity(const QString &elfPath, QString *error = nullptr);
+
+/**
+ * @struct  ImageFlashRange
+ * @brief   The span of internal flash an image's loaded bytes occupy.
+ */
+struct ImageFlashRange
+{
+  quint32 start = 0;  ///< First byte, an internal-flash address.
+  quint32 size = 0;   ///< Bytes from @ref start to the end of the last loaded byte.
+  QString error;      ///< Why there is no range; empty when there is one.
+};
+
+/**
+ * @brief   Finds the internal-flash span covered by an ELF's loaded data.
+ *
+ * @details Takes every PT_LOAD segment with file data at or above 0x08000000
+ *          (code, read-only data and the flash copy of initialised data);
+ *          NOLOAD regions such as calibration and the persistent area have no
+ *          file data and are never part of it, so what the firmware stores at
+ *          run time is not compared.
+ *
+ * @param[in] elfPath  Firmware ELF.
+ * @return  The span; ImageFlashRange::error says why there is none.
+ */
+ImageFlashRange imageFlashRange(const QString &elfPath);
+
+/**
+ * @brief   Compares flash read back from a tag with an image's loaded bytes.
+ *
+ * @param[in] elfPath  Firmware ELF.
+ * @param[in] start    Address of the first byte of @p flash.
+ * @param[in] flash    The bytes read back, normally imageFlashRange()'s span.
+ * @return  Empty when every loaded byte matches; otherwise one sentence naming
+ *          the first differing address, or why the comparison could not run.
+ *          Gaps between segments are not compared.
+ */
+QString compareImageFlash(const QString &elfPath, quint32 start, const QByteArray &flash);
 
 /**
  * @brief   SHA-256 of a file.

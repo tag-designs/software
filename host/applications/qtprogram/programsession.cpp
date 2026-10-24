@@ -6,6 +6,7 @@
 #include "programsession.h"
 
 #include <QDebug>
+#include <QFile>
 
 #include "programmercli.h"
 
@@ -91,7 +92,8 @@ void ProgramSession::start(const FirmwareImage &image, const QString &serial,
   timer_.start();
 }
 
-void ProgramSession::retest(std::function<bool()> attach)
+void ProgramSession::retest(const FirmwareImage &image, const QString &serial,
+                            std::function<bool()> attach)
 {
   if (running_)
     return;
@@ -101,13 +103,70 @@ void ProgramSession::retest(std::function<bool()> attach)
   mismatch_ = false;
   waitTicks_ = 0;
   result_ = SessionResult();
+  image_ = image;
+  serial_ = serial;
   attach_ = std::move(attach);
   if (!tag_.IsAttached() && !(attach_ && attach_())) {
     finish(tr("FAILED: the tag does not answer"), tr("The tag does not answer, so it "
                                                      "cannot be tested."));
     return;
   }
-  beginTests();
+  if (!image_.usable()) {
+    beginTests();
+    return;
+  }
+  Status status;
+  if (!poll(status) || status.state() != IDLE) {
+    // Reading resets the tag; only an IDLE one loses nothing by it.
+    result_.flash = SessionResult::Flash::Unread;
+    result_.flashNote = tr("the tag was not IDLE, so its flash was not read");
+    beginTests();
+    return;
+  }
+  readFlash();
+}
+
+void ProgramSession::readFlash()
+{
+  const ImageFlashRange range = imageFlashRange(image_.elfPath);
+  if (!range.error.isEmpty()) {
+    result_.flash = SessionResult::Flash::Unread;
+    result_.flashNote = range.error;
+    beginTests();
+    return;
+  }
+  if (!flashDir_.isValid()) {
+    result_.flash = SessionResult::Flash::Unread;
+    result_.flashNote = tr("no temporary directory for the read-back");
+    beginTests();
+    return;
+  }
+  const QString file = flashDir_.filePath(QStringLiteral("readback.bin"));
+  QFile::remove(file);
+  tag_.Detach();  // the programmer needs the ST-LINK
+  setStep(Step::Reading, tr("Reading the tag's flash to compare with %1")
+                             .arg(image_.displayName()));
+  cli_.readMemory(serial_, range.start, range.size, file,
+                  [this, range, file](int code, const QString &output) {
+                    QFile read(file);
+                    if (code != 0 || !read.open(QIODevice::ReadOnly)) {
+                      result_.flash = SessionResult::Flash::Unread;
+                      result_.flashNote = tr("STM32_Programmer_CLI could not read it (%1)")
+                                              .arg(parseConnect(output, code).error);
+                    } else {
+                      result_.flashNote =
+                          compareImageFlash(image_.elfPath, range.start, read.readAll());
+                      result_.flash = result_.flashNote.isEmpty()
+                                          ? SessionResult::Flash::Matches
+                                          : SessionResult::Flash::Differs;
+                      if (result_.flash == SessionResult::Flash::Differs)
+                        qWarning().noquote() << result_.flashNote;
+                    }
+                    QFile::remove(file);
+                    waitTicks_ = 0;
+                    setStep(Step::Connecting, tr("Connecting to the tag again"));
+                    timer_.start();
+                  });
 }
 
 void ProgramSession::retryConnect()
@@ -280,7 +339,10 @@ void ProgramSession::tick()
     if (++waitTicks_ >= kConnectTicks) {
       timer_.stop();
       setStep(Step::PowerCycle,
-              image_.plan.erase == FlashPlan::Erase::All
+              retestOnly_
+                  ? tr("The tag does not answer after its flash was read. Unplug the base, "
+                       "plug it in again, and press Retry.")
+              : image_.plan.erase == FlashPlan::Erase::All
                   ? tr("Programmed, but the tag does not answer. A mass erase can leave "
                        "it in its bootloader until it is powered off: unplug the base, "
                        "plug it in again, and press Retry.")
@@ -302,9 +364,27 @@ void ProgramSession::tick()
     }
     result_.testStatus = QString::fromStdString(TestResult_Name(status.test_status()));
     if (retestOnly_) {
-      finish(result_.testStatus == QLatin1String("ALL_PASSED") ? QStringLiteral("OK")
-                                                               : QStringLiteral("TEST_FAILED"),
-             tr("Self-tests: %1.").arg(result_.testStatus));
+      const bool passed = result_.testStatus == QLatin1String("ALL_PASSED");
+      QString flash;
+      switch (result_.flash) {
+      case SessionResult::Flash::Matches:
+        flash = tr(" The flash matches %1.").arg(image_.displayName());
+        break;
+      case SessionResult::Flash::Differs:
+        flash = tr(" The flash is not %1: %2").arg(image_.displayName(), result_.flashNote);
+        break;
+      case SessionResult::Flash::Unread:
+        flash = tr(" The flash was not compared: %1.").arg(result_.flashNote);
+        break;
+      case SessionResult::Flash::NotChecked:
+        flash = tr(" No downloaded image matches the tag's commit, so its flash was not "
+                   "compared.");
+        break;
+      }
+      finish(result_.flash == SessionResult::Flash::Differs ? QStringLiteral("MISMATCH")
+             : passed                                       ? QStringLiteral("OK")
+                                                            : QStringLiteral("TEST_FAILED"),
+             tr("Self-tests: %1.").arg(result_.testStatus) + flash);
       return;
     }
     {
@@ -326,6 +406,7 @@ void ProgramSession::tick()
 
   case Step::Finishing:
   case Step::Programming:
+  case Step::Reading:
   case Step::PowerCycle:
   case Step::Done:
     return;

@@ -29,10 +29,12 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include "firmwarecatalog.h"
 #include "programmercli.h"
 #include "recordlog.h"
+#include "recovery/targetimage.h"
 
 namespace
 {
@@ -222,6 +224,32 @@ void checkReleaseList()
   check(!unlisted.isQualified("BitTag"), "an unlisted release is never qualified");
 }
 
+/// Retest's read-back comparison, against flash rebuilt from @p elfPath's segments.
+void checkFlashCompare(const QString &elfPath)
+{
+  const ImageFlashRange range = imageFlashRange(elfPath);
+  check(range.error.isEmpty() && range.start == 0x08000000u && range.size > 1024,
+        qPrintable(elfPath + " flash range starts at the vectors: " + range.error));
+  if (!range.error.isEmpty())
+    return;
+  // What a programmed tag holds: the segments, with erased flash between.
+  QByteArray flash(int(range.size), char(0xFF));
+  tagcore::recovery::TargetImage elf;
+  check(elf.Load(elfPath.toStdString()), "image reloads");
+  for (const auto &segment : elf.Segments())
+    if (segment.addr >= range.start && !segment.data.empty())
+      std::memcpy(flash.data() + (segment.addr - range.start), segment.data.data(),
+                  segment.data.size());
+  check(compareImageFlash(elfPath, range.start, flash).isEmpty(),
+        qPrintable(elfPath + " matches its own flash"));
+  QByteArray changed = flash;
+  changed[0x400] = char(changed[0x400] ^ 0x01);
+  check(compareImageFlash(elfPath, range.start, changed).contains("08000400"),
+        qPrintable(elfPath + " a changed byte is found and named"));
+  check(!compareImageFlash(elfPath, range.start, flash.left(flash.size() - 4)).isEmpty(),
+        qPrintable(elfPath + " a short read is not a match"));
+}
+
 /// Waits for @p signal-like completion: runs the loop until @p done is set or 60 s pass.
 void waitFor(const bool &done)
 {
@@ -279,6 +307,7 @@ void checkFetch(const QString &archive, const QString &dir)
             qPrintable(image.elfPath + " without a layout mass erases as an L432"));
     check(image.identity.found && image.identity.target == QFileInfo(image.elfPath).completeBaseName(),
           qPrintable(image.elfPath + " identity names its target"));
+    checkFlashCompare(image.elfPath);
   }
 
   // Corrupt a cached image: loading it again must refuse it.

@@ -18,6 +18,7 @@
 #define PROGRAMSESSION_H
 
 #include <QObject>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #include <functional>
@@ -39,6 +40,17 @@ struct SessionResult
   QString uuid;             ///< The tag's UUID after programming, or empty.
   QString gitHash;          ///< The tag's git hash after programming, or empty.
   QString message;          ///< One sentence for the operator.
+
+  /// What a retest's read-back of internal flash found.
+  enum class Flash
+  {
+    NotChecked, ///< No image to compare with, or not a retest.
+    Matches,    ///< Every loaded byte of the image is in the tag's flash.
+    Differs,    ///< The tag's flash is not the image.
+    Unread,     ///< The flash could not be read; see flashNote.
+  };
+  Flash flash = Flash::NotChecked; ///< Retest only.
+  QString flashNote;               ///< Why the flash differs or was not read.
 };
 
 /**
@@ -62,6 +74,7 @@ public:
     Stopping,     ///< Stopping a running tag.
     Erasing,      ///< The tag's own firmware is erasing its log.
     Programming,  ///< STM32_Programmer_CLI is erasing internal flash and writing the image.
+    Reading,      ///< Retest: STM32_Programmer_CLI is reading internal flash back to compare.
     Connecting,   ///< Waiting for the new image to answer.
     PowerCycle,   ///< The new image does not answer; waiting for a power cycle and retryConnect().
     Testing,      ///< The self-tests are running.
@@ -99,9 +112,19 @@ public:
 
   /**
    * @brief Runs the self-tests again on the attached tag, without programming.
+   * @details With a usable @p image and an IDLE tag, first reads back the
+   *          internal flash the image's loaded bytes occupy and compares it
+   *          (SessionResult::flash), so the record names an image only when
+   *          the tag's flash is that image. A tag whose flash differs ends as
+   *          MISMATCH once its tests have run.
+   * @param[in] image   The image the tag is expected to run, or an empty one
+   *                    to skip the comparison.
+   * @param[in] serial  The base's ST-LINK serial.
    * @param[in] attach  As for start(), used if the tag is not attached.
+   * @warning Reading the flash connects over SWD under reset, so the tag is
+   *          reset and attached again before its tests.
    */
-  void retest(std::function<bool()> attach);
+  void retest(const FirmwareImage &image, const QString &serial, std::function<bool()> attach);
 
   /// After a power cycle: tries to reach the new image again.
   void retryConnect();
@@ -131,6 +154,8 @@ private:
   void setStep(Step step, const QString &text);
   /// Runs the programmer; continues at Connecting or ends the session.
   void runProgrammer();
+  /// Retest: reads the image's flash span back and compares; continues at Connecting.
+  void readFlash();
   /// Reads TagInfo, sets the clock and starts the self-tests.
   void beginTests();
   /// Ends the session with @p result.
@@ -151,6 +176,7 @@ private:
   bool mismatch_ = false;          ///< The tag's git hash is not the image's.
   int waitTicks_ = 0;              ///< Ticks spent in the current wait.
   SessionResult result_;           ///< Built up as the session runs.
+  QTemporaryDir flashDir_;         ///< Where a retest's flash read-back is written.
 };
 
 #endif // PROGRAMSESSION_H

@@ -14,6 +14,8 @@
 #include <QJsonObject>
 #include <QObject>
 
+#include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -170,4 +172,54 @@ FirmwareImage loadFirmwareImage(const QString &elfPath, const QString &release)
                       .arg(QFileInfo(manifest).fileName(), info.fileName());
   }
   return image;
+}
+
+ImageFlashRange imageFlashRange(const QString &elfPath)
+{
+  using namespace tagcore::recovery;
+  ImageFlashRange range;
+  TargetImage elf;
+  std::string why;
+  if (!elf.Load(elfPath.toStdString(), &why)) {
+    range.error = QString::fromStdString(why);
+    return range;
+  }
+  quint64 lo = UINT64_MAX, hi = 0;
+  for (const ImageSegment &segment : elf.Segments()) {
+    if (segment.addr < kFlashBase || segment.data.empty())
+      continue;
+    lo = std::min<quint64>(lo, segment.addr);
+    hi = std::max<quint64>(hi, quint64(segment.addr) + segment.data.size());
+  }
+  if (hi == 0) {
+    range.error = QObject::tr("%1 loads nothing into internal flash.").arg(elfPath);
+    return range;
+  }
+  range.start = static_cast<quint32>(lo);
+  range.size = static_cast<quint32>(hi - lo);
+  return range;
+}
+
+QString compareImageFlash(const QString &elfPath, quint32 start, const QByteArray &flash)
+{
+  using namespace tagcore::recovery;
+  TargetImage elf;
+  std::string why;
+  if (!elf.Load(elfPath.toStdString(), &why))
+    return QString::fromStdString(why);
+  const quint64 end = quint64(start) + quint64(flash.size());
+  for (const ImageSegment &segment : elf.Segments()) {
+    if (segment.addr < kFlashBase || segment.data.empty())
+      continue;
+    if (segment.addr < start || quint64(segment.addr) + segment.data.size() > end)
+      return QObject::tr("Only 0x%1-0x%2 was read, which does not cover the image.")
+          .arg(start, 8, 16, QLatin1Char('0'))
+          .arg(quint32(end), 8, 16, QLatin1Char('0'));
+    const char *read = flash.constData() + (segment.addr - start);
+    for (size_t i = 0; i < segment.data.size(); ++i)
+      if (static_cast<uint8_t>(read[i]) != segment.data[i])
+        return QObject::tr("The tag's flash differs from the image at 0x%1.")
+            .arg(quint32(segment.addr + i), 8, 16, QLatin1Char('0'));
+  }
+  return QString();
 }

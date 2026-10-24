@@ -148,7 +148,19 @@ programmer runs asynchronously:
 
 Cancel is accepted before step 2 and at step 3, never while the programmer is
 writing. **Retest** runs step 4 alone on the attached tag, and records it as a
-row of its own.
+row of its own. It first finds the image the tag should be running: the chosen
+one when the tag reports its commit, otherwise any downloaded release's image
+for the tag's target built from that commit, so a tag left on an older release
+is checked against that release. A commit is a claim the firmware makes about
+itself, so when the tag is IDLE the station then reads back, with
+STM32_Programmer_CLI `-u`, the span of internal flash the image's loaded
+segments occupy, and compares every loaded byte. NOLOAD regions (calibration,
+stored configuration, the persistent area, the NAND map) have no file data and
+are not compared, so a calibrated tag still matches. The read resets the tag,
+which is then attached again for its tests. The row names the image and its
+release when the flash matches; when it differs the result is `MISMATCH`.
+When no image matches the commit, or the flash cannot be read, the image and
+version stay empty and the row carries only the commit the tag reports.
 
 ## The record
 

@@ -688,14 +688,30 @@ void Station::retest(const QString &label)
     return;
   label_ = label;
   QSettings().setValue(kLabelKey, label);
-  // Record the image only when the tag is known to run it.
+  // The image the tag should be running: the chosen one if its commit
+  // matches, else any downloaded release's image for the tag's target built
+  // from that commit (a tag still on an older release). The session reads the
+  // tag's flash back and compares; the row names the image only on a match.
   const QString running = QString::fromStdString(info_.githash());
-  sessionImage_ = haveInfo_ && sameCommit(running, image_.identity.gitHash) ? image_
-                                                                            : FirmwareImage();
+  sessionImage_ = FirmwareImage();
+  if (haveInfo_ && sameCommit(running, image_.identity.gitHash)) {
+    sessionImage_ = image_;
+  } else if (haveInfo_ && !running.isEmpty() && !tagTarget().isEmpty()) {
+    for (const FirmwareRelease &r : catalog_.releases()) {
+      if (!r.cached || !catalog_.targets(r.tag).contains(tagTarget()))
+        continue;
+      const FirmwareImage candidate =
+          loadFirmwareImage(catalog_.imagePath(r.tag, tagTarget()), r.tag);
+      if (candidate.usable() && sameCommit(running, candidate.identity.gitHash)) {
+        sessionImage_ = candidate;
+        break;
+      }
+    }
+  }
   sessionVoltage_ = connect_.voltage;
   sessionRetest_ = true;
   statusPoll_.stop();
-  session_.retest([this]() { return reattach(); });
+  session_.retest(sessionImage_, serial_, [this]() { return reattach(); });
 }
 
 void Station::writeRecord(const SessionResult &result)
@@ -714,6 +730,10 @@ void Station::writeRecord(const SessionResult &result)
     emit programFinished(ProgramRecord(), false, result.message);
     return;
   }
+  // A retest names an image only when the tag's flash was found to be it.
+  if (sessionRetest_ && result.flash != SessionResult::Flash::Matches &&
+      result.flash != SessionResult::Flash::Differs)
+    sessionImage_ = FirmwareImage();
   ProgramRecord row;
   row.label = label_;
   row.tagType = sessionImage_.identity.found ? sessionImage_.identity.target : target_;

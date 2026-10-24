@@ -164,6 +164,19 @@ public:
   void program(const QString &serial, const QString &elf, const QStringList &eraseArgs,
                Done done);
 
+  /**
+   * @brief Reads @p size bytes of memory from @p address into @p file
+   *        (`-u`), connecting under reset as connectCheck() does.
+   * @param[in] serial   ST-LINK serial.
+   * @param[in] address  First byte.
+   * @param[in] size     Bytes to read.
+   * @param[in] file     Destination; a `.bin` path.
+   * @param[in] done     Completion; exit code 0 is success.
+   * @warning Resets the tag, as every SWD connection here does.
+   */
+  void readMemory(const QString &serial, quint32 address, quint32 size, const QString &file,
+                  Done done);
+
 signals:
   /// One line of the running tool's output, escapes stripped.
   void outputLine(const QString &line);

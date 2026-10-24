@@ -200,7 +200,16 @@ public:
    * @pre   canProgram().
    */
   void program(const QString &label);
-  /// Runs the self-tests again on the tag and records them under @p label.
+  /**
+   * @brief Runs the self-tests again on the tag and records them under @p label.
+   * @details Finds the image the tag should run: the chosen image when the
+   *          tag reports its commit, or a downloaded release's image for the
+   *          tag's target built from that commit. The session reads the tag's
+   *          flash back and compares it with that image. The row names the
+   *          image and its version when the flash matches, and also when it
+   *          differs (the result is then MISMATCH); otherwise they are left
+   *          empty and only the commit the tag reports is recorded.
+   */
   void retest(const QString &label);
   /// The label of the last program or retest.
   QString lastLabel() const { return label_; }

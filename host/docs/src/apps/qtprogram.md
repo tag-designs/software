@@ -121,4 +121,9 @@ different tag type from the one the tag is running gets a warning.
 - **STM32_Programmer_CLI failed.** Press **Log** at the bottom right to see its
   output.
 - **Self-test failed.** The tag is programmed and the failure is recorded.
-  Press **Retest** to run the tests again; each retest adds a line.
+  Press **Retest** to run the tests again; each retest adds a line. Retest
+  also works on a tag you do not want to reprogram. It reads the tag's flash
+  back and compares it with the release the tag reports, then names that
+  release in its line, or records `MISMATCH` if the flash is something else.
+  The release must have been downloaded (choose it once under **Firmware**);
+  otherwise the line records just the commit the tag reports.
