@@ -101,9 +101,13 @@ only then marks the release cached. The last listing is kept in
 
 An image is loaded again, and hashed again, whenever it is chosen. An image
 whose bytes do not match its manifest is refused; a release image must have a
-manifest. An image with no `__tag_flash_page_size__` symbol (every release
-before `fw-v0.7`) still downloads and verifies, but is refused when chosen,
-because the erase cannot be planned without it. A file without a manifest is usable: its SHA-256 is still recorded,
+manifest. An image with no `__tag_flash_page_size__` symbol (the L432 images
+of every release before `fw-v0.7`) gets a mass erase: its calibration and
+persistent regions cannot be trusted to be where a current tree puts them, and
+the release notes for `fw-v0.7` already require a mass erase when a calibrated
+tag leaves `fw-v0.6`. The flash size ChibiOS linked it for
+(`__flash0_base__`..`__flash0_end__`) still names the MCU, so the check that
+the image fits the tag stands. A file without a manifest is usable: its SHA-256 is still recorded,
 and its version is `custom`. **Release Notes** opens the release page, which
 says what was qualified.
 

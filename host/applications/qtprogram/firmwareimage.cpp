@@ -153,7 +153,7 @@ FirmwareImage loadFirmwareImage(const QString &elfPath, const QString &release)
     return image;
   }
   image.plan = planFlash(elfPath);
-  if (image.plan.erase == FlashPlan::Erase::Invalid && !image.plan.noLayout) {
+  if (image.plan.erase == FlashPlan::Erase::Invalid) {
     image.error = image.plan.error;
     return image;
   }
@@ -169,14 +169,5 @@ FirmwareImage loadFirmwareImage(const QString &elfPath, const QString &release)
                               "cannot be checked.")
                       .arg(QFileInfo(manifest).fileName(), info.fileName());
   }
-  // An image too old to say its flash layout is still checked against its
-  // manifest first, so a release of such images downloads and caches, and
-  // the refusal names the real reason rather than a failed download.
-  if (image.error.isEmpty() && image.plan.noLayout)
-    image.error = release.isEmpty()
-                      ? image.plan.error
-                      : QObject::tr("%1 was built before images recorded their flash "
-                                    "layout, so qtprogram cannot plan the erase. Choose "
-                                    "fw-v0.7 or later.").arg(release);
   return image;
 }

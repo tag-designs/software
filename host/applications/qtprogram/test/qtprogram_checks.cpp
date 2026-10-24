@@ -270,11 +270,13 @@ void checkFetch(const QString &archive, const QString &dir)
   check(!QFileInfo::exists(QDir(cache).filePath(tag + "/firmware/BitTag/BitTag.bin")),
         "only images and manifests extracted");
   for (const FirmwareImage &image : catalog.images(tag)) {
-    // A release before fw-v0.7 records no flash layout: it caches, verified,
-    // and each image is refused with the reason, not as a failed download.
-    check(image.manifestVerified &&
-              (image.usable() || (image.plan.noLayout && image.error.contains(tag))),
+    check(image.usable() && image.manifestVerified,
           qPrintable(image.elfPath + " verified: " + image.error));
+    // A release before fw-v0.7 records no flash layout on L432 images: they
+    // mass erase, whatever calibration pages they reserve.
+    if (image.plan.noLayout)
+      check(image.plan.erase == FlashPlan::Erase::All && image.plan.pageSize == 2048,
+            qPrintable(image.elfPath + " without a layout mass erases as an L432"));
     check(image.identity.found && image.identity.target == QFileInfo(image.elfPath).completeBaseName(),
           qPrintable(image.elfPath + " identity names its target"));
   }

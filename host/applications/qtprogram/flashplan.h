@@ -14,6 +14,11 @@
  *            keeps calibration and clears the persistent region that moves
  *            with code size.
  *          - Other STM32L432 images mass erase.
+ *          - Images built before the layout was recorded (no
+ *            `__tag_flash_page_size__`: the L432 images of every release
+ *            before fw-v0.7) mass erase, whatever their calibration pages.
+ *            The MCU, and so the page size, comes from the size of flash
+ *            ChibiOS linked them for (`__flash0_base__`..`__flash0_end__`).
  *
  *          The new image decides, because its layout governs from now on. A
  *          raw `.bin` carries no symbols, so only ELF images can be planned.
@@ -42,8 +47,8 @@ struct FlashPlan
 
   Erase erase = Erase::Invalid; ///< The erase that goes with the program.
   QString error;           ///< Why the image cannot be programmed, when Invalid.
-  /// Invalid because the image records no flash layout (no
-  /// `__tag_flash_page_size__`): an image built before the symbol existed.
+  /// The image records no flash layout (no `__tag_flash_page_size__`), so
+  /// it was built before the symbol existed and gets a mass erase.
   bool noLayout = false;
   int pageSize = 0;        ///< Flash page size the image was linked for, in bytes.
   int lastErasedPage = -1; ///< Highest page erased, for BelowCalibration.
@@ -61,9 +66,12 @@ struct FlashPlan
 /**
  * @brief   Plans the program of the ELF image at @p path.
  *
- * @param[in] path  Firmware ELF. A file that is not a 32-bit little-endian ELF,
- *                  or one without `__tag_flash_page_size__` (built before the
- *                  layout was published), yields an Invalid plan.
+ * @param[in] path  Firmware ELF. A file that is not a 32-bit little-endian ELF
+ *                  yields an Invalid plan, as does one without
+ *                  `__tag_flash_page_size__` whose flash size is not an
+ *                  STM32L432's (256 KB) or an STM32U375's (1 MB). One
+ *                  without the symbol but with a known flash size gets a mass
+ *                  erase, with FlashPlan::noLayout set.
  * @return  The plan; check FlashPlan::erase for Invalid.
  */
 FlashPlan planFlash(const QString &path);

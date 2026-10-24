@@ -99,6 +99,10 @@ QString FlashPlan::summary() const
     return QObject::tr("Erase flash pages 0-%1 and program, keeping the calibration page")
         .arg(lastErasedPage);
   case Erase::All:
+    if (noLayout)
+      return QObject::tr("Mass erase and program (%1 image built before images recorded "
+                         "their flash layout)")
+          .arg(pageSize == 4096 ? "STM32U375" : "STM32L432");
     return QObject::tr("Mass erase and program (STM32L432 with no calibration page)");
   default:
     return error;
@@ -116,7 +120,8 @@ FlashPlan planFlash(const QString &path)
   QString error;
   const auto symbols = elfSymbols(file.readAll(),
                                   {"__tag_flash_page_size__", "__calibration_start__",
-                                   "__calibration_end__"},
+                                   "__calibration_end__", "__flash0_base__",
+                                   "__flash0_end__"},
                                   error);
   if (!error.isEmpty()) {
     plan.error = QObject::tr("%1 is %2; qtprogram needs the firmware's .elf, whose "
@@ -124,10 +129,20 @@ FlashPlan planFlash(const QString &path)
     return plan;
   }
   if (!symbols.contains("__tag_flash_page_size__")) {
-    plan.noLayout = true;
-    plan.error = QObject::tr("%1 does not say which flash layout it was built for "
-                             "(no __tag_flash_page_size__); rebuild it from a current "
-                             "tree.").arg(path);
+    // Built before the layout was recorded. Its calibration and persistent
+    // regions cannot be trusted to be where a current tree puts them, so
+    // erase everything; the flash size still says which MCU it is for.
+    const quint32 size =
+        symbols.value("__flash0_end__", 0) - symbols.value("__flash0_base__", 0);
+    if (size == 256u * 1024u || size == 1024u * 1024u) {
+      plan.noLayout = true;
+      plan.pageSize = size == 256u * 1024u ? 2048 : 4096;
+      plan.erase = FlashPlan::Erase::All;
+    } else {
+      plan.error = QObject::tr("%1 does not say which flash layout it was built for "
+                               "(no __tag_flash_page_size__), nor for which MCU; "
+                               "rebuild it from a current tree.").arg(path);
+    }
     return plan;
   }
   plan.pageSize = static_cast<int>(symbols.value("__tag_flash_page_size__"));

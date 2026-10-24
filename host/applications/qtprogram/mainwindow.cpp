@@ -560,7 +560,10 @@ bool MainWindow::confirmProgram(QString &label, const QString &capture)
   if (answers)
     lost << tr("The tag's log. Download it first with Tag Monitor.");
   lost << tr("The tag's stored configuration.");
-  if (calibrated && !image.plan.keepsCalibration())
+  if (calibrated && image.plan.noLayout)
+    lost << tr("Its calibration constants: this image predates the flash layout record, "
+               "so all of flash is erased.");
+  else if (calibrated && !image.plan.keepsCalibration())
     lost << tr("Its calibration constants: this image keeps no calibration page.");
   if (calibrated && image.plan.keepsCalibration())
     kept << tr("Its calibration constants.");

@@ -292,14 +292,12 @@ void FirmwareCatalog::extract(const QString &archive, const QString &staging)
              QFile::remove(archive);
              const QString tag = fetching_;
              // Verify every image against its manifest before the release
-             // counts as cached; one bad image refuses the whole release. An
-             // image that verifies but cannot be programmed (one too old to
-             // record its flash layout) is cached, and refused when chosen.
+             // counts as cached; one bad image refuses the whole release.
              const QDir firmware(QDir(staging).filePath("firmware"));
              for (const QString &target : firmware.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
                const FirmwareImage image = loadFirmwareImage(
                    QDir(firmware.filePath(target)).filePath(target + ".elf"), tag);
-               if (!image.usable() && !(image.manifestVerified && image.plan.noLayout)) {
+               if (!image.usable()) {
                  failFetch(staging, image.error);
                  return;
                }
