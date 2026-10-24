@@ -67,9 +67,13 @@ public:
 
 private slots:
   // Connected by name by ui.setupUi().
+  /// Rounds the logging start up to the hour, and makes it the end's earliest choice.
   void on_StartDateTime_dateTimeChanged(const QDateTime &dateTime);
+  /// Rounds the logging end up to the hour.
   void on_EndDateTime_dateTimeChanged(const QDateTime &dateTime);
+  /// Immediately sets the start to now; On moves a past start to now.
   void on_startGroup_clicked();
+  /// Until: makes now the end's earliest choice.
   void on_runGroup_clicked();
 
   /**
@@ -90,11 +94,11 @@ private:
   /// Maximum hibernation intervals any firmware accepts.
   static constexpr int kHibernateRows = 2;
 
-  Ui::Schedule ui;
+  Ui::Schedule ui;             ///< The Start, Run, Hibernation, Period and Start Delay groups.
   bool interval_ = false;      ///< owns active_interval and hibernate
   bool period_ = false;        ///< owns period
   bool start_delay_ = false;   ///< owns start_delay
-  Hibernate *rows_[kHibernateRows] = {};
+  Hibernate *rows_[kHibernateRows] = {};  ///< Hibernation rows; the first row_count_ are shown.
   int row_count_ = 0;          ///< hibernation rows the last load() showed
 };
 

@@ -57,16 +57,19 @@ public slots:
 
 private slots:
     
+    /// Cancel: allows the close and closes the dialog.
     void onCancelButtonClicked();
+    /// OK: disables both buttons and emits OkButtonClicked().
     void onOkButtonClicked();
+    /// Ignores the window's close button unless Cancel allowed it.
     void closeEvent(QCloseEvent *event) override;
 
 private:
-    QLabel* messageLabel;
-    QPushButton* okButton;
-    QPushButton* cancelButton;
-    QProgressBar* progressBar;
-    bool closeButtonClicked = false;
+    QLabel* messageLabel;         ///< The current step's text.
+    QPushButton* okButton;        ///< Starts the work.
+    QPushButton* cancelButton;    ///< Closes the dialog before the work starts.
+    QProgressBar* progressBar;    ///< The tag's erase, in sectors; hidden until setValue().
+    bool closeButtonClicked = false;  ///< Cancel was pressed, so closeEvent() lets the dialog close.
 };
 
 #endif

@@ -33,9 +33,9 @@ public:
   bool store(Config &config) const override;
 
 private:
-  PBEnumGroup *odr_ = nullptr;
-  PBEnumGroup *accel_range_ = nullptr;
-  PBEnumGroup *gyro_range_ = nullptr;
+  PBEnumGroup *odr_ = nullptr;          ///< lsm6 output data rate.
+  PBEnumGroup *accel_range_ = nullptr;  ///< lsm6 accelerometer full scale.
+  PBEnumGroup *gyro_range_ = nullptr;   ///< lsm6 gyroscope full scale.
 };
 
 #endif // LSM6PANEL_H

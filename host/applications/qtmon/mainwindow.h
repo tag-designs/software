@@ -164,10 +164,23 @@ private slots:
 
   // attach/detach to tag
 
+  /**
+   * @brief Finds the USB bases (asking which when there are several),
+   *        attaches, reads the tag's identity, configuration and status, and
+   *        starts polling every 400 ms.
+   * @return true when attached; false, after telling the user, when already
+   *         attached, no base is found or chosen, or the tag does not answer.
+   * @warning Attaching resets the tag, ending a running deployment.
+   */
   bool Attach();
 
   // timer tick
 
+  /**
+   * @brief One status poll: voltage and Status into applyStatus(); in
+   *        CALIBRATE, also drains the calibration log into the calibration
+   *        window.
+   */
   void TriggerUpdate();
 
   // Tag commands, each behind an action (see createActions()).
@@ -191,15 +204,16 @@ private slots:
   
 
 private:
-  Tag tag;
-  TagType tag_type = TAG_UNSPECIFIED;
-  Ui::MainWindow ui;
-  QTimer timer;
-  TagState current_state = STATE_UNSPECIFIED;
+  Tag tag;                    ///< Connection to the attached tag.
+  TagType tag_type = TAG_UNSPECIFIED;  ///< Attached tag's type, from TagInfo.
+  Ui::MainWindow ui;          ///< The Designer-built widgets (mainwindow.ui).
+  QTimer timer;               ///< Status poll (TriggerUpdate()), every 400 ms while attached.
+  TagState current_state = STATE_UNSPECIFIED;  ///< Tag state at the last poll.
   /// Shown in the title and About. 2.1: menus, the status strip, Help.
   const float version = 2.1f;
-  int external_flash_size = 0;
-  int sector_size = 4096;
+  int external_flash_size = 0;  ///< Bytes, from TagInfo; sizes the erase progress bar.
+  int sector_size = 4096;       ///< External flash erase sector, bytes.
+  /// Firmware debug text received so far without its closing newline (see logTagDebugMessage()).
   QString tag_debug_line_buffer;
 
   /**
@@ -255,32 +269,46 @@ private:
   TestResult last_test_ = TEST_UNSPECIFIED;  ///< Self-test result the last status reported.
   QString tag_uuid_;           ///< Attached tag's board UUID, for log messages.
 
-  QAction *attach_action_ = nullptr;
-  QAction *detach_action_ = nullptr;
-  QAction *read_config_action_ = nullptr;
-  QAction *start_action_ = nullptr;
-  QAction *stop_action_ = nullptr;
-  QAction *sync_action_ = nullptr;
-  QAction *test_action_ = nullptr;
-  QAction *calibrate_action_ = nullptr;
-  QAction *erase_action_ = nullptr;
-  QAction *open_config_action_ = nullptr;
-  QAction *save_config_action_ = nullptr;
-  QAction *save_as_config_action_ = nullptr;
-  QAction *reset_config_action_ = nullptr;
+  // The commands, made by createActions() and enabled by updateActions().
+  QAction *attach_action_ = nullptr;        ///< Tag ▸ Attach.
+  QAction *detach_action_ = nullptr;        ///< Tag ▸ Detach.
+  QAction *read_config_action_ = nullptr;   ///< Tag ▸ Read Configuration.
+  QAction *start_action_ = nullptr;         ///< Tag ▸ Start and the Start button; runs startWithChecks().
+  QAction *stop_action_ = nullptr;          ///< Tag ▸ Stop and the Stop button.
+  QAction *sync_action_ = nullptr;          ///< Tag ▸ Synchronize Clock.
+  QAction *test_action_ = nullptr;          ///< Tag ▸ Self-Test.
+  QAction *calibrate_action_ = nullptr;     ///< Tag ▸ Calibrate; hidden for tags without calibration.
+  QAction *erase_action_ = nullptr;         ///< Tag ▸ Erase….
+  QAction *open_config_action_ = nullptr;   ///< File ▸ Open Configuration….
+  QAction *save_config_action_ = nullptr;   ///< File ▸ Save Configuration.
+  QAction *save_as_config_action_ = nullptr; ///< File ▸ Save Configuration As….
+  QAction *reset_config_action_ = nullptr;  ///< Reset to Defaults.
   QMenu *new_config_menu_ = nullptr;     ///< One action per tag type with defaults.
   QMenu *recent_config_menu_ = nullptr;  ///< Rebuilt each time it opens.
-  QAction *download_action_ = nullptr;
-  QAction *quit_action_ = nullptr;
-  QAction *guide_action_ = nullptr;
-  QAction *about_action_ = nullptr;
+  QAction *download_action_ = nullptr;  ///< File ▸ Download Data….
+  QAction *quit_action_ = nullptr;      ///< File ▸ Quit; closes the window, which may ask to save.
+  QAction *guide_action_ = nullptr;     ///< Help ▸ Tag Monitor User Guide.
+  QAction *about_action_ = nullptr;     ///< Help ▸ About Tag Monitor.
 
   /// A self-test result is accepted only from a poll this long after Self-Test.
   static constexpr qint64 kTestMinimumMs = 1000;
   /// Self-Test gives up waiting for a result after this long.
   static constexpr qint64 kTestTimeoutMs = 60000;
 
+  /**
+   * @brief Number of external-flash sectors the tag's erase will report, for
+   *        the erase progress bar.
+   * @return The tag's own total when it reports one
+   *         (erase_sectors_total_plus_one); otherwise an estimate from the
+   *         IMUTag page count or the external flash size.
+   */
   int eraseSectorMaximum(const Status &status) const;
+  /**
+   * @brief Logs firmware debug text one line at a time, as "Log: <line>".
+   * @details The firmware's text arrives in pieces across statuses; this
+   *          drops carriage returns and holds an unfinished line in
+   *          tag_debug_line_buffer until its newline arrives.
+   */
   void logTagDebugMessage(const QString &message);
   /**
    * @brief Records whether a tag is attached, and updates the Tag page, the
@@ -338,19 +366,21 @@ private:
    */
   static QString resolveScreenshotDir(const QString &path);
 
-  QString screenshotDir;
-  QString fakeFixturePath;
-  QString fakeFixtureId;
-  TagInfo fakeInfo;
-  Config fakeConfig;
-  QMap<QString, Status> fakeStatuses;
-  float fakeVoltage = 0.0f;
-  bool fakeMode = false;
-  bool fakeConfigLoaded = false;
-  bool captureStartupScreenshotOnStartup = false;
-  bool captureMainScreenshotsOnStartup = false;
-  bool captureConfigScreenshotsOnStartup = false;
-  bool captureErrorLogScreenshotOnStartup = false;
+  // Documentation fixture mode (--fake-fixture) and screenshot capture; see
+  // mainwindow_fixture.cpp and README.md "Screenshots".
+  QString screenshotDir;        ///< Where captures are written (resolveScreenshotDir()).
+  QString fakeFixturePath;      ///< The fixture JSON, when running without a tag.
+  QString fakeFixtureId;        ///< Fixture name used in screenshot file names.
+  TagInfo fakeInfo;             ///< Tag identity from the fixture.
+  Config fakeConfig;            ///< Tag configuration from the fixture.
+  QMap<QString, Status> fakeStatuses;  ///< Fixture statuses by lower-case state name ("idle", "running", ...).
+  float fakeVoltage = 0.0f;     ///< Voltage shown in fixture mode, volts.
+  bool fakeMode = false;        ///< A fixture stands in for an attached tag; no tag is contacted.
+  bool fakeConfigLoaded = false; ///< fakeConfig was read from the fixture.
+  bool captureStartupScreenshotOnStartup = false;   ///< --capture-startup-screenshot.
+  bool captureMainScreenshotsOnStartup = false;     ///< --capture-main-screenshots.
+  bool captureConfigScreenshotsOnStartup = false;   ///< --capture-config-screenshots.
+  bool captureErrorLogScreenshotOnStartup = false;  ///< --capture-error-log-screenshot.
 };
 
 #endif // MAINWINDOW_H

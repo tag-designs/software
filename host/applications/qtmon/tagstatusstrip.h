@@ -71,14 +71,14 @@ public:
 
 private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).
-  QLabel *tag_ = nullptr;
-  QLabel *state_ = nullptr;
-  QLabel *clock_ = nullptr;
-  QLabel *voltage_ = nullptr;
-  QLabel *test_ = nullptr;
+  QLabel *tag_ = nullptr;      ///< Tag type; the board UUID is its tooltip.
+  QLabel *state_ = nullptr;    ///< Tag state.
+  QLabel *clock_ = nullptr;    ///< Clock offset; red beyond kClockToleranceS.
+  QLabel *voltage_ = nullptr;  ///< Supply voltage.
+  QLabel *test_ = nullptr;     ///< Self-test result, or "Running"; red unless ALL_PASSED.
   QCheckBox *approved_ = nullptr;  ///< "Approved": the user reviewed the configuration.
-  QToolButton *start_ = nullptr;
-  QToolButton *stop_ = nullptr;
+  QToolButton *start_ = nullptr;   ///< Bound to MainWindow's Start action.
+  QToolButton *stop_ = nullptr;    ///< Bound to MainWindow's Stop action.
 };
 
 #endif // TAGSTATUSSTRIP_H

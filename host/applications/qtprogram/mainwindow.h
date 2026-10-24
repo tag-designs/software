@@ -213,10 +213,10 @@ private slots:
 private:
 
   Tag tag;                    ///< Connection to the tag through the selected base.
-  Ui::MainWindow ui;
+  Ui::MainWindow ui;          ///< The Designer-built widgets (mainwindow.ui).
   QTimer timer;               ///< Status poll, every 400 ms while attached.
   TagState current_state = STATE_UNSPECIFIED;  ///< Tag state at the last poll.
-  ProgrammingState programming_state = ProgrammingState::READY;
+  ProgrammingState programming_state = ProgrammingState::READY;  ///< Current step of programStateMachine().
   /// Host version for the tag's qtmonitor_min_version check, which is disabled.
   const float version = 2.0;
   int external_flash_size = 0;  ///< Bytes, from TagInfo; sizes the erase progress bar.

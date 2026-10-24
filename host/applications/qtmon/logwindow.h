@@ -80,7 +80,9 @@ class LogWindow : public QWidget
         bool Attach(Tag &tag);
 
     private slots:
+        /// Save Error Log…: writes the log's text to a file the user chooses.
         void saveLog();
+        /// Clear Error Log: empties the log.
         void clearLog();
         /// Applies a level chosen in the Log Level menu.
         void setLogLevel(QAction *level);
@@ -88,11 +90,11 @@ class LogWindow : public QWidget
         void showContextMenu(const QPoint &pos);
 
     private:
-        Ui::LogWindow ui;
-        QAction *save_ = nullptr;
-        QAction *clear_ = nullptr;
-        QMenu *level_menu_ = nullptr;
-        QActionGroup *levels_ = nullptr;
+        Ui::LogWindow ui;                 ///< The Designer-built widgets (logwindow.ui).
+        QAction *save_ = nullptr;         ///< See saveAction().
+        QAction *clear_ = nullptr;        ///< See clearAction().
+        QMenu *level_menu_ = nullptr;     ///< See logLevelMenu().
+        QActionGroup *levels_ = nullptr;  ///< Makes the level actions exclusive.
 };
 
 #endif

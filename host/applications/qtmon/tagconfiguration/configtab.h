@@ -298,6 +298,9 @@ private:
 
     /**
      * @brief Loads @p config into the panels as the document.
+     * @param[in] config         The configuration; its tag_type chooses the panels.
+     * @param[in] source         Where it came from, shown in the title.
+     * @param[in] path           Its file, for Source::File; otherwise empty.
      * @param[in] keep_baseline  true for Reset to Defaults: the new values
      *                           count as changes against what was loaded.
      */

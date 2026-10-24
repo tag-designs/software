@@ -73,22 +73,22 @@ private slots:
   void on_adxlfreq_clicked(int index);
 
 private:
-  Variant variant_;
-  bool owns_accel_type_;
+  Variant variant_;            ///< Which meaning of the adxl362 fields this panel shows.
+  bool owns_accel_type_;       ///< Wake367 only: the panel reads and writes adxl362.accel_type.
   bool has_inact_thresh_;      ///< the inactive threshold is a control
   bool reported_adxl367_ = false;  ///< the last load() saw accel_type ADXL367
 
-  QGroupBox *configbox_ = nullptr;
+  QGroupBox *configbox_ = nullptr;      ///< "Accelerometer": range, sample rate and filter.
   PBEnumGroup *sample_rate_ = nullptr;  ///< Standard only
   PBEnumGroup *range_ = nullptr;        ///< Standard only
   PBEnumGroup *filter_ = nullptr;       ///< Standard only
-  QGroupBox *spinners_ = nullptr;
-  QDoubleSpinBox *act_thresh_ = nullptr;
-  QDoubleSpinBox *inact_thresh_ = nullptr;
-  QDoubleSpinBox *inactive_ = nullptr;
-  QLabel *act_thresh_label_ = nullptr;
-  QLabel *inact_thresh_label_ = nullptr;
-  QLabel *inactive_label_ = nullptr;
+  QGroupBox *spinners_ = nullptr;        ///< "Activity Detection": the threshold controls.
+  QDoubleSpinBox *act_thresh_ = nullptr;   ///< adxl362.act_thresh_g, in g.
+  QDoubleSpinBox *inact_thresh_ = nullptr; ///< adxl362.inact_thresh_g, in g, when has_inact_thresh_.
+  QDoubleSpinBox *inactive_ = nullptr;     ///< adxl362.inactive_sec; seconds or samples, by variant.
+  QLabel *act_thresh_label_ = nullptr;     ///< Label of act_thresh_.
+  QLabel *inact_thresh_label_ = nullptr;   ///< Label of inact_thresh_.
+  QLabel *inactive_label_ = nullptr;       ///< Label of inactive_; its text names the unit.
 };
 
 #endif // ADXL362PANEL_H

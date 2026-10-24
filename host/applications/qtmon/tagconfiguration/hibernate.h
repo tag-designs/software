@@ -85,7 +85,9 @@ signals:
     void inUseClicked(int);
 
 private slots:
+    /// Rounds the start down to the hour, keeps the end at or after it, and emits startDateTimeChanged().
     void on_hibernate_start_dateTimeChanged(const QDateTime &dateTime);
+    /// Rounds the end up to the hour, keeps the start at or before it, and emits endDateTimeChanged().
     void on_hibernate_end_dateTimeChanged(const QDateTime &dateTime);
     /// Enables the date pickers when the row is in use, disables them when not.
     void on_hibernate_in_use_toggled(bool checked);
@@ -93,12 +95,12 @@ private slots:
     void on_hibernate_in_use_clicked();
 
 private:
-    Ui::Hibernate ui;
+    Ui::Hibernate ui;  ///< The In use checkbox and the start and end boxes.
     /*
     QDateTimeEdit *hibernate_start;
     QDateTimeEdit *hibernate_end;
     */
-    int id;
+    int id;  ///< Row index, reported by the change signals.
 };
 
 #endif // HIBERNATE_H

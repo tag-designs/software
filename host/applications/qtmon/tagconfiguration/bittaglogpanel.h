@@ -32,7 +32,7 @@ public:
   bool store(Config &config) const override;
 
 private:
-  PBEnumGroup *log_ = nullptr;
+  PBEnumGroup *log_ = nullptr;  ///< One radio button per bittag_log format.
 };
 
 #endif // BITTAGLOGPANEL_H
