@@ -1,6 +1,7 @@
 #ifndef LINK_ADAPT_H
 #define LINK_ADAPT_H
 #include <stdint.h>
+#include <string>
 #include <vector>
 
 #ifndef TAGCORE_ENABLE_INSTRUMENTATION
@@ -11,13 +12,31 @@ struct libusb_device_handle;
 struct libusb_context;
 
 
+/**
+ * @struct  UsbDev
+ * @brief   One ST-LINK found on USB by LinkAdapt::Available(), and the
+ *          selector LinkAdapt::Attach() matches against.
+ *
+ * @details An all-zero UsbDev asks Attach() for the first ST-LINK found.
+ */
 struct UsbDev
 {
     UsbDev(): vid(0),pid(0), bus(0), address(0) { } 
-    uint16_t vid;
-    uint16_t pid;
-    uint8_t bus;
-    uint8_t address; 
+    uint16_t vid;     ///< USB vendor ID (0x0483 for ST).
+    uint16_t pid;     ///< USB product ID; identifies the ST-LINK generation.
+    uint8_t bus;      ///< USB bus number at enumeration.
+    uint8_t address;  ///< USB device address on @ref bus; changes on replug.
+    /**
+     * @brief The ST-LINK's USB serial number (iSerialNumber), as printable
+     *        text, or empty when it could not be read.
+     *
+     * @details The same string STM32_Programmer_CLI lists as `ST-LINK SN`
+     *          and accepts as `sn=`, so a base found here can be named to the
+     *          programmer. Old ST-LINK/V2 firmware reports a binary serial,
+     *          which the CLI shows hex-encoded; that is left empty rather than
+     *          guessed. Not used by Attach().
+     */
+    std::string serial;
 };
 
 struct LinkAdaptStats

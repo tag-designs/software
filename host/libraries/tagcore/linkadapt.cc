@@ -269,6 +269,39 @@ static bool isSTlink(uint16_t vid, uint16_t pid)
     }
 }
 
+/**
+ * @brief   Reads an ST-LINK's USB serial number for UsbDev::serial.
+ *
+ * @details Opens the device only to read its string descriptor; no interface
+ *          is claimed and nothing is sent over SWD, so the tag on the base is
+ *          not reset. A serial with any character outside printable ASCII
+ *          (old ST-LINK/V2 firmware reports binary) is returned empty.
+ *
+ * @param[in] dev   Device from libusb_get_device_list().
+ * @param[in] desc  Its device descriptor.
+ * @return  The serial, or an empty string when it is absent, cannot be read
+ *          (for example, the device is held by another driver) or is binary.
+ */
+static std::string readSerial(libusb_device *dev, const libusb_device_descriptor &desc)
+{
+    if (desc.iSerialNumber == 0)
+        return std::string();
+    libusb_device_handle *h = nullptr;
+    if (libusb_open(dev, &h) != 0 || h == nullptr)
+        return std::string();
+    unsigned char text[128] = {0};
+    const int n = libusb_get_string_descriptor_ascii(h, desc.iSerialNumber, text,
+                                                     sizeof(text));
+    libusb_close(h);
+    if (n <= 0)
+        return std::string();
+    std::string serial(reinterpret_cast<const char *>(text), n);
+    for (char c : serial)
+        if (c < 0x21 || c > 0x7e || c == '?')
+            return std::string();
+    return serial;
+}
+
 bool LinkAdapt::Available(std::vector<UsbDev> &usbdevs)
 {
     std::vector<UsbDev> stlinks;
@@ -308,6 +341,7 @@ bool LinkAdapt::Available(std::vector<UsbDev> &usbdevs)
             stl.pid = desc.idProduct;
             stl.bus = libusb_get_bus_number(devs[i]);
             stl.address = libusb_get_device_address(devs[i]);
+            stl.serial = readSerial(devs[i], desc);
             stlinks.push_back(stl);
         }
 
