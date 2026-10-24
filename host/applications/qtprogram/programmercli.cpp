@@ -173,6 +173,11 @@ void ProgrammerCli::run(const QStringList &args, Done done)
   partial_.clear();
   process_ = new QProcess(this);
   process_->setProcessChannelMode(QProcess::MergedChannels);
+  // Some STM32CubeProgrammer releases find their device database relative to
+  // the working directory and, started elsewhere, fail with "Unable to list
+  // supported devices". An app started from the Finder runs in /, so always
+  // start the tool in its own directory. Every path passed to it is absolute.
+  process_->setWorkingDirectory(QFileInfo(path_).absolutePath());
   connect(process_, &QProcess::readyReadStandardOutput, this, &ProgrammerCli::readOutput);
   auto finish = [this, done](int code) {
     readOutput();
@@ -222,13 +227,13 @@ void ProgrammerCli::readMemory(const QString &serial, quint32 address, quint32 s
                                const QString &file, Done done)
 {
   run(connectArgs(serial) + QStringList{"-u", QStringLiteral("0x%1").arg(address, 8, 16, QLatin1Char('0')),
-                                        QString::number(size), file},
+                                        QString::number(size), QFileInfo(file).absoluteFilePath()},
       std::move(done));
 }
 
 void ProgrammerCli::program(const QString &serial, const QString &elf,
                             const QStringList &eraseArgs, Done done)
 {
-  run(connectArgs(serial) + eraseArgs + QStringList{"-d", elf, "-q", "-g", kLoadAddress},
+  run(connectArgs(serial) + eraseArgs + QStringList{"-d", QFileInfo(elf).absoluteFilePath(), "-q", "-g", kLoadAddress},
       std::move(done));
 }

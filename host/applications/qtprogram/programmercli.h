@@ -136,7 +136,8 @@ public:
   bool busy() const { return process_ != nullptr; }
 
   /**
-   * @brief Runs the tool with @p args.
+   * @brief Runs the tool with @p args, in the tool's own directory (some
+   *        releases find their device database relative to it).
    * @param[in] args  Arguments.
    * @param[in] done  Called once, when the tool exits or fails to start.
    */
