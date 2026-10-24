@@ -361,6 +361,10 @@ design document.
 
 - [qtprogram](../host/applications/qtprogram/README.md) — qtprogram (Tag Programmer) source layout, how it chooses the internal-flash erase from the image's linker symbols, its program sequence, and its remembered settings.
 
+### Applications / qtprogram / Proposals
+
+- [qtprogram as a batch programming station](../host/applications/qtprogram/design/proposals/batch-programming.md) *(proposal, proposed)* — Rearchitecting qtprogram into a programming station that finds its own tools, base and firmware, steps through a batch of tags, and records every attempt in a CSV.
+
 ### Applications / sensorviz
 
 - [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.
