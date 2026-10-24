@@ -603,6 +603,7 @@ bool MainWindow::confirmProgram(QString &label, const QString &capture)
           ? tr("The image is for %1, and the tag runs %2. Is it the right image?")
                 .arg(image.identity.target, running)
           : QString();
+  const QString unqualified = station_.qualificationWarning();
 
   auto *buttons = new QDialogButtonBox;
   QPushButton *go = buttons->addButton(tr("Erase and Program"), QDialogButtonBox::AcceptRole);
@@ -617,6 +618,8 @@ bool MainWindow::confirmProgram(QString &label, const QString &capture)
     QStringList notes;
     if (!mismatch.isEmpty())
       notes << mismatch;
+    if (!unqualified.isEmpty())
+      notes << unqualified;
     const QStringList others = station_.record().uuidsFor(text);
     if (!text.isEmpty() && !others.isEmpty() && !(others.size() == 1 && others.first() == uuid))
       notes << tr("%1 is already recorded for UUID %2.").arg(text, others.join(", "));

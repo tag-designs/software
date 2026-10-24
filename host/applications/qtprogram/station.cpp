@@ -575,9 +575,30 @@ void Station::checkFirmware()
     set(Check::Firmware, Level::Warn, image_.warning);
     return;
   }
+  const QString unqualified = qualificationWarning();
+  if (!unqualified.isEmpty()) {
+    set(Check::Firmware, Level::Warn, unqualified);
+    return;
+  }
   set(Check::Firmware, Level::Ok,
       image_.manifestVerified ? tr("%1, verified against its manifest").arg(image_.displayName())
                               : tr("%1, no manifest to check").arg(image_.displayName()));
+}
+
+QString Station::qualificationWarning() const
+{
+  if (!file_.isEmpty())
+    return tr("%1 is a local file, not a qualified release.")
+        .arg(QFileInfo(file_).fileName());
+  if (release_.isEmpty() || target_.isEmpty())
+    return QString();
+  const FirmwareRelease r = catalog_.release(release_);
+  if (!r.listed)
+    return tr("Cannot tell whether %1 is qualified for %2: GitHub has not been reached.")
+        .arg(release_, target_);
+  if (!r.isQualified(target_))
+    return tr("%1 is not qualified for %2. See the Release Notes.").arg(release_, target_);
+  return QString();
 }
 
 // ---- Record -----------------------------------------------------------------

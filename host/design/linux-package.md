@@ -39,7 +39,8 @@ libusb, protobuf, SQLite and Abseil into every executable.
 The package relies on the system for glibc 2.39 or newer (the build runner's;
 Qt's own libraries need 2.34), the C++ runtime, GLib, `libudev`, the display
 stack (Wayland client libraries, `libxkbcommon`, and for X11 `libxcb` and
-`libxcb-cursor`), OpenGL and EGL, fontconfig, D-Bus and CUPS. A desktop
+`libxcb-cursor`), OpenGL and EGL, fontconfig, D-Bus, CUPS, OpenSSL 3
+(`libssl.so.3`, loaded by Qt's TLS plugin) and the CA certificates. A desktop
 installation has all of them, except sometimes `libxcb-cursor0`, which the
 README names.
 
@@ -60,8 +61,10 @@ Linux counterpart of `windeployqt` or `macdeployqt`. It
    Wayland client decorations (GNOME leaves decorations to the client), the
    `wayland-egl` integration the 3D view needs, and `xdg-shell`; the xcb GL
    integrations; compose and IBus input; the desktop-portal platform theme;
-   CUPS print support; image formats and icon engines. Nothing links a
-   plugin, so they are named rather than discovered;
+   CUPS print support; image formats and icon engines; and the TLS backends
+   qtprogram's HTTPS release listing needs (the OpenSSL one loads the
+   system's `libssl` at run time). Nothing links a plugin, so they are named
+   rather than discovered;
 3. copies every library the executables, plugins and QML plugins need that is
    not under `/lib` or `/usr/lib`, resolved against Qt's library directory,
    failing the install if a Qt or ICU library cannot be found;
@@ -92,7 +95,8 @@ not signed.
 a clean container holding only what a desktop has, and
 
 - fails any ELF file in the package with a library `ldd` cannot find (which
-  catches a too-old glibc as well) or a `RUNPATH` outside the package;
+  catches a too-old glibc as well) or a `RUNPATH` outside the package, and a
+  package without the OpenSSL TLS plugin, which `ldd` cannot catch;
 - runs each command line tool's `--help`, `tag-info` with no base (it must
   exit 1), and `dataprocessing` deriving streams from a fixture log;
 - runs each Qt application's documentation capture against

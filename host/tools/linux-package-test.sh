@@ -83,6 +83,14 @@ for f in $elfs; do
     done
 done
 [ $missing = 0 ] && pass "$(echo "$elfs" | wc -l) ELF files resolve every library inside the package"
+# qtprogram lists firmware releases over HTTPS. The TLS backend is a plugin
+# that loads the system's libssl at run time, so neither ldd nor a start-up
+# shows it missing: only the first request would fail.
+if [ -f "$tt/plugins/tls/libqopensslbackend.so" ]; then
+    pass "the OpenSSL TLS backend plugin is in plugins/tls"
+else
+    fail "plugins/tls/libqopensslbackend.so is missing; qtprogram cannot reach GitHub"
+fi
 
 # --- 2. Command line tools -------------------------------------------------------
 

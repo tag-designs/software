@@ -42,6 +42,9 @@ struct FlashPlan
 
   Erase erase = Erase::Invalid; ///< The erase that goes with the program.
   QString error;           ///< Why the image cannot be programmed, when Invalid.
+  /// Invalid because the image records no flash layout (no
+  /// `__tag_flash_page_size__`): an image built before the symbol existed.
+  bool noLayout = false;
   int pageSize = 0;        ///< Flash page size the image was linked for, in bytes.
   int lastErasedPage = -1; ///< Highest page erased, for BelowCalibration.
 

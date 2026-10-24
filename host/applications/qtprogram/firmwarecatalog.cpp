@@ -48,7 +48,8 @@ QByteArray toJson(const QList<FirmwareRelease> &releases)
                              {"published", r.published.toString(Qt::ISODate)},
                              {"prerelease", r.prerelease},
                              {"archive", r.archiveUrl.toString()},
-                             {"page", r.pageUrl.toString()}});
+                             {"page", r.pageUrl.toString()},
+                             {"qualified", QJsonArray::fromStringList(r.qualified)}});
   return QJsonDocument(array).toJson();
 }
 
@@ -64,6 +65,10 @@ QList<FirmwareRelease> fromJson(const QByteArray &json)
     r.prerelease = o.value("prerelease").toBool();
     r.archiveUrl = QUrl(o.value("archive").toString());
     r.pageUrl = QUrl(o.value("page").toString());
+    // A listing written before qualification was recorded says nothing about it.
+    r.listed = o.contains("qualified");
+    for (const QJsonValue &t : o.value("qualified").toArray())
+      r.qualified.append(t.toString());
     if (FirmwareCatalog::isFirmwareTag(r.tag))
       releases.append(r);
   }
@@ -94,6 +99,13 @@ bool FirmwareCatalog::acceptableMember(const QString &name)
   return re.match(name).hasMatch();
 }
 
+QString FirmwareCatalog::qualificationTarget(const QString &assetName)
+{
+  static const QRegularExpression re(
+      QStringLiteral("^qualification-([A-Za-z0-9_]+)(-\\d{8})?\\.tar\\.gz$"));
+  return re.match(assetName).captured(1);
+}
+
 QList<FirmwareRelease> FirmwareCatalog::parseReleases(const QByteArray &json)
 {
   QList<FirmwareRelease> releases;
@@ -108,9 +120,15 @@ QList<FirmwareRelease> FirmwareCatalog::parseReleases(const QByteArray &json)
     r.prerelease = o.value("prerelease").toBool();
     r.pageUrl = QUrl(o.value("html_url").toString());
     const QString archive = QStringLiteral("tag-firmware-%1.tar.gz").arg(tag);
-    for (const QJsonValue &a : o.value("assets").toArray())
-      if (a.toObject().value("name").toString() == archive)
+    r.listed = true;
+    for (const QJsonValue &a : o.value("assets").toArray()) {
+      const QString name = a.toObject().value("name").toString();
+      if (name == archive)
         r.archiveUrl = QUrl(a.toObject().value("browser_download_url").toString());
+      const QString qualified = qualificationTarget(name);
+      if (!qualified.isEmpty() && !r.qualified.contains(qualified))
+        r.qualified.append(qualified);
+    }
     if (r.archiveUrl.isValid() && !r.archiveUrl.isEmpty())
       releases.append(r);
   }
@@ -274,12 +292,14 @@ void FirmwareCatalog::extract(const QString &archive, const QString &staging)
              QFile::remove(archive);
              const QString tag = fetching_;
              // Verify every image against its manifest before the release
-             // counts as cached; one bad image refuses the whole release.
+             // counts as cached; one bad image refuses the whole release. An
+             // image that verifies but cannot be programmed (one too old to
+             // record its flash layout) is cached, and refused when chosen.
              const QDir firmware(QDir(staging).filePath("firmware"));
              for (const QString &target : firmware.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
                const FirmwareImage image = loadFirmwareImage(
                    QDir(firmware.filePath(target)).filePath(target + ".elf"), tag);
-               if (!image.usable()) {
+               if (!image.usable() && !(image.manifestVerified && image.plan.noLayout)) {
                  failFetch(staging, image.error);
                  return;
                }

@@ -448,6 +448,11 @@ Two places, for two readers:
 - **A release asset** carries the evidence: the session directory for each
   target, with the board label and UUID, the supply voltage, the image
   SHA-256 read back from the manifest that was flashed, and the logs.
+  **The asset's name is read by machine**: qtprogram treats a release as
+  qualified for exactly the targets that have a
+  `qualification-<Target>-<YYYYMMDD>.tar.gz` asset, `<Target>` being the
+  build target (`CompassTagAT25`, not `CompassTag`), and warns the operator
+  for every other target.
 
 ```sh
 gh release view  fw-vX.Y --json body --jq .body > notes.md

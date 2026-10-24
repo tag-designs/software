@@ -124,6 +124,7 @@ FlashPlan planFlash(const QString &path)
     return plan;
   }
   if (!symbols.contains("__tag_flash_page_size__")) {
+    plan.noLayout = true;
     plan.error = QObject::tr("%1 does not say which flash layout it was built for "
                              "(no __tag_flash_page_size__); rebuild it from a current "
                              "tree.").arg(path);

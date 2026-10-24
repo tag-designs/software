@@ -58,7 +58,10 @@ endforeach()
 # decorations to the client (wayland-decoration-client), EGL rendering needs
 # the wayland-egl integration, and xdg-shell is the shell desktops speak.
 # Server-buffer integrations (*-server) are left out: they are for embedded
-# compositors, not desktops.
+# compositors, not desktops. qtprogram lists and downloads firmware releases
+# over HTTPS, which needs a TLS backend: the OpenSSL one loads the system's
+# libssl at run time (so ldd shows no dependency), and the certificate-only one
+# is Qt's fallback.
 set(_plugin_globs
     platforms/libqxcb.so
     platforms/libqwayland*.so
@@ -71,7 +74,8 @@ set(_plugin_globs
     platformthemes/libqxdgdesktopportal.so
     printsupport/libcupsprintersupport.so
     imageformats/*.so
-    iconengines/*.so)
+    iconengines/*.so
+    tls/*.so)
 
 # --- 1. QML modules -----------------------------------------------------------
 
@@ -145,6 +149,9 @@ foreach(_glob IN LISTS _plugin_globs)
         list(APPEND _plugins "${PREFIX}/plugins/${_type}/${_name}")
     endforeach()
 endforeach()
+if(NOT EXISTS "${PREFIX}/plugins/tls/libqopensslbackend.so")
+    message(FATAL_ERROR "the OpenSSL TLS plugin is not in ${QT_PLUGINS_DIR}")
+endif()
 if(NOT EXISTS "${PREFIX}/plugins/platforms/libqxcb.so")
     message(FATAL_ERROR "the xcb platform plugin is not in ${QT_PLUGINS_DIR}")
 endif()

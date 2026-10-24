@@ -24,6 +24,7 @@
 #include <QDateTime>
 #include <QList>
 #include <QObject>
+#include <QStringList>
 #include <QUrl>
 
 #include <functional>
@@ -43,7 +44,15 @@ struct FirmwareRelease
   bool prerelease = false; ///< Marked as a prerelease on GitHub.
   QUrl archiveUrl;        ///< The `tag-firmware-<tag>.tar.gz` asset.
   QUrl pageUrl;           ///< The release page, whose notes say what was qualified.
+  /// Targets qualified on this release: those with a
+  /// `qualification-<Target>-<date>.tar.gz` asset, the evidence the release
+  /// procedure uploads as each target is cleared. Meaningful only when listed.
+  QStringList qualified;
+  bool listed = false;    ///< Its assets were read from a listing, so qualified is known.
   bool cached = false;    ///< Its images are in the cache and verified.
+
+  /// Whether @p target is known to be qualified on this release.
+  bool isQualified(const QString &target) const { return listed && qualified.contains(target); }
 };
 
 /**
@@ -100,6 +109,8 @@ public:
   static bool isFirmwareTag(const QString &tag);
   /// Whether an archive member is one qtprogram extracts: `firmware/<T>/<T>.elf` or its manifest.
   static bool acceptableMember(const QString &name);
+  /// The target a `qualification-<Target>[-<date>].tar.gz` asset name is evidence for, or empty.
+  static QString qualificationTarget(const QString &assetName);
   /// Parses the API's release list: published `fw-v*` releases with an archive asset, newest first.
   static QList<FirmwareRelease> parseReleases(const QByteArray &json);
 

@@ -161,6 +161,16 @@ public:
   bool targetDetected() const { return targetDetected_; }
   /// Chooses the build target by hand.
   void chooseTarget(const QString &target);
+  /**
+   * @brief Why the chosen firmware is not known to be qualified for the
+   *        chosen target, or empty when it is.
+   * @details A release counts as qualified for a target when it carries that
+   *          target's `qualification-<Target>-<date>.tar.gz` asset (see
+   *          FirmwareRelease::qualified). A local ELF file is never qualified.
+   *          A warning, not a refusal: bench and development programming use
+   *          unqualified images.
+   */
+  QString qualificationWarning() const;
   /// The image that Program would write; check usable().
   const FirmwareImage &image() const { return image_; }
 

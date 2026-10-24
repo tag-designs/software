@@ -182,6 +182,8 @@ QJsonObject apiRelease(const QString &tag, bool draft, bool withArchive)
   QJsonArray assets;
   assets.append(QJsonObject{{"name", "qualification-BitTag.tar.gz"},
                             {"browser_download_url", "https://example.invalid/q.tar.gz"}});
+  assets.append(QJsonObject{{"name", "qualification-CompassTagAT25-20261015.tar.gz"},
+                            {"browser_download_url", "https://example.invalid/q2.tar.gz"}});
   if (withArchive)
     assets.append(QJsonObject{{"name", "tag-firmware-" + tag + ".tar.gz"},
                               {"browser_download_url", "https://example.invalid/" + tag}});
@@ -205,6 +207,19 @@ void checkReleaseList()
         "newest version first");
   check(releases.value(1).archiveUrl.toString() == "https://example.invalid/fw-v0.7",
         "archive URL");
+  const FirmwareRelease &r = releases.value(1);
+  check(r.listed && r.isQualified("BitTag") && r.isQualified("CompassTagAT25") &&
+            !r.isQualified("PresTag") && r.qualified.size() == 2,
+        "qualified targets from qualification assets, dated or not");
+  check(FirmwareCatalog::qualificationTarget("qualification-IMUTagNandBmp581-20261007.tar.gz") ==
+                "IMUTagNandBmp581" &&
+            FirmwareCatalog::qualificationTarget("qualification-.tar.gz").isEmpty() &&
+            FirmwareCatalog::qualificationTarget("qualification-BitTag-2026.tar.gz").isEmpty() &&
+            FirmwareCatalog::qualificationTarget("tag-firmware-fw-v0.7.tar.gz").isEmpty(),
+        "qualification asset names");
+  FirmwareRelease unlisted;
+  unlisted.qualified << "BitTag";
+  check(!unlisted.isQualified("BitTag"), "an unlisted release is never qualified");
 }
 
 /// Waits for @p signal-like completion: runs the loop until @p done is set or 60 s pass.
@@ -255,7 +270,10 @@ void checkFetch(const QString &archive, const QString &dir)
   check(!QFileInfo::exists(QDir(cache).filePath(tag + "/firmware/BitTag/BitTag.bin")),
         "only images and manifests extracted");
   for (const FirmwareImage &image : catalog.images(tag)) {
-    check(image.usable() && image.manifestVerified,
+    // A release before fw-v0.7 records no flash layout: it caches, verified,
+    // and each image is refused with the reason, not as a failed download.
+    check(image.manifestVerified &&
+              (image.usable() || (image.plan.noLayout && image.error.contains(tag))),
           qPrintable(image.elfPath + " verified: " + image.error));
     check(image.identity.found && image.identity.target == QFileInfo(image.elfPath).completeBaseName(),
           qPrintable(image.elfPath + " identity names its target"));

@@ -101,9 +101,21 @@ only then marks the release cached. The last listing is kept in
 
 An image is loaded again, and hashed again, whenever it is chosen. An image
 whose bytes do not match its manifest is refused; a release image must have a
-manifest. A file without a manifest is usable: its SHA-256 is still recorded,
+manifest. An image with no `__tag_flash_page_size__` symbol (every release
+before `fw-v0.7`) still downloads and verifies, but is refused when chosen,
+because the erase cannot be planned without it. A file without a manifest is usable: its SHA-256 is still recorded,
 and its version is `custom`. **Release Notes** opens the release page, which
-says what was qualified. A matching hash shows that the image is the archived
+says what was qualified.
+
+The Firmware light turns amber, and the Program dialog repeats the warning,
+when the chosen release is not qualified for the chosen target. A release
+counts as qualified for a target when it carries that target's
+`qualification-<Target>-<date>.tar.gz` asset, the evidence the release
+procedure uploads as each target is cleared; the listing already returns the
+asset names, so this needs no extra request and no parsing of the release
+notes. Offline, before any listing has been read, qualification is unknown and
+says so. A local ELF file is never qualified. It is a warning, not a refusal:
+bench and development programming use unqualified images. A matching hash shows that the image is the archived
 one, not that it is fit to fly.
 
 ## Programming one tag

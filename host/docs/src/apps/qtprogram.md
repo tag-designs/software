@@ -31,7 +31,9 @@ Monitor, and records the result in a CSV file.
   ELF files you have used, then **Other ELF file…**. A release is downloaded
   the first time you choose it, then checked against the record of what was
   built. **Release Notes** opens the release's page, which says which tags it
-  was qualified on.
+  was qualified on. If the release has not been qualified for the chosen tag
+  type, the Firmware light turns amber and the Program dialog says so. You
+  can still program, for bench work, but do not fly those tags.
 - **Tag type** is filled in from the tag when its firmware answers ("detected
   from the tag"). Choose it yourself for a new, blank board.
 - **Station** shows a light for each check: green is ready, amber needs
