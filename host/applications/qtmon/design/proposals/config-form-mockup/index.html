@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tag Monitor configuration</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #d8dce3;
+  --accent: #2f6fdb; --field: #eef0f3; --bad: #c0392b; --on-accent: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171c; --panel: #1c2027; --ink: #e6e9ee; --muted: #9aa3b2; --line: #333a45;
+    --accent: #6b9cf0; --field: #252a33; --bad: #ff6b5b; --on-accent: #10141a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171c; --panel: #1c2027; --ink: #e6e9ee; --muted: #9aa3b2; --line: #333a45;
+  --accent: #6b9cf0; --field: #252a33; --bad: #ff6b5b; --on-accent: #10141a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 16px; }
+h1 { font-size: 16px; margin: 0 8px 0 0; font-weight: 600; }
+button, select, input { font: inherit; color: var(--ink); }
+button, select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.doc { color: var(--muted); }
+.badge { font-size: 12px; border-radius: 10px; padding: 1px 8px; background: var(--field); }
+.badge.mod { color: var(--accent); }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding: 0 16px 16px; }
+#form { display: grid; gap: 12px; align-content: start; }
+fieldset.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 6px; margin: 0; }
+legend { font-weight: 600; padding: 0 6px; }
+.field { display: grid; grid-template-columns: 150px 1fr; align-items: start; gap: 4px 12px; padding: 6px 0; border-top: 1px solid var(--field); }
+.field:first-of-type { border-top: 0; }
+.flabel { padding-top: 5px; color: var(--muted); }
+.fbody { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.error { grid-column: 2; color: var(--bad); font-size: 12px; min-height: 0; }
+.error:empty { display: none; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 4px 10px; background: var(--panel); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: var(--on-accent); }
+input[type=number] { width: 110px; text-align: right; }
+input[type=number], input[type=datetime-local] { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+input:disabled, button:disabled { opacity: 0.5; cursor: default; }
+.units { color: var(--muted); font-size: 12px; }
+.opt { display: inline-flex; align-items: center; gap: 4px; margin-right: 6px; }
+.hib { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+aside { display: grid; gap: 12px; align-content: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.card h2 { font-size: 13px; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
+pre { margin: 0; font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow: auto; }
+.sim { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.sim input[type=number] { width: 90px; }
+dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); max-width: 460px; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+.toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+         padding: 8px 14px; border-radius: 8px; }
+.toast.bad { background: var(--bad); color: #fff; }
+.note { font-size: 12px; color: var(--muted); }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } .field { grid-template-columns: 1fr; } .error { grid-column: 1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Configuration</h1>
+  <select id="tagType" aria-label="Tag type"></select>
+  <button id="defaults">Defaults</button>
+  <label><button type="button" onclick="document.getElementById('openFile').click()">Open…</button>
+    <input type="file" id="openFile" accept=".json" hidden></label>
+  <button id="save">Save</button>
+  <button id="read">Read from tag</button>
+  <button id="start" class="primary">Start…</button>
+  <span class="doc" id="doc"></span>
+  <span class="badge mod" id="modified" hidden>modified</span>
+  <span class="badge" id="readonly" hidden>read-only: tag running</span>
+</header>
+<main>
+  <div id="form"></div>
+  <aside>
+    <div class="card">
+      <h2>Simulated tag</h2>
+      <div class="sim">
+        <span>State</span><select id="tagState"><option>IDLE</option><option>RUNNING</option></select>
+        <span>Clock offset (s)</span><input type="number" id="clock" step="0.1">
+        <span>Self-test</span><select id="selfTest"><option>ALL_PASSED</option><option>ADXL362_FAILED</option><option>TEST_UNSPECIFIED</option></select>
+        <span>Approved</span><input type="checkbox" id="approved">
+      </div>
+      <div class="note">Stand-in for the attached tag: drives the start checks, and makes the
+        tag's own configuration read-only while it runs.</div>
+    </div>
+    <div class="card"><h2>Config the engine would send</h2><pre id="config"></pre></div>
+    <div class="card"><h2>Messages (UI ↔ engine), newest first</h2><pre id="messages"></pre></div>
+  </aside>
+</main>
+<dialog id="startDialog">
+  <h3 style="margin-top:0">Start the tag anyway?</h3>
+  <ul id="failures"></ul>
+  <div style="display:flex; gap:8px; justify-content:flex-end">
+    <button id="cancelStart">Cancel</button><button id="startAnyway" class="primary">Start Anyway</button>
+  </div>
+</dialog>
+<div id="toast" class="toast" hidden></div>
+<script src="spec.js"></script>
+<script src="engine.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
