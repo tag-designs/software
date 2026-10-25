@@ -59,6 +59,10 @@ Monitor, and records the result in a CSV file.
   was qualified on. If the release has not been qualified for the chosen tag
   type, the Firmware light turns amber and the Program dialog says so. You
   can still program, for bench work, but do not fly those tags.
+
+    Choose the latest release qualified for the tag type you are programming.
+    The newest release is not always qualified for every tag type, so an
+    older one may be the right choice.
 - **Tag type** is filled in from the tag when its firmware answers ("detected
   from the tag"). Choose it yourself for a new, blank board.
 - **Station** shows a light for each check: green is ready, amber needs
