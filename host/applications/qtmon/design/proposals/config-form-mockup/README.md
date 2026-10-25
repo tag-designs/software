@@ -16,7 +16,7 @@ business logic in a web (Tauri) front end with a C++ engine. Open
 | --- | --- | --- |
 | [`spec.js`](spec.js) | The panels as **data**: each panel's fields with kind, label, units, choices and tooltips; which panels each tag type gets; the tags' `default-config.json` | Sent by the engine as `FormSpec`; built in C++ beside `ConfigShape` |
 | [`engine.js`](engine.js) | A **stand-in for the engine**: the document (config, source, baseline, unsaved changes), the bindings between `Config` and form values, rounding and clamping, constraints that follow other fields, whether editing is allowed, and the start checks | Qt-free C++ |
-| [`ui.js`](ui.js) | A **generic renderer**: one control per field kind (`enum`, `number`, `whenTime`, `intervals`), dialogs, file pickers, the title. It holds no rules; every edit is a `setField` message, and the controls show the `FormState` that comes back | TypeScript in the webview |
+| [`ui.js`](ui.js) | A **generic renderer**: one control per field kind (`enum` as radio buttons, `number`, `whenTime`, `intervals`), dialogs, file pickers, the title. It holds no rules; every edit is a `setField` message, and the controls show the `FormState` that comes back | TypeScript in the webview |
 
 The right-hand panes show the config the engine would send and every message
 between UI and engine, as the sidecar would carry them.
