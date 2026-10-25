@@ -235,7 +235,7 @@ void MainWindow::buildUi()
   auto *tagBox = new QGroupBox(tr("Tag"));
   auto *form = new QFormLayout(tagBox);
   for (QLabel **value : {&labelValue_, &uuidValue_, &stateValue_, &firmwareValue_,
-                         &testsValue_, &resultValue_}) {
+                         &testsValue_, &clockValue_, &resultValue_}) {
     // One line each: a wrapped value's second line is clipped by the form.
     *value = new QLabel;
     (*value)->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -245,6 +245,19 @@ void MainWindow::buildUi()
   form->addRow(tr("State"), stateValue_);
   form->addRow(tr("Firmware"), firmwareValue_);
   form->addRow(tr("Tests"), testsValue_);
+  clockValue_->setToolTip(tr("The tag's clock minus this computer's, in seconds"));
+  syncButton_ = new QPushButton(tr("Sync"));
+  syncButton_->setToolTip(tr("Set the tag's clock to this computer's"));
+  connect(syncButton_, &QPushButton::clicked, this, [this]() {
+    if (!station_.syncClock())
+      QMessageBox::warning(this, tr("Sync Clock"),
+                           tr("The tag did not accept the clock setting."));
+  });
+  auto *clockRow = new QHBoxLayout;
+  clockRow->setContentsMargins(0, 0, 0, 0);
+  clockRow->addWidget(clockValue_, 1);
+  clockRow->addWidget(syncButton_);
+  form->addRow(tr("Clock"), clockRow);
   form->addRow(tr("Result"), resultValue_);
   panels->addWidget(stationBox, 3);
   panels->addWidget(tagBox, 2);
@@ -441,8 +454,9 @@ void MainWindow::showTag()
 {
   labelValue_->setText(station_.lastLabel());
   if (!station_.tagAnswers()) {
-    for (QLabel *l : {uuidValue_, stateValue_, firmwareValue_, testsValue_})
+    for (QLabel *l : {uuidValue_, stateValue_, firmwareValue_, testsValue_, clockValue_})
       l->setText(QStringLiteral("—"));
+    clockValue_->setStyleSheet(QString());
     return;
   }
   const TagInfo &info = station_.tagInfo();
@@ -454,6 +468,14 @@ void MainWindow::showTag()
                                    QString::fromStdString(info.githash()),
                                    QString::fromStdString(info.board_desc())));
   testsValue_->setText(QString::fromStdString(TestResult_Name(status.test_status())));
+  const double offset = station_.clockOffset();
+  const bool off = qAbs(offset) > Station::kClockToleranceS;
+  clockValue_->setText(qAbs(offset) < 1000.0 ? QString::asprintf("%+.2f s", offset)
+                                             : QString::asprintf("%+.3g s", offset));
+  if (off)
+    clockValue_->setText(clockValue_->text() + tr("  (press Sync)"));
+  clockValue_->setStyleSheet(
+      off ? QStringLiteral("color: %1;").arg(lightColour(Station::Level::Warn)) : QString());
   const QStringList labels = station_.record().labelsFor(QString::fromStdString(info.uuid()));
   if (!labels.isEmpty())
     labelValue_->setText(tr("%1 (recorded)").arg(labels.last()));
@@ -486,6 +508,7 @@ void MainWindow::updateButtons()
                           s != TEST && s != sRESET);
   eraseButton_->setVisible(station_.tagAnswers() && (s == FINISHED || s == ABORTED));
   stopButton_->setEnabled(!running);
+  syncButton_->setEnabled(!running && station_.tagAnswers());
   eraseButton_->setEnabled(!running);
 }
 

@@ -65,7 +65,10 @@ Monitor, and records the result in a CSV file.
   attention, red must be fixed before you can program. Each line says what is
   wrong and how to fix it. Hover over a line to see the whole message.
 - **Tag** shows the attached tag's label (if it is in the record), UUID, state,
-  firmware, self-test result, and the result of the last program.
+  firmware, self-test result, clock, and the result of the last program.
+  **Clock** is the tag's clock minus this computer's; beyond 2 seconds it
+  turns amber. **Sync** sets the tag's clock. Programming and Retest set it
+  again after the self-tests, which disturb it.
 
 ## Program a Batch of Tags
 

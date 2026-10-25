@@ -284,6 +284,7 @@ void ProgramSession::tick()
       return;
     }
     if (finishing_) {
+      tag_.SetRtc();  // leave the tag on time after its final erase
       finish(mismatch_ ? QStringLiteral("MISMATCH")
                        : result_.testStatus == QLatin1String("ALL_PASSED")
                              ? QStringLiteral("OK")
@@ -363,6 +364,8 @@ void ProgramSession::tick()
       return;
     }
     result_.testStatus = QString::fromStdString(TestResult_Name(status.test_status()));
+    // The self-tests disturb the tag's clock; set it again now they are done.
+    tag_.SetRtc();
     if (retestOnly_) {
       const bool passed = result_.testStatus == QLatin1String("ALL_PASSED");
       QString flash;

@@ -132,6 +132,15 @@ public:
   void stopTag();
   /// Has a FINISHED or ABORTED tag's firmware erase its log.
   void eraseTag();
+  /**
+   * @brief Sets the tag's clock to this computer's (Tag::SetRtc()).
+   * @return Whether the tag accepted it; false with no tag or while a session runs.
+   */
+  bool syncClock();
+  /// The tag's clock minus this computer's, in seconds, from the last status read.
+  double clockOffset() const { return clockOffsetS_; }
+  /// Offsets beyond this many seconds are shown as a warning (qtmonitor's tolerance).
+  static constexpr double kClockToleranceS = 2.0;
   /// Whether the tag's firmware answers.
   bool tagAnswers() const { return tag_.IsAttached() && haveInfo_; }
   /// The tag's identity, valid when tagAnswers().
@@ -262,6 +271,8 @@ private:
   void attachTag(int tries);
   /// Sets the Supply check from connect_.
   void checkSupply();
+  /// Reads the tag's status into tagStatus_ and its clock offset.
+  void readStatus();
   /// Sets the TagState check from tagStatus_.
   void checkTagState();
   /// Sets the Firmware check from the choice, the image and the tag.
@@ -297,6 +308,7 @@ private:
   bool haveInfo_ = false;       ///< info_ is from the attached tag.
   bool attaching_ = false;      ///< attachTag() is retrying.
   Status tagStatus_;            ///< The tag's last status.
+  double clockOffsetS_ = 0.0;   ///< Tag clock minus host clock at the last status, seconds.
   int missedPolls_ = 0;         ///< Consecutive polls the tag did not answer.
   QString release_;             ///< Chosen release, or empty.
   QString file_;                ///< Chosen file, or empty.

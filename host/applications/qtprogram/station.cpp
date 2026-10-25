@@ -6,6 +6,7 @@
 #include "station.h"
 
 #include <QDebug>
+#include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
 #include <QSettings>
@@ -370,7 +371,7 @@ void Station::attachTag(int tries)
     set(Check::Tag, Level::Ok,
         tr("%1, %2").arg(QString::fromStdString(info_.board_desc()),
                          QString::fromStdString(info_.githash())));
-    tag_.GetStatus(tagStatus_);
+    readStatus();
     checkTagState();
     detectTarget();
     statusPoll_.start();
@@ -449,10 +450,15 @@ void Station::poll()
     return;
   }
   missedPolls_ = 0;
+  const double offset = (double(status.millis()) -
+                         double(QDateTime::currentMSecsSinceEpoch())) / 1000.0;
+  // The offset jitters by a poll's latency; redraw only when it moves visibly.
   const bool changed = status.state() != tagStatus_.state() ||
                        status.test_status() != tagStatus_.test_status() ||
-                       status.sectors_erased() != tagStatus_.sectors_erased();
+                       status.sectors_erased() != tagStatus_.sectors_erased() ||
+                       qAbs(offset - clockOffsetS_) >= 0.05;
   tagStatus_ = status;
+  clockOffsetS_ = offset;
   if (changed) {
     checkTagState();
     emit tagChanged();
@@ -474,6 +480,23 @@ void Station::stopTag()
 {
   if (tag_.IsAttached() && !session_.running())
     tag_.Stop();
+}
+
+void Station::readStatus()
+{
+  if (tag_.GetStatus(tagStatus_))
+    clockOffsetS_ = (double(tagStatus_.millis()) -
+                     double(QDateTime::currentMSecsSinceEpoch())) / 1000.0;
+}
+
+bool Station::syncClock()
+{
+  if (!tag_.IsAttached() || session_.running())
+    return false;
+  const bool ok = tag_.SetRtc();
+  readStatus();
+  emit tagChanged();
+  return ok;
 }
 
 void Station::eraseTag()
@@ -751,7 +774,7 @@ void Station::writeRecord(const SessionResult &result)
   // The tag is left attached when it answers; show it again.
   haveInfo_ = tag_.IsAttached() && tag_.GetTagInfo(info_);
   if (haveInfo_) {
-    tag_.GetStatus(tagStatus_);
+    readStatus();
     checkTagState();
     statusPoll_.start();
   }

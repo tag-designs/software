@@ -140,6 +140,8 @@ private:
   QLabel *stateValue_ = nullptr;   ///< Tag panel: state.
   QLabel *firmwareValue_ = nullptr; ///< Tag panel: firmware and commit.
   QLabel *testsValue_ = nullptr;   ///< Tag panel: self-test result.
+  QLabel *clockValue_ = nullptr;   ///< Tag panel: tag clock minus this computer's.
+  QPushButton *syncButton_ = nullptr; ///< Tag panel: set the tag's clock.
   QLabel *resultValue_ = nullptr;  ///< Tag panel: last result.
   QPushButton *programButton_ = nullptr; ///< Program.
   QPushButton *retestButton_ = nullptr;  ///< Retest.

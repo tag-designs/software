@@ -153,7 +153,10 @@ programmer runs asynchronously:
    firmware lays out its own storage. The tag is left attached and IDLE.
 
 Cancel is accepted before step 2 and at step 3, never while the programmer is
-writing. **Retest** runs step 4 alone on the attached tag, and records it as a
+writing. The self-tests disturb the tag's clock, so the session sets it again
+(`Tag::SetRtc()`) once they report, and once more after the final erase. The
+Tag panel shows the clock offset from every status poll, amber beyond
+qtmonitor's 2 s tolerance, with **Sync** to set it by hand. **Retest** runs step 4 alone on the attached tag, and records it as a
 row of its own. It first finds the image the tag should be running: the chosen
 one when the tag reports its commit, otherwise any downloaded release's image
 for the tag's target built from that commit, so a tag left on an older release
