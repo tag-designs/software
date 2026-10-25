@@ -63,14 +63,16 @@ function renderSpec(s) {
 function build(panel, f, body) {
   const set = (value) => send("setField", { panel, field: f.id, value });
   if (f.kind === "enum") {
-    const group = el("div", { class: "seg", role: "radiogroup" }, body);
-    const buttons = f.options.map((o) => {
-      const b = el("button", { type: "button", role: "radio", title: o.tooltip }, group, o.label);
-      b.addEventListener("click", () => set(o.value));
-      return [o.value, b];
+    // Radio buttons, as qtmonitor's PBEnumGroup draws them.
+    const group = el("div", { class: "radios", role: "radiogroup" }, body);
+    const radios = f.options.map((o) => {
+      const l = el("label", { class: "opt", title: o.tooltip }, group);
+      const r = el("input", { type: "radio", name: `${panel}.${f.id}` }, l); l.append(" " + o.label);
+      r.addEventListener("change", () => set(o.value));
+      return [o.value, r];
     });
-    return { update(v) { buttons.forEach(([val, b]) => { b.classList.toggle("on", val === v); b.setAttribute("aria-checked", val === v); }); },
-             disable(d) { buttons.forEach(([, b]) => (b.disabled = d)); } };
+    return { update(v) { radios.forEach(([val, r]) => (r.checked = val === v)); },
+             disable(d) { radios.forEach(([, r]) => (r.disabled = d)); } };
   }
   if (f.kind === "number") {
     const input = el("input", { type: "number" }, body);
