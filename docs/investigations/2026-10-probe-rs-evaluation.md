@@ -73,10 +73,36 @@ With current base firmware, probe-rs works:
 
 The tag was IDLE with an empty state log before and after.
 
+### Programming fw-v0.6 on the IMUTag (attempted, not completed)
+
+`program` attaches under reset, then erases, programs and verifies the ELF
+in one session. For the fw-v0.6 IMUTagNandBmp581 image it planned the
+expected work: the U3 algorithm `stm32u3xx_1m_0800`, segments at their
+physical addresses (`.data` at `0x0800EA9C`), and an erase of only the 4 KB
+sectors `0x08000000-0x0800F000`. NOLOAD regions (persistent, calibration,
+NAND map) have no file data and are not touched. The image stays below the
+overlapping bank-2 range, so that target-file bug did not apply.
+
+The flash algorithm's Init ran and returned to its breakpoint, then probe-rs
+issued a **1-byte `READMEM_8BIT`**. probe-rs always reads at least 2 bytes
+for an 8-bit read (`buffer_len = length.max(2)`, `probe/stlink/mod.rs`),
+because a genuine ST-LINK replies with 2 bytes to a 1-byte read; our bases'
+handler replies with exactly the length asked, so the USB read timed out.
+No erase was issued, and the tag still ran 8f1350da afterwards. The attempt
+is logged in `captures/2026-10-26-imutag-probe-rs/flash-log.md` (outside the
+repository).
+
+So far, three base-firmware changes stand between our bases and probe-rs:
+
+1. `READ_DAP_REG` must return the value on success (fixed in `773db79a`;
+   bases flashed earlier need reflashing).
+2. A 1-byte `READMEM_8BIT` must return 2 bytes, as an ST-LINK does.
+3. DP register reads in `SWD_ReadDAPReg` should return the DP register, not
+   RDBUFF, and leave DPBANKSEL alone. probe-rs has not needed them yet.
+
 ## Still to do
 
-- Program an image with probe-rs (erase, program, start in one session, then
-  clear PEMPTY on L4), after checking the U3 bank map.
+- Make base changes 2 and 3, reflash a base, and repeat the program step.
 - Measure resting current after a probe-rs session against one of ours, and
   after a fresh power-on, to settle the C_DEBUGEN and DBGMCU questions.
 - Reflash the BitTag programmer base with current firmware and repeat.

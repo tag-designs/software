@@ -12,7 +12,9 @@
 //!    is dropped -- with probe-rs's stock STM32 sequence (`--sequence st`)
 //!    and with ours, which writes nothing to DBGMCU and clears the core
 //!    debug state on detach (`--sequence tag`)?
-//! 3. `program` (later): erase, program and start an image in one session.
+//! 3. `program`: erase the pages an ELF image covers, program and verify it,
+//!    and start it, all in one session (so no reset falls between the erase
+//!    and the program), then report the debug state left behind.
 //!
 //! Every attach here holds the tag in reset first, so the firmware reboots,
 //! as with every tool in this tree. `raw` reads only; `raw --clear` writes
@@ -62,6 +64,21 @@ enum Command {
         /// Whose attach/detach sequence to use
         #[arg(long, value_enum, default_value_t = Seq::Tag)]
         sequence: Seq,
+    },
+    /// Program an ELF image under reset, verify it and start it
+    Program {
+        /// probe-rs target name, e.g. STM32U375RG
+        #[arg(long)]
+        chip: String,
+        /// The ELF image to program
+        #[arg(long)]
+        elf: std::path::PathBuf,
+        /// Whose attach/detach sequence to use
+        #[arg(long, value_enum, default_value_t = Seq::Tag)]
+        sequence: Seq,
+        /// Plan the erase and program without touching flash
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -255,7 +272,9 @@ fn report_debug_state(mut read: impl FnMut(u64) -> Result<u32>, f: &Family) -> R
 
 /// Attaches under reset with a session, reads the halted core and the debug
 /// state during the session, drops it, then reports what was left.
-fn cmd_session(serial: &Option<String>, chip: &str, seq: Seq) -> Result<()> {
+/// The registry and the target `chip`, with its debug sequence replaced by
+/// ours when `seq` is [`Seq::Tag`].
+fn target_for(chip: &str, seq: Seq) -> Result<(Registry, probe_rs::Target)> {
     let registry = Registry::from_builtin_families();
     let mut target = registry
         .get_target_by_name(chip)
@@ -275,6 +294,62 @@ fn cmd_session(serial: &Option<String>, chip: &str, seq: Seq) -> Result<()> {
             "built-in"
         }
     );
+    Ok((registry, target))
+}
+
+/// Programs `elf` in one session: erase only the sectors the image covers,
+/// program, verify, then reset so the new image runs. With `dry_run` the
+/// flash loader plans the work and reports it without touching flash.
+fn cmd_program(
+    serial: &Option<String>,
+    chip: &str,
+    elf: &std::path::Path,
+    seq: Seq,
+    dry_run: bool,
+) -> Result<()> {
+    let (registry, target) = target_for(chip, seq)?;
+    let probe = open(serial)?;
+    {
+        let mut session = probe
+            .attach_under_reset_with_registry(
+                TargetSelector::Specified(target),
+                Permissions::default(),
+                &registry,
+            )
+            .context("attach_under_reset")?;
+        let mut options = probe_rs::flashing::DownloadOptions::default();
+        options.verify = true;
+        options.dry_run = dry_run;
+        let started = std::time::Instant::now();
+        probe_rs::flashing::download_file_with_options(
+            &mut session,
+            elf,
+            probe_rs::flashing::ElfLoader(Default::default()),
+            options,
+        )
+        .context("programming")?;
+        println!(
+            "{} in {:.1} s",
+            if dry_run {
+                "dry run complete"
+            } else {
+                "programmed and verified"
+            },
+            started.elapsed().as_secs_f64()
+        );
+        if !dry_run {
+            // System reset through AIRCR, so the new image boots.
+            session.core(0)?.reset().context("starting the image")?;
+            println!("reset: the new image is running");
+        }
+    }
+    println!("session dropped; reading what it left (a fresh raw attach):");
+    std::thread::sleep(Duration::from_millis(200));
+    cmd_raw(serial, false)
+}
+
+fn cmd_session(serial: &Option<String>, chip: &str, seq: Seq) -> Result<()> {
+    let (registry, target) = target_for(chip, seq)?;
 
     let probe = open(serial)?;
     {
@@ -336,6 +411,12 @@ fn main() -> Result<()> {
         }
         Command::Raw { clear } => cmd_raw(&cli.serial, clear),
         Command::Session { chip, sequence } => cmd_session(&cli.serial, &chip, sequence),
+        Command::Program {
+            chip,
+            elf,
+            sequence,
+            dry_run,
+        } => cmd_program(&cli.serial, &chip, &elf, sequence, dry_run),
     }
     .or_else(|e| bail!("{e:#}"))
 }
