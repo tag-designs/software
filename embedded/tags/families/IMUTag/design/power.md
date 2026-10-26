@@ -249,3 +249,46 @@ current from accumulated charge rather than a mean of window means.
 - **Attach storms are meaningful here and only here.** IMUTag does not use
   standby or shutdown while running, so an attach interrupts a live collection
   and the firmware must restart it. Six rounds, none aborted, data intact.
+
+## 2026-10-26  `IMUTagNandBmp581` IDLE after each kind of debug attach, `fw-v0.6`
+
+Does any debug attach leave the U375 drawing more in IDLE (terminal sleep
+Stop 3)? Asked for the probe-rs evaluation
+([investigation](../../../../../docs/investigations/2026-10-probe-rs-evaluation.md)).
+
+- **image**: release `fw-v0.6`, `IMUTagNandBmp581.elf` sha256
+  `b41115e09c7205798f7b80896bb65fbd0628279711104e2d2fe40574c8cdcdc3`,
+  flashed earlier the same day with probe-rs through the spike's tag-base
+  driver and reflashed once during this session (row 5); `githash 56e5e6a0`
+  on the tag.
+- **board**: `00303143433650090059002E` on the IMUTag breakout base (ST-LINK
+  serial `004D0059543050162030324E`). **Supply 3.6930-3.6931 V.**
+- **instrument**: Joulescope JS320 `Z2GW` through `joulescope_server.py` held
+  for the session, interpreter `~/.venvs/joulescope/bin/python`
+  (`pyjoulescope_driver` 2.5.4); desktop app, qtmonitor, qtprogram and the MCP
+  server not running.
+- **method**: each action, 15 s settle (10 s after the power cycle), then two
+  or three 60 s windows, charge/time. Evidence and the flash log:
+  `captures/2026-10-26-imutag-probe-rs/` (outside the repository).
+
+  | # | After | 60 s windows (uA) |
+  | ---: | --- | --- |
+  | 1 | state as found (moved onto the Joulescope) | 6.3724, 6.3960 |
+  | 2 | tagcore attach (`tag-info`) | 6.4351, 6.4276 |
+  | 3 | probe-rs session under reset, ARM default sequence | 6.4152, 6.4122 |
+  | 4 | probe-rs session, stock `Stm32Armv8` sequence (DBGMCU_CR 0x6 during, 0 after) | 6.4217, 6.4058 |
+  | 5 | probe-rs program and verify of the same image (image pages only) | 6.4116, 6.4148 |
+  | 6 | **power cycle**, no attach | 6.5776, 6.5912, 6.5927 |
+  | 7 | tagcore attach (`tag-info`) | 6.6117, 6.5913 |
+  | 8 | probe-rs session, stock `Stm32Armv8` sequence | 6.5842, 6.5526 |
+
+- **No attach leaves a measurable cost.** Within each stretch between power
+  cycles every case agrees: rows 2-5 at 6.41-6.44 uA (the `fw-v0.6`
+  qualification's 6.41-6.44 uA on this board at this voltage), rows 6-8 at
+  6.55-6.61 uA. probe-rs, with either sequence and after a flash, rests where
+  tagcore's own attach does.
+- **The power cycle moved the level by about +0.17 uA (+2.6%), and an attach
+  did not move it back** (row 7). So the step is not the attach-versus-cold-boot
+  effect the procedure warns of. Its cause is unknown; temperature and the
+  board's state after power-up are candidates. Rows 1-5 and 6-8 should not be
+  compared with each other.

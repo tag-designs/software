@@ -168,9 +168,17 @@ set and the DBGMCU bits probe-rs's sequence sets during a session are harmless
 there. The numbers and conditions are in the BitTag
 [power results](../../embedded/tags/BitTag/design/power-results.md).
 
+The same comparison on the IMUTag (STM32U375, terminal sleep Stop 3, 3.693 V)
+gives the same answer: after a tagcore attach, a probe-rs session with either
+sequence, and a probe-rs program, IDLE rests at 6.41-6.44 uA, the `fw-v0.6`
+qualification figure for that board. A power cycle moved the level to
+6.55-6.61 uA, where a tagcore attach and a stock-sequence probe-rs session
+again agreed; that step is not attach-related and its cause is unknown. The
+numbers are in the IMUTag
+[power notes](../../embedded/tags/families/IMUTag/design/power.md).
+
 ## Still to do
 
 - Make base changes 2 and 3 for future bases, without depending on them.
-- Measure RUNNING (Standby between wakes) after a probe-rs attach, and repeat
-  the resting comparison on an STM32U375, where terminal sleep is Stop 3 and a
-  debug domain left powered would show.
+- Measure RUNNING after a probe-rs attach (BitTag Standby between wakes;
+  IMUTag Stop 2 between samples), if the run case matters for the decision.
