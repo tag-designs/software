@@ -105,6 +105,13 @@ Still to check, then delete each item:
   the warning is below the default log level, so the failing runs could not
   show it. Next: catch a failure with `--debug` to see that warning, then
   decide between failing the attach and retrying the SWD enter.
+  A third failure, on 2026-10-26, had the same signature but followed a board
+  swap rather than a clean detach: it was the first attach to a BitTag V6
+  just placed on a tag programmer base (SN 0037001A5556431520303537), and
+  every later attach, Rust and C++, was clean. It ran without `--debug`, so
+  it adds no SWD-enter evidence. The Rust port on the `rust-tagclass` branch
+  (`host/libraries/tagcore-rs`, `link/stlink.rs`) copies the same
+  warn-and-continue `enter_debug_mode()`, so a fix applies to both.
 - **Noisy detach from a running U3 tag.** Detaching from a RUNNING tag logs a
   burst of `linkadapt.cc` `error return 81` read failures, 41 in one run. They
   come from the MONITORSTOP status poll in `CallU3`: once the firmware handles
