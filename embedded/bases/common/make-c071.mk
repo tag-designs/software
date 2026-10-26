@@ -197,12 +197,16 @@ CPPWARN = -Wall -Wextra -Wundef
 
 # List all user C define here, like -D_DEBUG=1
 UDEFS = -DUSE_FULL_LL_DRIVER=1 
+# The base target's name (CMake passes PROJECT=<target>), reported by the
+# identify command in stlink.c.
+UDEFS += -DBASE_TARGET=\"$(PROJECT)\"
 
 # Define ASM defines here
 UADEFS = 
 
 # List all user directories here
-UINCDIR = ../common/inc
+# $(BUILDDIR)/.. holds the version.h CMake generates for the target.
+UINCDIR = ../common/inc $(BUILDDIR)/..
 
 # List the user directory to look for the libraries here
 ULIBDIR =

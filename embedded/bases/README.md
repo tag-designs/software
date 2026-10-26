@@ -155,6 +155,31 @@ GPIO bitbang. `src/stlink-local.c` is present but not compiled.
 
 Open work on the bases is in [TODO.md](TODO.md).
 
+## Identifying a Base
+
+A base cannot be told apart from a genuine ST-LINK, or from another base, by
+the ST-LINK protocol: every base reports itself as an ST-LINK/V2, firmware
+V2J37S7. So the bases answer one command of their own, `F6 99`, which is not an
+ST-LINK command:
+
+| Bytes | Content |
+| --- | --- |
+| 0-1 | `0x80 0x00` (`STLINK_DEBUG_ERR_OK`) |
+| 2 | format version, `1` |
+| 3 | reserved, `0` |
+| 4-127 | NUL-padded ASCII `base=<target>;fw=<git hash>;dirty=<0\|1>;date=<commit date>;stlink=V2J37S7` |
+
+The reply is always 128 bytes. `<target>` is the base's CMake target, which
+names its hardware; the git fields come from the `version.h` CMake generates
+for the target, and `BASE_TARGET` from `PROJECT`, both wired in by the make
+scaffolds. The definitions are `STLINK_TAGBASE_*` in `common/inc/stlink.h`.
+
+Bases built before the command answer `F6` with a 2-byte FAULT (2026
+firmware) or not at all (the 2022 firmware), so a host reads the full length
+with a short timeout and treats anything else as "unidentified". tagcore's
+`LinkAdapt::BaseIdentity()` does this, and `tag-info` prints the result as
+its first line. The command touches no target state.
+
 ## Maintenance Notes
 
 - Update this README when adding, removing, or renaming a base target.

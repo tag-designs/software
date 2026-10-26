@@ -78,6 +78,26 @@ public:
     bool IsAttached();
     void ResetLinkStats();
     LinkAdaptStats GetLinkStats() const;
+
+    /**
+     * @brief   Asks the base which board and firmware it is, with the tag
+     *          bases' own `F6 99` command.
+     *
+     * @details Not an ST-LINK command; see STLINK_TAGBASE_IDENTIFY in
+     *          embedded/bases/common/inc/stlink.h. A base built with it
+     *          answers with `base=<target>;fw=<git hash>;dirty=<0|1>;`
+     *          `date=<commit date>;stlink=V2J37S7`. A base built before it
+     *          answers with a 2-byte FAULT, and a genuine ST-LINK may not
+     *          answer at all, so the reply is read with a short timeout.
+     *          Sends nothing to the target, so it neither resets nor
+     *          disturbs the tag.
+     *
+     * @param[out] identity  The base's identity text; cleared when there is
+     *                       none.
+     * @return  true if the base answered; false if it predates the command,
+     *          is not one of the tag bases, or no probe is open.
+     */
+    bool BaseIdentity(std::string &identity);
    
 protected:
 

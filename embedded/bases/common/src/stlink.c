@@ -23,6 +23,7 @@
 #include "usbcfg.h"
 //#include "chprintf.h"
 #include "app.h"
+#include <string.h>
 #include <strings.h>
 
 #define DATABUFSIZE 512
@@ -71,6 +72,49 @@ static inline uint16_t UNPACK16(uint8_t *buf)
   return buf[0] | (buf[1] << 8);
 }
 
+#if defined(__has_include)
+#if __has_include("version.h")
+#include "version.h"
+#endif
+#endif
+#ifndef VERSION_HASH
+#define VERSION_HASH "unknown"
+#define GIT_DATE "unknown"
+#define GIT_DIRTY 1
+#endif
+#ifndef BASE_TARGET
+#define BASE_TARGET "unknown"
+#endif
+
+#define TAGBASE_STR_(x) #x
+#define TAGBASE_STR(x) TAGBASE_STR_(x)
+
+/** Identity text for STLINK_TAGBASE_IDENTIFY, fixed at build time. */
+static const char tagbase_identity[] =
+    "base=" BASE_TARGET ";fw=" VERSION_HASH ";dirty=" TAGBASE_STR(GIT_DIRTY)
+    ";date=" GIT_DATE ";stlink=V" TAGBASE_STR(VSTLINK) "J" TAGBASE_STR(VJTAG)
+    "S" TAGBASE_STR(VSWIM);
+
+_Static_assert(sizeof(tagbase_identity) <= STLINK_TAGBASE_IDENTIFY_LEN - 4,
+               "identity text does not fit the identify reply");
+_Static_assert(STLINK_TAGBASE_IDENTIFY_LEN <= sizeof(txbuf),
+               "identify reply does not fit txbuf");
+
+/**
+ * @brief Answers F6 99 with the base's identity; see STLINK_TAGBASE_IDENTIFY.
+ *
+ * Touches no target state. The reply is always the full length, padded with
+ * NULs, so a host can read exactly that many bytes.
+ */
+static void tagbase_identify(void)
+{
+  bzero(txbuf, STLINK_TAGBASE_IDENTIFY_LEN);
+  PACK16(txbuf, STLINK_DEBUG_ERR_OK);
+  txbuf[2] = STLINK_TAGBASE_IDENTIFY_FORMAT;
+  memcpy(txbuf + 4, tagbase_identity, sizeof(tagbase_identity));
+  BULK_Transmit(txbuf, STLINK_TAGBASE_IDENTIFY_LEN);
+}
+
 int stlink_eval(uint8_t *buf)
 {
   uint8_t idx;
@@ -98,6 +142,15 @@ int stlink_eval(uint8_t *buf)
     PACK16(txbuf, mode);
     BULK_Transmit(txbuf, 2); // return 2 bytes
     return 0;
+  case STLINK_TAGBASE_COMMAND:
+    if (*buf == STLINK_TAGBASE_IDENTIFY)
+    {
+      tagbase_identify();
+      return 0;
+    }
+    PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
+    BULK_Transmit(txbuf, 2);
+    return -1;
   case STLINK_GET_TARGET_VOLTAGE:
     PACK32(txbuf, 240);
     PACK32(txbuf + 4, vlipo100);

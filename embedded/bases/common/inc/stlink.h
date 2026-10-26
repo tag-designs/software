@@ -41,6 +41,8 @@ enum stlink_debug_start {
   STLINK_SWIM_COMMAND                = 0xF4,
   STLINK_GET_CURRENT_MODE            = 0xF5,
   STLINK_GET_TARGET_VOLTAGE          = 0xF7,
+  /* Not an ST-LINK command: the tag bases' own, see STLINK_TAGBASE_IDENTIFY. */
+  STLINK_TAGBASE_COMMAND             = 0xF6,
 
   STLINK_SWIM_ENTER                  = 0x00,
   STLINK_SWIM_EXIT                   = 0x01,
@@ -97,11 +99,31 @@ enum stlink_debug_commands {
 
 // These versions chosen to keep stm32 programmer happy
 
-#define VJTAG 0x25
+#define VJTAG 37 /* decimal, so the identify reply can spell it */
 #define VSWIM 7
 #define VSTLINK 2
 #define BESWAP(x) ((((x)&0xff)<<8)|(((x)>>8)&0xff))
 #define STLINK_VERSION BESWAP(((VJTAG<<6)|(VSTLINK<<12)|VSWIM))
+
+/*
+ * Tag base identify: F6 99.
+ *
+ * Not an ST-LINK command. A base answers with exactly
+ * STLINK_TAGBASE_IDENTIFY_LEN bytes: STLINK_DEBUG_ERR_OK (2 bytes, little
+ * endian), the format version STLINK_TAGBASE_IDENTIFY_FORMAT, a reserved zero
+ * byte, then NUL-padded ASCII
+ *
+ *   base=<target>;fw=<git hash>;dirty=<0|1>;date=<commit date>;stlink=V2J37S7
+ *
+ * where <target> is the base's CMake target (which names its hardware). A
+ * base built before this command answers F6 with a 2-byte
+ * STLINK_DEBUG_ERR_FAULT, so a host that reads the full length and gets 2
+ * bytes knows it has an older base; a genuine ST-LINK may not answer at all,
+ * so read with a short timeout.
+ */
+#define STLINK_TAGBASE_IDENTIFY 0x99
+#define STLINK_TAGBASE_IDENTIFY_LEN 128
+#define STLINK_TAGBASE_IDENTIFY_FORMAT 1
 
 #define STLINK_DEV_DFU_MODE            0x00
 #define STLINK_DEV_MASS_MODE           0x01

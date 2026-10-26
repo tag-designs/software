@@ -50,6 +50,15 @@ public:
   bool Voltage(float &voltage);
   bool GitSha(std::string &str);
 
+  /**
+   * @brief   The base's identity, from the tag bases' identify command.
+   * @details See LinkAdapt::BaseIdentity(). Touches no target state.
+   * @param[out] identity  `base=...;fw=...;dirty=...;date=...;stlink=...`,
+   *                       or empty.
+   * @return  false if the base predates the command or no base is attached.
+   */
+  bool BaseIdentity(std::string &identity);
+
   // Tag information
 
   bool GetTagInfo(TagInfo &info);

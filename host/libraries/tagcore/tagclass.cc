@@ -87,6 +87,12 @@ void Tag::Detach()
   monitor.Detach();
 }
 
+bool Tag::BaseIdentity(std::string &identity)
+{
+  std::lock_guard<std::mutex> lck(mtx);
+  return monitor.BaseIdentity(identity);
+}
+
 bool Tag::GitSha(std::string &str)
 {
   std::lock_guard<std::mutex> lck(mtx);

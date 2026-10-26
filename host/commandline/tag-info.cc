@@ -239,6 +239,11 @@ static int printJson(Tag &tag)
     status_json.clear();
 
   std::cout << "{";
+  // The identity is plain ASCII the base firmware builds from its target name
+  // and git metadata, with no characters JSON would need escaped.
+  std::string base;
+  if (tag.BaseIdentity(base))
+    std::cout << "\"base\":\"" << base << "\",";
   if (tag.GitSha(sha))
     std::cout << "\"tag_sha\":\"" << sha << "\",";
   std::cout << "\"info\":" << info_json;
@@ -356,6 +361,12 @@ int main(int argc, char **argv)
 
     std::string str;
     TagInfo info;
+    std::string base;
+    if (tag.BaseIdentity(base))
+      std::cout << "Base: " << base << std::endl;
+    else
+      std::cout << "Base: unidentified (its firmware predates the identify "
+                   "command)" << std::endl;
     if (tag.GitSha(str))
       std::cout << "Tag SHA: " << str << std::endl;
 

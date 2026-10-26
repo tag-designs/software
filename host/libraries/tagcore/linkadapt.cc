@@ -17,6 +17,15 @@ extern "C"
 
 #define USB_TRANSFER_TIMEOUT 1500
 
+// The tag bases' identify command and reply; the firmware side is
+// STLINK_TAGBASE_* in embedded/bases/common/inc/stlink.h.
+#define TAGBASE_COMMAND 0xF6
+#define TAGBASE_IDENTIFY 0x99
+#define TAGBASE_IDENTIFY_LEN 128
+#define TAGBASE_IDENTIFY_FORMAT 1
+// A base answers at once; a probe that does not know the command may never.
+#define TAGBASE_IDENTIFY_TIMEOUT 300
+
 // Stlink Status commands
 
 #define STLINK_GET_VERSION 0xF1
@@ -155,6 +164,42 @@ bool LinkAdapt::cmd_eval(LinkReq &req, bool ReadnWrite)
     stats.cmd_calls++;
     stats.cmd_ns += elapsed_ns(start);
 #endif
+    return true;
+}
+
+bool LinkAdapt::BaseIdentity(std::string &identity)
+{
+    identity.clear();
+    if (!handle)
+        return false;
+
+    unsigned char cmd[16] = {TAGBASE_COMMAND, TAGBASE_IDENTIFY};
+    int res = 0;
+    int err = libusb_bulk_transfer(handle, ep_out, cmd, sizeof(cmd), &res,
+                                   USB_TRANSFER_TIMEOUT);
+    if (err || res != (int)sizeof(cmd))
+    {
+        log_debug("base identify request failed: %s", libusb_error_name(err));
+        return false;
+    }
+
+    unsigned char reply[TAGBASE_IDENTIFY_LEN] = {0};
+    err = libusb_bulk_transfer(handle, ep_in, reply, sizeof(reply), &res,
+                               TAGBASE_IDENTIFY_TIMEOUT);
+    if (err)
+    {
+        log_debug("base identify: no reply (%s); not a tag base, or one that "
+                  "predates the command", libusb_error_name(err));
+        return false;
+    }
+    if (res != (int)sizeof(reply) || reply[0] != 0x80 || reply[1] != 0 ||
+        reply[2] != TAGBASE_IDENTIFY_FORMAT)
+    {
+        log_debug("base identify: %d-byte reply; the base predates the command", res);
+        return false;
+    }
+    const char *text = reinterpret_cast<const char *>(reply + 4);
+    identity.assign(text, strnlen(text, sizeof(reply) - 4));
     return true;
 }
 
