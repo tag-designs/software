@@ -73,4 +73,7 @@ probe-rs's progress goes to the log pane.
   driver) with fw-v0.6, through the bench runner: mass erase, program,
   verify, ALL_PASSED, erased and IDLE in 13 s, and the flash read back
   matching the image.
-- Not yet run on an IMUTag (U375) or through a field base. Not packaged.
+- Retest has passed on an IMUTagNandBmp581 (U375, tag-breakout-base-l432-u375-1v8,
+  stock driver): the flash read back matching fw-v0.6, and ALL_PASSED.
+  Programming a U375 through the engine has not been run yet.
+- Not yet run through a field base (field-safe driver). Not packaged.
