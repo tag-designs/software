@@ -76,4 +76,7 @@ probe-rs's progress goes to the log pane.
 - Retest has passed on an IMUTagNandBmp581 (U375, tag-breakout-base-l432-u375-1v8,
   stock driver): the flash read back matching fw-v0.6, and ALL_PASSED.
   Programming a U375 through the engine has not been run yet.
-- Not yet run through a field base (field-safe driver). Not packaged.
+- Program has passed on a UIUCTag (STM32L432KB) through a field base with
+  the field-safe driver. The tagcore monitor logged a burst of 0x81 debug
+  register failures while reconnecting after probe-rs, then recovered.
+- Not packaged.

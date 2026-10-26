@@ -1355,6 +1355,23 @@ impl Station {
         }
     }
 
+    /// The part's internal flash in bytes: what the tag reports, else what
+    /// a blank board's image was linked for. A UIUCTag is an STM32L432KB
+    /// (128 KB) running an image linked for the 256 KB KC.
+    fn flash_bytes(&self, image: &FirmwareImage) -> Option<u32> {
+        let reported = self
+            .info
+            .as_ref()
+            .map(|i| i.intflashsz * 1024)
+            .filter(|&b| b > 0)
+            .and_then(|b| u32::try_from(b).ok());
+        reported.or_else(|| {
+            crate::model::elf::Elf::load(&image.elf_path)
+                .ok()?
+                .symbol("__flash0_size__")
+        })
+    }
+
     /// The probe-rs target for the attached part and the image.
     pub(crate) fn chip(&self, image: &FirmwareImage) -> Result<&'static str, String> {
         let device =
@@ -1366,7 +1383,7 @@ impl Station {
                 } else {
                     DEV_L432
                 });
-        tagprobe::chip_for(device, None)
+        tagprobe::chip_for(device, self.flash_bytes(image))
     }
 
     /// Sets a setting, logging a failure to save it.
