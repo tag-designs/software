@@ -1,0 +1,10 @@
+[package]
+name = "tagprobe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = "0.4.34"
+probe-rs = "0.32.0"
+tagcore = { version = "0.1.0", path = "../tagcore-rs" }
+tracing = "0.1.44"

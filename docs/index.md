@@ -388,6 +388,12 @@ design document.
 
 - [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
+### Applications / tagprogram-rs
+
+- [Tag Programmer (Rust)](../host/applications/tagprogram-rs/README.md) — Tag Programmer in Rust - qtprogram's station and programming session ported to a toolkit-free engine, programming through probe-rs instead of STM32CubeProgrammer, with a Tauri shell over a web front end.
+- [qtprogram (Tag Programmer v2.0): functional and visual specification](../host/applications/tagprogram-rs/design/qtprogram-spec.md) *(results)* — A functional and visual specification of qtprogram (Tag Programmer v2.0), read from its source and manual, that the Rust port reproduces.
+- [Tag Programmer: UI/engine contract](../host/applications/tagprogram-rs/design/ui-engine-contract.md) — The contract between Tag Programmer's engine and its web UI - the view state the engine publishes, the commands and queries the UI sends, the prompts - and the model API the engine is built on.
+
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-txt-import, tag-cal-write and dataprocessing.
@@ -470,6 +476,10 @@ design document.
 
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 
+### Libraries / tagprobe-rs
+
+- [tagprobe (Rust)](../host/libraries/tagprobe-rs/README.md) — tagprobe - programming, connect checks and flash read-back for tags through a base, on probe-rs, with a field-safe ST-LINK driver for bases whose firmware predates the identify command.
+
 ### Proposals
 
 - [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, historical)* — The plan, now built, for a Linux x86_64 host tools package -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.
@@ -506,6 +516,10 @@ design document.
 ### tagserver
 
 - [tag-server](../host/tagserver/README.md) — tag-server, the tagcore Tag API over gRPC on a local socket for test programs - building it, running it, its calls and error codes, and what it does not do.
+
+### ui-kit
+
+- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
 
 ### User Guide Tooling
 
