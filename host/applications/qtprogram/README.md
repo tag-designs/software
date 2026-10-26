@@ -9,7 +9,7 @@ summary: qtprogram (Tag Programmer) source layout, how it chooses the internal-f
 `qtprogram` (Tag Programmer) is a station for programming a batch of tags. It
 finds STM32CubeProgrammer, the base and the tag by itself. It offers the
 published firmware releases, verified against their manifests. It programs and
-tests each tag through STM32_Programmer_CLI, leaves it erased and IDLE, and
+tests each tag through STM32_Programmer_CLI, leaves it IDLE, and
 records every attempt in a CSV. How it works and why:
 [design/batch-station.md](design/batch-station.md). The user guide is
 `host/docs/src/apps/qtprogram.md`.
@@ -61,9 +61,12 @@ qtprogram --flash-plan <elf>...
 3. Program with the planned erase, in one CLI call naming the base's ST-LINK
    by serial.
 4. Attach to the new image, compare its git hash with the image's, set its
-   clock, and run the self-tests.
-5. Start and stop it once and erase it again (steps 1-2), so the new firmware
-   lays out its own log and persistent region.
+   clock, run the self-tests, and set the clock again. The tag is left IDLE.
+
+The programmer never starts the tag: a start belongs to a deployment. It used
+to start, stop and erase it once more after the tests; on a PresTag that start
+leaves the RTC write-protected until the next reset, and the clock setting
+that followed hung the firmware (`embedded/tags/TODO.md`, Defects).
 
 A board whose firmware does not answer (blank, or in its bootloader) starts at
 step 3. If the new image does not answer, the window asks for a power cycle;

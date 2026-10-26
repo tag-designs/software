@@ -73,7 +73,6 @@ void ProgramSession::start(const FirmwareImage &image, const QString &serial,
   if (running_)
     return;
   running_ = true;
-  finishing_ = false;
   retestOnly_ = false;
   mismatch_ = false;
   waitTicks_ = 0;
@@ -98,7 +97,6 @@ void ProgramSession::retest(const FirmwareImage &image, const QString &serial,
   if (running_)
     return;
   running_ = true;
-  finishing_ = false;
   retestOnly_ = true;
   mismatch_ = false;
   waitTicks_ = 0;
@@ -283,22 +281,6 @@ void ProgramSession::tick()
                   "again.").arg(stateName(state)));
       return;
     }
-    if (finishing_) {
-      tag_.SetRtc();  // leave the tag on time after its final erase
-      finish(mismatch_ ? QStringLiteral("MISMATCH")
-                       : result_.testStatus == QLatin1String("ALL_PASSED")
-                             ? QStringLiteral("OK")
-                             : QStringLiteral("TEST_FAILED"),
-             mismatch_ ? tr("Programmed, but the tag reports commit %1, which is not the "
-                            "image's. It is not running the image just written.")
-                             .arg(result_.gitHash)
-                       : result_.testStatus == QLatin1String("ALL_PASSED")
-                             ? tr("Programmed and tested: ALL_PASSED. The tag is erased "
-                                  "and IDLE.")
-                             : tr("Programmed, but the self-test reported %1.")
-                                   .arg(result_.testStatus));
-      return;
-    }
     runProgrammer();
     return;
 
@@ -390,24 +372,24 @@ void ProgramSession::tick()
              tr("Self-tests: %1.").arg(result_.testStatus) + flash);
       return;
     }
+    // Done. The programmer does not start the tag: a Start belongs to its
+    // deployment, and on a PresTag it arms the stop-mode RTC ticker, which
+    // leaves the RTC write-protected until the next reset (a SetRtc then
+    // hangs the firmware; embedded/tags/TODO.md). The tag stays IDLE.
     {
-      // Start and stop once, then erase again, so the new firmware lays out
-      // its own log and persistent region before the tag is deployed.
-      tag_.SetRtc();
-      Config config;
-      if (!tag_.GetConfig(config) || !tag_.Start(config)) {
-        finish(QStringLiteral("FAILED: no start after testing"),
-               tr("The programmed tag would not start for its final erase."));
-        return;
-      }
-      finishing_ = true;
-      waitTicks_ = 0;
-      setStep(Step::Finishing, tr("Starting, stopping and erasing the tag once"));
-      step_ = Step::Stopping;  // stopped on the next tick, as a running tag is
+      const bool passed = result_.testStatus == QLatin1String("ALL_PASSED");
+      finish(mismatch_ ? QStringLiteral("MISMATCH")
+             : passed  ? QStringLiteral("OK")
+                       : QStringLiteral("TEST_FAILED"),
+             mismatch_ ? tr("Programmed, but the tag reports commit %1, which is not the "
+                            "image's. It is not running the image just written.")
+                             .arg(result_.gitHash)
+             : passed  ? tr("Programmed and tested: ALL_PASSED. The tag is IDLE.")
+                       : tr("Programmed, but the self-test reported %1.")
+                             .arg(result_.testStatus));
     }
     return;
 
-  case Step::Finishing:
   case Step::Programming:
   case Step::Reading:
   case Step::PowerCycle:

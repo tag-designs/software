@@ -9,7 +9,7 @@ summary: qtprogram is a batch programming station -- it finds STM32_Programmer_C
 qtprogram finds its programmer, base, tag and firmware by itself, and remembers
 them between sessions. For each tag the operator presses **Program**, types the
 board's label and confirms. The station stops and erases the tag, programs and
-tests it, and leaves it erased and IDLE. It appends one row per attempt,
+tests it, and leaves it IDLE. It appends one row per attempt,
 failures included, to a CSV. **Next Tag** releases the tag for the next board.
 The choices behind this design are in
 [decision 0034](../../../../docs/decisions/0034-host-qtprogram-batch-station.md).
@@ -148,13 +148,16 @@ programmer runs asynchronously:
    again, and offers **Retry** and **Give Up**. The station writes no flash
    registers (FLASH_SR.PEMPTY).
 4. **Test:** read `TagInfo`, compare its git hash with the image's, set the
-   clock, and run the self-tests.
-5. **Finish:** start the tag, stop it, and have it erase again, so the new
-   firmware lays out its own storage. The tag is left attached and IDLE.
+   clock, and run the self-tests. The tag is left attached and IDLE.
+
+The programmer does not start the tag: a start belongs to a deployment. An
+earlier version finished by starting, stopping and erasing it once more; on a
+PresTag the start left the RTC write-protected, and the clock setting after
+the final erase hung the firmware (`embedded/tags/TODO.md`, Defects).
 
 Cancel is accepted before step 2 and at step 3, never while the programmer is
 writing. The self-tests disturb the tag's clock, so the session sets it again
-(`Tag::SetRtc()`) once they report, and once more after the final erase. The
+(`Tag::SetRtc()`) once they report. The
 Tag panel shows the clock offset from every status poll, amber beyond
 qtmonitor's 2 s tolerance, with **Sync** to set it by hand. **Retest** runs step 4 alone on the attached tag, and records it as a
 row of its own. It first finds the image the tag should be running: the chosen

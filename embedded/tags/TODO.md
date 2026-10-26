@@ -86,6 +86,30 @@ not been reproduced on a tag.
 
 ## Defects
 
+- **A PresTag accepts SetRtc after it has been started, and hangs.** The tag
+  must refuse a `set_rtc` (`Ack::PERM`) once it has been started since its
+  last reset; Tag Monitor never sends one then. On PresTag and PresTagRaw
+  (`TAG_STOP_RTC_TICKER`), a start arms the stop-mode RTC ticker
+  (`tagStopRtcTickerInit()` from `Running(T_INIT)`), which ends with
+  `tagRtcWriteLock()` (`RTC->WPR = 0xFF`), as does every `stopMilliseconds()`
+  in the run, and nothing unlocks it before the next reset. ChibiOS's
+  `rtc_lld_set_time()` assumes the one-time unlock in `rtc_lld_init()` still
+  holds: the locked RTC ignores its write to `RTC_ISR.INIT`, and
+  `rtc_enter_init()` spins on `INITF` forever with BASEPRI raised, so the
+  monitor is masked and the tag stays awake until reset. The tag may be IDLE
+  again by then (after a stop and erase), so the check must be "started since
+  reset", not the current state. The same lock silently drops the later
+  ChibiOS RTC writes: a capture after Stop and erase still had the wake-up
+  timer and alarm A enabled (`RTC_CR` 0x4524), so an IDLE PresTag that was
+  run without a reset since may keep waking; measure it. Seen 2026-10-26 on
+  PresTag 92 (UID 2033305036415004003C0061, fw-v0.6), when the programmers
+  set the clock after their final start-stop-erase: `pc` 0x80062c0-c4,
+  `bfar` = RTC_ISR, and a capture with the RTC clocked and correct but
+  `INIT` clear (`captures/2026-10-26-prestag92-rtc-lock/`). The programmers
+  no longer start the tag. Fix: refuse `set_rtc` after a start; unlock around
+  the ChibiOS RTC writes (or stop relocking); bound `rtc_enter_init()`'s
+  wait. Verify with the lifecycle and power checks: this is the stop-mode
+  path. *Found on the bench.*
 - **The state-marker log stops silently when full.** `recordState()`
   (`common/core/src/persistent.c`) stops writing once `sEpoch[]` is full: 24
   entries on L4, 20 on U3. The only notice is a scratchpad `ESLF` record, and

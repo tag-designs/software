@@ -1,10 +1,11 @@
 /**
  * @file    programsession.h
- * @brief   The program sequence for one tag: stop, erase, program, test,
- *          start, stop and erase again.
+ * @brief   The program sequence for one tag: stop, erase, program, test.
  *
- * @details The sequence qtprogram has always run, moved out of the window and
- *          made non-blocking: STM32_Programmer_CLI runs asynchronously, and
+ * @details qtprogram's sequence, moved out of the window and made
+ *          non-blocking. It no longer starts the tag after the tests (a start
+ *          belongs to a deployment; see programsession.cpp), so the tag is
+ *          left IDLE: STM32_Programmer_CLI runs asynchronously, and
  *          every wait is a one-second tick, so the window repaints and the
  *          tag's state is polled throughout. After the self-tests the session
  *          reads TagInfo again and compares the tag's git hash with the
@@ -78,7 +79,6 @@ public:
     Connecting,   ///< Waiting for the new image to answer.
     PowerCycle,   ///< The new image does not answer; waiting for a power cycle and retryConnect().
     Testing,      ///< The self-tests are running.
-    Finishing,    ///< Start, stop and erase once more, so the firmware lays out its storage.
     Done,         ///< Finished; see finished().
   };
   Q_ENUM(Step)
@@ -171,8 +171,7 @@ private:
   QString serial_;                 ///< Base serial.
   Step step_ = Step::Done;         ///< Current step.
   bool running_ = false;           ///< A session is running.
-  bool finishing_ = false;         ///< In the start-stop-erase pass after testing.
-  bool retestOnly_ = false;        ///< Testing only; no programming or final erase.
+  bool retestOnly_ = false;        ///< Testing only; no programming.
   bool mismatch_ = false;          ///< The tag's git hash is not the image's.
   int waitTicks_ = 0;              ///< Ticks spent in the current wait.
   SessionResult result_;           ///< Built up as the session runs.
