@@ -1,7 +1,7 @@
 # Qt Program
 
 Use Qt Program (Tag Programmer) to program a batch of tags. For each tag it
-writes the firmware, tests the tag, leaves it erased and IDLE ready for Tag
+writes the firmware, tests the tag, leaves it IDLE ready for Tag
 Monitor, and records the result in a CSV file.
 **Help ▸ Tag Programmer User Guide** opens this page.
 
@@ -87,9 +87,7 @@ Monitor, and records the result in a CSV file.
     1. stops the tag if it is running, and has its own firmware erase its log;
     2. erases internal flash as the image requires and writes the image;
     3. reconnects, sets the clock and runs the self-tests;
-    4. starts and stops the tag once and erases it again, so the new firmware
-       sets up its own storage;
-    5. adds a line to the record.
+    4. adds a line to the record, and leaves the tag IDLE.
 5. Press **Next Tag**, take the tag out, put the next one in, and press
    **Attach** (or wait for it to attach automatically). Go back to step 3.
 
@@ -128,9 +126,9 @@ file.
 | Calibration constants | kept | kept | (none) |
 | RTC trim, board UUID | kept | kept | kept |
 
-The log and stored configuration are lost because the tag is erased before and
-after programming. An image for the wrong processor is refused. An image for a
-different tag type from the one the tag is running gets a warning.
+The log is lost because the tag erases it before it is programmed. An image
+for the wrong processor is refused. An image for a different tag type from the
+one the tag is running gets a warning.
 
 ## Troubleshooting
 
