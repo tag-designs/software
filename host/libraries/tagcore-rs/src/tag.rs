@@ -476,18 +476,15 @@ impl Tag {
         }
     }
 
-    /// Stores a set of calibration constants.
+    /// Appends a set of calibration constants to the tag's flash log.
     ///
-    /// As in the C++ class, success means the RPC completed: the Ack code is
-    /// not checked, so inspect [`last_error`](Self::last_error) to see
-    /// whether the firmware accepted them.
+    /// Ok only if the firmware answered OK. It refuses with INVAL when the
+    /// magnetometer block is missing, and with PERM when the tag is not IDLE
+    /// or its firmware has no calibration store (every tag but the CompassTag
+    /// and IMUTag families).
     pub fn write_calibration(&self, constants: &CalibrationConstants) -> Result<(), TagError> {
-        let mut inner = self.lock();
-        if inner.rpc(&request(req::Payload::WriteCalibration(*constants))) {
-            Ok(())
-        } else {
-            Err(inner.error())
-        }
+        self.lock()
+            .expect_ok(&request(req::Payload::WriteCalibration(*constants)))
     }
 }
 

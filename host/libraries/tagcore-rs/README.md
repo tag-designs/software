@@ -59,12 +59,12 @@ The wire behaviour is the same. The API is Rust-shaped:
 - `git_sha()` stops at the first NUL; the C++ returns all 48 bytes.
 - `read_calibration` takes an `i32`, as the protobuf field does, so "last
   written" (`< 0`) can be asked for directly.
-- Two C++ edge cases are fixed rather than copied. When all 500 L4 result
-  reads fail, the call now fails; the C++ off-by-one returned success with an
-  unset result. A reply length larger than the monitor buffer is now rejected
-  rather than truncated to 16 bits.
-- `write_calibration` still succeeds whenever the RPC completes, without
-  checking the Ack code, as in the C++; check `last_error()`.
+
+The port also prompted three fixes to the C++ (`c9967bc1`), which both
+versions now share: `WriteCalibration` requires the firmware's OK rather than
+just a completed RPC; an L4 call whose result reads all fail now fails rather
+than succeeding with an unset result; and a reply length larger than the
+monitor buffer is rejected rather than truncated to 16 bits.
 
 Logging uses the [`log`](https://docs.rs/log) facade; install any logger
 (the example uses `env_logger`, `RUST_LOG=debug` for the attach detail).
@@ -83,7 +83,7 @@ RUST_LOG=info cargo run --example tag_info [-- <ST-LINK serial>]
 The unit tests cover the parts that need no hardware: serial decoding,
 command and memory-range rules, the shared-block layout, legacy record
 decoding, error reporting and protobuf framing. The hardware test attaches
-(resetting the tag), sends only read-only requests, checks the chip UID read
+(resetting the tag), sends only read-only requests (and one calibration write the firmware must refuse), checks the chip UID read
 over SWD against the UUID the firmware reports, and detaches. Quit qtmonitor,
 qtprogram and anything else that polls the base first.
 
