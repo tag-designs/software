@@ -79,4 +79,6 @@ probe-rs's progress goes to the log pane.
 - Program has passed on a UIUCTag (STM32L432KB) through a field base with
   the field-safe driver. The tagcore monitor logged a burst of 0x81 debug
   register failures while reconnecting after probe-rs, then recovered.
+- Retest and Program have passed on the BitTag through a "BitTag Base V5C",
+  the oldest base on the bench, with the field-safe driver.
 - Not packaged.
