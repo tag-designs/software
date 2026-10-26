@@ -177,8 +177,31 @@ again agreed; that step is not attach-related and its cause is unknown. The
 numbers are in the IMUTag
 [power notes](../../embedded/tags/families/IMUTag/design/power.md).
 
+### Base firmware fixed: the stock probe-rs driver works
+
+`be0b151f` on `main` fixes two of the three base problems above: a 1-byte
+`READMEM_8BIT` now answers with 2 bytes, and DP register reads return the
+register (bank from bits [7:4], no RDBUFF read). `a473918f` adds the bases'
+`F6 99` identify command (see `embedded/bases/README.md`). The IMUTag breakout
+base was reflashed over DFU with `main` at `a473918f`
+(`captures/2026-10-26-base-identify/flash-log.md`). Through it, with
+**probe-rs's own ST-LINK driver**:
+
+- `tag-info` printed the base identity,
+  `base=tag-breakout-base-l432-u375-1v8;fw=a473918f;dirty=0;...`.
+- `raw` read the real DP registers (DPIDR `0x0BE12477`, CTRL/STAT
+  `0xF0000040`) and AP0 as before.
+- `session` attached under reset, core halted at the reset vector.
+- `program` flashed fw-v0.6 onto the IMUTag: verified in 2.2 s, the same 15
+  sectors, `56e5e6a0` IDLE afterwards -- the step that timed out on the 1-byte
+  read before the fix.
+
+So a base with current firmware works with stock probe-rs, and the tag-base
+driver remains the route for field bases, which keep their firmware. A host
+can tell which it has from the identify command: a base that answers it has
+the fixes.
+
 ## Still to do
 
-- Make base changes 2 and 3 for future bases, without depending on them.
 - Measure RUNNING after a probe-rs attach (BitTag Standby between wakes;
   IMUTag Stop 2 between samples), if the run case matters for the decision.
