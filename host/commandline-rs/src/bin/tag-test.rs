@@ -14,12 +14,12 @@
 //!
 //! # Exit status
 //!
-//! 0 once a result has been printed and the clock re-synced, **whatever the
-//! result**: a `TestResult` other than a pass still exits 0, so a script must
-//! read the `Test Result:` line. 1 for an unknown test, a failed attach,
-//! info or status read or clock sync, a tag that is not IDLE, a refused test
-//! request, or a test that does not finish within `--test-timeout`. Option
-//! errors exit 2 (clap).
+//! 0 when the test finished with `ALL_PASSED` and the clock was re-synced.
+//! 1 for a test that finished with any other `TestResult` (after printing it
+//! and re-syncing the clock), an unknown test, a failed attach, info or
+//! status read or clock sync, a tag that is not IDLE, a refused test request,
+//! or a test that does not finish within `--test-timeout`. Option errors
+//! exit 2 (clap).
 //!
 //! # Hardware side effects
 //!
@@ -237,6 +237,14 @@ fn main() -> ExitCode {
     if tag.set_rtc().is_err() {
         // reset rtc since test may alter
         eprintln!("SetRtc after test failed: {}", tag.debug_message());
+        return ExitCode::FAILURE;
+    }
+    // A test that ran and failed is a failure: scripts read the exit status.
+    if status.test_status != TestResult::AllPassed as i32 {
+        eprintln!(
+            "Self-test failed: {}",
+            enum_name(status.test_status, TestResult::as_str_name)
+        );
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS

@@ -106,7 +106,7 @@ resting current (see the evaluation).
 `chip_for(device_id, flash_bytes)` maps the device ID (0x435 STM32L432, 0x454
 STM32U375) and the flash size to a probe-rs target name. The flash size comes
 from the tag's `TagInfo.intflashsz` when it answers (in KB: the firmware
-copies the flash-size register, whatever the proto comment says), otherwise from the
+copies the flash size data register), otherwise from the
 image's `__flash0_size__`. The UIUCTag's STM32L432KB has 128 KB, the KC 256 KB.
 Choosing the KC for a KB would make probe-rs's flash algorithm address flash
 the part does not have.

@@ -255,6 +255,14 @@ int main(int argc, char **argv)
                 << std::endl;
       return 1;
     }
+    /* A test that ran and failed is a failure: scripts read the exit
+       status, and provision_tags.sh ends with this tool's. */
+    if (result != ALL_PASSED)
+    {
+      std::cerr << "Self-test failed: " << TestResult_Name(result)
+                << std::endl;
+      return 1;
+    }
   }
   else
   {

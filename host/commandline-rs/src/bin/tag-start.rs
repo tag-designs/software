@@ -246,9 +246,11 @@ fn main() -> ExitCode {
                     break;
                 }
             }
-            // TODO(doc-review): a failed read after an earlier successful one that still
-            // showed IDLE clears `read_ok`, so the tool reports "no status read succeeded"
-            // and exits 0 although the last good read said the tag had not started.
+            // A read that fails after one that still said IDLE is the normal
+            // case for a tag that sleeps as soon as it starts (UIUCTag): to
+            // sleep it gives up its debug interface, so later reads fail. The
+            // last read decides, so this ends as "not confirmed" and exit 0,
+            // as the C++ does (host/docs/src/cli/tag-start.md).
             Err(_) => read_ok = false,
         }
         sleep(POLL);

@@ -25,6 +25,9 @@ tag-test [options]
 - Connect a compatible tag/base interface over USB.
 - Run self-tests only when the tag is `IDLE`; `tag-test` exits before running
   the requested test if the tag reports another state, with exit status 1.
+- `tag-test` exits 0 only when the test finishes with `ALL_PASSED`. A test
+  that finishes with any other result prints it as `Test Result:` and exits
+  with status 1, as do the failures above.
 - Download or preserve any important data before troubleshooting a tag with
   repeated tests. The command sets the RTC before and after testing, and some
   device tests reset or reinitialize the device they check.
