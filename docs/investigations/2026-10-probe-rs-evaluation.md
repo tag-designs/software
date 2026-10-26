@@ -196,6 +196,13 @@ base was reflashed over DFU with `main` at `a473918f`
   sectors, `56e5e6a0` IDLE afterwards -- the step that timed out on the 1-byte
   read before the fix.
 
+The BitTag programmer base (`bittag-base-v7`, an STM32F042) was then
+reflashed the same way and gave the same result with the stock driver on the
+STM32L432: identity `base=bittag-base-v7;fw=a473918f;dirty=0`, real DP
+registers (DPIDR `0x2BA01477`), a session halted at the reset vector, and
+`program --chip-erase` of fw-v0.6 verified in 1.4 s with PEMPTY clear, after
+which the BitTag ran `56e5e6a0` and passed `tag-test`.
+
 So a base with current firmware works with stock probe-rs, and the tag-base
 driver remains the route for field bases, which keep their firmware. A host
 can tell which it has from the identify command: a base that answers it has
