@@ -52,6 +52,17 @@ using MS = std::chrono::milliseconds;
 
 #define RCC_CSR 0x0C000600
 
+// DBGMCU ID code addresses, which tell the families apart.
+#define L4_DBGMCU_IDCODE 0xE0042000U
+#define U3_DBGMCU_IDCODE 0xE0044000U
+
+/// True if @p idcode has a real device ID (neither all zero nor all one).
+static bool plausible_idcode(uint32_t idcode)
+{
+    const uint32_t device_id = idcode & 0xfffU;
+    return (device_id != 0U) && (device_id != 0xfffU);
+}
+
 // Debug Handler RPC
 
 size_t maxpacket = 0;
@@ -76,7 +87,8 @@ uint32_t rcc_csr = 0;
  *            waits for MON_REQ to clear before reading the result.
  *          - C_MASKINTS is never left set: it survives the halt release and
  *            stalls the firmware with every interrupt masked.
- *          STM32L4 only; an STM32U3 tag uses the shared-block transport.
+ *          STM32L4 only: an STM32U3 tag uses the shared-block transport,
+ *          so Attach() refuses one before writing any debug register.
  */
 class TestMonitor : public LinkAdapt
 {
@@ -186,6 +198,23 @@ class TestMonitor : public LinkAdapt
 
         do
         {
+            // L4 only. Identify the part while it is held in reset, as
+            // TagMonitor does; on an STM32U3 the DebugMon bits below mean
+            // nothing to the firmware, so refuse before writing any.
+            uint32_t idcode = 0;
+            if (!(ReadDebug32(L4_DBGMCU_IDCODE, &idcode) && plausible_idcode(idcode)) &&
+                ReadDebug32(U3_DBGMCU_IDCODE, &idcode) && plausible_idcode(idcode))
+            {
+                std::cerr << "tag-monitor-test drives the STM32L4 DebugMonitor only; "
+                             "this target is an STM32U3 (idcode 0x"
+                          << std::hex << idcode << std::dec
+                          << "). Use tag-info or tag-side-channel-check." << std::endl;
+                // Nothing was written: release reset so the tag boots as
+                // it would at power-on.
+                AssertReset(true);
+                break;
+            }
+
             uint32_t demcr = 0;
             // Program debug control while the core is still held in reset.
             if (!ReadDebug32(DEMCR, &demcr) ||
