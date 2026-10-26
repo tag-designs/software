@@ -29,8 +29,13 @@ const TEST_TICKS: u32 = 120;
 const IMU_LOG_PAGE: i64 = 2048;
 const SECTOR: i64 = 4096;
 const TICK: Duration = Duration::from_secs(1);
-/// What the record's `host_version` column says wrote the row.
-const HOST_VERSION: &str = concat!("tagprogram-rs ", env!("CARGO_PKG_VERSION"));
+/// What the record's `host_version` column says wrote the row: the host
+/// tools package version when CMake builds the app (qtprogram records the
+/// same number), else the crate's.
+fn host_version() -> String {
+    let version = option_env!("TAGPROGRAM_HOST_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+    format!("tagprogram-rs {version}")
+}
 
 /// Bytes as whole external-flash sectors, rounded up.
 fn sectors(bytes: i64) -> i64 {
@@ -750,7 +755,7 @@ impl Station {
             },
             voltage: s.voltage.map_or(-1.0, f64::from),
             probe_serial: s.serial.clone(),
-            host_version: HOST_VERSION.to_owned(),
+            host_version: host_version(),
         };
         let written = match self.record.as_mut().map(|r| r.append(&row)) {
             Some(Ok(())) => true,

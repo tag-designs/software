@@ -19,11 +19,28 @@ STM32CubeProgrammer, and its UI is a web page drawn by Tauri.
 | --- | --- |
 | `core/` | `tagprogram-core`: the model (`model/`: ELF, flash plan, identity record, image, release catalog, record CSV, settings) and the engine (`engine/`: station, session, view state). No UI toolkit; unit tests run without hardware. |
 | `ui/` | The page: `index.html`, `app.css`, `app.js` draw the view state; `mock-engine.js` stands in for the engine in a plain browser. |
-| `app/` | The Tauri shell: starts the engine, forwards commands and queries, emits its events. `build.rs` assembles `app/dist/` from `ui/` and [`host/ui-kit`](../../ui-kit/README.md). |
+| `app/` | The Tauri shell: starts the engine, forwards commands and queries, emits its events, and finds the user guide. `build.rs` stages the page from `ui/` and [`host/ui-kit`](../../ui-kit/README.md) under cargo's `OUT_DIR`. |
 | `design/` | [The UI/engine contract](design/ui-engine-contract.md) and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. |
 
 The engine owns every rule and all state; the page holds none. That split is
 what lets the same kit and pattern serve qtmonitor and qtcalibrate later.
+
+## In the host build and the packages
+
+The top-level CMake build builds it with cargo (`BUILD_RUST_APPS`, on where
+cargo is installed; the release workflow turns it on) and installs it beside
+the Qt applications: `tag_tools/tagprogram.app` on macOS, signed with them;
+`tag_tools/tagprogram.exe` on Windows; `tag_tools/bin/tagprogram` on Linux,
+where it needs the system's WebKitGTK 4.1. See `CMakeLists.txt`.
+
+Nothing else needs installing to build it: libusb is built from source and
+linked in, and protoc comes from the `protoc-bin-vendored` crate. The build
+writes nothing into the source tree; `app/build.rs` stages the page, the
+configuration and Tauri's generated files under cargo's `OUT_DIR`.
+
+The crates it ships are listed, with their licenses, in
+`LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt`. Regenerate that file
+with `LICENSES/tools/generate_rust_notices.py` whenever `Cargo.lock` changes.
 
 ## Building and running
 
@@ -81,4 +98,5 @@ probe-rs's progress goes to the log pane.
   register failures while reconnecting after probe-rs, then recovered.
 - Retest and Program have passed on the BitTag through a "BitTag Base V5C",
   the oldest base on the bench, with the field-safe driver.
-- Not packaged.
+- Built into the host packages for all three platforms (see above); the
+  first CI run is still to come.

@@ -27,6 +27,14 @@ fn main() -> std::io::Result<()> {
         proto_dir.join("tagdata.proto").display()
     );
 
+    // A packaging build has no protoc of its own; use the vendored one
+    // unless PROTOC names another.
+    if std::env::var_os("PROTOC").is_none() {
+        let protoc = protoc_bin_vendored::protoc_bin_path().expect("vendored protoc");
+        // SAFETY: build scripts are single-threaded.
+        unsafe { std::env::set_var("PROTOC", protoc) };
+    }
+
     prost_reflect_build::Builder::new()
         .descriptor_pool("crate::proto::DESCRIPTOR_POOL")
         .file_descriptor_set_path(out_dir.join("file_descriptor_set.bin"))

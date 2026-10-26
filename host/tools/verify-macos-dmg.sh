@@ -5,8 +5,9 @@
 # Mounts the image read-only and checks every .app bundle in it and every
 # command line tool in its bin directory: each must pass `codesign --verify
 # --strict` and its leaf authority must be the expected identity, and a tool
-# may link only system libraries. Each bundle must also carry Qt's
-# SecureTransport TLS plugin, which no signature check would miss. Verifying inside the mounted image, not a build tree, is
+# may link only system libraries. Each Qt bundle must also carry Qt's
+# SecureTransport TLS plugin, whose absence no signature check would catch;
+# Tag Programmer (Rust) has no Qt and carries its own TLS. Verifying inside the mounted image, not a build tree, is
 # the point: it is what a user receives, whoever built and signed it.
 #
 # Shared by both release paths: release-macos.sh (built and signed locally)
@@ -79,7 +80,9 @@ while IFS= read -r app; do
   fi
   # Not a signature, but only the shipped image shows it: without a TLS
   # backend every HTTPS request fails (qtprogram's firmware release list).
-  if [ ! -f "$app/Contents/PlugIns/tls/libqsecuretransportbackend.dylib" ]; then
+  # Only a Qt app has the plugin; Tag Programmer (Rust) carries its own TLS.
+  if [ -d "$app/Contents/Frameworks/QtCore.framework" ] &&
+     [ ! -f "$app/Contents/PlugIns/tls/libqsecuretransportbackend.dylib" ]; then
     printf '  %-24s has no TLS plugin (PlugIns/tls)\n' "$name"
     FAILED=1
     continue

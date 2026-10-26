@@ -8,6 +8,8 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::path::{Path, PathBuf};
+
 use serde_json::{Value, json};
 use tagprogram_core::engine::{self, Engine, EngineConfig, Event};
 use tauri::{Emitter, Manager, State};
@@ -28,6 +30,32 @@ async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<V
         .map_err(|e| e.to_string())
 }
 
+/// The published manual's page, used when no built copy is found.
+const ONLINE_GUIDE: &str = "https://tag-designs.github.io/software/user/apps/tagprogram.html";
+
+/// The user manual's Tag Programmer page, searched for as the Qt
+/// applications search (`host/common/qtuserguide.h`): `docs`,
+/// `host/docs/site` and `share/UltralightTags/docs` beside the executable and
+/// up to five directories above it (the packaged layouts and a build tree),
+/// then the source tree's site; else the published manual.
+fn user_guide_url() -> String {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    let exe = std::env::current_exe().unwrap_or_default();
+    for dir in exe.ancestors().skip(1).take(6) {
+        roots.push(dir.join("docs"));
+        roots.push(dir.join("host/docs/site"));
+        roots.push(dir.join("share/UltralightTags/docs"));
+    }
+    roots.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../docs/site"));
+    roots
+        .iter()
+        .flat_map(|r| [r.join("apps/tagprogram.html"), r.join("apps/tagprogram/index.html")])
+        .find(|p| p.is_file())
+        .and_then(|p| tauri::Url::from_file_path(p).ok())
+        .map(String::from)
+        .unwrap_or_else(|| ONLINE_GUIDE.to_owned())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -38,7 +66,7 @@ fn main() {
                 cache_dir: paths.app_data_dir()?.join("firmware"),
                 settings_path: paths.app_config_dir()?.join("settings.json"),
                 documents_dir: paths.document_dir()?,
-                user_guide_url: None,
+                user_guide_url: Some(user_guide_url()),
             };
             let _ = log::set_logger(&engine::LOGGER);
             let handle = app.handle().clone();

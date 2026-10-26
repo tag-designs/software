@@ -520,3 +520,9 @@ if(host_install_targets)
     DESTINATION "${host_package_support_destination}"
     TARGETS ${host_install_targets})
 endif()
+
+# Tag Programmer in Rust. Added last so its install rules run after the Qt
+# deployment steps above, which scan the installed executables.
+if(BUILD_RUST_APPS)
+  add_subdirectory(applications/tagprogram-rs)
+endif()

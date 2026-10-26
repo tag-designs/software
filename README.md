@@ -51,6 +51,10 @@ SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
 Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
 required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
+Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds Tag Programmer,
+`host/applications/tagprogram-rs`; where `cargo` is not installed it is
+skipped (`BUILD_RUST_APPS`), and on Linux it also needs the WebKitGTK 4.1
+development files.
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
 Concurrent, PrintSupport, Svg, SvgWidgets, Qml, Quick, QuickWidgets, and
@@ -74,6 +78,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.3/msvc2022_64`. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
+| Rust 1.85 or newer | For Tag Programmer. Install with [rustup](https://rustup.rs) (the MSVC toolchain, its default). Without `cargo` Tag Programmer is skipped. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -194,6 +199,7 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
+| Rust 1.85 or newer | For Tag Programmer. Install with [rustup](https://rustup.rs). Without `cargo` Tag Programmer is skipped. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
@@ -375,8 +381,10 @@ rather than from an Actions run.
 Releases after v3.2 carry a Linux package for x86_64,
 `UltralightTags-X.Y-linux-x86_64.tar.gz`. It runs on Ubuntu 24.04, Debian 13
 and other distributions of the same age or newer (glibc 2.39), and needs no
-Qt or anything else installed beyond what a desktop already has. Unpack it
-anywhere:
+Qt or anything else installed beyond what a desktop already has. Tag
+Programmer (`tagprogram`) draws its window with WebKitGTK 4.1, which GNOME
+desktops have; elsewhere install it with `sudo apt install libwebkit2gtk-4.1-0`.
+Unpack it anywhere:
 
 ```
 tar -xzf UltralightTags-X.Y-linux-x86_64.tar.gz
@@ -416,13 +424,16 @@ macOS presets. It runs on x86_64 Ubuntu 24.04, Debian 13 or newer.
 | vcpkg's build needs | `curl zip unzip tar pkg-config`, and autotools and the libudev headers for its `libusb` port: `autoconf autoconf-archive automake libtool libudev-dev`. |
 | Qt's build headers and the libraries it links | `libgl1-mesa-dev libegl-dev libxkbcommon-dev`, and `libglib2.0-0t64 libdbus-1-3 libfontconfig1`, which a desktop already has |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
+| Rust 1.85 or newer, and WebKitGTK 4.1 | For Tag Programmer: Rust from [rustup](https://rustup.rs) (the distributions' `cargo` is too old on Ubuntu 24.04), and `libwebkit2gtk-4.1-dev`. Without `cargo` Tag Programmer is skipped. |
 
 On Debian or Ubuntu:
 
 ```
 sudo apt install build-essential cmake git pkg-config curl zip unzip tar \
   autoconf autoconf-archive automake libtool libudev-dev \
-  libgl1-mesa-dev libegl-dev libxkbcommon-dev libglib2.0-0t64 libdbus-1-3 libfontconfig1
+  libgl1-mesa-dev libegl-dev libxkbcommon-dev libglib2.0-0t64 libdbus-1-3 libfontconfig1 \
+  libwebkit2gtk-4.1-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 git clone https://github.com/microsoft/vcpkg ~/Software/vcpkg
 ~/Software/vcpkg/bootstrap-vcpkg.sh -disableMetrics
 ```
@@ -459,7 +470,9 @@ in place rather than carrying its own.
 sudo apt install build-essential cmake git pkg-config \
   libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev \
   qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
-  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers
+  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers \
+  libwebkit2gtk-4.1-dev curl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
 cmake --build build-host --parallel
 ```
@@ -482,6 +495,7 @@ distribution; `--help` lists the rest.
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
+| `BUILD_RUST_APPS` | `ON` where `cargo` is found | Build Tag Programmer (`host/applications/tagprogram-rs`) with cargo and install it beside the Qt applications. The release workflow sets it, so a missing `cargo` fails there. |
 | `HOST_QT_VERSION` | `6.10.3` | The Qt releases are built with. Configuring against another Qt warns, and fails under `-DREPRODUCIBLE_BUILD=ON`, which the release workflow sets. Empty skips the check. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |

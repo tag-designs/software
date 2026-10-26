@@ -40,6 +40,8 @@ links to that component's license:
 | `host/`, `embedded/` | Each side's index (`README.md`), a copy of the MIT License (`LICENSE`), one notice file per third-party component (`third-party/`), and the full texts of the licenses those notices refer to (`texts/`) |
 | `host/Qt-THIRD-PARTY-NOTICES.txt` | The third-party code inside the Qt libraries, generated from Qt's `qt_attribution.json` files |
 | `tools/generate_qt_notices.py` | Regenerates `host/Qt-THIRD-PARTY-NOTICES.txt` |
+| `host/tagprogram-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Programmer (`tagprogram`), generated from its `Cargo.lock` |
+| `tools/generate_rust_notices.py` | Regenerates `host/tagprogram-THIRD-PARTY-NOTICES.txt`; run it whenever that `Cargo.lock` changes |
 
 Each `host/` and `embedded/` directory is self-contained, with relative links,
 so it is installed into the packages as it stands.

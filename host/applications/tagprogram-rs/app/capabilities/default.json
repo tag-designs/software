@@ -1,11 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: engine events, file dialogs, opening URLs and revealing the record file.",
+  "description": "The main window: engine events, file dialogs, opening URLs and the installed user guide, and revealing the record file.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:default",
-    "opener:default"
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "file://**" }]
+    }
   ]
 }

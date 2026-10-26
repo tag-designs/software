@@ -599,7 +599,8 @@ run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
 
 The signed DMG is also kept in `<build-dir>/signed-release/`.
 
-Expect five app lines, the Qt apps, then eight tool lines: the eight command
+Expect six app lines, the five Qt apps and Tag Programmer (`tagprogram.app`,
+built by cargo), then eight tool lines: the eight command
 line tools in `tag_tools/bin`, `dataprocessing` among them as a plain
 executable since it stopped linking Qt
 ([decision 0031](../decisions/0031-host-dataprocessing-plain-executable-without-qt.md)).

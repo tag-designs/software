@@ -3,8 +3,9 @@
 #
 # The protobuf types are generated at build time from the shared definitions
 # in proto/, so they stay in step with the C++ host tools and the firmware.
-# Requires protoc on PATH (or PROTOC set) and libusb-1.0 (rusb finds it with
-# pkg-config, or builds its own copy where none is installed).
+# Needs nothing installed: protoc comes from protoc-bin-vendored unless PROTOC
+# names one, and libusb is built from source and linked statically (rusb's
+# `vendored`), so the binaries depend on no libusb on the user's machine.
 [package]
 name = "tagcore"
 version = "0.1.0"
@@ -23,10 +24,11 @@ instrumentation = []
 log = "0.4.34"
 prost = "0.14.4"
 prost-reflect = { version = "0.16.5", features = ["derive", "serde", "text-format"] }
-rusb = "0.9.4"
+rusb = { version = "0.9.4", features = ["vendored"] }
 serde_json = "1.0.154"
 
 [build-dependencies]
+protoc-bin-vendored = "3"
 prost-build = "0.14.4"
 prost-reflect-build = "0.16.1"
 

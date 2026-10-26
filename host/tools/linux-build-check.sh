@@ -111,7 +111,7 @@ image=${image:-debian:13}
 # "Linux Prerequisites" section of README.md: testing them is half the point.
 packages="build-essential cmake git pkg-config \
   libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev \
-  qt6-base-dev qt6-svg-dev qt6-declarative-dev"
+  qt6-base-dev qt6-svg-dev qt6-declarative-dev libwebkit2gtk-4.1-dev curl"
 if [ "$quick3d" = 1 ]; then
     packages="$packages qt6-quick3d-dev \
   qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers"
@@ -125,6 +125,9 @@ export DEBIAN_FRONTEND=noninteractive
 echo "==> installing packages"
 apt-get update -qq
 apt-get install -y -qq $PACKAGES >/dev/null
+echo "==> installing Rust (rustup, as the README says)"
+curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q --profile minimal >/dev/null
+. "$HOME/.cargo/env"
 git config --global --add safe.directory /src
 echo "==> configuring"
 status=0
