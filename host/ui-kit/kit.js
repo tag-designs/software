@@ -126,6 +126,12 @@
 
   // ---- Menus ------------------------------------------------------------
 
+  /** Closes the newest menu bar's open menu unless `target` is inside it;
+   *  null until a menu bar is built. */
+  let closeMenus = null;
+  /** The document-level menu listeners have been installed. */
+  let menuListening = false;
+
   /**
    * Builds an in-window menu bar into `host` from
    * [{title, items: [{label, action, checked, disabled} | "-"]}].
@@ -134,13 +140,19 @@
    *
    * Menus open on mouse-down and track the pointer across titles while one
    * is open; a click outside or Escape closes it. Each call replaces the
-   * contents of `host` but also adds document-level listeners, so call it
-   * once per page. Item `tooltip` sets the item's title.
+   * contents of `host`. The document-level listeners that close a menu are
+   * installed once, and act on the newest menu bar, so calling it again (to
+   * rebuild the menus) is safe. Item `tooltip` sets the item's title.
    *
    * @param {HTMLElement} host Element to fill; gets class `kit-menubar`.
    * @param {Array<{title: string, items: (Array|Function)}>} menus
    */
   function menuBar(host, menus) {
+    if (!menuListening) {
+      menuListening = true;
+      document.addEventListener("mousedown", (ev) => { if (closeMenus) closeMenus(ev.target); });
+      document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && closeMenus) closeMenus(null); });
+    }
     host.classList.add("kit-menubar");
     host.replaceChildren();
     let openMenu = null;
@@ -174,10 +186,10 @@
         drop);
       host.append(node);
     }
-    document.addEventListener("mousedown", (ev) => {
-      if (openMenu && !openMenu.contains(ev.target)) close();
-    });
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") close(); });
+    // A press inside the open menu (target set and contained) keeps it open.
+    closeMenus = (target) => {
+      if (openMenu && !(target && openMenu.contains(target))) close();
+    };
   }
 
   /**
@@ -457,15 +469,17 @@
    * no reveal call, and in a browser preview to a message giving the path.
    *
    * @param {string} path Absolute path of the file.
+   * @param {string} [title] Title of the browser-preview message; the app's
+   *     name for the action, e.g. "Show CSV".
    * @returns {Promise<*>}
    */
-  async function revealPath(path) {
+  async function revealPath(path, title = "Show File") {
     const t = tauri();
     if (t && t.opener) {
       if (t.opener.revealItemInDir) return t.opener.revealItemInDir(path);
       return t.opener.openPath(path.replace(/[\\/][^\\/]*$/, ""));
     }
-    return alert("Show CSV", "In the app this shows the file in its folder:", path, "info");
+    return alert(title, "In the app this shows the file in its folder:", path, "info");
   }
 
   /** The kit's public API, the one global this script defines. */

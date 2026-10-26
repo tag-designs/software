@@ -422,21 +422,19 @@ mod tests {
         assert!(!same_commit("56e5e6a1", "56e5e6a0abcdef"));
     }
 
-    /// The published fw-v0.6 images, when a copy has been extracted locally.
+    /// The published fw-v0.6 images, from an extracted copy of the release.
     ///
-    /// Skipped (and passes) when the directory is absent.
-    // TODO(doc-review): the path is a past session's scratch directory, so on
-    // any other machine or session this test never runs.
+    /// Ignored by default, because it needs the release on disk. Run it with
+    /// `TAGPROGRAM_FW_V06=<dir> cargo test -p tagprogram-core -- --ignored`,
+    /// where `<dir>` is the release's `firmware/` directory (the one holding
+    /// `manifest.json` and a directory per target).
     #[test]
+    #[ignore = "needs TAGPROGRAM_FW_V06: an extracted fw-v0.6 firmware/ directory"]
     fn real_release_images() {
-        let root = Path::new(
-            "/private/tmp/claude-503/-Users-geobrown-Research-tag-designs-software/\
-             2fbf841b-360b-441c-a006-67aa9e78031d/scratchpad/fw-v0.6/x/firmware",
-        );
-        if !root.exists() {
-            eprintln!("skipped: {} absent", root.display());
-            return;
-        }
+        let root = std::env::var_os("TAGPROGRAM_FW_V06")
+            .map(std::path::PathBuf::from)
+            .expect("set TAGPROGRAM_FW_V06 to an extracted fw-v0.6 firmware/ directory");
+        assert!(root.is_dir(), "{} is not a directory", root.display());
         let bit = load_firmware_image(&root.join("BitTag/BitTag.elf"), Some("fw-v0.6"));
         assert!(bit.usable(), "{}", bit.error);
         assert!(bit.manifest_verified);

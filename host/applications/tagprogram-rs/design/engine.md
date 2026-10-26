@@ -97,6 +97,11 @@ worker would need a second owner for `Tag`; it has not been done.
 - the Retest flash read-back (`tagprobe::read_memory`);
 - the release catalog refresh and release downloads.
 
+If a worker's job panics, `spawn_work` catches it and posts
+`worker_panicked` instead of the result. That clears every busy flag, ends a
+running session as `FAILED: internal error (...)` and tells the operator, so
+the station never stays busy until a restart.
+
 While a worker owns the base, `worker_busy` is set. Polls, attaches and
 commands that would touch the USB device are refused until it clears. The
 monitor link (`Tag`) and probe-rs must never hold the base at the same time,

@@ -195,7 +195,7 @@ pub fn plan_flash(path: &Path) -> FlashPlan {
         Ok(s) => s,
         Err(e) => {
             return FlashPlan::invalid(format!(
-                "{p} is {e}; qtprogram needs the firmware's .elf, whose symbols say what to erase."
+                "{p} is {e}; Tag Programmer needs the firmware's .elf, whose symbols say what to erase."
             ));
         }
     };
@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(
             p.error,
             format!(
-                "{} is not a 32-bit little-endian ELF file; qtprogram needs the firmware's .elf, \
+                "{} is not a 32-bit little-endian ELF file; Tag Programmer needs the firmware's .elf, \
                  whose symbols say what to erase.",
                 path.display()
             )

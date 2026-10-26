@@ -79,7 +79,7 @@ and view state are. Tag Programmer's is
 | `Kit.promptText(title, label, initial, placeholder)` | A one-line text prompt. Resolves with the text, or `null`. |
 | `Kit.chooseFromList(title, label, items, current)` | Pick one string. Resolves with its index, or `null`. |
 | `Kit.openFile({title, filters, defaultPath})` / `Kit.saveFile(…)` | Native file dialogs through Tauri's dialog plugin. In a browser, a text prompt for the path. |
-| `Kit.openUrl(url)` / `Kit.revealPath(path)` | Open a URL, or show a file in its folder, through Tauri's opener plugin. In a browser, a new tab, or an alert naming the path. |
+| `Kit.openUrl(url)` / `Kit.revealPath(path, title)` | Open a URL, or show a file in its folder, through Tauri's opener plugin. In a browser, a new tab, or an alert naming the path. |
 
 Most dialog texts come from the engine. The few that a UI writes itself,
 such as a confirmation, should copy the Qt application's wording exactly.

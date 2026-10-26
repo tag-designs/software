@@ -41,7 +41,7 @@ use std::sync::Arc;
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use log::{info, warn};
+use log::{error, info, warn};
 use serde_json::{Value, json};
 use tagcore::proto::{Status, TagInfo, TagState, TestResult};
 use tagcore::{Tag, UsbDev};
@@ -263,6 +263,11 @@ pub(crate) struct Station {
     prompt_seq: u64,
     /// `start` has been received; later ones are ignored.
     started: bool,
+    /// [`Self::begin_checks`] has run; it runs once.
+    checks_begun: bool,
+    /// The bases the outstanding `chooseBase` prompt lists, in its order, so
+    /// its answer names the base the operator saw.
+    base_choices: Vec<UsbDev>,
 }
 
 /// Milliseconds since the Unix epoch, now; 0 if the clock is before it.
@@ -369,6 +374,8 @@ impl Station {
             prompt: None,
             prompt_seq: 0,
             started: false,
+            checks_begun: false,
+            base_choices: Vec::new(),
         }
     }
 
@@ -400,9 +407,9 @@ impl Station {
     /// it must re-check anything that may have changed meanwhile. The caller sets
     /// any busy flag (such as [`Self::worker_busy`]) and `apply` clears it.
     ///
-    /// If the engine thread has gone, the result is dropped. A panic in `work`
-    /// kills only the worker, and `apply` never runs -- so a busy flag it was to
-    /// clear stays set.
+    /// If the engine thread has gone, the result is dropped. If `work`
+    /// panics, `apply` never runs; [`Self::worker_panicked`] runs instead, so
+    /// the busy flags are cleared and the operator is told.
     pub(crate) fn spawn_work<T: Send + 'static>(
         &self,
         work: impl FnOnce() -> T + Send + 'static,
@@ -410,9 +417,45 @@ impl Station {
     ) {
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = work();
-            let _ = tx.send(Msg::Done(Box::new(move |s: &mut Station| apply(s, result))));
+            let done: Box<dyn FnOnce(&mut Station) + Send> =
+                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
+                    Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
+                    Err(panic) => {
+                        let what = panic
+                            .downcast_ref::<&str>()
+                            .map(|s| (*s).to_owned())
+                            .or_else(|| panic.downcast_ref::<String>().cloned())
+                            .unwrap_or_else(|| "unknown panic".to_owned());
+                        Box::new(move |s: &mut Station| s.worker_panicked(&what))
+                    }
+                };
+            let _ = tx.send(Msg::Done(done));
         });
+    }
+
+    /// Recovers from a worker whose work panicked: clears every flag a worker
+    /// can hold (the base, a catalog refresh, a download), ends a running
+    /// session as FAILED, and tells the operator. Without this the station
+    /// stayed busy until restart.
+    fn worker_panicked(&mut self, what: &str) {
+        error!("Internal error in a background task: {what}");
+        self.worker_busy = false;
+        self.refreshing = false;
+        self.fetching = None;
+        if self.session_running() {
+            self.finish(
+                &format!("FAILED: internal error ({what})"),
+                &format!(
+                    "An internal error stopped this step ({what}). The tag may be part-programmed: program it again."
+                ),
+            );
+        } else {
+            self.alert(
+                "Internal Error",
+                &format!("A background task failed ({what}). Try again; the log has the details."),
+            );
+        }
+        self.check_firmware();
     }
 
     /// A sender for progress messages from a worker, which posts them as
@@ -639,6 +682,10 @@ impl Station {
     /// already drawn, with the Record row explaining, while that question is
     /// up. A failed open is logged and raises the `recordFile` prompt.
     fn begin_checks(&mut self) {
+        if self.checks_begun {
+            return;
+        }
+        self.checks_begun = true;
         self.set(
             Check::Programmer,
             Level::Ok,
@@ -755,6 +802,7 @@ impl Station {
             })
             .collect();
         let current = bases.iter().position(|b| b.serial == saved).unwrap_or(0);
+        self.base_choices = bases.to_vec();
         let label = if bases.len() > 1 {
             "Several bases are connected. Use:"
         } else {
@@ -783,15 +831,16 @@ impl Station {
         self.raise_base_prompt(&bases);
     }
 
-    /// Uses the base at `index` in a fresh USB listing, as the answer to
-    /// `chooseBase`. An index past the end is ignored.
+    /// Uses the base at `index` in the list the `chooseBase` prompt showed,
+    /// as its answer. An index past the end is ignored.
     ///
-    /// The listing is taken again here, so it is assumed to be in the same
-    /// order as when the prompt was raised; a base plugged or unplugged
-    /// meanwhile can shift the indices.
+    /// The list is the one the operator saw, not a fresh USB listing, so a
+    /// base plugged or unplugged while the prompt was open cannot shift the
+    /// choice. A chosen base that has since gone fails at attach, where it is
+    /// found again by serial.
     fn choose_base(&mut self, index: usize) {
-        let bases = tagprobe::list();
-        if let Some(b) = bases.get(index) {
+        let choices = std::mem::take(&mut self.base_choices);
+        if let Some(b) = choices.get(index) {
             self.use_base(b.clone());
         }
     }
@@ -868,10 +917,9 @@ impl Station {
     /// attach begins ([`Self::attach_tag`]); on failure the Firmware check is
     /// re-run against what is known.
     ///
-    /// If no base is known, [`Self::check_base`] runs first; with automatic
-    /// attach on, that can itself call `attach` (through `use_base` and
-    /// `base_ready`), after which this call carries on and starts a second
-    /// connect check.
+    /// If no base is known, [`Self::check_base`] runs first. With automatic
+    /// attach on, that can itself attach (through `use_base` and
+    /// `base_ready`); this call then stops, so one connect check runs.
     pub(crate) fn attach(&mut self) {
         if self.busy() {
             return;
@@ -879,6 +927,9 @@ impl Station {
         self.forget_tag();
         if !self.have_base {
             self.check_base();
+            if self.busy() {
+                return;
+            }
         }
         let Some(base) = self.find_base() else {
             self.set(

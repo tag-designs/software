@@ -415,7 +415,7 @@
   $("retest").addEventListener("click", retestDialog);
   $("next-tag").addEventListener("click", () => send("next_tag"));
   $("attach").addEventListener("click", () => send("attach"));
-  $("show-csv").addEventListener("click", () => state.recordPath && Kit.revealPath(state.recordPath));
+  $("show-csv").addEventListener("click", () => state.recordPath && Kit.revealPath(state.recordPath, "Show CSV"));
   $("retry").addEventListener("click", () => send("retry_connect"));
   $("cancel").addEventListener("click", () => send("cancel_session"));
 

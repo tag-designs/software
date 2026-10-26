@@ -47,6 +47,27 @@ const USER_AGENT: &str = "tagprogram";
 const VERIFIED_MARKER: &str = ".verified";
 /// File in the cache directory holding the last listing.
 const LISTING_FILE: &str = "releases.json";
+/// Most pages of the release listing [`Catalog::refresh`] follows, 100
+/// releases each: a bound on a server whose `Link` header never ends.
+pub const MAX_LISTING_PAGES: usize = 20;
+
+/// The `rel="next"` URL of a GitHub `Link` header, if there is one.
+///
+/// ```
+/// use tagprogram_core::model::catalog::next_page;
+/// let link = r#"<https://api.github.com/x?page=2>; rel="next", <https://api.github.com/x?page=5>; rel="last""#;
+/// assert_eq!(next_page(link).as_deref(), Some("https://api.github.com/x?page=2"));
+/// assert_eq!(next_page(r#"<https://api.github.com/x?page=1>; rel="prev""#), None);
+/// ```
+pub fn next_page(link: &str) -> Option<String> {
+    link.split(',').find_map(|part| {
+        let (url, params) = part.split_once(';')?;
+        params
+            .split(';')
+            .any(|p| p.trim() == r#"rel="next""#)
+            .then(|| url.trim().trim_start_matches('<').trim_end_matches('>').to_owned())
+    })
+}
 
 /// A firmware release tag: `fw-v` and dot-separated decimal numbers.
 static FIRMWARE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^fw-v\d+(\.\d+)*$").unwrap());
@@ -379,28 +400,42 @@ impl Catalog {
     /// On failure the offered releases are unchanged. A 403 or 429 is
     /// reported as the rate limit; anything else as the transport's error.
     ///
-    /// The request has a 30 s overall timeout. Only the first 100 releases
-    /// are requested (`per_page=100`; no pagination). A failure to write
-    /// `releases.json` is ignored: the listing is still offered, just not
-    /// kept for offline use.
+    /// Each request has a 30 s overall timeout. The listing comes 100
+    /// releases a page; further pages are followed through the `Link`
+    /// header's `rel="next"`, up to [`MAX_LISTING_PAGES`]. A failure to write
+    /// `releases.json` is logged as a warning: the listing is still offered,
+    /// just not kept for offline use.
     ///
     /// # Errors
     ///
     /// The rate-limit message, an HTTP status error, or a transport error,
     /// each as display-ready text.
     pub fn refresh(&self) -> Result<(), String> {
-        let reply = Self::client(Duration::from_secs(30))?
-            .get(RELEASES_URL)
-            .header("Accept", "application/vnd.github+json")
-            .send()
-            .map_err(|e| e.to_string())?;
-        let status = reply.status().as_u16();
-        if status == 403 || status == 429 {
-            return Err("GitHub refused the listing (rate limit); try again later.".into());
+        let client = Self::client(Duration::from_secs(30))?;
+        let mut listed = Vec::new();
+        let mut url = Some(RELEASES_URL.to_owned());
+        for _ in 0..MAX_LISTING_PAGES {
+            let Some(page) = url.take() else { break };
+            let reply = client
+                .get(&page)
+                .header("Accept", "application/vnd.github+json")
+                .send()
+                .map_err(|e| e.to_string())?;
+            let status = reply.status().as_u16();
+            if status == 403 || status == 429 {
+                return Err("GitHub refused the listing (rate limit); try again later.".into());
+            }
+            let reply = reply.error_for_status().map_err(|e| e.to_string())?;
+            url = reply
+                .headers()
+                .get("link")
+                .and_then(|v| v.to_str().ok())
+                .and_then(next_page);
+            listed.extend(parse_releases(&reply.text().map_err(|e| e.to_string())?));
         }
-        let reply = reply.error_for_status().map_err(|e| e.to_string())?;
-        let listed = parse_releases(&reply.text().map_err(|e| e.to_string())?);
-        let _ = std::fs::write(self.cache_dir.join(LISTING_FILE), listing_to_json(&listed));
+        if let Err(e) = std::fs::write(self.cache_dir.join(LISTING_FILE), listing_to_json(&listed)) {
+            log::warn!("Could not save the release listing for offline use: {e}");
+        }
         self.set_releases(listed);
         Ok(())
     }

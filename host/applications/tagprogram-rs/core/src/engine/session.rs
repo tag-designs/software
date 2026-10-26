@@ -288,7 +288,8 @@ impl Station {
 
     /// qtprogram's `Station::retest`.
     ///
-    /// Silently ignored while a session runs or the record is not OK. Picks the
+    /// Refused, with an alert saying why, while a session runs or the record
+    /// is not OK. Picks the
     /// image with the tag's commit ([`Station::retest_image`]) and starts a
     /// retest session. A tag not attached is reattached first -- which resets
     /// it -- and the session ends FAILED, with a row, if it does not answer.
@@ -297,7 +298,13 @@ impl Station {
     /// the read-back starts.
     pub(crate) fn retest(&mut self, label: &str) {
         self.check_record();
-        if self.session_running() || self.level(Check::Record) != super::station::Level::Ok {
+        if self.session_running() {
+            self.alert("Retest Tag", "Programming is in progress.");
+            return;
+        }
+        if self.level(Check::Record) != super::station::Level::Ok {
+            let why = self.text(Check::Record).to_owned();
+            self.alert("Retest Tag", &why);
             return;
         }
         let label = label.trim().to_owned();
@@ -829,7 +836,12 @@ impl Station {
             .as_ref()
             .is_some_and(|s| s.running && s.step == Step::PowerCycle)
         {
-            self.set_step(Step::Connecting, "Connecting to the new image");
+            let text = if self.sess().retest {
+                "Connecting to the tag"
+            } else {
+                "Connecting to the new image"
+            };
+            self.set_step(Step::Connecting, text);
             self.start_timer();
         }
     }
@@ -844,7 +856,12 @@ impl Station {
         let Some(s) = self.session.as_ref().filter(|s| s.cancellable()) else {
             return;
         };
-        if s.step == Step::PowerCycle {
+        if s.step == Step::PowerCycle && s.retest {
+            self.finish(
+                "NO_ANSWER",
+                "The tag never answered after its flash was read. Power-cycle it and press Attach; if it still does not answer, program it again.",
+            );
+        } else if s.step == Step::PowerCycle {
             self.finish(
                 "NO_ANSWER",
                 "Programmed, but the tag never answered. Power-cycle it and press Attach; if it still does not answer, program it again.",
@@ -859,7 +876,7 @@ impl Station {
     /// Ends the session with `result` and `message`: stops the tick, shows
     /// the message on the step line, and writes the record
     /// ([`Station::write_record`]).
-    fn finish(&mut self, result: &str, message: &str) {
+    pub(crate) fn finish(&mut self, result: &str, message: &str) {
         info!("{message}");
         let s = self.sess();
         s.tick_at = None;
@@ -960,11 +977,11 @@ impl Station {
             Some(Ok(())) => true,
             Some(Err(e)) => {
                 error!(
-                    "The record was NOT written: {e}. Row: {}",
+                    "The record was NOT written: {e} Row: {}",
                     row.fields().join(",")
                 );
                 message =
-                    format!("{message}\n\nThe record was NOT written: {e}. The row is in the log.");
+                    format!("{message}\n\nThe record was NOT written: {e} The row is in the log.");
                 false
             }
             None => {

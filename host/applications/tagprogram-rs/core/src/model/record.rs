@@ -368,17 +368,12 @@ impl RecordLog {
     /// # Errors
     ///
     /// `"Cannot write <path> (<reason>)."` when the file cannot be opened or
-    /// written, or "Cannot write  (No record file is open)." with no file
-    /// open.
+    /// written, or "No record file is open." with no file open.
     pub fn append(&mut self, record: &ProgramRecord) -> Result<(), String> {
-        let shown = self
-            .path
-            .as_ref()
-            .map(|p| p.display().to_string())
-            .unwrap_or_default();
         let Some(path) = &self.path else {
-            return Err(format!("Cannot write {shown} (No record file is open)."));
+            return Err("No record file is open.".into());
         };
+        let shown = path.display().to_string();
         let fields = record.fields();
         let line = fields
             .iter()
