@@ -369,6 +369,12 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
 
+    // The idle loop advances by the interval, so a zero one never ends.
+    if cli.idle > 0 && cli.interval <= 0 {
+        eprintln!("--interval must be at least 1 second with --idle");
+        return ExitCode::FAILURE;
+    }
+
     let tag = Tag::new();
     let dev = select_base::<Cli>(&tag, &cli.base);
     if !tag.attach(&dev) {
@@ -476,7 +482,6 @@ fn main() -> ExitCode {
     // Keepalive, or the control without it.
     if cli.idle > 0 {
         let (mut calls, mut call_failures) = (0, 0);
-        // As in the C++, an --interval of 0 or less never ends.
         let mut t = 0;
         while t < cli.idle {
             sleep(Duration::from_secs(cli.interval.max(0) as u64));

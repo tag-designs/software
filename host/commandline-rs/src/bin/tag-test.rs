@@ -14,7 +14,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use clap::Parser;
 use tag_tools::{BaseArgs, enum_name, exit_on_interrupt, init_logging, select_base, state_name};
 use tagcore::Tag;
-use tagcore::proto::{Status, TagState, TestReq, TestResult, state};
+use tagcore::proto::{TagState, TestReq, TestResult, state};
 
 /// sets the RTC and executes tag self-tests
 #[derive(Parser)]
@@ -85,9 +85,8 @@ fn main() -> ExitCode {
     let tag = Tag::new();
     let dev = select_base::<Cli>(&tag, &cli.base);
     let Some(requested_test) = parse_test_req(&cli.test) else {
-        // As in the C++, an invalid test name exits 0.
-        println!("Invalid test: {}", cli.test);
-        return ExitCode::SUCCESS;
+        eprintln!("Invalid test: {}", cli.test);
+        return ExitCode::FAILURE;
     };
     if !tag.attach(&dev) {
         eprintln!("Attach failed");
@@ -130,15 +129,17 @@ fn main() -> ExitCode {
         println!("Clock drift after setting: {f:.2}");
     }
 
-    // A failed read leaves the default status, whose state is not IDLE.
-    let mut status = Status::default();
-    if let Ok(s) = tag.status() {
-        status = s;
-        if !status.debug_message.is_empty() {
-            eprint!("{}", status.debug_message);
+    let mut status = match tag.status() {
+        Ok(status) => status,
+        Err(_) => {
+            eprintln!("GetStatus failed: {}", tag.debug_message());
+            return ExitCode::FAILURE;
         }
-        println!("State: {}", state_name(status.state));
+    };
+    if !status.debug_message.is_empty() {
+        eprint!("{}", status.debug_message);
     }
+    println!("State: {}", state_name(status.state));
 
     let mut next = 0;
     while let Ok(log) = tag.state_log(next) {
@@ -157,8 +158,9 @@ fn main() -> ExitCode {
     }
 
     if status.state != TagState::Idle as i32 {
+        // No test ran, so there is no result.
         println!("#  State not idle ! Exiting");
-        return ExitCode::SUCCESS;
+        return ExitCode::FAILURE;
     }
 
     println!("#  Running test {}", requested_test.as_str_name());

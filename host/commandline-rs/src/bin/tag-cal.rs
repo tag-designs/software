@@ -7,15 +7,17 @@
 //! ends), the format calibration front ends read. Ctrl-C ends the stream and
 //! the tag is stopped.
 //!
-//! Exits 0 after streaming, and also when the tag is not IDLE (as the C++
-//! does); 1 if the attach, the first status read, the clock sync, the
-//! calibrate request or the final stop fails.
+//! Exits 0 after streaming; 1 if the tag is not IDLE, or the attach, the
+//! first status read, the clock sync, the calibrate request or the final
+//! stop fails.
 
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::sleep;
+use std::time::Duration;
 
 use clap::Parser;
-use tag_tools::{BaseArgs, init_logging, select_base};
+use tag_tools::{BaseArgs, init_logging, select_base, state_name};
 use tagcore::Tag;
 use tagcore::proto::{TagState, ack};
 
@@ -36,7 +38,8 @@ fn fail(message: impl std::fmt::Display) -> ExitCode {
 }
 
 /// Streams the calibration log until Ctrl-C or a failed fetch, printing one
-/// `Raw:` line per sample. Floats print with two decimals, as the C++ sets
+/// `Raw:` line per sample. The firmware buffers samples between requests, so
+/// requests are 100 ms apart, qtcalibrate's streaming interval. Floats print with two decimals, as the C++ sets
 /// `std::fixed` with precision 2; a missing sensor prints as zeros.
 fn stream_samples(tag: &Tag) {
     while EXECUTE.load(Ordering::SeqCst) {
@@ -47,10 +50,11 @@ fn stream_samples(tag: &Tag) {
                 break;
             }
         };
-        let Some(ack::Payload::CalibrationLog(log)) = reply.payload else {
-            continue;
+        let samples = match reply.payload {
+            Some(ack::Payload::CalibrationLog(log)) => log.data,
+            _ => Vec::new(),
         };
-        for sample in &log.data {
+        for sample in &samples {
             let mut line = String::from("Raw:");
             match &sample.accel {
                 Some(a) => line.push_str(&format!("{:.2},{:.2},{:.2},", a.ax, a.ay, a.az)),
@@ -63,6 +67,7 @@ fn stream_samples(tag: &Tag) {
             }
             print!("{line}\r\n");
         }
+        sleep(Duration::from_millis(100));
     }
 }
 
@@ -85,8 +90,7 @@ fn main() -> ExitCode {
         Err(_) => return fail(format!("GetStatus failed: {}", tag.debug_message())),
     };
     if status.state != TagState::Idle as i32 {
-        eprintln!("Tag not idle");
-        return ExitCode::SUCCESS;
+        return fail(format!("Tag not idle: {}", state_name(status.state)));
     }
 
     if tag.set_rtc().is_err() {

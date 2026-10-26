@@ -1,13 +1,15 @@
 //! `tag-reset`: stop, erase, and return a tag to the idle state.
 //!
 //! Port of `host/commandline/tag-reset.cc`. Waits for the tag to report a
-//! definite state after the attach reset, stops it if it is RUNNING or
-//! HIBERNATING, erases it if it is then FINISHED or ABORTED and polls until
-//! the erase reaches IDLE, and optionally syncs its clock (`--set-rtc`).
+//! definite state after the attach reset, stops it if it is RUNNING,
+//! HIBERNATING or CONFIGURED and polls until it is FINISHED or ABORTED,
+//! erases it and polls until the erase reaches IDLE, and optionally syncs its
+//! clock (`--set-rtc`).
 //!
-//! Exits 0 with the final state printed; 1 if the attach, a status read, the
-//! stop, the erase or the clock sync fails, the tag never settles, or the
-//! erase does not reach IDLE within `--reset-timeout`.
+//! Exits 0 with the tag IDLE; 1 if the attach, a status read, the stop, the
+//! erase or the clock sync fails, the tag never settles, does not stop
+//! within `--stop-timeout` or reach IDLE within `--reset-timeout`, or is in
+//! a state it cannot be reset from (TEST, CALIBRATE, EXCEPTION).
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -32,6 +34,11 @@ struct Cli {
     /// Seconds to wait for the erase to finish
     #[arg(long, default_value_t = 180, value_name = "SECONDS")]
     reset_timeout: u64,
+
+    /// Seconds to wait for a running tag to reach a stopped state. The stop
+    /// request is posted and acknowledged before the state machine acts on it
+    #[arg(long, default_value_t = 30, value_name = "SECONDS")]
+    stop_timeout: u64,
 
     /// Seconds to wait for the tag to report a definite state after attach.
     /// Attach connects under reset, so the first status can legitimately be
@@ -92,21 +99,47 @@ fn main() -> ExitCode {
     report_debug(&status);
     println!("{}", proto::debug_string(&status));
 
-    if status.state == TagState::Running as i32 || status.state == TagState::Hibernating as i32 {
+    // The states in which the firmware accepts a stop as ending an
+    // acquisition (monitor_acquisition_active() in monitor.c).
+    let acquiring = [
+        TagState::Running,
+        TagState::Hibernating,
+        TagState::Configured,
+    ];
+    if acquiring.iter().any(|s| status.state == *s as i32) {
         if tag.stop().is_err() {
             return fail(format!("Stop failed: {}", tag.debug_message()));
         }
-        println!("State: {}", state_name(status.state));
-        status = match tag.status() {
-            Ok(status) => status,
-            Err(_) => {
-                return fail(format!(
-                    "GetStatus after stop failed: {}",
-                    tag.debug_message()
-                ));
+        // Stop is posted, not performed: poll for the stopped state as
+        // tag-stop does, rather than trust one read straight afterwards.
+        const STOP_POLL: Duration = Duration::from_secs(2);
+        let tries = cli.stop_timeout.div_ceil(2).max(1);
+        let mut stopped = false;
+        for _ in 0..tries {
+            status = match tag.status() {
+                Ok(status) => status,
+                Err(_) => {
+                    return fail(format!(
+                        "GetStatus after stop failed: {}",
+                        tag.debug_message()
+                    ));
+                }
+            };
+            if status.state == TagState::Finished as i32 || status.state == TagState::Aborted as i32
+            {
+                stopped = true;
+                break;
             }
-        };
+            sleep(STOP_POLL);
+        }
         report_debug(&status);
+        if !stopped {
+            return fail(format!(
+                "Tag did not reach a stopped state within {} s; last state {}",
+                cli.stop_timeout,
+                state_name(status.state)
+            ));
+        }
     }
 
     println!("State: {}", state_name(status.state));
@@ -146,6 +179,18 @@ fn main() -> ExitCode {
                 state_name(status.state)
             ));
         }
+    }
+
+    // Anything but IDLE here is a reset that did not happen. Checking first
+    // also keeps --set-rtc to IDLE, the only state the firmware accepts it in.
+    if status.state != TagState::Idle as i32 {
+        eprintln!(
+            "Tag is {}; it can be reset only from RUNNING, HIBERNATING, CONFIGURED, FINISHED \
+             or ABORTED",
+            state_name(status.state)
+        );
+        println!("Final state: {}", state_name(status.state));
+        return ExitCode::FAILURE;
     }
 
     if cli.set_rtc {

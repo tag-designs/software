@@ -58,27 +58,25 @@ These need a library that the Rust crate does not have yet:
 - Log lines keep the `log.c` layout (`HH:MM:SS LEVEL file:line: message`),
   with Rust source paths.
 
-The C++ quirks below are kept, so that the two versions behave alike. Each one
-should be fixed in both versions together:
+Porting turned up a set of C++ faults, now fixed in both versions together
+(`b2c907ef` on `main` for the C++):
 
-- `tag-start`: a start the tag refuses prints "Start failed" but exits 0.
-- `tag-cal`: a tag that is not IDLE prints "Tag not idle" but exits 0. It also
-  polls the calibration log with no delay between requests.
-- `tag-reset`: after a stop it prints the state from before the stop, and
-  erases only if a single status read already shows FINISHED or ABORTED.
-  `--set-rtc` is attempted in any final state.
-- `tag-test`: an unknown `--test` value, or a failed status read before the
-  test, exits 0.
-- `tag-test-example`: a failed attach exits 0 with no message.
-- `tag-peek`: an unparseable address reads address 0.
-- `tag-side-channel-check`: `--idle` with `--interval 0` loops forever.
-- `qtmonitor-fixture-capture`: the "multiple bases" list prints the bus and
-  address as raw characters, `--debug` does nothing, and
-  `--capture-default-config` is accepted but does nothing.
-- `tag-monitor-test`: it stops waiting for a monitor call as soon as one
-  DEMCR read succeeds (it tests the flag with `~`, not `!`), and ignores most
-  register failures. On the BitTag below, both versions fail at attach with
-  ST-LINK status 0x81.
+- Failures that exited 0 now exit 1: `tag-start` when the tag refuses the
+  start, `tag-cal` on a tag that is not IDLE, `tag-test` for an unknown test,
+  a failed status read or a tag not IDLE, and `tag-test-example` when attach
+  fails.
+- `tag-reset` also stops a CONFIGURED tag, polls for the stop
+  (`--stop-timeout`), and exits 1 unless the tag ends IDLE, so `--set-rtc`
+  is sent only to an IDLE tag.
+- `tag-monitor-test` follows `TagMonitor`'s L4 attach and call sequence,
+  ends its session with MONITORSTOP, and attaches again.
+- `tag-peek` rejects an address it cannot parse; `tag-side-channel-check`
+  rejects `--idle` with `--interval 0`; `qtmonitor-fixture-capture` prints
+  bus:address as numbers and logs with `--debug`; `tag-cal` waits 100 ms
+  between calibration-log reads.
+
+`qtmonitor-fixture-capture --capture-default-config` still does nothing: it
+names the default, as its help says.
 
 ## How they were checked
 
@@ -91,10 +89,13 @@ the same source tree, and the two outputs were compared:
   `tag-test` (self-tests passed), `tag-test-example`, `tag-cal` (refused, as
   BitTag has no calibration mode), `tag-side-channel-check`,
   `tag-attach-cycle`, `qtmonitor-fixture-capture` (the fixture files too), and
-  `tag-monitor-test` (the same failure).
+  `tag-monitor-test`.
 - **The state tools:** `tag-start --set-rtc`, `tag-stop` and `tag-reset` each
   took the tag through CONFIGURED, FINISHED and back to IDLE, with each step
-  printing the same output as the C++ tool.
+  printing the same output as the C++ tool. After the fixes, `tag-cal`
+  refused the started tag with exit 1, and `tag-reset` stopped it, waited for
+  FINISHED and erased it to IDLE, in both versions; the argument checks and
+  `tag-monitor-test` printed the same in both.
 
 Not checked on hardware: `--config`/`--merge` (the merge itself is covered by
 tagcore-rs unit tests), the opt-in write, start and unplug checks of

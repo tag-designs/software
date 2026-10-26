@@ -1,21 +1,29 @@
 //! `tag-monitor-test`: tests the monitor interface.
 //!
-//! Port of `host/commandline/tag-monitor-test.cc`. A bench experiment rather
-//! than a tool: it opens the ST-LINK directly (no `TagMonitor`), halts and
-//! single-step-arms the core, pokes DCRDR/DEMCR with a few raw monitor
-//! requests, then runs the L4 DebugMonitor handshake (version, SHA, buffer
-//! size, MONITORSTART) with its own simplified call loop. It exits 0 once
-//! attached, or 1 if the attach failed.
+//! Port of `host/commandline/tag-monitor-test.cc`. Drives the STM32L4
+//! DebugMonitor handshake directly over [`LinkAdapt`], without tagcore's
+//! `TagMonitor`, as an independent check of the interface: reset into the
+//! monitor, read the version, SHA string and buffer size, send MONITORSTART,
+//! print what was read and end the session with MONITORSTOP. It follows the
+//! same rules as `TagMonitor`:
 //!
-//! It writes debug registers freely and leaves the session to the firmware's
-//! timeout; do not point it at a tag mid-run.
+//! - debug control is programmed before reset is released, because standby
+//!   can power-cycle the core debug block (writes after that fault, ST-LINK
+//!   status 0x81);
+//! - DCRDR is both request and response mailbox, so a request is written
+//!   only when MON_PEND and MON_REQ are clear, and a call waits for MON_REQ
+//!   to clear before reading the result;
+//! - C_MASKINTS is never left set, since it survives the halt release and
+//!   stalls the firmware with every interrupt masked.
+//!
+//! STM32L4 only. Exits 0 once the handshake completes, 1 otherwise.
 
 use std::process::ExitCode;
 use std::thread::sleep;
 use std::time::Duration;
 
 use clap::{CommandFactory, Parser};
-use log::{debug, error};
+use log::{debug, error, warn};
 use tag_tools::{BaseArgs, exit_on_interrupt, init_logging, parse_bus_device};
 use tagcore::monitor_abi::{command_word, info, op};
 use tagcore::{LinkAdapt, UsbDev};
@@ -28,7 +36,6 @@ struct Cli {
     base: BaseArgs,
 }
 
-// ARM debug registers.
 const DHCSR: u32 = 0xE000_EDF0;
 const DCRDR: u32 = 0xE000_EDF8;
 const DEMCR: u32 = 0xE000_EDFC;
@@ -36,8 +43,8 @@ const DEMCR: u32 = 0xE000_EDFC;
 const DBGKEY: u32 = 0xA05F << 16;
 const C_DEBUGEN: u32 = 1 << 0;
 const C_HALT: u32 = 1 << 1;
-const C_STEP: u32 = 1 << 2;
 const C_MASKINTS: u32 = 1 << 3;
+const S_HALT: u32 = 1 << 17;
 
 const VC_CORERESET: u32 = 1;
 const MON_REQ: u32 = 1 << 19;
@@ -71,181 +78,169 @@ impl TestMonitor {
         }
     }
 
-    /// The SHA string up to its first NUL, as `%s` prints it.
+    /// The SHA string up to its first NUL.
     fn sha(&self) -> String {
         let end = self.sha_str.iter().position(|&b| b == 0).unwrap_or(48);
         String::from_utf8_lossy(&self.sha_str[..end]).into_owned()
     }
 
-    /// Reads a debug register; a failed read leaves `*value` unchanged, as
-    /// the C++ out-parameter does.
-    fn read_debug(&mut self, addr: u32, value: &mut u32) -> bool {
-        match self.link.read_debug32(addr) {
-            Some(v) => {
-                *value = v;
-                true
-            }
-            None => false,
-        }
-    }
-
-    /// Posts a DebugMonitor request and reads its result from DCRDR.
+    /// Runs one monitor operation and returns its result word.
     ///
-    /// Write and read failures are ignored, as in the C++. Its completion
-    /// test is `~(demcr & MON_REQ)`, a bitwise NOT that is never zero, so
-    /// the wait ends after the first DEMCR read and the timeout branch is
-    /// unreachable; that is kept. A failed result read leaves `*result`
-    /// unchanged.
-    fn call(&mut self, operation: u8, operand: i32, result: Option<&mut u32>) -> bool {
-        const TIMEOUT: u32 = 500;
-        let mut demcr: u32 = 0;
-
+    /// MONITORSTOP is not waited for, since the tag may sleep as soon as it
+    /// sees it, and returns 0. `None` if not attached, the monitor is still
+    /// busy, a register access fails, or the handler does not answer within
+    /// 2.5 s.
+    fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
+        const TIMEOUT_MS: u32 = 2500;
         if !self.link.is_attached() {
             error!("monitor not attached");
-            return false;
+            return None;
+        }
+        let Some(demcr) = self.link.read_debug32(DEMCR) else {
+            error!("DEMCR read failed");
+            return None;
+        };
+        if demcr & (MON_PEND | MON_REQ) != 0 {
+            error!("monitor busy: demcr=0x{demcr:x}");
+            return None;
+        }
+        // VC_CORERESET is the attachment flag the firmware reads.
+        if !(self
+            .link
+            .write_debug32(DCRDR, command_word(operation, operand))
+            && self.link.write_debug32(
+                DEMCR,
+                demcr | TRCENA | MON_EN | MON_PEND | MON_REQ | VC_CORERESET,
+            ))
+        {
+            error!("monitor request write failed");
+            return None;
+        }
+        if operation == op::MONITORSTOP {
+            sleep(ms(5));
+            return Some(0);
         }
 
-        // write debug request data (operand,operation)
-        self.link
-            .write_debug32(DCRDR, command_word(operation, operand));
-        sleep(ms(1));
-
-        // Set MON_PEND, MON_REQ in DEMCR. VC_CORERESET is the attachment
-        // flag the embedded app reads; it also halts the core at the reset
-        // vector after a reset.
-        self.link
-            .write_debug32(DEMCR, TRCENA | MON_PEND | MON_REQ | MON_EN | VC_CORERESET);
-
-        let mut i = 0;
-        while i < TIMEOUT * 5 {
-            self.read_debug(DEMCR, &mut demcr);
-            if !(demcr & MON_REQ) != 0 {
-                break;
+        let mut last = demcr;
+        let mut answered = false;
+        for _ in 0..TIMEOUT_MS {
+            if let Some(d) = self.link.read_debug32(DEMCR) {
+                last = d;
+                if d & MON_REQ == 0 {
+                    answered = true;
+                    break;
+                }
             }
             sleep(ms(1));
-            i += 1;
         }
-
-        if i == TIMEOUT * 5 {
-            error!("monitor call timed out\n");
-            return false;
+        if !answered {
+            error!("monitor call timed out op=0x{operation:x} operand={operand} demcr=0x{last:x}");
+            return None;
         }
-
-        if let Some(result) = result {
-            self.read_debug(DCRDR, result);
-            debug!(
-                "operation = 0x{operation:x} operand = 0x{operand:x} result = 0x{:x}\n",
-                *result
-            );
-        }
-        true
+        let Some(result) = self.link.read_debug32(DCRDR) else {
+            error!("monitor result read failed");
+            return None;
+        };
+        debug!("operation = 0x{operation:x} operand = 0x{operand:x} result = 0x{result:x}");
+        Some(result)
     }
 
-    /// Opens the probe with reset held, halts and arms the core, issues three
-    /// raw test requests, then runs the monitor handshake.
+    /// Resets the tag into its monitor and starts a session; on failure the
+    /// link is closed.
     fn attach(&mut self, usbdev: &UsbDev) -> bool {
         if self.link.is_attached() {
             error!("Already attached");
             return false;
         }
-
-        if self.handshake(usbdev) {
-            return true;
-        }
-        // try detach to clean up
-        self.detach();
-        false
-    }
-
-    /// The body of `attach`; false when it should clean up and fail.
-    fn handshake(&mut self, usbdev: &UsbDev) -> bool {
         if !self.link.attach_with_reset(true, usbdev) {
             error!("Attach failed");
             return false;
         }
         sleep(ms(20));
-        self.link.assert_reset(true);
+        if self.handshake() {
+            return true;
+        }
+        self.link.detach();
+        false
+    }
 
-        self.link.write_debug32(DHCSR, DBGKEY | C_HALT | C_DEBUGEN);
+    /// The steps of [`attach`](Self::attach) after the probe is open, with
+    /// the core held in reset.
+    fn handshake(&mut self) -> bool {
+        // Program debug control while the core is still held in reset.
+        let Some(demcr) = self.link.read_debug32(DEMCR) else {
+            error!("debug setup failed");
+            return false;
+        };
+        if !(self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN)
+            && self.link.write_debug32(
+                DEMCR,
+                (demcr | TRCENA | MON_EN | VC_CORERESET) & !(MON_REQ | MON_PEND),
+            ))
+        {
+            error!("debug setup failed");
+            return false;
+        }
+        if !self.link.assert_reset(true) {
+            error!("reset release failed");
+            return false;
+        }
         sleep(ms(50));
-        self.link
-            .write_debug32(DHCSR, DBGKEY | C_MASKINTS | C_STEP | C_DEBUGEN);
-        self.link.write_debug32(DEMCR, TRCENA | VC_CORERESET);
-        self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN);
 
-        let mut dhcsr = 0;
-        self.read_debug(DHCSR, &mut dhcsr);
-        debug!("read dhcsr 0x{dhcsr:x}\n");
-
-        // do a simple test
-        let mut tmp2 = 0;
-        for (request, tag) in [(4u32, ""), (0x200, " (2)"), (0x300, " (3)")] {
-            self.link.write_debug32(DCRDR, request);
-            self.link.write_debug32(DEMCR, 0x10B_0001);
-            self.read_debug(DEMCR, &mut tmp2);
-            debug!("tmp = 0x{tmp2:x}\n");
-            self.read_debug(DCRDR, &mut tmp2);
-            debug!("tmp{tag} = 0x{tmp2:x}\n");
-        }
-
-        // Call monitor to get pointer to information block
-        let mut version = self.version;
-        if !self.call(
-            op::TAG_MONITORINFO,
-            info::MONITORVERSION,
-            Some(&mut version),
-        ) {
-            error!("couldn't fetch monitor version information");
-            self.link.detach();
-            return false;
-        }
-        self.version = version;
-        debug!("Monitor Version 0x{:x}", self.version);
-
-        let mut tmp = 0u32;
-        if !self.call(op::TAG_MONITORINFO, info::TAGSHASTR, Some(&mut tmp)) {
-            // The C++ detaches here but carries on; the next call then fails
-            // as not attached.
-            error!("Couldn't find the address of the sha string");
-            self.link.detach();
-        } else {
-            let mut sha = [0u8; 48];
-            if !self.link.read_mem32(tmp, &mut sha) {
-                error!("read_mem failed\n");
-                self.link.detach();
-                return false;
+        if let Some(dhcsr) = self.link.read_debug32(DHCSR) {
+            debug!("read dhcsr 0x{dhcsr:x}");
+            // Clear a C_MASKINTS another tool left set; only possible while
+            // halted, in a write that keeps C_HALT.
+            if dhcsr & C_MASKINTS != 0 && dhcsr & S_HALT != 0 {
+                self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN | C_HALT);
             }
-            self.sha_str = sha;
         }
-        debug!("Tag Hash String 0x{tmp:x}, {}\n", self.sha());
+        if !self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN) {
+            warn!("halt release failed");
+        }
 
-        if !self.call(op::TAG_MONITORINFO, info::MONITORBUFSIZE, Some(&mut tmp)) {
-            error!("couldn't fetch monitor buffer length");
-            self.link.detach();
+        let Some(version) = self.call(op::TAG_MONITORINFO, info::MONITORVERSION) else {
+            error!("couldn't fetch monitor version information");
+            return false;
+        };
+        self.version = version;
+        debug!("Monitor Version 0x{version:x}");
+
+        let Some(sha_addr) = self.call(op::TAG_MONITORINFO, info::TAGSHASTR) else {
+            error!("Couldn't find the address of the sha string");
+            return false;
+        };
+        let mut sha = [0u8; 48];
+        if !self.link.read_mem32(sha_addr, &mut sha) {
+            error!("read_mem failed");
             return false;
         }
-        self.maxpacket = tmp as usize;
+        self.sha_str = sha;
+        debug!("Tag Hash String 0x{sha_addr:x}, {}", self.sha());
 
-        // Uninitialised in the C++; zero here, so a failed read means failure.
-        let mut success = 0u32;
-        if !self.call(op::MONITORSTART, 0, Some(&mut success)) || success == 0 {
+        let Some(size) = self.call(op::TAG_MONITORINFO, info::MONITORBUFSIZE) else {
+            error!("couldn't fetch monitor buffer length");
+            return false;
+        };
+        self.maxpacket = size as usize;
+
+        if !matches!(self.call(op::MONITORSTART, 0), Some(s) if s != 0) {
             error!("Monitor Start failed");
-            self.link.detach();
             return false;
         }
         true
     }
 
-    /// Clears the monitor bits in DEMCR and releases the probe; does nothing
-    /// when not attached. Sends no MONITORSTOP.
+    /// Ends the session with MONITORSTOP and releases the link. The firmware
+    /// clears its own debug state on MONITORSTOP and may sleep at once, so
+    /// nothing else is written.
     fn detach(&mut self) {
         if !self.link.is_attached() {
             return;
         }
-        let mut demcr = 0;
-        self.read_debug(DEMCR, &mut demcr);
-        self.link
-            .write_debug32(DEMCR, demcr & !(VC_CORERESET | MON_PEND | MON_REQ | MON_EN));
+        if self.call(op::MONITORSTOP, 0).is_none() {
+            error!("Monitor Stop failed during detach");
+        }
         self.link.detach();
     }
 }
@@ -285,13 +280,17 @@ fn main() -> ExitCode {
     let dev = select_device(&monitor.link, &cli.base);
     if !monitor.attach(&dev) {
         eprintln!("Attach failed");
-        // Exiting 0 here reported success from a tool that never reached
-        // the tag, which a script cannot tell apart from a completed
-        // operation.
         return ExitCode::FAILURE;
     }
-
-    // catch ctl-c
     exit_on_interrupt();
+
+    println!(
+        "Monitor version 0x{:x}, buffer {} bytes, SHA {}",
+        monitor.version,
+        monitor.maxpacket,
+        monitor.sha()
+    );
+    // End the session rather than leave it to the firmware's timeout.
+    monitor.detach();
     ExitCode::SUCCESS
 }

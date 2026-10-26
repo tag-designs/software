@@ -30,41 +30,20 @@ struct Cli {
     addr: Vec<String>,
 }
 
-/// Parses an address as `strtoul(text, nullptr, 0)` does: leading
-/// whitespace, optional sign, `0x` hex or leading-`0` octal, stopping at the
-/// first invalid character. Unparsable text yields 0, a negative value wraps
-/// and an overflow saturates, then the result is truncated to 32 bits, as
-/// the C++ cast does.
-fn strtoul(text: &str) -> u32 {
-    let s = text.trim_start();
-    let (negative, s) = match s.as_bytes().first() {
-        Some(b'-') => (true, &s[1..]),
-        Some(b'+') => (false, &s[1..]),
-        _ => (false, s),
+/// Parses an address as `strtoull(text, &end, 0)` would, but only when the
+/// whole argument is a number that fits in 32 bits: `0x` hex, leading-`0`
+/// octal or decimal, no sign. `None` for anything else, rather than the
+/// address 0 that `strtoul` returns for text it cannot parse.
+fn parse_address(text: &str) -> Option<u32> {
+    let (radix, digits) = match text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+        Some(hex) => (16, hex),
+        None if text.len() > 1 && text.starts_with('0') => (8, &text[1..]),
+        None => (10, text),
     };
-    let (radix, digits) = match s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        Some(hex) if hex.chars().next().is_some_and(|c| c.is_ascii_hexdigit()) => (16, hex),
-        _ if s.starts_with('0') => (8, s),
-        _ => (10, s),
-    };
-    let mut value: u64 = 0;
-    let mut overflow = false;
-    for c in digits.chars() {
-        let Some(d) = c.to_digit(radix) else { break };
-        match value
-            .checked_mul(u64::from(radix))
-            .and_then(|v| v.checked_add(u64::from(d)))
-        {
-            Some(v) => value = v,
-            None => overflow = true,
-        }
+    if digits.is_empty() || digits.starts_with(['+', '-']) {
+        return None;
     }
-    if overflow {
-        value = u64::MAX;
-    } else if negative {
-        value = value.wrapping_neg();
-    }
-    value as u32
+    u32::from_str_radix(digits, radix).ok()
 }
 
 fn main() -> ExitCode {
@@ -86,7 +65,11 @@ fn main() -> ExitCode {
 
     let mut rc = ExitCode::SUCCESS;
     for addr_str in addrs {
-        let addr = strtoul(addr_str);
+        let Some(addr) = parse_address(addr_str) else {
+            eprintln!("not an address: {addr_str}");
+            rc = ExitCode::FAILURE;
+            continue;
+        };
         let mut value = [0u8; 4];
         let result = tag.read_memory(addr, &mut value);
         if result != MemAccess::Ok {
@@ -101,16 +84,19 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
-    use super::strtoul;
+    use super::parse_address;
 
     #[test]
-    fn addresses_parse_like_strtoul() {
-        assert_eq!(strtoul("0xE000EDFC"), 0xE000_EDFC);
-        assert_eq!(strtoul("536870912"), 0x2000_0000);
-        assert_eq!(strtoul("010"), 8);
-        assert_eq!(strtoul("12abc"), 12);
-        assert_eq!(strtoul("zzz"), 0);
-        assert_eq!(strtoul("-4"), 0xFFFF_FFFC);
-        assert_eq!(strtoul("0x"), 0);
+    fn addresses_must_be_whole_32_bit_numbers() {
+        assert_eq!(parse_address("0xE000EDFC"), Some(0xE000_EDFC));
+        assert_eq!(parse_address("536870912"), Some(0x2000_0000));
+        assert_eq!(parse_address("010"), Some(8));
+        assert_eq!(parse_address("0"), Some(0));
+        assert_eq!(parse_address("12abc"), None);
+        assert_eq!(parse_address("zzz"), None);
+        assert_eq!(parse_address("-4"), None);
+        assert_eq!(parse_address("0x"), None);
+        assert_eq!(parse_address("0x100000000"), None);
+        assert_eq!(parse_address(""), None);
     }
 }

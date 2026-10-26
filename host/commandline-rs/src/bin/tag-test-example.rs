@@ -2,7 +2,7 @@
 //!
 //! Port of `host/commandline/test-example.cc`. Syncs the tag clock, waits
 //! two seconds, reads the tag's time and prints its offset from the host
-//! clock in seconds. As in the C++, a failed attach exits 0 silently.
+//! clock in seconds.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -49,6 +49,9 @@ fn main() -> ExitCode {
         // std::ostream's default double format: %g, six significant digits.
         let error = (status.millis - now_ms) as f64 / 1000.0;
         println!("Clock Error: {}", format_g(error, 6, 6, |_| true));
+    } else {
+        eprintln!("Attach failed");
+        return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
 }

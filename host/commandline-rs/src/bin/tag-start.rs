@@ -196,8 +196,9 @@ fn main() -> ExitCode {
     }
 
     if start_attempted && start_failed {
+        // The tag refused the start ("Start failed" above).
         println!("Last known state: {}", state_name(status.state));
-        return ExitCode::SUCCESS;
+        return ExitCode::FAILURE;
     }
 
     // Start() returns when the request is accepted; the state machine acts

@@ -90,6 +90,7 @@ struct Capture {
     capture_default_config: bool,
     sanitize: bool,
     print_summary: bool,
+    debug: bool,
 }
 
 impl From<Cli> for Capture {
@@ -106,6 +107,7 @@ impl From<Cli> for Capture {
             capture_default_config: !cli.no_config,
             sanitize: cli.sanitize,
             print_summary: cli.print_summary,
+            debug: cli.debug,
         }
     }
 }
@@ -304,12 +306,7 @@ fn select_device(tag: &Tag, capture: &Capture) -> Option<UsbDev> {
     if devs.len() > 1 {
         eprintln!("Multiple tag bases found; select one with --base:");
         for d in &devs {
-            // The C++ streams the uint8_t bus and address, which print as
-            // characters rather than numbers; kept.
-            eprintln!(
-                "  {}:{} 0x{:x}:0x{:x}",
-                d.bus as char, d.address as char, d.vid, d.pid
-            );
+            eprintln!("  {}:{} 0x{:x}:0x{:x}", d.bus, d.address, d.vid, d.pid);
         }
         return None;
     }
@@ -441,9 +438,12 @@ fn print_summary(capture: &Capture, info: &TagInfo, status: &Status, voltage: f3
 
 fn main() -> ExitCode {
     let capture = Capture::from(Cli::parse());
-    // The C++ sets log_set_quiet(true), so nothing is logged even with
-    // --debug.
-    init_logging_at(LevelFilter::Off);
+    // Quiet unless --debug.
+    init_logging_at(if capture.debug {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Off
+    });
 
     let tag = Tag::new();
     let Some(dev) = select_device(&tag, &capture) else {
