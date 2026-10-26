@@ -3,7 +3,7 @@
 
 use std::time::{Duration, Instant};
 
-use log::{error, warn};
+use log::{debug, error, warn};
 
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns, libusb_name};
 
@@ -43,6 +43,15 @@ pub const USB_PID_STLINK_V3_PWR: u16 = 0x3757;
 
 /// Timeout for one USB bulk transfer.
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_millis(1500);
+
+// The tag bases' identify command and reply; the firmware side is
+// STLINK_TAGBASE_* in embedded/bases/common/inc/stlink.h.
+const TAGBASE_COMMAND: u8 = 0xF6;
+const TAGBASE_IDENTIFY: u8 = 0x99;
+const TAGBASE_IDENTIFY_LEN: usize = 128;
+const TAGBASE_IDENTIFY_FORMAT: u8 = 1;
+/// A base answers at once; a probe that does not know the command may never.
+const TAGBASE_IDENTIFY_TIMEOUT: Duration = Duration::from_millis(300);
 
 pub(super) fn unpack16(buf: &[u8]) -> u16 {
     u16::from_le_bytes([buf[0], buf[1]])
@@ -204,6 +213,52 @@ impl LinkAdapt {
             self.stats.rw_status_ns += elapsed_ns(start);
         }
         Some(status)
+    }
+}
+
+impl LinkAdapt {
+    /// Asks the base which board and firmware it is, with the tag bases' own
+    /// `F6 99` command (port of `LinkAdapt::BaseIdentity()`).
+    ///
+    /// A base built with the command answers with
+    /// `base=<target>;fw=<git hash>;dirty=<0|1>;date=<commit date>;stlink=V2J37S7`.
+    /// A base built before it answers with a 2-byte FAULT, or (2022 firmware)
+    /// not at all, so the reply is read with a short timeout; both give
+    /// `None`, as does a probe that is not open. Sends nothing to the target.
+    pub fn base_identity(&mut self) -> Option<String> {
+        let handle = self.handle.as_ref()?;
+        let mut cmd = [0u8; 16];
+        cmd[0] = TAGBASE_COMMAND;
+        cmd[1] = TAGBASE_IDENTIFY;
+        if handle
+            .write_bulk(self.ep_out, &cmd, USB_TRANSFER_TIMEOUT)
+            .ok()?
+            != cmd.len()
+        {
+            return None;
+        }
+        let mut reply = [0u8; TAGBASE_IDENTIFY_LEN];
+        let n = match handle.read_bulk(self.ep_in, &mut reply, TAGBASE_IDENTIFY_TIMEOUT) {
+            Ok(n) => n,
+            Err(e) => {
+                debug!(
+                    "base identify: no reply ({}); not a tag base, or one that predates the command",
+                    libusb_name(&e)
+                );
+                return None;
+            }
+        };
+        if n != reply.len()
+            || reply[0] != 0x80
+            || reply[1] != 0
+            || reply[2] != TAGBASE_IDENTIFY_FORMAT
+        {
+            debug!("base identify: {n}-byte reply; the base predates the command");
+            return None;
+        }
+        let text = &reply[4..];
+        let end = text.iter().position(|&b| b == 0).unwrap_or(text.len());
+        Some(String::from_utf8_lossy(&text[..end]).into_owned())
     }
 }
 

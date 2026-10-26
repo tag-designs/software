@@ -152,6 +152,11 @@ fn print_json(tag: &Tag) -> ExitCode {
         return ExitCode::FAILURE;
     };
     let mut out = String::from("{");
+    // Plain ASCII from the base firmware's target name and git metadata,
+    // with nothing JSON would need escaped.
+    if let Some(base) = tag.base_identity() {
+        out.push_str(&format!("\"base\":\"{base}\","));
+    }
     if let Some(sha) = tag.git_sha() {
         out.push_str(&format!("\"tag_sha\":\"{sha}\","));
     }
@@ -247,6 +252,10 @@ fn main() -> ExitCode {
         return print_json(&tag);
     }
 
+    match tag.base_identity() {
+        Some(base) => println!("Base: {base}"),
+        None => println!("Base: unidentified (its firmware predates the identify command)"),
+    }
     if let Some(sha) = tag.git_sha() {
         println!("Tag SHA: {sha}");
     }

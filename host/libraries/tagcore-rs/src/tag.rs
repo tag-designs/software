@@ -244,6 +244,13 @@ impl Tag {
         self.lock().monitor.voltage()
     }
 
+    /// The base's identity from the tag bases' identify command; see
+    /// [`LinkAdapt::base_identity`](crate::LinkAdapt::base_identity). `None`
+    /// when the base predates the command or no base is attached.
+    pub fn base_identity(&self) -> Option<String> {
+        self.lock().monitor.link.base_identity()
+    }
+
     /// The firmware's git SHA, read at attach; `None` when detached.
     pub fn git_sha(&self) -> Option<String> {
         let inner = self.lock();
