@@ -8,7 +8,7 @@
 
 use std::time::Instant;
 
-use log::error;
+use log::{debug, error, warn};
 
 use super::stlink::{self, debug_cmd, unpack16, unpack32};
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns};
@@ -98,9 +98,23 @@ impl LinkAdapt {
         }
         let status = unpack16(&result);
         if status != stlink::DEBUG_ERR_OK {
-            error!("read debug register 0x{addr:x} failed status=0x{status:x}");
+            // Callers poll; a base can fail a burst of reads (status 0x81)
+            // and then recover, so only the first of a run is an error.
+            self.debug_read_failures += 1;
+            if self.debug_read_failures == 1 {
+                error!("read debug register 0x{addr:x} failed status=0x{status:x}");
+            } else {
+                debug!("read debug register 0x{addr:x} failed status=0x{status:x}");
+            }
             return None;
         }
+        if self.debug_read_failures > 1 {
+            warn!(
+                "{} debug register reads failed in a row before 0x{addr:x} read",
+                self.debug_read_failures
+            );
+        }
+        self.debug_read_failures = 0;
         if INSTRUMENTED {
             self.stats.read_debug_calls += 1;
             self.stats.read_debug_ns += elapsed_ns(start);

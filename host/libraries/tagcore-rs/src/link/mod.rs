@@ -126,6 +126,8 @@ pub struct LinkAdapt {
     ep_in: u8,
     ep_out: u8,
     stats: LinkAdaptStats,
+    /// Debug-register reads failed in a row, so a burst is logged once.
+    debug_read_failures: u32,
 }
 
 impl Default for LinkAdapt {
@@ -147,6 +149,7 @@ impl LinkAdapt {
             ep_in: 0,
             ep_out: 0,
             stats: LinkAdaptStats::default(),
+            debug_read_failures: 0,
         }
     }
 

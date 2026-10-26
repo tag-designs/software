@@ -86,7 +86,8 @@ impl TagMonitor {
         let mut answered = false;
         for _ in 0..call_timeout_ms {
             match self.link.read_debug32(DEMCR) {
-                None => error!("read_mem failed"),
+                // read_debug32 logs the failure; keep polling.
+                None => {}
                 Some(d) => {
                     demcr = d;
                     if d & MON_REQ == 0 {
@@ -107,7 +108,6 @@ impl TagMonitor {
             if let Some(result) = self.link.read_debug32(DCRDR) {
                 return Some(result);
             }
-            error!("read_mem failed");
             sleep(ms(1));
         }
         error!(
