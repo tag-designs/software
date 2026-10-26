@@ -760,23 +760,27 @@ uint32_t SWD_writeReg(uint32_t idx, uint32_t value)
   return 1;
 }
 
-// The following two routines aren't fully functional
-//
-
+/*
+ * DAP register access for READ_DAP_REG and WRITE_DAP_REG.
+ *
+ * dap above 0xff (hosts send 0xFFFF) selects the debug port; otherwise it is
+ * the AP number. For a DP register, reg carries the register address in bits
+ * [3:0] and its bank (SELECT.DPBANKSEL) in bits [7:4], as ST-LINK hosts encode
+ * it. DP reads are not posted, so the value arrives in the read itself; AP
+ * reads are posted, so the value is fetched from RDBUFF. SELECT is returned to
+ * 0 afterwards, the state the rest of this file assumes.
+ */
 uint32_t SWD_ReadDAPReg(uint16_t dap, uint16_t reg, uint32_t *data)
 {
   uint32_t tmp;
   uint32_t req;
-  // Register  bbbbnn00
-  // Bank is four bits, register number is 2 bits (shifted)
   if (dap > 0xff)
   { // read debug port
-    tmp = (reg & 0xf);
+    tmp = (reg >> 4) & 0xf; // DPBANKSEL
     TRANSACTION(SW_SELECT_WR, &tmp);
     req = SW_REQ_RnW | SW_REQ_PARK_START | ((reg & 0xC) << 1);
     req |= Parity(req) ? SW_REQ_PARITY : 0;
     TRANSACTION(req, data);
-    TRANSACTION(SW_RDBUFF_RD, data);
   }
   else
   {
@@ -789,8 +793,8 @@ uint32_t SWD_ReadDAPReg(uint16_t dap, uint16_t reg, uint32_t *data)
     TRANSACTION(req, data);
     // discard result and read from rdbuff
     TRANSACTION(SW_RDBUFF_RD, data);
-    // restore select register
   }
+  // restore select register
   tmp = 0;
   TRANSACTION(SW_SELECT_WR, &tmp);
   return 0;
@@ -802,8 +806,8 @@ uint32_t SWD_WriteDAPReg(uint16_t dap, uint16_t reg, uint32_t data)
   uint32_t req;
   if (dap > 0xff)
   { // Write debug port
-    tmp = reg & 0xf;
-    TRANSACTION(SW_SELECT_WR, &tmp);  
+    tmp = (reg >> 4) & 0xf; // DPBANKSEL
+    TRANSACTION(SW_SELECT_WR, &tmp);
     req = SW_REQ_PARK_START | ((reg & 0xC) << 1);
     req |= Parity(req) ? SW_REQ_PARITY : 0;
     TRANSACTION(req, &data);
@@ -817,7 +821,6 @@ uint32_t SWD_WriteDAPReg(uint16_t dap, uint16_t reg, uint32_t data)
     req = SW_REQ_APnDP | SW_REQ_PARK_START | ((reg & 0xC) << 1);
     req |= Parity(req) ? SW_REQ_PARITY : 0;
     TRANSACTION(req, &data);
-    
   }
   // restore select register
   tmp = 0;

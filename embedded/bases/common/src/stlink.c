@@ -282,7 +282,11 @@ int stlink_eval(uint8_t *buf)
     while (0 < len)
     {
       int tmplen = len > DATABUFSIZE ? DATABUFSIZE : len;
+      // A genuine ST-LINK answers a 1-byte read with 2 bytes, and hosts
+      // such as probe-rs wait for both: send the byte and a zero pad.
+      int txlen = tmplen == 1 ? 2 : tmplen;
       len -= tmplen;
+      databuf[1] = 0;
       if (!swderr)
         swderr = SWD_readMem8(addr, databuf, tmplen);
       if (swderr)
@@ -290,9 +294,9 @@ int stlink_eval(uint8_t *buf)
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
         EPRINTF("error on mem8 read: 0x%x..0x%x err %d\r\n",
                 addr, addr + tmplen, swderr);
-        bzero(databuf, tmplen);
+        bzero(databuf, txlen);
       }
-      if (BULK_Transmit(databuf, tmplen) == 0)
+      if (BULK_Transmit(databuf, txlen) == 0)
       {
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
         EPRINTF("error on mem8 read transmit: 0x%x..0x%x\r\n",
