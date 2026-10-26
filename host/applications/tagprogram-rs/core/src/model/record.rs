@@ -4,6 +4,15 @@
 //! attempt, appended as it ends; the file is RFC 4180 CSV (UTF-8, quoted only
 //! where a field needs it) so a spreadsheet opens it. The first seven columns
 //! are the specification's and identify the file; the rest follow.
+//!
+//! The file is the station's audit trail: every attempt is appended, failed
+//! ones included, and rows are never rewritten. Rows are written with LF line
+//! ends; files with CRLF (as a spreadsheet may save them) are read too. The
+//! engine also reads the open file's rows back to warn when a label or a
+//! UUID has been recorded before ([`RecordLog::labels_for_uuid`],
+//! [`RecordLog::uuids_for_label`]). The default location,
+//! `Documents/Tag Programmer/programmed-tags.csv`, is the engine's choice,
+//! not this module's.
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -11,6 +20,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// The columns, in file order.
+///
+/// Written as the first line of a new record. `voltage_v` holds
+/// [`ProgramRecord::voltage`].
 pub const HEADER: [&str; 14] = [
     "label",
     "tag_type",
@@ -29,10 +41,15 @@ pub const HEADER: [&str; 14] = [
 ];
 /// Header columns a file must start with to be accepted as a record.
 const REQUIRED_COLUMNS: usize = 7;
+/// Index of `label` in [`HEADER`].
 const LABEL_COLUMN: usize = 0;
+/// Index of `uuid` in [`HEADER`].
 const UUID_COLUMN: usize = 2;
 
 /// One attempt (qtprogram's `ProgramRecord`).
+///
+/// [`ProgramRecord::fields`] turns it into a row. The default has an empty
+/// text in every column, the Unix epoch as its date and an unknown voltage.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ProgramRecord {
     /// The board's physical label, typed by the operator.
@@ -62,10 +79,12 @@ pub struct ProgramRecord {
     pub voltage: f64,
     /// The base's ST-LINK serial.
     pub probe_serial: String,
-    /// The program's version.
+    /// The program's version; this port writes `tagprogram-rs <version>`
+    /// so its rows can be told from qtprogram's.
     pub host_version: String,
 }
 
+/// Empty texts, [`DateTime::UNIX_EPOCH`] and an unknown (-1) voltage.
 impl Default for ProgramRecord {
     fn default() -> Self {
         ProgramRecord {
@@ -116,6 +135,15 @@ impl ProgramRecord {
 
 /// `field` as it is written: quoted, with quotes doubled, only if it holds a
 /// comma, a quote or a line break.
+///
+/// # Examples
+///
+/// ```
+/// use tagprogram_core::model::record::quote;
+///
+/// assert_eq!(quote("plain"), "plain");
+/// assert_eq!(quote("say \"hi\""), "\"say \"\"hi\"\"\"");
+/// ```
 pub fn quote(field: &str) -> String {
     if !field.contains([',', '"', '\n', '\r']) {
         return field.to_string();
@@ -125,6 +153,12 @@ pub fn quote(field: &str) -> String {
 
 /// Parses CSV text into rows of fields. Accepts LF or CRLF line ends and
 /// quoted fields spanning lines; blank lines are skipped.
+///
+/// Lenient rather than validating, so a hand-edited file still opens: a
+/// quote inside an unquoted field starts quoting there, text after a closing
+/// quote is appended to the field, and an unterminated quote runs to the end
+/// of the text. A line holding only a comma is a row of two empty fields,
+/// not a blank line. Rows may have any number of fields.
 pub fn parse(text: &str) -> Vec<Vec<String>> {
     let mut rows = Vec::new();
     let mut row = Vec::new();
@@ -186,6 +220,8 @@ fn reason(e: &std::io::Error) -> String {
     }
 }
 
+/// Appends `value` to `list` unless it is empty or already there, keeping
+/// first-seen order.
 fn add_distinct(list: &mut Vec<String>, value: &str) {
     if !value.is_empty() && !list.iter().any(|v| v == value) {
         list.push(value.to_string());
@@ -193,9 +229,17 @@ fn add_distinct(list: &mut Vec<String>, value: &str) {
 }
 
 /// The open record file and the rows read from it.
+///
+/// Port of qtprogram's `RecordLog`. The file is not held open between calls:
+/// each append opens it, writes one line and closes it, so another program
+/// may read it while the station runs. Rows appended by anything else after
+/// [`RecordLog::open`] are not seen until the file is opened again.
 #[derive(Debug, Default)]
 pub struct RecordLog {
+    /// The open record file; `None` when no file is open.
     path: Option<PathBuf>,
+    /// The file's data rows, header excluded: those read at open plus those
+    /// appended since.
     rows: Vec<Vec<String>>,
 }
 
@@ -207,7 +251,13 @@ impl RecordLog {
 
     /// Opens an existing record, reading its rows.
     ///
-    /// Errors: the file does not exist or cannot be read, or its first line
+    /// The file is decoded as UTF-8, lossily, and parsed with [`parse`].
+    /// Columns after the seventh need not match [`HEADER`], so a record from
+    /// an older or newer version still opens.
+    ///
+    /// # Errors
+    ///
+    /// The file does not exist or cannot be read, or its first line
     /// does not start with the header's first seven columns. On error the
     /// previously open file stays open.
     pub fn open(&mut self, path: &Path) -> Result<(), String> {
@@ -238,7 +288,13 @@ impl RecordLog {
 
     /// Creates a new record holding only the header, and opens it.
     ///
-    /// Errors: the file already exists, or it cannot be written.
+    /// The header line is [`HEADER`], comma-joined, with an LF. The parent
+    /// directory must exist.
+    ///
+    /// # Errors
+    ///
+    /// `"<path> already exists."`, or `"Cannot create <path>: <reason>."` when
+    /// it cannot be written. On error the previously open file stays open.
     pub fn create(&mut self, path: &Path) -> Result<(), String> {
         let p = path.display();
         if path.exists() {
@@ -280,6 +336,13 @@ impl RecordLog {
     /// Checks the open file can be appended to, as before an attempt: a
     /// spreadsheet holding it locked must be found before a tag is erased,
     /// not after.
+    ///
+    /// Opens the file for appending and closes it again; nothing is written.
+    ///
+    /// # Errors
+    ///
+    /// "No record file is open.", or
+    /// `"Cannot write <path> (<reason>). Close it in any other program."`
     pub fn writable(&self) -> Result<(), String> {
         let Some(path) = &self.path else {
             return Err("No record file is open.".into());
@@ -298,6 +361,15 @@ impl RecordLog {
     }
 
     /// Appends `record` as one line and flushes it.
+    ///
+    /// Fields are quoted with [`quote`] and the line ends with LF. The row is
+    /// added to [`RecordLog::rows`] only once the write has succeeded.
+    ///
+    /// # Errors
+    ///
+    /// `"Cannot write <path> (<reason>)."` when the file cannot be opened or
+    /// written, or "Cannot write  (No record file is open)." with no file
+    /// open.
     pub fn append(&mut self, record: &ProgramRecord) -> Result<(), String> {
         let shown = self
             .path
@@ -325,6 +397,9 @@ impl RecordLog {
     }
 
     /// Distinct non-empty labels recorded for `uuid`, oldest first.
+    ///
+    /// Matching is exact (case-sensitive). Used to tell the operator which
+    /// labels a board already carries in the record.
     pub fn labels_for_uuid(&self, uuid: &str) -> Vec<String> {
         let mut out = Vec::new();
         for row in self
@@ -338,6 +413,10 @@ impl RecordLog {
     }
 
     /// Distinct non-empty UUIDs recorded for `label`, oldest first.
+    ///
+    /// Matching is exact (case-sensitive); rows too short to have a UUID
+    /// column are ignored. Used to detect a label already recorded for
+    /// another tag, which the operator must confirm.
     pub fn uuids_for_label(&self, label: &str) -> Vec<String> {
         let mut out = Vec::new();
         for row in self
@@ -351,11 +430,13 @@ impl RecordLog {
     }
 }
 
+/// Unit tests of quoting, parsing and the record file's lifecycle.
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::TimeZone;
 
+    /// A BitTag row for `label` and `uuid` whose result needs quoting.
     fn record(label: &str, uuid: &str) -> ProgramRecord {
         ProgramRecord {
             label: label.into(),

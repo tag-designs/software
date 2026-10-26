@@ -78,6 +78,7 @@ design document.
 - [0032. Host: configuration shape from default configs, fixed panels per tag type](decisions/0032-host-config-shape-and-fixed-panels.md) *(decision)* — Which Config fields a tag supports comes from its default config, read at run time by tagcore's ConfigShape, which also gives Restore and tag-start --merge one merge rule; qtmonitor's configuration screen is fixed panels selected by tag type; the change was proven equivalent on the host by a probe and golden results; tag-reported presence through proto3 optional fields was deferred.
 - [0033. Host: qtmonitor as a configuration editor, with menus and Start checks](decisions/0033-host-qtmonitor-editor-menus-start-checks.md) *(decision)* — qtmonitor became a configuration editor (Open makes a file the document, replacing Restore's merge into the tag), its buttons became actions in in-window menus with Start and Stop kept beside a status strip, and Start checks clock (2 s), the tag's reported self-test and an Approved box, warning with continue or cancel rather than refusing; Help menus share one user-guide finder.
 - [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
+- [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
 
 ### Investigations
 
@@ -391,7 +392,9 @@ design document.
 ### Applications / tagprogram-rs
 
 - [Tag Programmer (Rust)](../host/applications/tagprogram-rs/README.md) — Tag Programmer in Rust - qtprogram's station and programming session ported to a toolkit-free engine, programming through probe-rs instead of STM32CubeProgrammer, with a Tauri shell over a web front end.
+- [Building and packaging Tag Programmer](../host/applications/tagprogram-rs/design/build-and-packaging.md) — How Tag Programmer is built and shipped - the cargo workspace, what build.rs stages and why, the CMake target that wraps cargo, the per-platform install layout and signing, the CI build, the third-party notices, and the platform pitfalls each of those choices answers.
 - [qtprogram (Tag Programmer v2.0): functional and visual specification](../host/applications/tagprogram-rs/design/qtprogram-spec.md) *(results)* — A functional and visual specification of qtprogram (Tag Programmer v2.0), read from its source and manual, that the Rust port reproduces.
+- [Tag Programmer engine](../host/applications/tagprogram-rs/design/engine.md) — How Tag Programmer's engine works - one thread that owns all state, the message loop and its deadline timers, worker threads for slow work, the station's checks and attach path, the programming session's step machine, and the hazards a maintainer must not reintroduce.
 - [Tag Programmer: UI/engine contract](../host/applications/tagprogram-rs/design/ui-engine-contract.md) — The contract between Tag Programmer's engine and its web UI - the view state the engine publishes, the commands and queries the UI sends, the prompts - and the model API the engine is built on.
 
 ### Command Line
@@ -475,10 +478,12 @@ design document.
 ### Libraries / tagcore-rs
 
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+- [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
 
 ### Libraries / tagprobe-rs
 
 - [tagprobe (Rust)](../host/libraries/tagprobe-rs/README.md) — tagprobe - programming, connect checks and flash read-back for tags through a base, on probe-rs, with a field-safe ST-LINK driver for bases whose firmware predates the identify command.
+- [tagprobe design](../host/libraries/tagprobe-rs/design/architecture.md) — How tagprobe programs tags through probe-rs - choosing a driver from the base's identity, how the field-safe driver maps probe-rs's DAP model onto the commands every base supports, one session per operation under reset, the program sequence (erase plan, verify, PEMPTY, start), and the threading and base-sharing rules callers must keep.
 
 ### Proposals
 

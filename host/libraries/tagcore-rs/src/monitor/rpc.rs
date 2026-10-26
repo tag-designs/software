@@ -1,5 +1,13 @@
 //! Protobuf RPC framing over either transport: serialise the request into
 //! the firmware's call buffer, run PROTOBUF, read back and decode the reply.
+//!
+//! Port of `TagMonitor::Rpc`. The wire format is plain protobuf with no
+//! length prefix: the request length travels as the PROTOBUF operand and
+//! the reply length as the call's result word. Request and reply share the
+//! firmware's call buffer, so the reply overwrites the request. Transfers
+//! are rounded up to whole words because the memory-access path is 32-bit
+//! only; the padding bytes are whatever was in the host staging buffer and
+//! are ignored by the decoder, which is given the exact length.
 
 use std::time::Instant;
 
@@ -24,6 +32,14 @@ impl TagMonitor {
     /// [`Ack::err`] code. Returns `None`, with the reason logged, if not
     /// attached, the request does not fit the call buffer, the link or
     /// monitor call fails, or the reply does not decode.
+    ///
+    /// The request must leave two bytes spare in the call buffer (as the
+    /// C++ requires), and a reported reply length larger than the call
+    /// buffer is rejected rather than read. A firmware refusal is not a
+    /// failure here: it is an [`Ack`] with a non-OK `err`, and the caller
+    /// decides. Blocks for as long as the transport's call timeout (about
+    /// 120 s for a protobuf call on STM32L4, a few seconds on STM32U3).
+    /// Updates [`TagMonitorStats`](super::TagMonitorStats).
     pub fn rpc(&mut self, req: &Req) -> Option<Ack> {
         let rpc_start = Instant::now();
 

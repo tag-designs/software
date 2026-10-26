@@ -41,7 +41,9 @@ a folder, one file per concern, so each question has one place to look:
 | `link/target.rs` | Raw target access: memory, debug registers, nRST, voltage |
 
 The attach sequences, timeouts, retry and recovery paths, and log messages
-follow the C++ code. The protocol is described in
+follow the C++ code. The layering, concurrency, error and logging model, and
+how to keep the port in step with the C++, are in
+[the design](design/architecture.md). The protocol is described in
 [`docs/shared/monitor-interface.md`](../../../docs/shared/monitor-interface.md).
 
 ## Using it

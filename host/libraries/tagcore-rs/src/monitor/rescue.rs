@@ -4,14 +4,29 @@
 //! Port of `legacy_bittag_rescue.cc`. The addresses come from the legacy
 //! BitTag firmware map and are not a general tagcore contract; they are kept
 //! here, out of the monitor proper, for that reason.
+//!
+//! Old BitTag V6 firmware that hit an exception latches the EXCEPTION
+//! state in its backup registers and then refuses internal-data log RPCs,
+//! so its data cannot be downloaded the normal way. These helpers work around that over SWD, while the monitor
+//! session is open: rewrite the state word in the RTC backup registers, or
+//! read the sample records straight out of internal flash and wrap them in
+//! the same [`Ack`] a log RPC would return. They write at most one backup
+//! register (and PWR_CR1 transiently) and never touch flash.
+//!
+//! **STM32L4 only.** Nothing checks the target family; on any other part
+//! these addresses mean something else.
 
 use log::error;
 
 use super::TagMonitor;
 use crate::proto::{Ack, BitTagData, BitTagLog, TagState, ack};
 
+/// STM32L4 PWR_CR1, which holds the backup-domain write-protection bit.
 const STM32L4_PWR_CR1: u32 = 0x4000_7000;
+/// STM32L4 RTC_BKP0R, the first of the RTC backup registers that survive
+/// standby; the firmware's `BackupState` mirror starts here.
 const STM32L4_RTC_BKP0R: u32 = 0x4000_2850;
+/// PWR_CR1.DBP: disable backup-domain write protection while set.
 const PWR_CR1_DBP: u32 = 1 << 8;
 
 /// BackupState.state is the fourth RTC backup register. Rescue writes only
@@ -19,9 +34,16 @@ const PWR_CR1_DBP: u32 = 1 << 8;
 const TAG_BACKUP_STATE_ADDR: u32 = STM32L4_RTC_BKP0R + 3 * 4;
 
 // Legacy BitTag V6 persistent layout.
+/// Flash address of the first legacy sample record (`t_DataHeader`).
 const BITTAG_VDD_HEADER_ADDR: u32 = 0x0800_7a68;
+/// End (exclusive) of the legacy persistent region: the top of the
+/// STM32L432's 256 KiB flash.
 const BITTAG_PERSISTENT_END: u32 = 0x0804_0000;
+/// Size of one legacy sample record in bytes.
 const BITTAG_DATA_HEADER_SIZE: u32 = 16;
+/// Most records returned per synthesised log Ack (the C++
+/// `kBitTagLogRecordsPerAck`); callers page by advancing `index` by the
+/// number of records each Ack carries.
 const BITTAG_LOG_RECORDS_PER_ACK: u32 = 30;
 
 /// Decodes one legacy 16-byte `t_DataHeader`: epoch (i32), temperature in
@@ -53,6 +75,14 @@ impl TagMonitor {
     /// writes the one word, restores DBP, and verifies by reading the word
     /// back. STM32L4 addresses only. Returns false if not attached or any
     /// write or the verification fails.
+    ///
+    /// Old firmware serves internal-data log RPCs only in ABORTED or
+    /// FINISHED, and reads its state from this register, so `tag-dwnld
+    /// --rescue-exception` writes ABORTED here and downloads in the same
+    /// session; no status RPC is needed (or trusted) afterwards, since the
+    /// read-back is the verification. If PWR_CR1 cannot be read, DBP is
+    /// assumed already enabled and left alone. Port of
+    /// `TagMonitor::ForceBackupState`.
     pub fn force_backup_state(&mut self, state: TagState) -> bool {
         if !self.is_attached() {
             error!("Monitor not attached");
@@ -97,6 +127,10 @@ impl TagMonitor {
     /// 0xffffffff, so this recovers the sample count when the persisted page
     /// count was lost in an exception. Returns `None` if not attached or a
     /// read fails.
+    ///
+    /// Reads one word per record until a blank record or the end of the
+    /// region, so it costs up to several thousand SWD reads on a full log.
+    /// Port of `TagMonitor::CountBitTagLogHeaders`.
     pub fn count_bittag_log_headers(&mut self) -> Option<usize> {
         if !self.is_attached() {
             error!("Monitor not attached");
@@ -121,6 +155,9 @@ impl TagMonitor {
     ///
     /// A negative `index` yields an OK Ack with an empty log. Returns `None`
     /// if not attached or a read fails.
+    ///
+    /// An empty log means there are no more records, as with the firmware's
+    /// own log RPC. Port of `TagMonitor::ReadBitTagLogFromFlash`.
     pub fn read_bittag_log_from_flash(&mut self, index: i32) -> Option<Ack> {
         if !self.is_attached() {
             error!("Monitor not attached");

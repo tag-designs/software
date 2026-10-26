@@ -4,6 +4,23 @@
 //! the NVIC; the firmware publishes `status` and `result` in the same block.
 //! The session is requested by writing the block at the reset vector, and
 //! kept alive by `host_activity`.
+//!
+//! Port of `TagMonitor::AttachU3` and `TagMonitor::CallU3`. Unlike the L4
+//! transport this uses only memory-access-port reads and writes for calls
+//! (no DCRDR, no DebugMonitor), so the core is never halted by a call. A
+//! call is: clear `result`, set `status` to IDLE, write `command`, then
+//! clear and set the kick IRQ's pending bit in the NVIC; the firmware's
+//! handler sets `status` to PENDING, runs the command, writes `result`
+//! and sets `status` to DONE. The host polls `status` once per millisecond.
+//!
+//! The firmware ends a session when `host_activity` has not been set for a
+//! heartbeat period or two
+//! ([`MONITOR_HEARTBEAT_PERIOD_S`](super::abi::MONITOR_HEARTBEAT_PERIOD_S)
+//! seconds each). Every call counts as activity, because the kick IRQ sets
+//! `host_activity`; for idle periods [`TagMonitor::keep_alive`] sets it
+//! with one SWD write that runs no code on the tag. Ordinary host writes to the block
+//! (anything but `host_activity`) can end the session, so
+//! [`TagMonitor::write_mem`] guards it.
 
 use std::thread::sleep;
 
@@ -19,6 +36,7 @@ use super::cortex_m::*;
 use super::{TagMonitor, ms};
 
 impl TagMonitor {
+    /// Reads and decodes the whole shared block; `None` on a link failure.
     pub(super) fn read_monitor_shared(&mut self) -> Option<MonitorShared> {
         let mut bytes = [0u8; MonitorShared::SIZE];
         self.link
@@ -26,10 +44,17 @@ impl TagMonitor {
             .then(|| MonitorShared::from_bytes(&bytes))
     }
 
+    /// Writes one word of the shared block at byte `offset` (one of the
+    /// [`MonitorShared`] offset constants); false on a link failure.
     pub(super) fn write_monitor_shared_word(&mut self, offset: u32, value: u32) -> bool {
         self.write_word(MONITOR_SHARED_ADDR + offset, value)
     }
 
+    /// Logs `shared` field by field, then the raw words of the whole
+    /// reserved block re-read from the tag, both at ERROR with `prefix`.
+    ///
+    /// For attach failures, where the raw words show what the firmware did
+    /// write even when the decoded fields make no sense.
     fn log_monitor_shared(&mut self, prefix: &str, shared: &MonitorShared) {
         error!(
             "{prefix} fields: request=0x{:x} abi={} debug=0x{:x} flags=0x{:x} buf=0x{:x} \
@@ -62,6 +87,20 @@ impl TagMonitor {
     }
 
     /// [`call`](Self::call) over the STM32U3 shared-block transport.
+    ///
+    /// Refuses (returning `None`, logged) unless the block shows a connected
+    /// session with no command in flight; MONITORSTOP skips that check so a
+    /// half-broken session can still be stopped. Polls `status` up to 2500
+    /// times (100 for MONITORSTOP), one memory read and a 1 ms sleep each,
+    /// and fails at once on BUSY, BAD_COMMAND or NOT_ATTACHED.
+    ///
+    /// MONITORSTOP always returns `Some`: the result if the firmware reports
+    /// DONE, 1 once it has cleared the block (request, flags and command all
+    /// zero), and 1 with a warning if the poll runs out, because the tag may
+    /// already be in standby and unreadable. Any other timeout logs a
+    /// report via [`report_u3_timeout`](Self::report_u3_timeout) and returns
+    /// `None`. The 2500-poll limit applies to protobuf calls too, as in the
+    /// C++, unlike the L4 transport's 65000.
     pub(super) fn call_u3(&mut self, operation: u8, operand: i32) -> Option<u32> {
         const TIMEOUT_MS: u32 = 2500;
         const MONITORSTOP_TIMEOUT_MS: u32 = 100;
@@ -164,6 +203,12 @@ impl TagMonitor {
 
     /// Logs the target's state after a U3 call timed out, resuming the core
     /// if only the diagnostics halted it.
+    ///
+    /// Reads the shared block, the kick IRQ's NVIC enable (ISER, 0x100 below
+    /// ISPR), pending and active words, DHCSR, DEMCR and the SCB fault
+    /// registers, then halts the core for its registers and logs one ERROR
+    /// line. Unlike the L4 report it does not look for a reset-vector catch
+    /// and never drops the session.
     fn report_u3_timeout(&mut self, operation: u8, operand: i32) {
         let shared = self.read_monitor_shared().unwrap_or_default();
         let iser = self
@@ -216,6 +261,8 @@ impl TagMonitor {
 
     /// Starts a session on an STM32U3 target. On failure the session fields
     /// are cleared; the caller closes the probe.
+    ///
+    /// Port of `TagMonitor::AttachU3`. Expects nRST held low on entry.
     pub(super) fn attach_u3(&mut self) -> bool {
         if self.attach_u3_steps() {
             return true;
@@ -224,6 +271,24 @@ impl TagMonitor {
         false
     }
 
+    /// The U3 attach sequence proper.
+    ///
+    /// 1. Arm VC_CORERESET (with the DebugMonitor bits cleared) and release
+    ///    nRST, so the core halts at its reset vector; wait up to 100 polls
+    ///    for S_HALT.
+    /// 2. While halted, zero the shared block, write
+    ///    [`MONITOR_REQUEST_MAGIC`] to `request` and clear any stale kick
+    ///    IRQ, so the firmware sees the request before its first
+    ///    instruction. Clear a stale C_MASKINTS, then resume the core.
+    /// 3. Poll up to 2000 times, setting `host_activity` each time, until
+    ///    the firmware writes [`MONITOR_CONNECTED_MAGIC`] and sets
+    ///    [`MONITOR_SHARED_FLAG_SESSION_READY`]. On timeout, log the block
+    ///    (and the last non-zero version of it seen) and fail.
+    /// 4. Check the ABI and protocol versions and the call-buffer metadata,
+    ///    and read the SHA string.
+    ///
+    /// No MONITORSTART is sent: on U3 the session starts when the firmware
+    /// sees the request. Returns false, logged, at the first failing step.
     fn attach_u3_steps(&mut self) -> bool {
         const ATTACH_TIMEOUT_MS: u32 = 2000;
 

@@ -19,6 +19,17 @@
 //! STM32L4 only: on an STM32U3, whose monitor is the shared block, it says
 //! so and exits before writing any debug register. Exits 0 once the
 //! handshake completes, 1 otherwise.
+//!
+//! Usage: `tag-monitor-test [-d] [-b BUS:DEVICE]`. On success it prints the
+//! monitor version, call-buffer size in bytes and the tag's SHA string.
+//! Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag and writes DHCSR and DEMCR (Cortex-M debug
+//! registers) directly; the session ends with MONITORSTOP, after which the
+//! firmware clears its own debug state. A part whose DBGMCU ID code reads as
+//! neither an L4 nor a U3 is treated as an L4.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -34,28 +45,48 @@ use tagcore::{LinkAdapt, UsbDev};
 #[derive(Parser)]
 #[command(name = "tag-monitor-test")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 }
 
+/// Debug Halting Control and Status Register (Armv7-M).
 const DHCSR: u32 = 0xE000_EDF0;
+/// Debug Core Register Data Register, the monitor's request and response
+/// mailbox.
 const DCRDR: u32 = 0xE000_EDF8;
+/// Debug Exception and Monitor Control Register.
 const DEMCR: u32 = 0xE000_EDFC;
 
+/// Key that must accompany every DHCSR write, in bits 31:16.
 const DBGKEY: u32 = 0xA05F << 16;
+/// DHCSR: halting debug enable.
 const C_DEBUGEN: u32 = 1 << 0;
+/// DHCSR: halt request.
 const C_HALT: u32 = 1 << 1;
+/// DHCSR: mask PendSV, SysTick and external interrupts while stepping or
+/// halted.
 const C_MASKINTS: u32 = 1 << 3;
+/// DHCSR: the core is halted (read only).
 const S_HALT: u32 = 1 << 17;
 
+/// DEMCR: vector catch on core reset; the firmware reads it as "a host is
+/// attached".
 const VC_CORERESET: u32 = 1;
+/// DEMCR: monitor request bit, used as "request outstanding" by the host and
+/// cleared by the firmware when the result is in DCRDR.
 const MON_REQ: u32 = 1 << 19;
+/// DEMCR: pend the DebugMonitor exception.
 const MON_PEND: u32 = 1 << 17;
+/// DEMCR: enable the DebugMonitor exception.
 const MON_EN: u32 = 1 << 16;
+/// DEMCR: enable the DWT and ITM trace blocks.
 const TRCENA: u32 = 1 << 24;
 
 // DBGMCU ID code addresses, which tell the families apart.
+/// DBGMCU_IDCODE address on the STM32L4.
 const L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
+/// DBGMCU_IDCODE address on the STM32U3.
 const U3_DBGMCU_IDCODE: u32 = 0xE004_4000;
 
 /// True if `idcode` has a real device ID (neither all zero nor all one).
@@ -64,6 +95,7 @@ fn plausible_idcode(idcode: u32) -> bool {
     device_id != 0 && device_id != 0xfff
 }
 
+/// Shorthand for a [`Duration`] of `n` milliseconds.
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
 }
@@ -71,6 +103,7 @@ fn ms(n: u64) -> Duration {
 /// The C++ `TestMonitor`: a `LinkAdapt` with its own monitor call and
 /// attach sequence, and the state the attach reads.
 struct TestMonitor {
+    /// The ST-LINK debug link the handshake drives.
     link: LinkAdapt,
     /// Monitor call buffer size the firmware reported.
     maxpacket: usize,
@@ -81,6 +114,8 @@ struct TestMonitor {
 }
 
 impl TestMonitor {
+    /// Creates an unattached monitor with an empty SHA and zero version and
+    /// buffer size.
     fn new() -> Self {
         Self {
             link: LinkAdapt::new(),
@@ -101,7 +136,10 @@ impl TestMonitor {
     /// MONITORSTOP is not waited for, since the tag may sleep as soon as it
     /// sees it, and returns 0. `None` if not attached, the monitor is still
     /// busy, a register access fails, or the handler does not answer within
-    /// 2.5 s.
+    /// 2500 polls 1 ms apart (at least 2.5 s; each poll also costs a USB
+    /// round trip).
+    ///
+    /// Blocks the calling thread while polling.
     fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
         const TIMEOUT_MS: u32 = 2500;
         if !self.link.is_attached() {
@@ -307,6 +345,8 @@ fn select_device(link: &LinkAdapt, args: &BaseArgs) -> UsbDev {
     }
 }
 
+/// Attaches through the raw handshake, prints what it read and ends the
+/// session with MONITORSTOP.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

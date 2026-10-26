@@ -11,3 +11,11 @@ env_logger = "0.11.11"
 log = "0.4.34"
 prost-reflect = "0.16.5"
 tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

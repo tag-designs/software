@@ -5,6 +5,21 @@
 //! core (unlike `STM32_Programmer_CLI -r32`, which needs connect-under-reset).
 //! Uses [`Tag::read_memory`], so addresses must be word aligned. Not for
 //! shipping.
+//!
+//! "Live" means the running monitor firmware answers the read: the core is
+//! not halted. It still follows the attach, which resets the tag, so what is
+//! read is the state after that reset and the monitor's start-up, not the
+//! state of a run in progress.
+//!
+//! Usage: `tag-peek [-d] [-b BUS:DEVICE] [--addr ADDR...] [ADDR...]`. Each
+//! address prints as `0xAAAAAAAA: 0xVVVVVVVV`, the word read
+//! little-endian.
+//!
+//! # Exit status
+//!
+//! 0 if every address was read; 1 if no address was given, no base matches,
+//! the attach fails, or any address does not parse or fails to read (the
+//! others are still read). Option errors exit 2 (clap).
 
 use std::process::ExitCode;
 
@@ -18,6 +33,7 @@ use tagcore::{MemAccess, Tag};
 #[derive(Parser)]
 #[command(name = "tag-peek")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -46,6 +62,8 @@ fn parse_address(text: &str) -> Option<u32> {
     u32::from_str_radix(digits, radix).ok()
 }
 
+/// Attaches once and reads every address given, in order (`--addr` values
+/// first, then positional ones).
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
@@ -83,10 +101,13 @@ fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+/// Unit tests for address parsing.
 mod tests {
     use super::parse_address;
 
     #[test]
+    /// Checks hex, decimal and octal forms, and that partial, signed, empty and
+    /// over-wide input is rejected.
     fn addresses_must_be_whole_32_bit_numbers() {
         assert_eq!(parse_address("0xE000EDFC"), Some(0xE000_EDFC));
         assert_eq!(parse_address("536870912"), Some(0x2000_0000));

@@ -16,6 +16,8 @@ used to give STM32_Programmer_CLI:
 
 The choice behind it is in the
 [probe-rs evaluation](../../../docs/investigations/2026-10-probe-rs-evaluation.md).
+How it works, and the rules callers must keep, are in
+[the design](design/architecture.md).
 
 ## Two drivers
 

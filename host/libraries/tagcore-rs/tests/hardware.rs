@@ -14,6 +14,10 @@ use tagcore::{MemAccess, Tag, TargetFamily, UsbDev};
 /// STM32L4 96-bit unique device ID.
 const STM32L4_UID_ADDR: u32 = 0x1FFF_7590;
 
+/// Attaches, reads info, status and config, checks the SWD-read UID
+/// against the reported UUID (STM32L4 only), exercises the memory-range
+/// checks, confirms an empty calibration write is refused, keeps the
+/// session alive and detaches twice.
 #[test]
 #[ignore = "needs a tag on an ST-LINK base; attaching resets it"]
 fn attach_read_and_detach() {

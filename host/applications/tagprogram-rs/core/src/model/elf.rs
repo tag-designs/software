@@ -8,19 +8,39 @@
 //! - [`plan_symbols`] ports `flashplan.cpp`'s lenient symbol walk, with its
 //!   own error messages, which the flash plan quotes.
 //!
-//! No relocation, no debug information, no external dependency.
+//! No relocation, no debug information, no external dependency. Only the
+//! fixed ELF32 header fields, the program headers (`PT_LOAD`) and the
+//! `SHT_SYMTAB` sections with their linked string tables are read; everything
+//! else in the file is ignored. Big-endian and ELF64 files are refused, as
+//! are images for any machine other than ARM.
+//!
+//! Both readers return errors as display-ready `String`s because the engine
+//! shows them verbatim, in qtprogram's wording.
 
 use std::collections::HashMap;
 use std::path::Path;
 
+/// `e_machine` value for ARM (32-bit Arm, including Cortex-M).
 const EM_ARM: u16 = 40;
+/// `p_type` of a loadable program segment.
 const PT_LOAD: u32 = 1;
+/// `sh_type` of a static symbol table section.
 const SHT_SYMTAB: u32 = 2;
 
+/// Reads a little-endian `u16` at byte offset `o` of `b`.
+///
+/// # Panics
+///
+/// Panics if `o + 2` exceeds `b.len()`; callers check ranges first.
 fn u16_at(b: &[u8], o: usize) -> u16 {
     u16::from_le_bytes([b[o], b[o + 1]])
 }
 
+/// Reads a little-endian `u32` at byte offset `o` of `b`.
+///
+/// # Panics
+///
+/// Panics if `o + 4` exceeds `b.len()`; callers check ranges first.
 fn u32_at(b: &[u8], o: usize) -> u32 {
     u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]])
 }
@@ -37,17 +57,25 @@ pub struct Segment {
 }
 
 /// An ARM ELF32 image's loadable segments and symbols.
+///
+/// The Rust counterpart of `tagcore::recovery::TargetImage` as qtprogram
+/// uses it. Segments with a zero memory size are dropped at parse time.
 #[derive(Debug, Clone, Default)]
 pub struct Elf {
     /// Loadable segments in program-header order.
     pub segments: Vec<Segment>,
+    /// Symbol name to `st_value`. When a name occurs more than once (in one
+    /// table or across several) the first occurrence wins.
     symbols: HashMap<String, u32>,
 }
 
 impl Elf {
     /// Loads and parses the file at `path`.
     ///
-    /// Errors name the path, as `TargetImage::Load` does: not an ELF, not
+    /// # Errors
+    ///
+    /// `"cannot open <path>"` when the file cannot be read; otherwise the
+    /// errors of [`Elf::parse`]. Errors name the path, as `TargetImage::Load` does: not an ELF, not
     /// ELF32 little-endian, not ARM, headers or tables out of range, or no
     /// symbol table.
     pub fn load(path: &Path) -> Result<Elf, String> {
@@ -56,6 +84,17 @@ impl Elf {
     }
 
     /// Parses `f`; `path` only names the file in error messages.
+    ///
+    /// # Errors
+    ///
+    /// Returns, each prefixed with `path`: "is not an ELF file" (shorter than
+    /// the 52-byte header or wrong magic), "is not ELF32 little-endian",
+    /// "is not an ARM image", "program headers out of range", "segment out
+    /// of range" (file bytes past the end of the file or `p_filesz >
+    /// p_memsz`), "section headers out of range", "malformed symbol table",
+    /// "malformed string table", and "has no symbol table" when no named
+    /// symbol was found (a stripped image cannot be used: the identity
+    /// record and flash range are located by symbol).
     pub fn parse(f: &[u8], path: &str) -> Result<Elf, String> {
         if f.len() < 52 || &f[0..4] != b"\x7fELF" {
             return Err(format!("{path} is not an ELF file"));
@@ -144,13 +183,20 @@ impl Elf {
         Ok(Elf { segments, symbols })
     }
 
-    /// The value of symbol `name`, if the image has it.
+    /// The value (`st_value`) of symbol `name`, if the image has it.
+    ///
+    /// For linker-defined symbols such as `__flash0_size__` the value is the
+    /// quantity itself (an address or a size in bytes), not a pointer to it.
     pub fn symbol(&self, name: &str) -> Option<u32> {
         self.symbols.get(name).copied()
     }
 
     /// The `len` file bytes at physical address `addr`, if one segment's
     /// data covers all of them (as `TargetImage::ReadAt`).
+    ///
+    /// A range that spans two segments, or reaches into a segment's
+    /// zero-filled (`memsz` beyond `data`) tail, is `None`: only bytes the
+    /// programmer would actually write are returned.
     pub fn read_at(&self, addr: u32, len: u32) -> Option<&[u8]> {
         self.segments.iter().find_map(|s| {
             let end = u64::from(s.addr) + s.data.len() as u64;
@@ -167,6 +213,15 @@ impl Elf {
 /// Lenient where [`Elf`] is strict: a symbol table with a bad entry size or
 /// link is skipped rather than refused. Errors are flashplan.cpp's: "not a
 /// 32-bit little-endian ELF file" and "truncated ELF section table".
+///
+/// The result maps each wanted symbol that was found to its value; a missing
+/// symbol is simply absent, and the caller decides whether that is an error.
+/// The machine type is not checked here, matching flashplan.cpp.
+///
+/// # Errors
+///
+/// The two messages above, for a file that is not ELF32 little-endian and for
+/// a section header table that runs past the end of `data`.
 pub fn plan_symbols(data: &[u8], wanted: &[&str]) -> Result<HashMap<String, u32>, String> {
     let mut out = HashMap::new();
     if data.len() < 0x34 || &data[0..4] != b"\x7fELF" || data[4] != 1 || data[5] != 1 {
@@ -210,15 +265,22 @@ pub fn plan_symbols(data: &[u8], wanted: &[&str]) -> Result<HashMap<String, u32>
 /// Builds small ARM ELF32 files for tests.
 #[cfg(test)]
 pub(crate) mod testelf {
+    /// Appends `v` to `b` as two little-endian bytes.
     fn put16(b: &mut Vec<u8>, v: u16) {
         b.extend_from_slice(&v.to_le_bytes());
     }
+    /// Appends `v` to `b` as four little-endian bytes.
     fn put32(b: &mut Vec<u8>, v: u32) {
         b.extend_from_slice(&v.to_le_bytes());
     }
 
     /// An ELF with `segments` (physical address, file data, memory size) and
     /// `symbols` (name, value). There is always at least one symbol.
+    ///
+    /// The file has one program header per segment, then the segment bytes,
+    /// a `.strtab`, a `.symtab` and three section headers (null, `.symtab`,
+    /// `.strtab`); entry point `0x0800_0001`. An empty `symbols` gets a
+    /// `_start` at 0 so that [`super::Elf::parse`] accepts the result.
     pub fn build(segments: &[(u32, Vec<u8>, u32)], symbols: &[(&str, u32)]) -> Vec<u8> {
         let phoff = 52u32;
         let mut data_off = phoff + 32 * segments.len() as u32;
@@ -292,6 +354,7 @@ pub(crate) mod testelf {
     }
 }
 
+/// Unit tests for both readers, on files built by [`testelf`].
 #[cfg(test)]
 mod tests {
     use super::*;

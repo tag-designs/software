@@ -8,6 +8,20 @@
 //!
 //! Exits 0 when the cycles complete or Ctrl-C stops them; 1 if an attach
 //! fails.
+//!
+//! Usage: `tag-attach-cycle [-d] [-b BUS:DEVICE] [--on-ms MS] [--off-ms MS]
+//! [--cycles N] [--no-status]`; both intervals default to 5000 ms.
+//!
+//! This is a test of the attach path itself, one of the two legitimate
+//! reasons to attach to a running tag: every cycle resets the tag and ends
+//! whatever it was doing, so it says nothing about how a run behaves
+//! unattended. A status read that fails is reported on stderr and the cycle
+//! continues.
+//!
+//! # Hardware side effects
+//!
+//! One target reset per cycle. A tag past its start time is restarted by
+//! each reset.
 
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -23,6 +37,7 @@ use tagcore::proto::Status;
 #[derive(Parser)]
 #[command(name = "tag-attach-cycle")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -56,6 +71,9 @@ fn interruptible_sleep(ms: u32) {
     }
 }
 
+/// Prints the tag's state, clock (ms since the Unix epoch) and internal and
+/// external flash page counts for `cycle`, and any firmware debug message on
+/// stderr.
 fn print_status(cycle: u32, status: &Status) {
     println!(
         "cycle {cycle}: state={} millis={} internal={} external={}",
@@ -69,6 +87,7 @@ fn print_status(cycle: u32, status: &Status) {
     }
 }
 
+/// Installs the Ctrl-C handler, then runs the attach/detach cycles.
 fn main() -> ExitCode {
     let _ = ctrlc::set_handler(|| STOP_REQUESTED.store(true, Ordering::SeqCst));
     let cli = Cli::parse();

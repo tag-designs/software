@@ -5,6 +5,17 @@
 //! `0x08000000 + 0x1A0` (STM32L432 vector table) or `+ 0x240` (STM32U375).
 //! It is a header (`"TGID"`, format version, total size; all little-endian)
 //! followed by `id`, `len`, value entries and an end entry (`0xFFFF`).
+//!
+//! The header is `"TGID"` (4 bytes), `u16` format version, `u16` total size
+//! in bytes including the header and end entry. Each entry is a `u16` id, a
+//! `u16` value length in bytes (a multiple of 4) and the value. String
+//! values are NUL-padded; ids `0x0101..=0x0110` are strings, `0x0201` is the
+//! numbers block whose first `u32` is the `TagType`. Unknown ids are skipped,
+//! so newer records stay readable.
+//!
+//! The record is what lets the Program dialog say which target and board an
+//! image was built for, and lets the record CSV note the image's commit,
+//! without trusting the file name.
 
 use serde::Serialize;
 use std::collections::HashMap;
@@ -12,13 +23,19 @@ use std::path::Path;
 
 use super::elf::Elf;
 
+/// Start address of internal flash; record offsets are relative to it.
 const FLASH_BASE: u32 = 0x0800_0000;
 /// Offsets from the flash base where an image may carry its record.
 const RECORD_OFFSETS: [u32; 2] = [0x1A0, 0x240];
+/// The header magic, `"TGID"` read as a little-endian `u32`.
 const MAGIC: u32 = 0x4449_4754; // "TGID"
+/// Entry id of the end entry; it must end exactly at the header's size.
 const END: u16 = 0xFFFF;
+/// Entry id of the numbers block (at least 24 bytes; `TagType` first).
 const NUMBERS: u16 = 0x0201;
 
+/// The name a string entry id is stored under in
+/// [`IdentityRecord::strings`], or `None` for an id that is not a string.
 fn string_name(id: u16) -> Option<&'static str> {
     Some(match id {
         0x0101 => "target",
@@ -42,6 +59,9 @@ fn string_name(id: u16) -> Option<&'static str> {
 }
 
 /// What an image says it is for (qtprogram's `ImageIdentity`).
+///
+/// The subset of the record qtprogram uses, flattened to strings; a string
+/// the record lacks is empty. Serialized into the view state.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ImageIdentity {
     /// The image carries a well-formed identity record.
@@ -64,13 +84,17 @@ pub struct ImageIdentity {
 }
 
 /// A parsed record: its strings by name and, if present, the tag type.
+///
+/// Built by [`parse_identity_record`]; [`identity_of`] reduces it to an
+/// [`ImageIdentity`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IdentityRecord {
     /// Record format version from the header.
     pub format_version: u16,
     /// String entries by name (`"target"`, `"git_hash"`, ...).
     pub strings: HashMap<String, String>,
-    /// `TagType` from the numbers entry, when the record has one.
+    /// `TagType` from the numbers entry, when the record has one at least 24
+    /// bytes long.
     pub tag_type: Option<u32>,
 }
 
@@ -81,11 +105,22 @@ impl IdentityRecord {
     }
 }
 
+/// Reads a little-endian `u16` at byte offset `o` of `b`.
+///
+/// # Panics
+///
+/// Panics if `o + 2` exceeds `b.len()`; callers check ranges first.
 fn u16_at(b: &[u8], o: usize) -> u16 {
     u16::from_le_bytes([b[o], b[o + 1]])
 }
 
 /// Parses the record at `offset` in `flash` (flash bytes from the base).
+///
+/// `offset` is in bytes from the start of `flash`. A string value is cut at
+/// its first NUL and decoded as UTF-8, lossily. When an id repeats, the last
+/// entry wins.
+///
+/// # Errors
 ///
 /// Errors are `ParseIdentityRecord`'s: too short, no magic, size out of
 /// range, a bad entry length, a misplaced end entry, or no end entry.
@@ -140,11 +175,26 @@ pub fn parse_identity_record(flash: &[u8], offset: u32) -> Result<IdentityRecord
 /// and start with `"TGID"`; the first such record is parsed and its result
 /// returned. Errors: the ELF's own load error, the record's parse error, or
 /// "no tag identity record after the vectors".
+///
+/// # Errors
+///
+/// As [`identity_of`], plus [`Elf::load`]'s errors.
 pub fn read_image_identity(path: &Path) -> Result<ImageIdentity, String> {
     identity_of(&Elf::load(path)?)
 }
 
 /// [`read_image_identity`] for an already-loaded image.
+///
+/// The record's offsets are tried in order (L432 first). An offset whose
+/// header is not in the image's file bytes, does not start with `"TGID"`,
+/// or whose record runs past a segment is skipped; the first offset that
+/// passes those checks decides, so a malformed record there is an error
+/// rather than a fall-through to the next offset.
+///
+/// # Errors
+///
+/// [`parse_identity_record`]'s errors, or "no tag identity record after the
+/// vectors" when no offset holds a record.
 pub fn identity_of(elf: &Elf) -> Result<ImageIdentity, String> {
     for offset in RECORD_OFFSETS {
         let Some(header) = elf.read_at(FLASH_BASE + offset, 8) else {
@@ -177,6 +227,9 @@ pub fn identity_of(elf: &Elf) -> Result<ImageIdentity, String> {
 #[cfg(test)]
 pub(crate) mod testrecord {
     /// A record with `strings` (id, text) and an optional tag type.
+    ///
+    /// Strings are NUL-terminated and padded to 4 bytes; a tag type becomes
+    /// a 24-byte numbers entry. Format version 1, with an end entry.
     pub fn build(strings: &[(u16, &str)], tag_type: Option<u32>) -> Vec<u8> {
         let mut body = Vec::new();
         let mut entry = |id: u16, mut value: Vec<u8>| {
@@ -205,11 +258,14 @@ pub(crate) mod testrecord {
     }
 }
 
+/// Unit tests of the parser and of finding the record in an image.
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::elf::testelf;
 
+    /// An image whose one segment, at the flash base, holds `offset` zero
+    /// bytes followed by `record`.
     fn image(offset: usize, record: &[u8]) -> Elf {
         let mut flash = vec![0u8; offset];
         flash.extend_from_slice(record);

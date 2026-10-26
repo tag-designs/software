@@ -1,11 +1,42 @@
-//! The programming session: qtprogram's `ProgramSession`, ported.
+//! The programming session: qtprogram's `ProgramSession`
+//! (`programsession.cpp`), with `Station::program`, `Station::retest` and
+//! `Station::writeRecord` (`station.cpp`), ported.
 //!
-//! A session stops and erases the tag through its monitor, programs it with
-//! probe-rs on a worker thread, reconnects, runs the self-tests, and gives
-//! the tag one start, stop and erase so it leaves IDLE and empty. A retest
-//! reads the flash back and compares it with the image instead of
-//! programming. Each step is driven by a 1 s tick, as qtprogram's was; the
-//! row is written to the record when the session ends.
+//! # Program
+//!
+//! A program session stops the tag through its monitor and, if it holds a
+//! log (FINISHED or ABORTED), has the tag's own firmware erase it -- the
+//! firmware that wrote a log is the one that knows its layout. Once the tag
+//! is IDLE it detaches and programs with probe-rs on a worker thread
+//! ([`Step::Programming`]), reattaches ([`Step::Connecting`], which resets
+//! the tag), runs the self-tests ([`Step::Testing`]) and records a row. A
+//! blank board (no firmware answers) goes straight to programming.
+//!
+//! The session deliberately does **not** start the tag at the end, unlike
+//! the sequence in `design/qtprogram-spec.md`: a start belongs to the tag's
+//! deployment, and on a PresTag a SetRtc after a start hangs the firmware
+//! (`embedded/tags/TODO.md`). The tag is left IDLE.
+//!
+//! # Retest
+//!
+//! A retest programs nothing. If the tag is IDLE and an image with the
+//! tag's commit is at hand, it reads the flash back on a worker
+//! ([`Step::Reading`]) and compares it with the image, then reconnects,
+//! runs the self-tests and records a row.
+//!
+//! # Driving
+//!
+//! The session's state is a [`SessionState`] in `Station::session`; its
+//! steps are methods on [`Station`], all on the engine thread. The waiting
+//! steps (Stopping, Erasing, Connecting, Testing) are driven by a 1 s tick,
+//! as qtprogram's were: `Station::fire_timers` calls
+//! [`Station::session_tick`] when `tick_at` is due. Programming and Reading
+//! have no tick: they end when their worker's `Msg::Done` arrives.
+//! PowerCycle waits for the user's Retry or Give Up. Each tick logs one
+//! DEBUG line ([`Station::log_tick`]).
+//!
+//! [`Station::finish`] ends every session, successful or not, and writes the
+//! record row. See `design/engine.md`.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -23,21 +54,34 @@ use crate::model::image::{FirmwareImage, compare_image_flash, image_flash_range,
 use crate::model::record::ProgramRecord;
 use crate::model::settings as key;
 
+/// Ticks (seconds) the tag may take to reach IDLE after the stop before
+/// the session fails.
 const STOP_TICKS: u32 = 30;
+/// Ticks (seconds) of reattach attempts after programming or a read-back
+/// before the session asks the user to power-cycle the tag.
 const CONNECT_TICKS: u32 = 6;
+/// Ticks (seconds) the self-tests may run before the session fails with
+/// TEST_FAILED.
 const TEST_TICKS: u32 = 120;
+/// Bytes per IMUTag log entry (`external_data_count` counts these), for
+/// the erase progress fallback.
 const IMU_LOG_PAGE: i64 = 2048;
+/// Bytes per external-flash erase sector, for the erase progress
+/// fallback.
 const SECTOR: i64 = 4096;
+/// The session tick period.
 const TICK: Duration = Duration::from_secs(1);
 /// What the record's `host_version` column says wrote the row: the host
 /// tools package version when CMake builds the app (qtprogram records the
-/// same number), else the crate's.
+/// same number), else the crate's. The `tagprogram-rs` prefix tells this
+/// port's rows from qtprogram's.
 fn host_version() -> String {
     let version = option_env!("TAGPROGRAM_HOST_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
     format!("tagprogram-rs {version}")
 }
 
-/// Bytes as whole external-flash sectors, rounded up.
+/// Bytes as whole external-flash sectors, rounded up; 0 for a negative
+/// count.
 fn sectors(bytes: i64) -> i64 {
     (bytes.max(0) + SECTOR - 1) / SECTOR
 }
@@ -45,51 +89,94 @@ fn sectors(bytes: i64) -> i64 {
 /// The session's steps (`ProgramSession::Step`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Step {
+    /// Stopping the tag and waiting for IDLE (ticked); erases a held log on
+    /// the way.
     Stopping,
+    /// The tag's firmware is erasing its log (SRESET); ticked, with sector
+    /// progress.
     Erasing,
+    /// probe-rs is erasing, programming and verifying on a worker; no tick.
+    /// Cannot be cancelled.
     Programming,
+    /// Retest: probe-rs is reading the flash back on a worker; no tick.
     Reading,
+    /// Reattaching to the tag after programming or a read-back (ticked).
     Connecting,
+    /// The tag did not answer: waiting for the user to replug the base and
+    /// press Retry, or Give Up. No tick.
     PowerCycle,
+    /// The self-tests are running (ticked).
     Testing,
+    /// Finished; the session is kept for its message.
     Done,
 }
 
 /// What a retest learned about the flash.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FlashCheck {
+    /// Not read (a program session, or a retest that never reached it).
     NotChecked,
+    /// A read was wanted but not done or failed; why.
     Unread(String),
+    /// The flash read back matches the image.
     Matches,
+    /// The flash differs from the image; how. Makes the retest a MISMATCH.
     Differs(String),
 }
 
-/// One session's state.
+/// One session's state, kept in `Station::session`.
+///
+/// Created by [`Station::program`] or [`Station::retest`]; kept after the
+/// session ends, with `running` false, so its message stays on the step line
+/// until Next Tag.
 pub(crate) struct SessionState {
+    /// The session has not finished.
     pub running: bool,
+    /// The current step.
     pub step: Step,
+    /// The step line's text; the final message once finished.
     pub step_text: String,
     /// `None`: the busy indicator; `Some((done, total))` otherwise.
     pub progress: Option<(u64, u64)>,
     /// The next tick, while the timer runs.
     pub tick_at: Option<Instant>,
+    /// Ticks spent in the current waiting step.
     ticks: u32,
+    /// A retest rather than a program session.
     retest: bool,
+    /// The programmer was started. A program session that ends before this
+    /// (cancelled, or failed while stopping) writes no record row.
     programmed: bool,
+    /// After programming, the tag reports a commit other than the image's.
     commit_mismatch: bool,
+    /// The label the user gave, trimmed.
     label: String,
+    /// The image to program, or for a retest the image with the tag's commit
+    /// (`None` when none is at hand).
     image: Option<FirmwareImage>,
+    /// The target voltage at the connect check, for the record.
     voltage: Option<f32>,
+    /// The base's ST-LINK serial, for the record.
     serial: String,
+    /// The tag's UUID: from before the session, then as the tag reports it
+    /// after programming (a blank board gets one only then).
     uuid: String,
+    /// The commit the tag reports after programming or for the retest.
     git_hash: String,
+    /// The self-test result's name, once the tests finish.
     test_status: String,
+    /// The retest's flash comparison.
     flash: FlashCheck,
+    /// The record's result: OK, TEST_FAILED, MISMATCH, PROGRAM_FAILED: ...,
+    /// NO_ANSWER, CANCELLED or FAILED: ...; empty until finished.
     pub result: String,
+    /// The final message for the user; empty until finished.
     pub message: String,
 }
 
 impl SessionState {
+    /// A running session at [`Step::Stopping`] with nothing learned yet; the
+    /// callers fill in the voltage, serial and UUID.
     fn new(label: &str, image: Option<FirmwareImage>, retest: bool) -> Self {
         Self {
             running: true,
@@ -116,16 +203,27 @@ impl SessionState {
 
     /// Cancel is offered: power-cycle waits, and the steps before
     /// programming.
+    ///
+    /// Not while the programmer runs: an interrupted flash write leaves a tag
+    /// worse off than a wait does, so Cancel is hidden then and
+    /// [`Station::session_cancel`] refuses.
     pub(crate) fn cancellable(&self) -> bool {
         self.running && matches!(self.step, Step::PowerCycle | Step::Stopping | Step::Erasing)
     }
 }
 
 impl Station {
+    /// The current session.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is none; every caller runs inside a session.
     fn sess(&mut self) -> &mut SessionState {
         self.session.as_mut().expect("a session")
     }
 
+    /// Moves to `step`, logs `text` at INFO and shows it on the step line,
+    /// with the busy indicator in place of any progress.
     fn set_step(&mut self, step: Step, text: impl Into<String>) {
         let text = text.into();
         info!("{text}");
@@ -135,12 +233,14 @@ impl Station {
         s.progress = None;
     }
 
+    /// Starts the 1 s tick for a waiting step, resetting its tick count.
     fn start_timer(&mut self) {
         let s = self.sess();
         s.ticks = 0;
         s.tick_at = Some(Instant::now() + TICK);
     }
 
+    /// Stops the tick.
     fn stop_timer(&mut self) {
         self.sess().tick_at = None;
     }
@@ -148,6 +248,12 @@ impl Station {
     // ---- starting ----------------------------------------------------
 
     /// qtprogram's `Station::program`: after the Program dialog.
+    ///
+    /// Re-checks the record (it may have been opened elsewhere since), then
+    /// alerts and returns if [`Station::can_program`] refuses. Otherwise saves
+    /// the label, stops the status poll and starts a session: at
+    /// [`Step::Stopping`] for an attached tag, or straight to the programmer
+    /// for a blank board. The UI has already confirmed any label conflict.
     pub(crate) fn program(&mut self, label: &str) {
         self.check_record();
         if let Err(why) = self.can_program() {
@@ -181,6 +287,14 @@ impl Station {
     }
 
     /// qtprogram's `Station::retest`.
+    ///
+    /// Silently ignored while a session runs or the record is not OK. Picks the
+    /// image with the tag's commit ([`Station::retest_image`]) and starts a
+    /// retest session. A tag not attached is reattached first -- which resets
+    /// it -- and the session ends FAILED, with a row, if it does not answer.
+    /// Without an image, or when the tag is not IDLE (or its status cannot be
+    /// read), the flash is not read and the tests start at once; otherwise
+    /// the read-back starts.
     pub(crate) fn retest(&mut self, label: &str) {
         self.check_record();
         if self.session_running() || self.level(Check::Record) != super::station::Level::Ok {
@@ -231,7 +345,10 @@ impl Station {
     }
 
     /// The image whose commit the tag runs: the chosen one if it matches,
-    /// else the newest cached release with the tag's target and commit.
+    /// else the first cached release, in catalog order, with the tag's target
+    /// and commit. `None` for a tag that does not answer or when none matches.
+    ///
+    /// Loads and hashes each candidate image on the engine thread.
     fn retest_image(&self) -> Option<FirmwareImage> {
         let tag_hash = self.info.as_ref()?.githash.clone();
         let commit = |i: &FirmwareImage| {
@@ -264,7 +381,9 @@ impl Station {
 
     // ---- the tick ----------------------------------------------------
 
-    /// One DEBUG line per tick: the step and what the tag reported.
+    /// One DEBUG line per tick: the step and what the tag reported -- its
+    /// state, erase sectors done/total and test result -- or that it did not
+    /// answer.
     fn log_tick(step: Step, status: &Result<tagcore::proto::Status, tagcore::TagError>) {
         match status {
             Ok(st) => debug!(
@@ -278,6 +397,8 @@ impl Station {
         }
     }
 
+    /// One tick of a running session, from `Station::fire_timers`: runs the
+    /// waiting step's handler. Steps without a tick are ignored.
     pub(crate) fn session_tick(&mut self) {
         let Some(step) = self.session.as_ref().filter(|s| s.running).map(|s| s.step) else {
             return;
@@ -291,6 +412,13 @@ impl Station {
         }
     }
 
+    /// Stopping: brings the tag to IDLE.
+    ///
+    /// IDLE starts the programmer. FINISHED or ABORTED: asks the tag's own
+    /// firmware to erase its log and moves to Erasing. Any other state: sends
+    /// one stop on the first tick (not during TEST or SRESET, which end on
+    /// their own) and waits up to [`STOP_TICKS`]. A tag that stops answering
+    /// or refuses the erase fails the session.
     fn tick_stopping(&mut self) {
         let status = self.tag.status();
         Self::log_tick(Step::Stopping, &status);
@@ -331,6 +459,13 @@ impl Station {
         }
     }
 
+    /// Erasing: shows the tag's erase progress until it is IDLE again, then
+    /// returns to Stopping (without a new step line) and ticks it at once.
+    ///
+    /// The progress total is what the tag reports; a tag that reports 0 falls
+    /// back to its log size (IMUTag) or its external flash size, and with no
+    /// total at all the bar is the busy indicator. Any state but SRESET,
+    /// FINISHED, ABORTED or IDLE -- or no answer -- fails the session.
     fn tick_erasing(&mut self) {
         let status = self.tag.status();
         Self::log_tick(Step::Erasing, &status);
@@ -376,6 +511,11 @@ impl Station {
         }
     }
 
+    /// Connecting: reattaches until the firmware answers, then runs the
+    /// self-tests. After [`CONNECT_TICKS`] tries it asks the user to replug the
+    /// base and press Retry ([`Step::PowerCycle`]); a mass erase can leave the
+    /// part in its bootloader until power is removed. Each try resets the
+    /// tag.
     fn tick_connecting(&mut self) {
         if self.reattach_tag() {
             self.stop_timer();
@@ -398,7 +538,8 @@ impl Station {
         self.set_step(Step::PowerCycle, text);
     }
 
-    /// Attached with the firmware answering, attaching if need be.
+    /// Attached with the firmware answering `TagInfo`, attaching if need be
+    /// (which resets the tag).
     fn reattach_tag(&mut self) -> bool {
         if self.attached() && self.tag.tag_info().is_ok() {
             return true;
@@ -406,6 +547,10 @@ impl Station {
         self.reattach() && self.tag.tag_info().is_ok()
     }
 
+    /// Testing: waits for the tag to leave TEST, up to [`TEST_TICKS`], then
+    /// sets its clock and finishes. A program session ends MISMATCH if the tag
+    /// runs another commit, OK on ALL_PASSED, else TEST_FAILED; the tag is not
+    /// started. A retest ends in [`Station::finish_retest`].
     fn tick_testing(&mut self) {
         let status = self.tag.status();
         Self::log_tick(Step::Testing, &status);
@@ -457,6 +602,9 @@ impl Station {
         self.finish(&result, &message);
     }
 
+    /// Ends a retest: MISMATCH when the flash differs from the image, else OK
+    /// on ALL_PASSED, else TEST_FAILED, with a message describing the flash
+    /// comparison.
     fn finish_retest(&mut self, tests: &str) {
         let s = self.sess();
         let name = s
@@ -486,6 +634,20 @@ impl Station {
 
     // ---- programming and reading -------------------------------------
 
+    /// Programs the tag: qtprogram's `runProgrammer`, with probe-rs.
+    ///
+    /// Stops the tick, detaches the monitor and marks the session programmed.
+    /// Finds the base and the probe-rs target (failing the session if either
+    /// cannot be had), then runs `tagprobe::program` on a worker with
+    /// `Station::worker_busy` set: erase as the image's flash plan says,
+    /// program, verify and start the image. Progress comes back as `Msg::Done`
+    /// closures ([`Station::program_progress`]). Success moves to Connecting;
+    /// an error ends PROGRAM_FAILED.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the session has no image; [`Station::program`] only starts one
+    /// with a usable image.
     fn run_programmer(&mut self) {
         self.stop_timer();
         self.tag.detach();
@@ -550,6 +712,9 @@ impl Station {
         );
     }
 
+    /// Shows probe-rs progress: a named step goes to the log with the busy
+    /// indicator, bytes to the progress bar. Ignored once the session has
+    /// ended.
     fn program_progress(&mut self, p: Progress) {
         let Some(s) = self.session.as_mut().filter(|s| s.running) else {
             return;
@@ -563,6 +728,15 @@ impl Station {
         }
     }
 
+    /// Retest: reads the image's flash range back on a worker with
+    /// `tagprobe::read_memory` and compares it with the image, then moves to
+    /// Connecting. The monitor is detached first; reconnecting afterwards
+    /// resets the tag. If the range, base or part cannot be had, the flash is
+    /// marked unread and the tests start at once.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the session has no image; [`Station::retest`] checks first.
     fn read_flash(&mut self) {
         let image = self.sess().image.clone().expect("an image to compare");
         let (start, len) = match image_flash_range(&image.elf_path) {
@@ -610,6 +784,11 @@ impl Station {
         );
     }
 
+    /// Starts the self-tests: records the tag's UUID and commit (and, after
+    /// programming, whether the commit is the image's), sets the tag's clock,
+    /// requests every test and moves to Testing. A refused test request is
+    /// logged; the Testing tick then sees the tag not in TEST and finishes with
+    /// whatever result it reports.
     fn begin_tests(&mut self) {
         if let Ok(info) = self.tag.tag_info() {
             let s = self.sess();
@@ -642,6 +821,8 @@ impl Station {
 
     // ---- the user's buttons ------------------------------------------
 
+    /// Retry, at [`Step::PowerCycle`]: back to Connecting for another
+    /// [`CONNECT_TICKS`] tries. Ignored at any other step.
     pub(crate) fn session_retry_connect(&mut self) {
         if self
             .session
@@ -653,6 +834,12 @@ impl Station {
         }
     }
 
+    /// Cancel or Give Up, when [`SessionState::cancellable`]: at PowerCycle it
+    /// ends NO_ANSWER; before programming, CANCELLED (no row is written for a
+    /// program session that never programmed). Ignored otherwise.
+    ///
+    /// Cancelling while Stopping or Erasing leaves the tag where it is: an
+    /// erase the tag's firmware has begun runs to its end.
     pub(crate) fn session_cancel(&mut self) {
         let Some(s) = self.session.as_ref().filter(|s| s.cancellable()) else {
             return;
@@ -669,6 +856,9 @@ impl Station {
 
     // ---- the end -----------------------------------------------------
 
+    /// Ends the session with `result` and `message`: stops the tick, shows
+    /// the message on the step line, and writes the record
+    /// ([`Station::write_record`]).
     fn finish(&mut self, result: &str, message: &str) {
         info!("{message}");
         let s = self.sess();
@@ -683,6 +873,14 @@ impl Station {
     }
 
     /// qtprogram's `Station::writeRecord`.
+    ///
+    /// First reattaches if need be -- resetting the tag -- to refresh its info
+    /// and status, and resumes the status poll. A program session that never
+    /// reached the programmer writes no row: it alerts with its message. Otherwise
+    /// it appends a row (for a retest, image fields only when the flash was
+    /// compared), counts it in the batch, sets the result line, and alerts for
+    /// anything but a written OK. A row that cannot be written is logged in full
+    /// at ERROR, so it is not lost.
     fn write_record(&mut self) {
         let prior_uuid = self
             .info

@@ -29,6 +29,23 @@
 //!
 //! Prints one PASS or FAIL line per check and exits 1 on any FAIL. See
 //! `host/libraries/tagcore/TODO.md`. Not for shipping.
+//!
+//! Usage: `tag-side-channel-check [-d] [-b BUS:DEVICE] [--idle S]
+//! [--interval S] [--no-keepalive] [--threads S] [--write-test ADDR]
+//! [--start-running] [--unplug S]`. Defaults: no idle check, KeepAlive every
+//! 2 s, a 10 s two-thread check. `--idle` with an `--interval` below 1 exits
+//! 1 before attaching. With `--unplug` the idle and after-detach checks are
+//! skipped, since the base is gone. Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag, so "while the tag runs" means the monitor
+//! firmware after that reset, not a run in progress. Without the opt-in
+//! checks nothing is written to the tag. `--write-test` accepts any aligned
+//! address from the end of monitor_shared to the U375's SRAM end
+//! (`0x2004_0000`); on an STM32L432, whose SRAM1 ends at `0x2000_C000`, the
+//! range check alone does not keep the write inside SRAM, so take the address
+//! from the map file.
 
 use std::cell::Cell;
 use std::io::Write as _;
@@ -47,6 +64,7 @@ use tagcore::{MemAccess, Tag};
 #[derive(Parser)]
 #[command(name = "tag-side-channel-check")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -79,14 +97,18 @@ struct Cli {
     unplug: i32,
 }
 
+/// DBGMCU_IDCODE address on the STM32L4.
 const L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
+/// DBGMCU_IDCODE address on the STM32U3.
 const U3_DBGMCU_IDCODE: u32 = 0xE004_4000;
+/// Start of SRAM on both families, used for the read checks.
 const SRAM_BASE: u32 = 0x2000_0000;
 /// Upper bound for --write-test addresses: the largest SRAM of the targets
 /// (STM32U375, 256 KB). The operator still picks the word from the map file.
 const SRAM_LIMIT: u32 = 0x2004_0000;
 
 thread_local! {
+    /// FAIL lines reported so far; only the main thread calls [`report`].
     static FAILURES: Cell<i32> = const { Cell::new(0) };
 }
 
@@ -103,6 +125,7 @@ fn report(ok: bool, what: &str, detail: &str) {
     }
 }
 
+/// The number of FAIL lines reported so far.
 fn failures() -> i32 {
     FAILURES.with(Cell::get)
 }
@@ -112,6 +135,7 @@ fn plausible_idcode(v: u32) -> bool {
     v != 0 && v != 0xFFFF_FFFF && (v & 0xFFF) != 0
 }
 
+/// Formats a word as `0x` and eight upper-case hex digits.
 fn hex(v: u32) -> String {
     format!("0x{v:08X}")
 }
@@ -275,6 +299,10 @@ fn unplug_test(tag: &Tag, seconds: i32) {
 }
 
 /// Runs both threads for `seconds` and reports whether every call succeeded.
+///
+/// One thread loops on `GetStatus` RPCs, the other on 256-byte SRAM reads,
+/// both through the same [`Tag`], to check that tagcore serialises the two
+/// kinds of traffic on one link. Blocks for `seconds`.
 fn two_thread_check(tag: &Tag, seconds: i32) {
     let stop = AtomicBool::new(false);
     let (rpc_ok, rpc_fail, mem_ok, mem_fail) = (
@@ -351,6 +379,8 @@ fn parse_address(text: &str) -> Option<u32> {
     u32::try_from(value).ok()
 }
 
+/// Prints the summary line and returns exit status 1 if any check failed,
+/// 0 otherwise.
 fn finish() -> ExitCode {
     let n = failures();
     println!(
@@ -365,6 +395,8 @@ fn finish() -> ExitCode {
     }
 }
 
+/// Validates the options, attaches and runs the checks in order, ending with
+/// the detach check.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
@@ -523,10 +555,13 @@ fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+/// Unit tests for address parsing and ID-code plausibility.
 mod tests {
     use super::*;
 
     #[test]
+    /// Checks hex and decimal addresses parse and malformed or over-wide ones
+    /// are rejected.
     fn write_test_addresses_parse_strictly() {
         assert_eq!(parse_address("0x20001000"), Some(0x2000_1000));
         assert_eq!(parse_address("536875008"), Some(0x2000_1000));
@@ -537,6 +572,7 @@ mod tests {
     }
 
     #[test]
+    /// Checks a real L4 ID code passes and zero or all-ones device IDs fail.
     fn idcode_plausibility() {
         assert!(plausible_idcode(0x1001_6435));
         assert!(!plausible_idcode(0x1000_0000));

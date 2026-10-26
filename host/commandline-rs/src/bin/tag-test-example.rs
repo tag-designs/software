@@ -3,6 +3,20 @@
 //! Port of `host/commandline/test-example.cc`. Syncs the tag clock, waits
 //! two seconds, reads the tag's time and prints its offset from the host
 //! clock in seconds.
+//!
+//! Usage: `tag-test-example [-d] [-b BUS:DEVICE]`. A positive error means
+//! the tag clock is ahead of the host. The figure includes the latency of
+//! the status request.
+//!
+//! # Exit status
+//!
+//! 0 when the error was printed; 1 if no base matches, or the attach,
+//! `SetRtc` or `GetStatus` fails. Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag, and `SetRtc` overwrites its clock with the
+//! host's.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -17,10 +31,13 @@ use tagcore::textformat::format_g;
 #[derive(Parser)]
 #[command(name = "tag-test-example")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 }
 
+/// Attaches, sets the clock, waits 2 s and prints the clock error in
+/// seconds.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

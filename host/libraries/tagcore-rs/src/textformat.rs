@@ -14,6 +14,9 @@
 //!
 //! The C++ library also inserts a randomised marker into `DebugString()`
 //! output in recent releases; that is deliberately not reproduced.
+//!
+//! The float formatting ([`format_g`]) is shared with the JSON writer in
+//! [`crate::proto`], which must spell floats the same way.
 
 use std::fmt::Write as _;
 
@@ -51,6 +54,8 @@ fn print_message(msg: &DynamicMessage, single_line: bool, indent: usize, out: &m
     }
 }
 
+/// Appends one field (or one element of a repeated field) at `indent`
+/// levels of two spaces: `name: value`, or `name {` ... `}` for a message.
 fn print_field(
     field: &FieldDescriptor,
     value: &Value,
@@ -85,6 +90,10 @@ fn print_field(
 }
 
 /// One scalar or enum value as C++ text format writes it.
+///
+/// `field` supplies the enum type for enum values. A message value is
+/// written in single-line form; list and map values give an empty string,
+/// since callers print their elements one by one.
 pub fn scalar(field: &FieldDescriptor, value: &Value) -> String {
     match value {
         Value::Bool(b) => b.to_string(),
@@ -108,6 +117,7 @@ pub fn scalar(field: &FieldDescriptor, value: &Value) -> String {
     }
 }
 
+/// Single-line text format of an already-dynamic message.
 fn short_debug_dynamic(m: &DynamicMessage) -> String {
     let mut out = String::new();
     print_message(m, true, 0, &mut out);
@@ -117,6 +127,9 @@ fn short_debug_dynamic(m: &DynamicMessage) -> String {
 /// `%.{short}g`, falling back to `%.{long}g` when that does not round-trip:
 /// the C++ `SimpleFtoa`/`SimpleDtoa` rule. Non-finite values print as
 /// `inf`, `-inf` and `nan`.
+///
+/// Callers pass 6/9 and an `f32` round-trip check for floats, 15/17 and an
+/// `f64` check for doubles.
 pub fn format_g(v: f64, short: usize, long: usize, round_trips: impl Fn(&str) -> bool) -> String {
     if v.is_nan() {
         return "nan".into();
@@ -160,6 +173,8 @@ fn percent_g(v: f64, precision: usize) -> String {
     }
 }
 
+/// Removes trailing fractional zeros and a then-trailing point, as `%g`
+/// does; integers are returned unchanged.
 fn strip_zeros(s: &str) -> &str {
     if s.contains('.') {
         s.trim_end_matches('0').trim_end_matches('.')

@@ -4,6 +4,18 @@
 //! DEMCR; the handler runs it and clears MON_REQ when its result is back in
 //! DCRDR. VC_CORERESET doubles as the "host attached" flag the firmware
 //! reads, and halts the core at the reset vector after a reset.
+//!
+//! Port of the L4 half of `TagMonitor::Call` and of `TagMonitor::AttachL4`.
+//! The DebugMonitor exception runs the command in the firmware's own
+//! context without halting the core, which is why the tag keeps running
+//! (and keeps its timers) during a session. DCRDR is a single word shared
+//! by request and reply, so only one call may be in flight; a call refuses
+//! to start while MON_PEND or MON_REQ is still set.
+//!
+//! Because VC_CORERESET stays set for the whole session, any reset of the
+//! tag while attached (watchdog, brown-out, a firmware fault handler)
+//! leaves the core halted at the reset vector. The timeout report detects
+//! that case, releases the core and drops the session.
 
 use std::thread::sleep;
 
@@ -15,9 +27,14 @@ use super::{STM32L4_DBGMCU_IDCODE, TagMonitor, TargetFamily, ms};
 
 // The flash empty check is an STM32L4 feature. On the STM32U3 FLASH_SR is at
 // offset 0x20, so this address is FLASH_OPTKEYR there; gate on the device ID.
+/// DEV_ID field of DBGMCU_IDCODE.
 const L4_DBGMCU_DEV_ID_MASK: u32 = 0x0000_0FFF;
+/// DEV_ID of the STM32L43x/L44x, the only L4 parts the tags use.
 const L4_DEV_ID_L43X: u32 = 0x435;
+/// STM32L4 FLASH_SR (RM0394 3.7.5).
 const L4_FLASH_SR: u32 = 0x4002_2010;
+/// FLASH_SR.PEMPTY: the main flash was empty when last evaluated, so with
+/// BOOT0 low (nSWBOOT0 = 1) the part boots the ROM bootloader.
 const L4_FLASH_SR_PEMPTY: u32 = 1 << 17;
 
 impl TagMonitor {
@@ -29,6 +46,18 @@ impl TagMonitor {
     /// the monitor is busy, the link fails or the firmware does not answer in
     /// time (500 ms for result reads; 2.5 s per call, or 65 s for a protobuf
     /// call on L4).
+    ///
+    /// The limits are poll counts (one DEMCR read and a 1 ms sleep each), so
+    /// wall time is longer than the nominal figure; the 65000-poll protobuf
+    /// limit is about 120 s in practice, sized for the slowest firmware
+    /// requests. Failed DEMCR reads during the wait are not
+    /// fatal (the link rate-limits their logging) and use up polls like any
+    /// other. On a timeout [`report_l4_timeout`](Self::report_l4_timeout)
+    /// runs, which can halt and resume the core or drop the session.
+    ///
+    /// Side effects: writes DCRDR and DEMCR (setting MON_EN, MON_PEND,
+    /// MON_REQ and VC_CORERESET), which runs the firmware's DebugMon
+    /// handler.
     pub(super) fn call_l4(&mut self, operation: u8, operand: i32) -> Option<u32> {
         const MONITOR_RESULT_TIMEOUT_MS: u32 = 500;
         const MONITORSTOP_POST_MS: u64 = 5;
@@ -120,6 +149,17 @@ impl TagMonitor {
     /// Logs the target's state after an L4 call timed out, and recovers what
     /// it can: a core caught at the reset vector is released and the session
     /// dropped; a core halted only by the diagnostics is resumed.
+    ///
+    /// Reads DHCSR, DCRDR, RCC_CSR and the SCB fault and priority registers,
+    /// then halts the core (see
+    /// [`halt_for_diagnostics`](Self::halt_for_diagnostics)) for its
+    /// registers and both stacked exception frames, and logs everything as
+    /// one ERROR line in the C++ format. A reset-vector catch is recognised
+    /// by S_HALT and S_RESET_ST with no active exception and no fault; in
+    /// that case the probe is also closed, so the caller's next request
+    /// fails until it attaches again. A PC in system memory (0x1FFFxxxx)
+    /// is reported as the ROM bootloader, with FLASH_SR, because that
+    /// usually means PEMPTY is set and reflashing will not fix it.
     fn report_l4_timeout(&mut self, operation: u8, operand: i32, demcr: u32) {
         let dhcsr = self.debug_or_zero(DHCSR);
         let dcrdr = self.debug_or_zero(DCRDR);
@@ -263,6 +303,14 @@ impl TagMonitor {
 
     /// Arms vector catch and the monitor, then releases reset so the L4
     /// firmware boots seeing the host attached.
+    ///
+    /// Expects nRST to be held low on entry (by the link's attach or the
+    /// retry path). Writes DHCSR (C_DEBUGEN) and DEMCR (MON_EN and
+    /// VC_CORERESET, with any stale request cleared), releases nRST, waits
+    /// 50 ms, clears a stale C_MASKINTS, and resumes the core from the
+    /// reset-vector halt. `phase` names the attempt in log messages. Returns
+    /// false, with the reason logged, if any debug write or the reset
+    /// release fails; a failed resume is only warned about.
     fn reset_into_monitor(&mut self, phase: &str) -> bool {
         let Some(setup_demcr) = self.link.read_debug32(DEMCR) else {
             error!("Monitor attach failed: {phase} DEMCR read failed");
@@ -294,6 +342,9 @@ impl TagMonitor {
 
     /// Starts a session on an STM32L4 (or unidentified) target. On failure
     /// the probe is closed.
+    ///
+    /// Port of `TagMonitor::AttachL4`. Also used when the family could not
+    /// be identified, as the C++ does.
     pub(super) fn attach_l4(&mut self) -> bool {
         if self.attach_l4_steps() {
             return true;
@@ -302,6 +353,18 @@ impl TagMonitor {
         false
     }
 
+    /// The L4 attach sequence proper; the caller closes the probe on
+    /// failure.
+    ///
+    /// Resets into the monitor, warns if FLASH_SR.PEMPTY will send the part
+    /// to the ROM bootloader, then reads the monitor version. If that first
+    /// call fails it pulses nRST, resets into the monitor again and retries
+    /// once, so one missed first request (the C++ logs the same warning)
+    /// does not fail the attach.
+    /// It then reads the call-buffer address, the SHA string and the
+    /// call-buffer size (rejecting one larger than the host buffer) and
+    /// sends MONITORSTART, which must return non-zero. Each failure is
+    /// logged and returns false.
     fn attach_l4_steps(&mut self) -> bool {
         if !self.reset_into_monitor("initial") {
             return false;

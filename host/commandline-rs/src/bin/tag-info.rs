@@ -4,6 +4,27 @@
 //! Port of `host/commandline/tag-info.cc`. Attaching connects under reset,
 //! so the state shown is the one the tag restored on boot, not the one it
 //! was in.
+//!
+//! Usage: `tag-info [-d] [-b BUS:DEVICE] [-j|--json]`.
+//!
+//! Without `--json` it prints, in order: the base identity (or
+//! "unidentified" for base firmware without the identify command), the
+//! tag's git SHA when the base reports one, the `TagInfo` message as protobuf
+//! text followed by one `type: label : value` line per field, the
+//! configuration, the current state with any firmware report, and the
+//! persistent state-transition log. A failed configuration read is reported
+//! on stderr and the rest still prints.
+//!
+//! # Exit status
+//!
+//! 0 on success; 1 if no base matches, the attach fails or `GetInfo` fails.
+//! Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The tag is reset by the attach, and any run it was making is ended by
+//! that reset (see `docs/bench/verifying-firmware.md`). Nothing is written to
+//! the tag.
 
 use std::process::ExitCode;
 
@@ -21,6 +42,7 @@ use tagcore::textformat::{format_g, scalar};
 #[derive(Parser)]
 #[command(name = "tag-info")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -32,9 +54,14 @@ struct Cli {
 
 /// IMUTag collection-init failure bits; see IMUTag inc/sensors.h.
 const INIT_FAIL_LSM_CONFIG: u32 = 1 << 0;
+/// Init-failure bit: the magnetometer failed to initialise.
 const INIT_FAIL_MAG: u32 = 1 << 1;
+/// Init-failure bit: the pressure sensor failed to initialise.
 const INIT_FAIL_PRESSURE: u32 = 1 << 2;
+/// Bit position of the first failing driver's status code in the detail
+/// word.
 const INIT_FAIL_STATUS_SHIFT: u32 = 8;
+/// Mask of the 8-bit first-failing-driver status code in the detail word.
 const INIT_FAIL_STATUS_MASK: u32 = 0xff << INIT_FAIL_STATUS_SHIFT;
 
 /// A float as `std::ostream` prints it by default (`%g`, six digits).
@@ -118,6 +145,11 @@ fn print_state_log(tag: &Tag) {
     }
 }
 
+/// Prints one state-transition marker: its index, state, transition reason
+/// and time, then any decoded detail word, then the flash page counts,
+/// supply voltage (V) and temperature recorded with it.
+///
+/// A marker without a status prints the protobuf defaults.
 fn print_marker(index: i32, marker: &State) {
     let status = marker.status.clone().unwrap_or_default();
     println!(
@@ -238,6 +270,8 @@ fn print_fields(info: &TagInfo) {
     }
 }
 
+/// Parses the options, attaches (resetting the tag) and prints the report
+/// or, with `--json`, the JSON object.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

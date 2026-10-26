@@ -24,6 +24,24 @@
 //! Every attach goes through reset. Attaching to a running tag ends the run
 //! it was meant to observe, so never attach just to see what a tag is doing;
 //! see `docs/bench/verifying-firmware.md`.
+//!
+//! # Other modules
+//!
+//! - [`proto`]: the protobuf types, generated from `proto/` by `build.rs`,
+//!   with C++-compatible JSON in and out.
+//! - [`textformat`]: protobuf text format laid out as the C++ prints it.
+//! - [`configshape`]: which Config fields each tag type supports, from the
+//!   embedded `default-config.json` files.
+//!
+//! # Errors and logging
+//!
+//! Requests to the firmware return `Result<_, `[`TagError`]`>`. The layers
+//! below return `bool`/`Option` as the C++ does and log the reason through
+//! the [`log`] facade, so install a logger (`RUST_LOG=debug` with
+//! `env_logger` shows the attach detail).
+//!
+//! The architecture, and where the port deliberately differs from the C++,
+//! are described in `host/libraries/tagcore-rs/design/architecture.md`.
 
 pub mod configshape;
 pub mod link;

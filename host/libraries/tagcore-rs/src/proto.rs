@@ -9,6 +9,10 @@
 //! [`DESCRIPTOR_POOL`], which backs the C++-compatible text format and JSON
 //! helpers below: [`debug_string`], [`short_debug_string`], [`to_json`] and
 //! [`from_json`].
+//!
+//! The generated items carry the comments from the `.proto` files, which
+//! are not complete; `missing_docs` is allowed here for that reason, and
+//! the definitions in `proto/` are the reference for every field.
 
 #![allow(clippy::all, missing_docs)]
 

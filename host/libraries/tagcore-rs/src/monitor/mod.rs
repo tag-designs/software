@@ -27,6 +27,42 @@
 //!
 //! Attaching goes through reset on both targets, so it ends whatever the tag
 //! was doing.
+//!
+//! # Session lifecycle
+//!
+//! 1. [`TagMonitor::attach`] opens the probe with nRST held low, enters SWD,
+//!    and reads DBGMCU_IDCODE to pick the [`TargetFamily`] (unknown falls
+//!    back to the L4 transport).
+//! 2. The family's attach sequence arms the debug block, releases reset into
+//!    the firmware so that it boots seeing the host, and reads the monitor
+//!    metadata: protocol version, call-buffer address and size, and the
+//!    address of the git SHA string, which is read once and cached.
+//! 3. RPCs ([`TagMonitor::rpc`]) and live memory access
+//!    ([`TagMonitor::read_mem`], [`TagMonitor::write_mem`]) follow. The
+//!    firmware ends the session on its own if the host goes quiet, so idle
+//!    callers use [`TagMonitor::keep_alive`].
+//! 4. [`TagMonitor::detach`] sends MONITORSTOP and closes the probe; the
+//!    firmware then clears its own debug state and may enter low power.
+//!
+//! # Timeouts
+//!
+//! Waits are counted in poll iterations of one SWD read plus a 1 ms sleep,
+//! as in the C++ code, so the nominal millisecond figures are lower bounds:
+//! each poll is also a USB round trip. On STM32L4 a protobuf call polls up
+//! to 65000 times (about 120 s in practice) and any other call 2500 times;
+//! on STM32U3 every call except MONITORSTOP polls 2500 times. A timeout is
+//! followed by a diagnostic report that may briefly halt the core; see
+//! [`cortex_m`].
+//!
+//! # Threading
+//!
+//! Every method that touches the probe takes `&mut self`; there is no
+//! internal locking. [`crate::Tag`] wraps one monitor in a mutex for shared
+//! use. All calls block the caller, some for the full RPC timeout.
+//!
+//! The protocol is specified in `docs/shared/monitor-interface.md`; the
+//! longer rationale for the crate's layering is in
+//! `host/libraries/tagcore-rs/design/architecture.md`.
 
 use std::fmt;
 use std::thread::sleep;
@@ -47,13 +83,23 @@ pub mod u3;
 use abi::{MONITOR_SHARED_ADDR, MONITOR_SHARED_SIZE, MonitorShared, op};
 use cortex_m::{DEMCR, MON_EN, MON_PEND, MON_REQ, VC_CORERESET};
 
+/// Whether RPC statistics are gathered (the `instrumentation` feature).
 const INSTRUMENTED: bool = cfg!(feature = "instrumentation");
 
+/// STM32L4 DBGMCU_IDCODE (RM0394): device ID in bits 11..0 (0x435 for the
+/// L43x/L44x), revision in bits 31..16. Read through the debug-register
+/// path to identify the family; on a U3 the read fails or gives an
+/// implausible value, so detection moves on to the U3 address.
 const STM32L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
+/// STM32L4 RCC_CSR: reset-cause flags, logged in L4 timeout reports so a
+/// reset during a session can be told apart from a hung handler.
 const STM32L4_RCC_CSR: u32 = 0x4002_1094;
+/// STM32U3 DBGMCU_IDCODE, at a different address from the L4's.
 const STM32U3_DBGMCU_IDCODE: u32 = 0xE004_4000;
+/// STM32U3 RCC_CSR: reset-cause flags, as [`STM32L4_RCC_CSR`] for the U3.
 const STM32U3_RCC_CSR: u32 = 0x4003_0D14;
 
+/// Shorthand for a [`Duration`] of `n` milliseconds.
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
 }
@@ -62,20 +108,38 @@ fn ms(n: u64) -> Duration {
 ///
 /// Every field stays zero, and `enabled` is false, when the crate is built
 /// without the `instrumentation` feature.
+///
+/// The counterpart of the C++ `TagMonitorStats`. Times are wall-clock
+/// nanoseconds. The phase times are accumulated as each phase completes,
+/// so an RPC that fails part-way adds to the earlier phases but not to
+/// `rpc_calls`, the byte counts or `rpc_total_ns`, which only count RPCs
+/// that reached the decode step.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TagMonitorStats {
+    /// True when the crate was built with the `instrumentation` feature.
     pub enabled: bool,
+    /// RPCs that got as far as decoding a reply (whether or not it decoded).
     pub rpc_calls: u64,
+    /// Serialised request bytes, before rounding up to whole words.
     pub request_bytes: u64,
+    /// Reply bytes the firmware reported, before rounding up to whole words.
     pub response_bytes: u64,
+    /// End-to-end time of counted RPCs, in nanoseconds.
     pub rpc_total_ns: u64,
+    /// Time spent encoding requests, in nanoseconds.
     pub serialize_ns: u64,
+    /// Time spent writing requests into the call buffer, in nanoseconds.
     pub write_request_ns: u64,
+    /// Time spent in the PROTOBUF monitor call (kick, firmware execution and
+    /// polling), in nanoseconds; usually the dominant term.
     pub monitor_call_ns: u64,
+    /// Time spent reading replies out of the call buffer, in nanoseconds.
     pub read_response_ns: u64,
+    /// Time spent decoding replies, in nanoseconds.
     pub parse_ns: u64,
 }
 
+/// All counters zero, with `enabled` reflecting the build.
 impl Default for TagMonitorStats {
     fn default() -> Self {
         Self {
@@ -94,6 +158,9 @@ impl Default for TagMonitorStats {
 }
 
 /// The MCU family on the far side of the probe, which selects the transport.
+///
+/// Detected at attach from DBGMCU_IDCODE (the L4 address is tried first)
+/// and reset to [`TargetFamily::Unknown`] on detach.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TargetFamily {
     /// Not attached, or the IDCODE matched neither family; the L4 transport
@@ -106,6 +173,7 @@ pub enum TargetFamily {
     Stm32U3,
 }
 
+/// Prints `STM32L4`, `STM32U3` or `unknown`, as the C++ log lines do.
 impl fmt::Display for TargetFamily {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
@@ -149,6 +217,7 @@ impl MemAccess {
     }
 }
 
+/// Prints [`MemAccess::name`].
 impl fmt::Display for MemAccess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())
@@ -156,6 +225,10 @@ impl fmt::Display for MemAccess {
 }
 
 /// True if the IDCODE has a real device ID (neither all zero nor all one).
+///
+/// A read from the wrong family's DBGMCU address, or from a target that is
+/// not powered, returns a floating or zero bus value; this rejects those so
+/// family detection falls through to the next candidate.
 fn plausible_stm32_idcode(idcode: u32) -> bool {
     let device_id = idcode & 0xfff;
     device_id != 0 && device_id != 0xfff
@@ -163,11 +236,18 @@ fn plausible_stm32_idcode(idcode: u32) -> bool {
 
 /// True if `addr`/`length` are word multiples and the range does not wrap
 /// past the top of the 32-bit address space.
+///
+/// `length` is in bytes. An empty range is valid anywhere aligned, and a
+/// range may end exactly at 0x1_0000_0000.
 pub(crate) fn valid_mem_range(addr: u32, length: usize) -> bool {
     addr & 3 == 0 && length & 3 == 0 && length as u64 <= u64::from(u32::MAX) - u64::from(addr) + 1
 }
 
 /// True if `[addr, addr + length)` overlaps the U3 monitor_shared block.
+///
+/// Half-open on both sides; an empty range never overlaps. The whole
+/// reserved [`MONITOR_SHARED_SIZE`] is guarded, not just the bytes the
+/// struct uses. Computed in 64 bits so it cannot overflow.
 pub(crate) fn overlaps_monitor_shared(addr: u32, length: usize) -> bool {
     let first = u64::from(addr);
     let end = first + length as u64;
@@ -179,7 +259,14 @@ pub(crate) fn overlaps_monitor_shared(addr: u32, length: usize) -> bool {
 ///
 /// Not thread-safe by itself: every method takes `&mut self`, which is what
 /// serialises use of the SWD link. [`crate::Tag`] wraps one in a mutex.
+///
+/// Port of the C++ `TagMonitor` (`tagmonitor.*`), which inherits from
+/// `LinkAdapt`; here the link is a field. The session fields below are
+/// valid only while attached and are zeroed on detach or a failed attach.
+/// See the [module docs](self) for the session lifecycle and timeouts.
 pub struct TagMonitor {
+    /// The probe. `pub(crate)` so [`crate::Tag`] can reach link-level calls
+    /// such as [`LinkAdapt::base_identity`] without a pass-through here.
     pub(crate) link: LinkAdapt,
     /// Staging buffer for serialised requests and replies.
     rpcbuf: Vec<u8>,
@@ -191,11 +278,16 @@ pub struct TagMonitor {
     sha_str: [u8; 48],
     /// Monitor version the firmware reported.
     version: u32,
+    /// The family detected at attach; selects the transport for every call.
     pub(crate) target_family: TargetFamily,
+    /// The raw DBGMCU_IDCODE read at attach (0 if none was plausible), for
+    /// log messages.
     target_idcode: u32,
+    /// Counters for [`TagMonitor::monitor_stats`].
     monitor_stats: TagMonitorStats,
 }
 
+/// Same as [`TagMonitor::new`].
 impl Default for TagMonitor {
     fn default() -> Self {
         Self::new()
@@ -209,9 +301,16 @@ impl TagMonitor {
 
     /// Size of the host staging buffer, and so the largest call buffer a
     /// firmware may advertise.
+    ///
+    /// Both attach sequences reject a larger advertised buffer. One ST-LINK
+    /// memory transfer carries at most 65535 bytes and the RPC path does not
+    /// chunk, so a firmware advertising exactly this size could not return
+    /// a reply that fills it.
     const RPCBUF_BYTES: usize = 64 * 1024;
 
     /// Creates a detached monitor with its own libusb session.
+    ///
+    /// Allocates the 64 KiB staging buffer; touches no device.
     pub fn new() -> Self {
         Self {
             link: LinkAdapt::new(),
@@ -236,7 +335,8 @@ impl TagMonitor {
         self.link.is_attached()
     }
 
-    /// The family detected at attach.
+    /// The family detected at attach; [`TargetFamily::Unknown`] when
+    /// detached or when neither IDCODE was plausible.
     pub fn target_family(&self) -> TargetFamily {
         self.target_family
     }
@@ -261,7 +361,8 @@ impl TagMonitor {
         self.monitor_stats.clone()
     }
 
-    /// Target supply voltage measured by the ST-LINK, in volts.
+    /// Target supply voltage measured by the ST-LINK, in volts; see
+    /// [`LinkAdapt::voltage`]. Needs an open probe but no monitor session.
     pub fn voltage(&mut self) -> Option<f32> {
         self.link.voltage()
     }
@@ -277,6 +378,8 @@ impl TagMonitor {
         String::from_utf8_lossy(&self.sha_str[..end]).into_owned()
     }
 
+    /// Forgets the firmware's monitor metadata (call buffer, size, SHA and
+    /// version), keeping the detected family.
     fn clear_session(&mut self) {
         self.call_buf = 0;
         self.maxpacket = 0;
@@ -284,12 +387,16 @@ impl TagMonitor {
         self.version = 0;
     }
 
+    /// Forgets the session metadata and the detected family and IDCODE.
+    /// Touches neither the probe nor the tag.
     fn clear_all(&mut self) {
         self.clear_session();
         self.target_family = TargetFamily::Unknown;
         self.target_idcode = 0;
     }
 
+    /// Reads one little-endian word of target memory through the
+    /// memory-access path; `None` on any link failure (logged).
     pub(crate) fn read_word(&mut self, addr: u32) -> Option<u32> {
         let mut bytes = [0u8; 4];
         self.link
@@ -297,11 +404,15 @@ impl TagMonitor {
             .then(|| u32::from_le_bytes(bytes))
     }
 
+    /// Writes one little-endian word of target memory through the
+    /// memory-access path; false on any link failure (logged).
     pub(crate) fn write_word(&mut self, addr: u32, value: u32) -> bool {
         self.link.write_mem32(addr, &value.to_le_bytes())
     }
 
     /// Reads a debug register, or 0 if the read fails; for diagnostics only.
+    ///
+    /// A 0 in a timeout report therefore means "zero or unreadable".
     fn debug_or_zero(&mut self, addr: u32) -> u32 {
         self.link.read_debug32(addr).unwrap_or(0)
     }
@@ -388,6 +499,13 @@ impl TagMonitor {
         self.rpc(&request).is_some()
     }
 
+    /// Identifies the target from DBGMCU_IDCODE, trying the L4 address and
+    /// then the U3 address, and records the family and IDCODE.
+    ///
+    /// Returns false, leaving [`TargetFamily::Unknown`], if neither read
+    /// gives a plausible IDCODE. A failed L4 read may log an ERROR from the
+    /// link even on a healthy U3 target. Port of
+    /// `TagMonitor::DetectTargetFamily`.
     fn detect_target_family(&mut self) -> bool {
         self.target_family = TargetFamily::Unknown;
         self.target_idcode = 0;
@@ -407,6 +525,10 @@ impl TagMonitor {
     }
 
     /// RCC_CSR (reset flags) for the detected family: (address, value, ok).
+    ///
+    /// For timeout reports only. On an unknown family or a failed read the
+    /// value is 0xffffffff and `ok` false; the address is 0 for an unknown
+    /// family.
     fn read_target_rcc_csr(&mut self) -> (u32, u32, bool) {
         let addr = match self.target_family {
             TargetFamily::Stm32L4 => STM32L4_RCC_CSR,
@@ -423,6 +545,10 @@ impl TagMonitor {
     /// returns its result word: [`call_u3`](Self::call_u3) on an STM32U3,
     /// [`call_l4`](Self::call_l4) otherwise. `None`, with the reason logged,
     /// if the call fails.
+    ///
+    /// `operation` is one of [`abi::op`]; `operand` is packed above it by
+    /// [`abi::command_word`]. Blocks until the firmware answers or the
+    /// transport's poll limit runs out. Port of `TagMonitor::Call`.
     fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
         if self.target_family == TargetFamily::Stm32U3 {
             self.call_u3(operation, operand)
@@ -439,6 +565,12 @@ impl TagMonitor {
     /// reset into the monitor and reads its metadata (call buffer, its size,
     /// the git SHA). Returns false if already attached or any step fails, in
     /// which case the probe is closed and the reason logged.
+    ///
+    /// **Never attach to a tag mid-run just to see what it is doing**: the
+    /// reset ends the run. Blocks for tens of milliseconds on a healthy tag
+    /// and up to several seconds when the firmware does not answer (the L4
+    /// path retries once after a fresh reset pulse). Port of
+    /// `TagMonitor::Attach`.
     pub fn attach(&mut self, usbdev: &UsbDev) -> bool {
         if self.is_attached() {
             error!("Already attached");
@@ -477,6 +609,12 @@ impl TagMonitor {
     /// and may enter low power at once; on an identified target the host does
     /// no further debug-register cleanup, so as not to race it. Detaching
     /// when not attached only clears the session fields.
+    ///
+    /// On an unknown family the host clears DEMCR's monitor and vector-catch
+    /// bits itself. A failed MONITORSTOP is logged but does not stop the
+    /// probe from being closed; the firmware then ends the session itself
+    /// once the host goes quiet. Never fails and is safe to call twice. Port
+    /// of `TagMonitor::Detach`.
     pub fn detach(&mut self) {
         if !self.is_attached() {
             self.clear_all();
@@ -530,6 +668,7 @@ impl TagMonitor {
     }
 }
 
+/// Detaches, so a dropped monitor ends the session cleanly.
 impl Drop for TagMonitor {
     fn drop(&mut self) {
         self.detach();

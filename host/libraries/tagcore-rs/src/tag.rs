@@ -8,6 +8,39 @@
 //! Requests that go to the firmware return `Result<_, TagError>`. The
 //! outcome of the most recent one is also kept, as in the C++ class, and is
 //! available from [`Tag::last_error`] and [`Tag::debug_message`].
+//!
+//! Link-level calls that send no request to the firmware (voltage, git SHA,
+//! base identity, live memory access, keep-alive and the field-rescue
+//! helpers) return `Option`, `bool` or [`MemAccess`] with the reason in the
+//! log, as the C++ only logs it, and do not change the recorded outcome.
+//!
+//! # Errors
+//!
+//! Every method returning `Result<_, TagError>` fails in one of three ways:
+//!
+//! - the RPC did not complete over the link (not attached, USB or SWD
+//!   failure, monitor timeout): [`TagError::transport_failed`] is set and
+//!   the message is "Monitor call failed" unless noted otherwise;
+//! - the firmware refused: `err` is its [`ack::Err`] code and the message
+//!   is the firmware's text, or `"Tag returned <CODE>"`;
+//! - the reply was OK but lacked the expected payload: the message is
+//!   `"Tag reply carried no <what>"`.
+//!
+//! Methods that return a whole [`Ack`] ([`Tag::request`],
+//! [`Tag::data_log`], [`Tag::calibration_log`]) fail only in the first way.
+//!
+//! # Blocking
+//!
+//! Every method blocks while it holds the lock, so one slow request (an
+//! STM32L4 protobuf call can take up to about 120 s before timing out)
+//! stalls every other thread using the same `Tag`. [`Tag::set_rtc`] also
+//! sleeps up to one second, with the lock held, to align to a second
+//! boundary.
+//!
+//! # Attaching resets the tag
+//!
+//! [`Tag::attach`] goes through reset, so it ends a running tag's run. See
+//! the crate docs and `docs/bench/verifying-firmware.md`.
 
 use std::fmt;
 use std::sync::{Mutex, MutexGuard};
@@ -79,12 +112,17 @@ fn monitor_failure(message: &str) -> Ack {
     }
 }
 
+/// Wraps `payload` in a [`Req`].
 fn request(payload: req::Payload) -> Req {
     Req {
         payload: Some(payload),
     }
 }
 
+/// A log request for block `index` of the log `fmt` selects.
+///
+/// The protobuf field is unsigned; a negative `index` is sent as its
+/// two's-complement bit pattern, as the C++ implicit conversion does.
 fn log_request(fmt: log_req::LogDataType, index: i32) -> Req {
     request(req::Payload::Log(LogReq {
         fmt: fmt as i32,
@@ -94,6 +132,7 @@ fn log_request(fmt: log_req::LogDataType, index: i32) -> Req {
 
 /// State behind the [`Tag`] lock.
 struct Inner {
+    /// The monitor session; all link traffic goes through it.
     monitor: TagMonitor,
     /// The most recent reply, or the failure recorded in its place.
     ack: Ack,
@@ -117,6 +156,8 @@ impl Inner {
         !self.rpc_failed
     }
 
+    /// The recorded outcome of the last RPC as a [`TagError`]; its message
+    /// is empty if that RPC succeeded.
     fn error(&self) -> TagError {
         describe(&self.ack, self.rpc_failed)
     }
@@ -153,10 +194,32 @@ impl Inner {
 ///
 /// Create one, [`attach`](Self::attach) (which resets the tag), make
 /// requests, and [`detach`](Self::detach); dropping it detaches too.
+///
+/// Port of the C++ `Tag` (`tagclass.*`). Methods take `&self` and
+/// serialise on an internal mutex, so one `Tag` can be shared
+/// in an `Arc`. Requests made while detached fail as transport errors.
+///
+/// # Examples
+///
+/// ```no_run
+/// use tagcore::{Tag, UsbDev};
+///
+/// let tag = Tag::new();
+/// if tag.attach(&UsbDev::default()) {
+///     // The tag has just been reset.
+///     let status = tag.status()?;
+///     println!("{:?}", status.state());
+///     tag.detach();
+/// }
+/// # Ok::<(), tagcore::TagError>(())
+/// ```
 pub struct Tag {
+    /// The monitor and the last RPC outcome, behind one lock so a request
+    /// and the recording of its outcome are atomic.
     inner: Mutex<Inner>,
 }
 
+/// Same as [`Tag::new`].
 impl Default for Tag {
     fn default() -> Self {
         Self::new()
@@ -175,6 +238,8 @@ impl Tag {
         }
     }
 
+    /// Locks the inner state, blocking until any other thread's request
+    /// finishes.
     fn lock(&self) -> MutexGuard<'_, Inner> {
         // A panic in another thread leaves nothing half-written that a later
         // call cannot cope with, so a poisoned lock is still used.
@@ -193,6 +258,9 @@ impl Tag {
     /// ST-LINK found when its `vid` or `pid` is zero (`UsbDev::default()`).
     /// **Resets the tag.** Returns false, with the reason logged, if no probe
     /// matched or the monitor did not start.
+    ///
+    /// Also false, without touching the probe, if already attached. See
+    /// [`TagMonitor::attach`] for the sequence.
     pub fn attach(&self, usbdev: &UsbDev) -> bool {
         let mut inner = self.lock();
         if usbdev.vid != 0 && usbdev.pid != 0 {
@@ -205,6 +273,9 @@ impl Tag {
     }
 
     /// Ends the monitor session and releases the probe.
+    ///
+    /// Sends MONITORSTOP, after which the tag may enter low power at once.
+    /// Harmless when not attached.
     pub fn detach(&self) {
         self.lock().monitor.detach();
     }
@@ -380,6 +451,10 @@ impl Tag {
     }
 
     /// Configures the tag with `config` and starts it.
+    ///
+    /// A transport failure is recorded as a MONITOR Ack ("Monitor call
+    /// failed"), as the C++ `Start()` does, so [`last_error`](Self::last_error)
+    /// reports [`ack::Err::Monitor`] rather than `Unspecified`.
     pub fn start(&self, config: &Config) -> Result<(), TagError> {
         let mut inner = self.lock();
         if !inner.rpc(&request(req::Payload::Start(config.clone()))) {
@@ -409,7 +484,13 @@ impl Tag {
     ///
     /// Waits for the next whole second of system time, then sends the time
     /// in milliseconds since the Unix epoch, so the tag's clock lands close
-    /// to a second boundary. Blocks for up to one second.
+    /// to a second boundary. Blocks for up to one second, holding the lock.
+    ///
+    /// # Errors
+    ///
+    /// A transport failure is recorded as a MONITOR Ack ("Monitor call
+    /// failed while setting RTC"); an UNSPECIFIED (empty or undecodable) Ack
+    /// is reported with its own message; any other non-OK code is the firmware's refusal.
     pub fn set_rtc(&self) -> Result<(), TagError> {
         let mut inner = self.lock();
         let now = SystemTime::now()
@@ -495,6 +576,7 @@ impl Tag {
     }
 }
 
+/// Detaches, so dropping a `Tag` ends the session cleanly.
 impl Drop for Tag {
     fn drop(&mut self) {
         self.lock().monitor.detach();

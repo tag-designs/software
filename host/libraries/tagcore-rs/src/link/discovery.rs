@@ -2,6 +2,13 @@
 //!
 //! Listing reads each probe's serial number but claims no interface and
 //! sends nothing over SWD, so it never resets a tag.
+//!
+//! Port of `LinkAdapt::Available` and the device-matching half of
+//! `LinkAdapt::Attach`. A probe is identified by vid, pid, bus and address,
+//! which is how the C++ tools and qtmonitor select one; the address changes
+//! whenever the probe is replugged, so a [`UsbDev`] is only good until
+//! then. Tools that let the user pick a probe by serial list the probes,
+//! find the serial, and attach with that entry.
 
 use std::time::Duration;
 
@@ -118,6 +125,11 @@ impl LinkAdapt {
     ///
     /// Does not open any probe for debug, so no tag is reset. Returns an
     /// empty list if enumeration fails (the failure is logged).
+    ///
+    /// Each probe is briefly opened to read its serial (see [`UsbDev::serial`]);
+    /// a probe that cannot be opened for that (held by another driver, for
+    /// example) is still listed, with an empty serial. A device whose descriptor cannot be read ends the scan early,
+    /// keeping the probes found so far. Order is libusb's enumeration order.
     pub fn available(&self) -> Vec<UsbDev> {
         let Some(ctx) = &self.ctx else {
             return Vec::new();
@@ -153,6 +165,15 @@ impl LinkAdapt {
     }
 
     /// Finds and opens the device `usbdev` selects, and sets the endpoints.
+    ///
+    /// With non-zero `vid` and `pid` only the exact vid/pid/bus/address
+    /// matches, and it need not be in the [`is_stlink`] list; otherwise the
+    /// first accepted ST-LINK in libusb's enumeration order is taken. A
+    /// device that matches but cannot be opened is logged and skipped, and
+    /// the search goes on. Logs the manufacturer, product and serial strings
+    /// at DEBUG. Returns false if libusb is unavailable, enumeration fails,
+    /// or nothing matched and opened. Claims nothing; see
+    /// [`LinkAdapt::open`] and [`LinkAdapt::attach`] for the rest.
     pub(super) fn open_matching(&mut self, usbdev: &UsbDev) -> bool {
         let Some(ctx) = &self.ctx else {
             return false;

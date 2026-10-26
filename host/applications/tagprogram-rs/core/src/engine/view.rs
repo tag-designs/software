@@ -1,7 +1,16 @@
 //! The view state: everything the window shows, as the contract's `state`
 //! event. qtprogram's `MainWindow` display rules (`showCheck`, `showTag`,
-//! `showFirmware`, `updateButtons`, `sessionStep`) are applied here, so the
-//! UI only draws.
+//! `showFirmware`, `updateButtons`, `sessionStep`, in `mainwindow.cpp`) are
+//! applied here, so the UI only draws.
+//!
+//! [`Station::view_state`] reads the station and never changes it, and talks
+//! to no device. The engine loop (`super::run`) calls it on the engine thread
+//! after every message and timer pass, compares the result with the last one
+//! sent, and publishes it only when it differs, so it must stay cheap and
+//! deterministic: no clock reads, and no I/O beyond the release catalog's
+//! checks of its cache directory (`Catalog::is_cached` and `targets` look
+//! for files on every call). The JSON's shape is specified in
+//! `design/ui-engine-contract.md`.
 
 use std::path::Path;
 
@@ -13,10 +22,14 @@ use super::station::{
     CHECK_NAMES, CLOCK_TOLERANCE_S, Check, Level, Station, state_name, test_name,
 };
 
+/// The window title (the `about` query's text repeats its version).
 const TITLE: &str = "Tag Programmer v2.0";
+/// An em dash: what the tag panel shows for a field it does not know.
 const DASH: &str = "\u{2014}";
 
-/// `%+.2f s` for an offset under 1000 s, else `%+.3g s`.
+/// The clock offset as qtprogram's `QString::asprintf` printed it:
+/// `%+.2f s` for an offset under 1000 s, else `%+.3g s` (a two-digit
+/// exponent, trailing zeros trimmed).
 fn clock_text(offset: f64) -> String {
     if offset.abs() < 1000.0 {
         return format!("{offset:+.2} s");
@@ -28,6 +41,7 @@ fn clock_text(offset: f64) -> String {
     format!("{m}e+{exp:02} s")
 }
 
+/// A firmware combo item for a local file: id `file:<path>`, text
 /// `"<file name>  (<directory>)"`, as the firmware combo lists a file.
 fn file_item(path: &str) -> Value {
     let p = Path::new(path);
@@ -43,6 +57,10 @@ fn file_item(path: &str) -> Value {
 }
 
 impl Station {
+    /// The firmware combo (qtprogram's `showFirmware`): every known release
+    /// with its date and flags, the chosen release even if the catalog no
+    /// longer lists it, the recent files (the chosen one first), then "Other
+    /// ELF file...". Disabled during a session.
     fn firmware_view(&self, running: bool) -> Value {
         let chosen_release = self.chosen_release();
         let chosen_file = self.chosen_file();
@@ -97,6 +115,10 @@ impl Station {
         })
     }
 
+    /// The tag type combo: the chosen release's targets, plus the current type
+    /// if it is not among them, with a note on where the type came from.
+    /// Enabled only for a release (a file's identity record fixes the type)
+    /// and not during a session.
     fn tag_type_view(&self, running: bool) -> Value {
         let release = self.chosen_release();
         let mut items = release
@@ -121,6 +143,10 @@ impl Station {
         })
     }
 
+    /// The tag panel (qtprogram's `showTag`): UUID, state, firmware, tests and
+    /// clock offset while the firmware answers, else dashes; the label recorded
+    /// for the tag's UUID, else the last label used; Sync's enablement; and the
+    /// last session's result line.
     fn tag_view(&self, running: bool) -> Value {
         let answers = self.attached() && self.info.is_some();
         let mut label = self.last_label.clone();
@@ -166,6 +192,9 @@ impl Station {
         out
     }
 
+    /// The session line (qtprogram's `sessionStep`): the step text, the
+    /// progress (hidden at PowerCycle and once finished), Retry at PowerCycle,
+    /// and Cancel -- "Give Up" at PowerCycle -- when the step is cancellable.
     fn session_view(&self) -> Value {
         let Some(s) = &self.session else {
             return json!({ "stepText": "", "progress": null, "retryVisible": false,
@@ -188,6 +217,14 @@ impl Station {
         })
     }
 
+    /// The whole view state, the contract's `state` event.
+    ///
+    /// Runs on the engine thread and changes nothing. Applies qtprogram's
+    /// `updateButtons`: Program is enabled with no tooltip exactly when
+    /// [`Station::can_program`] passes (its refusal is the tooltip); Retest needs
+    /// an answering tag and an OK record; Stop shows for a tag in a deployed
+    /// state and Erase for one in FINISHED or ABORTED. The outstanding prompt is
+    /// included with its `id`.
     pub(crate) fn view_state(&self) -> Value {
         let running = self.session_running();
         let answers = self.attached() && self.info.is_some();
@@ -244,10 +281,12 @@ impl Station {
     }
 }
 
+/// Unit tests for the view's text formatting.
 #[cfg(test)]
 mod tests {
     use super::clock_text;
 
+    /// The clock offset reads as qtprogram printed it, in both formats.
     #[test]
     fn clock_follows_qtprogram_formats() {
         assert_eq!(clock_text(0.02), "+0.02 s");

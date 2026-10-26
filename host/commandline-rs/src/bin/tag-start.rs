@@ -12,6 +12,26 @@
 //! Exits 0 when the tag reached RUNNING or CONFIGURED, was already in one of
 //! them (no start is sent), or accepted the start but answered no status read
 //! within `--start-timeout` (reported as "not confirmed"); 1 otherwise.
+//!
+//! Usage: `tag-start [-d] [-b BUS:DEVICE] [-c|--config FILE [--merge]]
+//! [--set-rtc] [--start-now] [--start-timeout S] [--settle-timeout S]`
+//! (both timeouts default to 10 s; status is polled once a second). The
+//! configuration actually sent is printed as protobuf text before the
+//! start. A non-IDLE tag other than RUNNING or CONFIGURED is refused with
+//! exit 1, as is `--set-rtc` on a tag that is not IDLE. Option errors exit 2
+//! (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag. `--set-rtc` overwrites its clock with the
+//! host's. The start writes the configuration to the tag and begins a run
+//! (CONFIGURED until `start_delay` elapses, then RUNNING), which the tool
+//! does not end: the tag is left running when it exits. After an accepted
+//! start, library link errors are silenced unless `--debug`, because a tag
+//! whose next state sleeps at once drops the debug link.
+//!
+//! This does not erase a previous log: a tag holding data is FINISHED or
+//! ABORTED, not IDLE, and must be reset with `tag-reset` first.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -30,6 +50,7 @@ use tagcore::proto::{self, Config, Status, TagState, TagType};
 #[derive(Parser)]
 #[command(name = "tag-start")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -63,6 +84,8 @@ struct Cli {
     settle_timeout: u64,
 }
 
+/// Interval between status polls while settling and while waiting for the
+/// tag to leave IDLE.
 const POLL: Duration = Duration::from_secs(1);
 
 /// Loads a Config from a protobuf-JSON file: replacing `cfg`, or with
@@ -102,11 +125,14 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<Status, String> {
     ))
 }
 
+/// Prints `message` to stderr and returns exit status 1.
 fn fail(message: impl std::fmt::Display) -> ExitCode {
     eprintln!("{message}");
     ExitCode::FAILURE
 }
 
+/// Attaches, settles, optionally sets the clock, starts an IDLE tag with the
+/// chosen configuration and polls until it leaves IDLE.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
@@ -220,6 +246,9 @@ fn main() -> ExitCode {
                     break;
                 }
             }
+            // TODO(doc-review): a failed read after an earlier successful one that still
+            // showed IDLE clears `read_ok`, so the tool reports "no status read succeeded"
+            // and exits 0 although the last good read said the tag had not started.
             Err(_) => read_ok = false,
         }
         sleep(POLL);

@@ -9,14 +9,37 @@
 //! because it writes `gen/schemas` relative to its working directory, and
 //! `generate_context!` is pointed at the staged `dist/` through
 //! `TAURI_CONFIG`. The release build runs with the source tree read-only.
+//!
+//! Layout of `$OUT_DIR/tauri`, rebuilt from scratch on every run:
+//!
+//! ```text
+//! dist/            ../ui files, *.html with KIT_HREF rewritten to ui-kit/
+//! dist/ui-kit/     host/ui-kit files
+//! capabilities/    icons/    tauri.conf.json    Cargo.toml
+//! gen/schemas/     written by tauri-build
+//! ```
+//!
+//! Only the top level of each source directory is copied. Any failure
+//! panics, which fails the build with the message. See
+//! `../design/build-and-packaging.md`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// The kit's path as the page's HTML writes it, relative to `ui/`
+/// (`host/applications/tagprogram-rs/ui` up to `host/ui-kit/`). Replaced
+/// with `ui-kit/` in the staged copy, where the kit sits inside `dist/`.
 const KIT_HREF: &str = "../../../ui-kit/";
 
 /// Copies the files of `from` into `to` (not recursively), rewriting the
 /// kit's path in HTML when `rewrite` is set.
+///
+/// Subdirectories are skipped. Only files ending in `.html` are rewritten;
+/// every occurrence of [`KIT_HREF`] in them is replaced.
+///
+/// # Panics
+///
+/// Panics if `from` cannot be read or a file cannot be copied or written.
 fn copy_dir(from: &Path, to: &Path, rewrite: bool) {
     fs::create_dir_all(to).expect("create staging directory");
     for entry in fs::read_dir(from).unwrap_or_else(|e| panic!("read {}: {e}", from.display())) {
@@ -34,6 +57,14 @@ fn copy_dir(from: &Path, to: &Path, rewrite: bool) {
     }
 }
 
+/// Stages the page, kit and Tauri inputs under `$OUT_DIR/tauri`, tells
+/// cargo what to watch, sets `TAURI_CONFIG`, and runs tauri-build from the
+/// staging directory.
+///
+/// # Panics
+///
+/// Panics if `CARGO_MANIFEST_DIR` or `OUT_DIR` is unset or any staging step
+/// fails; tauri-build panics on its own errors.
 fn main() {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let stage = PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR")).join("tauri");

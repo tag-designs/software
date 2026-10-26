@@ -1,4 +1,5 @@
-/*
+/**
+ * @file
  * Tag Programmer's window: draws the engine's view state and turns user
  * actions into commands and queries, per design/ui-engine-contract.md. It
  * holds no rules; every text it shows comes from the engine, except the
@@ -8,6 +9,14 @@
  * parameters: ?scenario=<name> picks a canned state (see mock-engine.js),
  * ?nopanel hides the scenario switcher, ?theme=dark|light forces a theme,
  * ?dialog=program[&label=...] opens the Program dialog, ?log opens the log.
+ *
+ * Flow: the engine sends its whole view state (event `state`) after every
+ * change and render() redraws from it; nothing is kept between states
+ * except which prompt has been shown. User actions become `command`s, which
+ * the engine answers with a new state, and the dialogs that need data first
+ * ask `query`s (program_preview, label_notes, label_conflict, ...). Prompts
+ * the engine raises (state.prompt) are answered with a command. The element
+ * ids used here are those of index.html.
  */
 (function () {
   "use strict";
@@ -15,12 +24,25 @@
   const { el } = Kit;
   const params = Kit.setupPage("Tag Programmer");
   const engine = Kit.createEngine(!Kit.inApp() && window.MockEngine ? MockEngine.create(params) : null);
+  /**
+   * The element with `id` in index.html.
+   * @param {string} id
+   * @returns {?HTMLElement}
+   */
   const $ = (id) => document.getElementById(id);
 
   let state = null;
   let shownPrompt = null;     // the id of the prompt on screen or answered
   let busy = false;           // a dialog of ours is open; ignore re-entry
 
+  /**
+   * Sends a command to the engine; an error string in the answer, or a
+   * rejected invoke, is shown in an alert. Resolves once the engine has
+   * accepted the command, not when it has finished.
+   * @param {string} cmd Command name from the contract.
+   * @param {Object} [args] Its arguments.
+   * @returns {Promise<void>}
+   */
   const send = (cmd, args) =>
     Promise.resolve(engine.command(cmd, args)).then((err) => {
       if (err) Kit.alert("Tag Programmer", String(err), null, "warning");
@@ -28,6 +50,11 @@
 
   // ---- Rendering --------------------------------------------------------
 
+  /**
+   * Redraws the whole window from a view state and shows its prompt, if it
+   * is new. The state is kept for the menus and buttons that read it later.
+   * @param {Object} s The engine's view state (see the contract).
+   */
   function render(s) {
     state = s;
     Kit.setTitle(s.title);
@@ -44,6 +71,12 @@
   /** A closed <select> collapses runs of spaces; qtprogram's texts use two. */
   const keepSpaces = (text) => text.replace(/  /g, "\u00a0 ");
 
+  /**
+   * Fills the firmware combo from `fw.items`, with a "Choose firmware"
+   * placeholder while nothing is selected, and enables Release Notes when
+   * the selection has a notes URL.
+   * @param {Object} fw The state's `firmware` section.
+   */
   function renderFirmware(fw) {
     const box = $("firmware");
     const options = [];
@@ -58,6 +91,10 @@
     $("release-notes").disabled = !fw.releaseNotesUrl;
   }
 
+  /**
+   * Fills the tag-type combo; a null selection shows none selected.
+   * @param {Object} t The state's `tagType` section.
+   */
   function renderTarget(t) {
     const box = $("target");
     box.replaceChildren(...t.items.map((name) => el("option", { value: name }, name)));
@@ -66,6 +103,12 @@
     $("target-note").textContent = t.note;
   }
 
+  /**
+   * Draws the status rows (dot, name, text, buttons). The Record row gets
+   * Choose... and the Tag state row Stop and Erase, as `rb` says.
+   * @param {Array<Object>} checks The state's `checks` rows, in order.
+   * @param {Object} rb The state's `rowButtons`.
+   */
   function renderChecks(checks, rb) {
     const grid = $("checks");
     grid.replaceChildren();
@@ -94,6 +137,11 @@
     }
   }
 
+  /**
+   * Fills the tag panel: identity, state, firmware, tests, clock (flagged
+   * when off) and the result, coloured when it is a pass or a failure.
+   * @param {Object} t The state's `tag` section.
+   */
   function renderTag(t) {
     $("tag-label").textContent = t.label;
     $("tag-uuid").textContent = t.uuid;
@@ -109,6 +157,11 @@
     result.classList.toggle("kit-text-fail", t.result.ok === false);
   }
 
+  /**
+   * Enables the action buttons; a disabled one shows the engine's reason as
+   * its tooltip.
+   * @param {Object} a The state's `actions` section.
+   */
   function renderActions(a) {
     for (const [key, id] of [["program", "program"], ["retest", "retest"], ["nextTag", "next-tag"], ["attach", "attach"]]) {
       const b = $(id);
@@ -117,6 +170,11 @@
     }
   }
 
+  /**
+   * Draws the step line, the progress bar (hidden for null, indeterminate
+   * for "busy", else `done`/`total`) and the Retry and Cancel buttons.
+   * @param {Object} s The state's `session` section.
+   */
   function renderSession(s) {
     $("step").textContent = s.stepText;
     const bar = $("progress");
@@ -135,6 +193,11 @@
 
   // ---- Prompts ----------------------------------------------------------
 
+  /**
+   * Shows the engine's prompt once per prompt id; each kind answers with
+   * its command, and an unknown kind is cancelled so the engine never waits.
+   * @param {?Object} p The state's `prompt`, or null.
+   */
   function showPrompt(p) {
     if (!p || p.id === shownPrompt) return;
     shownPrompt = p.id;
@@ -147,6 +210,7 @@
     send("prompt_cancel");
   }
 
+  /** The first-run question: attach automatically? Answers `answer_auto_attach`. */
   async function promptAutoAttach() {
     const on = await Kit.confirm("Attach Automatically?",
       "Tag Programmer can connect to each tag as soon as it finds the base, so its state and identity " +
@@ -157,6 +221,12 @@
     send("answer_auto_attach", { on });
   }
 
+  /**
+   * Asks which record file to use: the default (open or create it), an
+   * existing file, or a new one elsewhere. Cancelling, at either step, sends
+   * `prompt_cancel`.
+   * @param {Object} p The prompt, with `defaultPath` and `exists`.
+   */
   async function promptRecordFile(p) {
     const filters = [{ name: "CSV", extensions: ["csv"] }];
     const choice = await Kit.confirm("Record File",
@@ -181,6 +251,11 @@
     send("prompt_cancel");
   }
 
+  /**
+   * Asks which of several bases to use; answers `choose_base` with the
+   * index, or `prompt_cancel`.
+   * @param {Object} p The prompt, with `label`, `items` and `current`.
+   */
   async function promptChooseBase(p) {
     const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
     send(index === null ? "prompt_cancel" : "choose_base", index === null ? {} : { index });
@@ -188,6 +263,7 @@
 
   // ---- Dialogs started by the user --------------------------------------
 
+  /** Confirms erasing the tag's log, Cancel the default, then sends `erase_tag`. */
   async function confirmErase() {
     const ok = await Kit.confirm("Erase Tag",
       "Erase the tag's log? Download it with Tag Monitor first; it cannot be recovered.", null,
@@ -200,6 +276,9 @@
    * Whether to go ahead with `label`: when the record already holds it for
    * another tag, asks, with Cancel the default, since two boards sharing a
    * label make the record ambiguous.
+   * @param {string} title Title of the dialog asking.
+   * @param {string} label The trimmed label.
+   * @returns {Promise<boolean>} True to go ahead.
    */
   async function labelAccepted(title, label) {
     const conflict = await engine.query("label_conflict", { label });
@@ -210,7 +289,16 @@
        { label: "Use This Label", value: true, destructive: true }], 460);
   }
 
-  /** qtprogram's Program dialog, built from program_preview and label_notes. */
+  /**
+   * qtprogram's Program dialog, built from program_preview and label_notes.
+   *
+   * Shows what programming will erase, lose and keep, and the notes for the
+   * label as it is typed (a stale answer is dropped if a newer one was
+   * asked for). Erase and Program stays disabled while the label is empty;
+   * Return presses Cancel, so the destructive step always takes a click.
+   * Re-entry while open is ignored.
+   * @param {string} [initialLabel] Label to start with.
+   */
   async function programDialog(initialLabel) {
     if (busy) return;
     busy = true;
@@ -260,6 +348,10 @@
     }
   }
 
+  /**
+   * Asks for the label of the tag to retest (prefilled by the engine) and
+   * sends `retest` once any label conflict is confirmed.
+   */
   async function retestDialog() {
     const label = await Kit.promptText("Retest Tag", "Label of the tag to retest:",
       await engine.query("retest_default_label"));
@@ -267,6 +359,10 @@
     if (await labelAccepted("Retest Tag", label.trim())) send("retest", { label: label.trim() });
   }
 
+  /**
+   * Handles a firmware combo change: "Other ELF file..." opens a file
+   * picker, anything else is sent as `choose_firmware`.
+   */
   async function firmwareChosen() {
     const id = $("firmware").value;
     if (id === "other") {
@@ -279,6 +375,7 @@
     }
   }
 
+  /** Opens the user guide at the URL the engine found, or says how to build it. */
   async function userGuide() {
     const url = await engine.query("user_guide_url");
     if (url) Kit.openUrl(url);
@@ -288,6 +385,7 @@
     }
   }
 
+  /** Shows the engine's About text. */
   async function about() {
     const a = await engine.query("about");
     Kit.alert(a.title, a.text, null, "info");

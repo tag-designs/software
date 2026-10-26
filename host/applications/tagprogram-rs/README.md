@@ -20,7 +20,7 @@ STM32CubeProgrammer, and its UI is a web page drawn by Tauri.
 | `core/` | `tagprogram-core`: the model (`model/`: ELF, flash plan, identity record, image, release catalog, record CSV, settings) and the engine (`engine/`: station, session, view state). No UI toolkit; unit tests run without hardware. |
 | `ui/` | The page: `index.html`, `app.css`, `app.js` draw the view state; `mock-engine.js` stands in for the engine in a plain browser. |
 | `app/` | The Tauri shell: starts the engine, forwards commands and queries, emits its events, and finds the user guide. `build.rs` stages the page from `ui/` and [`host/ui-kit`](../../ui-kit/README.md) under cargo's `OUT_DIR`. |
-| `design/` | [The UI/engine contract](design/ui-engine-contract.md) and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. |
+| `design/` | [The engine](design/engine.md) (threads, loop, station, session, hazards), [building and packaging](design/build-and-packaging.md), [the UI/engine contract](design/ui-engine-contract.md), and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. Why it was built this way: [decision 0035](../../../docs/decisions/0035-host-tagprogram-rs.md). |
 
 The engine owns every rule and all state; the page holds none. That split is
 what lets the same kit and pattern serve qtmonitor and qtcalibrate later.
@@ -88,15 +88,17 @@ probe-rs's progress goes to the log pane.
 
 - Program and Retest have passed on a BitTag (bittag-base-v7, stock
   driver) with fw-v0.6, through the bench runner: mass erase, program,
-  verify, ALL_PASSED, erased and IDLE in 13 s, and the flash read back
-  matching the image.
+  verify, ALL_PASSED in 13 s (with the final start, stop and erase since
+  removed), and the flash read back matching the image.
 - Retest has passed on an IMUTagNandBmp581 (U375, tag-breakout-base-l432-u375-1v8,
   stock driver): the flash read back matching fw-v0.6, and ALL_PASSED.
   Programming a U375 through the engine has not been run yet.
 - Program has passed on a UIUCTag (STM32L432KB) through a field base with
-  the field-safe driver. The tagcore monitor logged a burst of 0x81 debug
-  register failures while reconnecting after probe-rs, then recovered.
+  the field-safe driver. The tagcore monitor's debug-register reads failed
+  in a burst (status 0x81) while reconnecting after probe-rs, then
+  recovered; tagcore now logs only the first and a count.
 - Retest and Program have passed on the BitTag through a "BitTag Base V5C",
   the oldest base on the bench, with the field-safe driver.
-- Built into the host packages for all three platforms (see above); the
-  first CI run is still to come.
+- A batch of PresTags has been programmed, tag after tag, in one session.
+- Built into the host packages, and built and package-tested on all three
+  platforms by the release workflow.

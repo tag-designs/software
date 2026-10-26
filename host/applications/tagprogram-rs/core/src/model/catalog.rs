@@ -11,6 +11,21 @@
 //!
 //! The network calls are blocking; the engine runs them on a worker thread.
 //! A [`Catalog`] is `Sync`, so it can be shared with that thread.
+//!
+//! The cache directory is chosen by the caller; the app uses `firmware/` in
+//! the platform data directory. Its layout:
+//!
+//! ```text
+//! <cache>/releases.json                     last listing (see listing_to_json)
+//! <cache>/<tag>/.verified                   present only once every image verified
+//! <cache>/<tag>/firmware/<T>/<T>.elf
+//! <cache>/<tag>/firmware/<T>/<T>-build-manifest.json
+//! <cache>/<tag>.partial/                    staging while a fetch runs
+//! ```
+//!
+//! Only archive members matching the last two shapes are ever written, which
+//! is what keeps a hostile archive from writing outside the cache. A release
+//! is never trusted because it was downloaded: it must verify first.
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use regex::Regex;
@@ -24,21 +39,33 @@ use super::image::{FirmwareImage, load_firmware_image};
 /// The GitHub API listing of the repository's releases.
 pub const RELEASES_URL: &str =
     "https://api.github.com/repos/tag-designs/software/releases?per_page=100";
+/// `User-Agent` sent with every request; the GitHub API refuses requests
+/// without one.
 const USER_AGENT: &str = "tagprogram";
+/// Empty file in `<cache>/<tag>` whose presence means the release's images
+/// were all verified when installed.
 const VERIFIED_MARKER: &str = ".verified";
+/// File in the cache directory holding the last listing.
 const LISTING_FILE: &str = "releases.json";
 
+/// A firmware release tag: `fw-v` and dot-separated decimal numbers.
 static FIRMWARE_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^fw-v\d+(\.\d+)*$").unwrap());
+/// A qualification asset; capture 1 is the target, the date suffix is
+/// optional and must be eight digits when present.
 static QUALIFICATION: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^qualification-([A-Za-z0-9_]+)(-\d{8})?\.tar\.gz$").unwrap());
 // The regex crate has no backreferences, so the `\1` of qtprogram's pattern
 // is checked by hand in `acceptable_member`.
+/// An archive member the cache keeps, before the directory and file stems
+/// are compared; captures 1 and 2 are the two target names.
 static MEMBER: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^firmware/([A-Za-z0-9_-]+)/([A-Za-z0-9_-]+)(\.elf|-build-manifest\.json)$")
         .unwrap()
 });
 
 /// One published (or cached) firmware release.
+///
+/// Port of qtprogram's `FirmwareRelease`. Serialized into the view state.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct FirmwareRelease {
     /// e.g. `"fw-v0.7"`.
@@ -69,6 +96,19 @@ impl FirmwareRelease {
 }
 
 /// `tag` names a firmware release (`fw-v0.7`, `fw-v1.2.3`).
+///
+/// Also what tells a release directory in the cache from anything else there
+/// (such as a `<tag>.partial` staging directory).
+///
+/// # Examples
+///
+/// ```
+/// use tagprogram_core::model::catalog::is_firmware_tag;
+///
+/// assert!(is_firmware_tag("fw-v1.2.3"));
+/// assert!(!is_firmware_tag("fw-v0.6.partial"));
+/// assert!(!is_firmware_tag("v2.0"));
+/// ```
 pub fn is_firmware_tag(tag: &str) -> bool {
     FIRMWARE_TAG.is_match(tag)
 }
@@ -82,11 +122,18 @@ pub fn qualification_target(asset_name: &str) -> Option<&str> {
 }
 
 /// An archive member the cache keeps: `firmware/<T>/<T>.elf` or
-/// `firmware/<T>/<T>-build-manifest.json` (after any leading `./`).
+/// `firmware/<T>/<T>-build-manifest.json`.
+///
+/// `<T>` is letters, digits, `_` and `-`, and the directory and file stems
+/// must be equal. `name` must already have any leading `./` removed (the
+/// extractor does that); with it, the name is refused. No `..` or absolute
+/// path can match, so an accepted member always lands inside the cache.
 pub fn acceptable_member(name: &str) -> bool {
     MEMBER.captures(name).is_some_and(|c| c[1] == c[2])
 }
 
+/// The numeric version of a release tag, for ordering: `fw-v0.10` gives
+/// `[0, 10]`. Parsing stops at the first component that is not a number.
 fn version_of(tag: &str) -> Vec<u64> {
     tag.get(4..)
         .unwrap_or("")
@@ -95,10 +142,13 @@ fn version_of(tag: &str) -> Vec<u64> {
         .collect()
 }
 
+/// Sorts `releases` newest version first, numerically (`fw-v0.10` before
+/// `fw-v0.9`).
 fn sort_by_version(releases: &mut [FirmwareRelease]) {
     releases.sort_by_key(|r| std::cmp::Reverse(version_of(&r.tag)));
 }
 
+/// Parses an RFC 3339 timestamp into UTC; `None` when empty or malformed.
 fn parse_time(text: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(text)
         .ok()
@@ -107,6 +157,12 @@ fn parse_time(text: &str) -> Option<DateTime<Utc>> {
 
 /// Parses a GitHub releases listing: firmware releases with an archive,
 /// drafts skipped, newest version first.
+///
+/// Input is the JSON array the GitHub REST API returns from
+/// [`RELEASES_URL`]. Releases whose tag is not a firmware tag, and those
+/// without a `tag-firmware-<tag>.tar.gz` asset, are left out. Every result is
+/// `listed`, with its qualified targets in asset order, without duplicates.
+/// Malformed JSON gives an empty list.
 pub fn parse_releases(json: &str) -> Vec<FirmwareRelease> {
     let value: serde_json::Value = serde_json::from_str(json).unwrap_or_default();
     let mut releases = Vec::new();
@@ -145,6 +201,11 @@ pub fn parse_releases(json: &str) -> Vec<FirmwareRelease> {
 
 /// Serialises releases as `releases.json` (qtprogram's format: `tag`,
 /// `published` ISO 8601, `prerelease`, `archive`, `page`, `qualified`).
+///
+/// A pretty-printed JSON array. `published` is RFC 3339 UTC to the second
+/// with a `Z` suffix, or `""` when unknown. `listed` and `cached` are not
+/// written: the first is implied by the `qualified` key and the second is
+/// recomputed from the cache.
 pub fn listing_to_json(releases: &[FirmwareRelease]) -> String {
     let array: Vec<serde_json::Value> = releases
         .iter()
@@ -166,6 +227,9 @@ pub fn listing_to_json(releases: &[FirmwareRelease]) -> String {
 
 /// Reads `releases.json`. A release written before qualification was
 /// recorded (no `qualified` key) is not `listed`.
+///
+/// Entries whose `tag` is not a firmware tag are dropped; malformed JSON
+/// gives an empty list. `cached` is always false here; [`Catalog`] sets it.
 pub fn listing_from_json(json: &str) -> Vec<FirmwareRelease> {
     let value: serde_json::Value = serde_json::from_str(json).unwrap_or_default();
     value
@@ -192,15 +256,28 @@ pub fn listing_from_json(json: &str) -> Vec<FirmwareRelease> {
 }
 
 /// The releases offered, over a cache directory.
+///
+/// Port of qtprogram's `FirmwareCatalog`, without its signals: the engine
+/// calls [`Catalog::refresh`] and [`Catalog::fetch`] on a worker thread and
+/// rereads [`Catalog::releases`] when they return. Interior mutexes make
+/// every method take `&self`; a panic while one is held poisons it, and
+/// later calls then panic too.
 pub struct Catalog {
+    /// Root of the cache; see the module documentation for its layout.
     cache_dir: PathBuf,
+    /// The releases offered, newest first: the last listing plus any cached
+    /// release it lacks.
     releases: Mutex<Vec<FirmwareRelease>>,
+    /// The tag of the release being fetched, so at most one download runs.
     fetching: Mutex<Option<String>>,
 }
 
 impl Catalog {
     /// A catalog over `cache_dir` (created if missing), loaded from its
     /// `releases.json`.
+    ///
+    /// A directory that cannot be created is not an error here: the catalog
+    /// is then empty, and a later fetch reports the failure to write.
     pub fn new(cache_dir: impl Into<PathBuf>) -> Catalog {
         let catalog = Catalog {
             cache_dir: cache_dir.into(),
@@ -218,6 +295,9 @@ impl Catalog {
     }
 
     /// Reloads the offered releases from `releases.json` and the cache.
+    ///
+    /// A missing or unreadable listing counts as empty, so only cached
+    /// releases are offered.
     pub fn load(&self) {
         let listed = std::fs::read_to_string(self.cache_dir.join(LISTING_FILE))
             .map(|j| listing_from_json(&j))
@@ -266,6 +346,9 @@ impl Catalog {
     }
 
     /// `tag`'s images are in the cache and were verified.
+    ///
+    /// Decided by the `.verified` marker alone; the images are not hashed
+    /// again here (loading them through [`Catalog::images`] does that).
     pub fn is_cached(&self, tag: &str) -> bool {
         is_firmware_tag(tag) && self.cache_dir.join(tag).join(VERIFIED_MARKER).exists()
     }
@@ -275,6 +358,12 @@ impl Catalog {
         self.fetching.lock().unwrap().clone()
     }
 
+    /// A blocking HTTP client with this program's user agent, a 20 s
+    /// connect timeout and `timeout` for the whole request.
+    ///
+    /// # Errors
+    ///
+    /// The client builder's error, as text (e.g. no TLS backend).
     fn client(timeout: Duration) -> Result<reqwest::blocking::Client, String> {
         reqwest::blocking::Client::builder()
             .user_agent(USER_AGENT)
@@ -289,6 +378,16 @@ impl Catalog {
     ///
     /// On failure the offered releases are unchanged. A 403 or 429 is
     /// reported as the rate limit; anything else as the transport's error.
+    ///
+    /// The request has a 30 s overall timeout. Only the first 100 releases
+    /// are requested (`per_page=100`; no pagination). A failure to write
+    /// `releases.json` is ignored: the listing is still offered, just not
+    /// kept for offline use.
+    ///
+    /// # Errors
+    ///
+    /// The rate-limit message, an HTTP status error, or a transport error,
+    /// each as display-ready text.
     pub fn refresh(&self) -> Result<(), String> {
         let reply = Self::client(Duration::from_secs(30))?
             .get(RELEASES_URL)
@@ -312,6 +411,17 @@ impl Catalog {
     /// downloading, or when the release has no archive. Any failure removes
     /// the staging directory, so a release is either fully cached and
     /// verified or absent.
+    ///
+    /// The archive is downloaded into `<cache>/<tag>.partial` (600 s overall
+    /// timeout), extracted there, then installed by `Catalog::install`.
+    /// `tag` must be offered with an archive URL, so call
+    /// [`Catalog::refresh`] first for a release not yet listed. The offered
+    /// releases are recomputed afterwards, success or not.
+    ///
+    /// # Errors
+    ///
+    /// "Another release is downloading.", `"<tag> has no firmware archive."`,
+    /// or the download, extraction, verification or install failure.
     pub fn fetch(&self, tag: &str) -> Result<(), String> {
         if self.is_cached(tag) {
             return Ok(());
@@ -337,6 +447,14 @@ impl Catalog {
         result
     }
 
+    /// Downloads `url` into `staging/archive.tar.gz`, after clearing
+    /// `staging`, and installs it as `tag`.
+    ///
+    /// # Errors
+    ///
+    /// `"Cannot write <path>."` when staging cannot be created, a transport or
+    /// HTTP status error, or [`Catalog::install`]'s error. `staging` is
+    /// removed on every failure.
     fn download_and_install(&self, tag: &str, url: &str, staging: &Path) -> Result<(), String> {
         let _ = std::fs::remove_dir_all(staging);
         std::fs::create_dir_all(staging)
@@ -363,6 +481,18 @@ impl Catalog {
     /// Extracts the firmware members of `archive` into `staging`, verifies
     /// every image and installs `staging` as `<cache>/<tag>`. On failure the
     /// staging (or half-installed) directory is removed.
+    ///
+    /// The archive itself is deleted once extracted. Every
+    /// `firmware/<T>/` directory must hold a `<T>.elf` that
+    /// [`load_firmware_image`] accepts as a release image (manifest present
+    /// and matching); one failure refuses the whole release. An existing
+    /// `<cache>/<tag>` is replaced. The `.verified` marker is written last,
+    /// so an interrupted install never looks cached.
+    ///
+    /// # Errors
+    ///
+    /// [`extract_firmware`]'s error, the first image's refusal, or
+    /// `"Cannot install the release in <dir>."`
     fn install(&self, tag: &str, archive: &Path, staging: &Path) -> Result<(), String> {
         let fail = |dir: &Path, why: String| {
             let _ = std::fs::remove_dir_all(dir);
@@ -397,6 +527,8 @@ impl Catalog {
     }
 
     /// The targets cached for `tag`, sorted; empty unless it is cached.
+    ///
+    /// A target is a `firmware/<T>/` directory that holds `<T>.elf`.
     pub fn targets(&self, tag: &str) -> Vec<String> {
         if !self.is_cached(tag) {
             return Vec::new();
@@ -417,6 +549,9 @@ impl Catalog {
     }
 
     /// Every cached image of `tag`, loaded and verified.
+    ///
+    /// Each image is hashed and checked against its manifest again, so a
+    /// cached file altered since install comes back with an `error`.
     pub fn images(&self, tag: &str) -> Vec<FirmwareImage> {
         self.targets(tag)
             .iter()
@@ -425,7 +560,8 @@ impl Catalog {
     }
 }
 
-/// Names of the subdirectories of `dir`, sorted.
+/// Names of the subdirectories of `dir`, sorted; empty when `dir` cannot be
+/// read.
 fn subdirectories(dir: &Path) -> Vec<String> {
     let mut out: Vec<String> = std::fs::read_dir(dir)
         .into_iter()
@@ -441,6 +577,16 @@ fn subdirectories(dir: &Path) -> Vec<String> {
 /// Extracts the acceptable members of the gzipped tar `archive` under
 /// `dest`; every other member is ignored, so nothing can be written outside
 /// `dest`.
+///
+/// Members are matched after removing one leading `./`; only regular files
+/// are extracted (links and directories are skipped). An existing file is
+/// overwritten.
+///
+/// # Errors
+///
+/// `"The archive could not be read: <error>"` (not gzip, not tar, or
+/// truncated), `"Extraction failed: <error>"` when a file cannot be written,
+/// or "The archive holds no firmware images." when no member was kept.
 fn extract_firmware(archive: &Path, dest: &Path) -> Result<(), String> {
     let unreadable = |e: std::io::Error| format!("The archive could not be read: {e}");
     let file = std::fs::File::open(archive).map_err(unreadable)?;
@@ -473,12 +619,16 @@ fn extract_firmware(archive: &Path, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Unit tests of the patterns, listings, cache discovery and install, with
+/// no network access.
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::elf::testelf;
     use crate::model::image::sha256_of_file;
 
+    /// A GitHub listing covering a qualified release, a prerelease, a draft,
+    /// a release without an archive and a non-firmware tag.
     const GITHUB: &str = r#"[
       {"tag_name": "fw-v0.6", "draft": false, "prerelease": false,
        "published_at": "2026-10-01T12:00:00Z",
@@ -573,6 +723,8 @@ mod tests {
         );
     }
 
+    /// Writes a gzipped tar at `path` holding `members` (name, bytes) as
+    /// regular files, names written raw so unsafe ones can be tested.
     fn tarball(path: &Path, members: &[(&str, Vec<u8>)]) {
         let gz = flate2::write::GzEncoder::new(
             std::fs::File::create(path).unwrap(),

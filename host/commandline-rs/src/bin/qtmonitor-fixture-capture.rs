@@ -7,6 +7,31 @@
 //! fixture schema (`host/docs/fixtures/qtmonitor/`). The tool is
 //! intentionally read-only: it does not start, stop, erase, test, or
 //! otherwise drive tag state.
+//!
+//! Usage: `qtmonitor-fixture-capture [-d] [-b BUS:DEVICE] [-o PATH|-]
+//! [--id ID] [--label TEXT] [--notes TEXT] [--fallback-config PATH]
+//! [--status-name NAME | --state NAME] [--no-config] [--sanitize]
+//! [--print-summary]`. The output defaults to `qtmonitor-fixture.json`, and
+//! its parent directories are created. `--capture-default-config` is
+//! accepted and does nothing, since capturing the configuration is already
+//! the default. Unlike the other tools it does not use
+//! [`tag_tools::BaseArgs`]: with several bases and no `--base` it lists them
+//! rather than printing help.
+//!
+//! `sectors_erased` is always cleared from the status unless the tag is in
+//! S_RESET; `--sanitize` additionally replaces the chip UUID with zeros and
+//! `source_path` with a path derived from `--id` or the tag type.
+//!
+//! # Exit status
+//!
+//! 0 once the fixture is written; 1 if no single base is selected, or the
+//! attach, an info, config, status or voltage read, or the write fails.
+//! Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! "Read-only" means no request changes tag state; the attach itself still
+//! resets the tag, so the status captured is the one after that reset.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -80,20 +105,35 @@ struct Cli {
 
 /// The options after parsing, as the C++ `CaptureOptions` holds them.
 struct Capture {
+    /// The `--base` value, or empty to use the only base connected.
     base: String,
+    /// Output path, or `-` for stdout.
     output: String,
+    /// Fixture id, or empty to derive it from the tag type.
     id: String,
+    /// Fixture label, or empty to use the tag type name.
     label: String,
+    /// Free-text notes; omitted from the fixture when empty.
     notes: String,
+    /// Source-tree default config path written as `fallback_ref`; omitted when
+    /// empty.
     fallback_config: String,
+    /// Key under `statuses` for the captured status.
     status_name: String,
+    /// Whether to read and include the tag's configuration (false only with
+    /// `--no-config`).
     capture_default_config: bool,
+    /// Whether to replace the UUID and source path placeholders.
     sanitize: bool,
+    /// Whether to print a summary to stderr after writing.
     print_summary: bool,
+    /// Whether to log at DEBUG; otherwise logging is off.
     debug: bool,
 }
 
 impl From<Cli> for Capture {
+    /// Folds the parsed options into a [`Capture`]; `--state` overrides
+    /// `--status-name`.
     fn from(cli: Cli) -> Self {
         Self {
             base: cli.base.unwrap_or_default(),
@@ -147,6 +187,8 @@ fn utc_timestamp() -> String {
     chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
+/// The protobuf name of a tag type number, such as `"BITTAG_LE"`, or the
+/// number itself when it has no name.
 fn tag_type_name(tag_type: i32) -> String {
     TagType::try_from(tag_type)
         .map(|t| t.as_str_name().to_owned())
@@ -169,10 +211,14 @@ fn message_to_json<M: ReflectMessage>(msg: &M) -> String {
     out
 }
 
+/// The indent for nesting `level`: one space per level, as the C++ JSON
+/// printer writes it.
 fn indent(level: usize) -> String {
     " ".repeat(level)
 }
 
+/// Appends `msg` as a JSON object at nesting `level`, following the field
+/// rules of [`message_to_json`]; a message with no printable fields is `{}`.
 fn write_message(msg: &DynamicMessage, level: usize, out: &mut String) {
     let mut fields: Vec<_> = msg
         .descriptor()
@@ -198,6 +244,11 @@ fn write_message(msg: &DynamicMessage, level: usize, out: &mut String) {
     out.push('}');
 }
 
+/// Appends one field value as JSON at nesting `level`.
+///
+/// `kind` is the field's type, used to name enum values (an unknown number
+/// prints as a bare number) and for list elements. Maps print as `{}`,
+/// since `tag.proto` has none.
 fn write_value(kind: &Kind, value: &Value, level: usize, out: &mut String) {
     match value {
         Value::Bool(b) => write!(out, "{b}").unwrap(),
@@ -418,6 +469,8 @@ fn write_fixture(
     true
 }
 
+/// Prints the tag type, firmware, git hash, captured state, flash page
+/// counts, voltage (V) and output path to stderr.
 fn print_summary(capture: &Capture, info: &TagInfo, status: &Status, voltage: f32) {
     eprintln!("Captured qtmonitor fixture");
     eprintln!("  tag_type: {}", tag_type_name(info.tag_type));
@@ -436,6 +489,8 @@ fn print_summary(capture: &Capture, info: &TagInfo, status: &Status, voltage: f3
     eprintln!("  output: {}", capture.output);
 }
 
+/// Selects a base, attaches, reads the four responses and writes the
+/// fixture.
 fn main() -> ExitCode {
     let capture = Capture::from(Cli::parse());
     // Quiet unless --debug.
@@ -500,11 +555,14 @@ fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+/// Unit tests for the fixture JSON writer and its helpers.
 mod tests {
     use super::*;
     use tagcore::proto::config;
 
     #[test]
+    /// Checks indentation, field order, enum names and omission of unset
+    /// messages against the layout of the checked-in fixtures.
     fn json_matches_the_checked_in_fixture_layout() {
         let cfg = Config {
             tag_type: TagType::BittagLe as i32,
@@ -527,6 +585,8 @@ mod tests {
     }
 
     #[test]
+    /// Checks an explicit-presence field prints only when set, even at zero,
+    /// and that 64-bit integers print as strings.
     fn optional_fields_print_only_when_set() {
         let mut info = TagInfo::default();
         assert!(!message_to_json(&info).contains("ppm_clock_error"));
@@ -538,6 +598,7 @@ mod tests {
     }
 
     #[test]
+    /// Checks kebab-casing, JSON escaping and base64 padding.
     fn helpers() {
         assert_eq!(lower_kebab("BITTAG_LE"), "bittag-le");
         assert_eq!(json_escape("a\"\n\u{1}"), "a\\\"\\n\\u0001");

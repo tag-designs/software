@@ -9,6 +9,18 @@
 //! Exits 0 once the tag is stopped, with its status printed; 1 if the
 //! attach, a status read or the stop fails, the tag never settles, or it
 //! does not stop within `--stop-timeout`.
+//!
+//! Usage: `tag-stop [-d] [-b BUS:DEVICE] [--stop-timeout S]
+//! [--settle-timeout S]` (defaults 30 and 10 s). Status is polled every 2 s,
+//! `ceil(stop-timeout / 2)` times; with `--stop-timeout 0` it is not polled
+//! at all and the tool fails. Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag, and the stop ends its run, leaving the stored
+//! data in place for a download. A tag that is not acquiring (IDLE, for
+//! example) refuses the stop and the tool exits 1. The status is printed
+//! even when the tag fails to stop, for diagnosis.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -23,6 +35,7 @@ use tagcore::proto::{self, Status, TagState};
 #[derive(Parser)]
 #[command(name = "tag-stop")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -38,6 +51,7 @@ struct Cli {
     settle_timeout: u64,
 }
 
+/// Prints `message` to stderr and returns exit status 1.
 fn fail(message: impl std::fmt::Display) -> ExitCode {
     eprintln!("{message}");
     ExitCode::FAILURE
@@ -71,6 +85,7 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<(), String> {
     ))
 }
 
+/// Attaches, settles, stops the tag and polls for FINISHED or ABORTED.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

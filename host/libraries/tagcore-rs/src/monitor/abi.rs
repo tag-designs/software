@@ -4,6 +4,11 @@
 //! firmware is built with. `docs/shared/monitor-interface.md` describes both
 //! transports; this module only restates the constants and the layout of the
 //! STM32U3 shared block.
+//!
+//! A change on either side of the boundary must be made in `monitor.h`
+//! and here together. The U3 attach checks [`MONITOR_SHARED_ABI_VERSION`]
+//! and [`DEBUGVERSION`] and refuses a mismatch; the L4 transport has no
+//! such check, so an L4 mismatch shows up as failed or nonsensical calls.
 
 /// Monitor debug protocol version an STM32U3 tag must publish.
 pub const DEBUGVERSION: u32 = 0x20;
@@ -118,7 +123,10 @@ pub struct MonitorShared {
     pub result: u32,
     /// Command progress, one of the [`status`] values.
     pub status: u32,
-    /// Set by the host to keep the session alive; cleared by the firmware.
+    /// Session heartbeat: set to 1 by the kick IRQ on every call and by the
+    /// host while attaching or keeping an idle session alive; cleared by the
+    /// firmware at each heartbeat check, which ends the session if it finds
+    /// the word still clear.
     pub host_activity: u32,
     /// Firmware monitor watchdog tick count.
     pub watchdog_ticks: u32,

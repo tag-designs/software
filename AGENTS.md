@@ -225,6 +225,18 @@ reported. Note the INPUT paths cover `include/`, `host/libraries/*`,
 `embedded/boards`, `embedded/loaders`, and `embedded/tags/{common,families}` — **individual tag
 directories are not scanned**, so point Doxygen at one explicitly to check it.
 
+Rust crates (`host/libraries/*-rs`, `host/commandline-rs`,
+`host/applications/tagprogram-rs`) are documented with rustdoc, not Doxygen:
+`//!` for crate and module docs, `///` on every item including private ones,
+and `# Errors` / `# Panics` / `# Safety` sections where they apply. Each
+crate's `Cargo.toml` sets `missing_docs` and
+`clippy::missing_docs_in_private_items` to warn, so in a Rust crate:
+
+```sh
+cargo clippy --all-targets 2>&1 | grep -c "missing documentation"   # expect 0
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items
+```
+
 ### Tests
 
 There is no test framework, no `enable_testing()`, and no CI test target. Where

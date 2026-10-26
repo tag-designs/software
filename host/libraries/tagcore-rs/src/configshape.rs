@@ -12,6 +12,11 @@
 //! support this field?) and [`merge`](ConfigShape::merge) (copy from a
 //! configuration file only the fields the tag supports and the file sets).
 //! See `docs/shared/design/configuration-model.md`.
+//!
+//! The per-tag table is built lazily on first use and shared, read-only,
+//! by every thread. A default config that fails to load is skipped, noted
+//! on stderr and in [`ConfigShape::load_errors`], rather than failing the
+//! whole table; the unit tests require that list to be empty.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
@@ -35,24 +40,32 @@ const EMBEDDED_DEFAULT_CONFIGS: &[(&str, &str)] =
 /// never a path: it identifies the tag rather than configuring it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ConfigShape {
+    /// The dotted field paths, sorted; see the type docs for their form.
     paths: BTreeSet<String>,
 }
 
 /// Everything read from the embedded default configs.
 struct Table {
+    /// Shape per tag type (keyed by the `TagType` number), unioned over
+    /// every default config with that type.
     shapes: BTreeMap<i32, ConfigShape>,
+    /// Default Config per tag type: the first by directory name.
     defaults: BTreeMap<i32, Config>,
+    /// One message per default config that was skipped.
     errors: Vec<String>,
 }
 
+/// The table, built from the embedded defaults on first use.
 static TABLE: LazyLock<Table> = LazyLock::new(build_table);
 
+/// Every path that names a Config field, for [`ConfigShape::is_config_path`].
 static VALID_PATHS: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
     let mut out = BTreeSet::new();
     all_paths(&config_descriptor(), "", &mut out);
     out
 });
 
+/// The reflection descriptor of [`Config`].
 fn config_descriptor() -> MessageDescriptor {
     Config::default().descriptor()
 }
@@ -128,6 +141,11 @@ fn parse_tag_type(name: &str) -> Option<TagType> {
     TagType::from_str_name(name).filter(|t| *t != TagType::TagUnspecified)
 }
 
+/// Reads every embedded default config into a [`Table`].
+///
+/// A file is skipped (and reported on stderr and in `errors`) when its keys
+/// are not Config fields, it names no known `tag_type`, or it does not
+/// parse as a Config. Port of the table construction in `configshape.cc`.
 fn build_table() -> Table {
     let mut table = Table {
         shapes: BTreeMap::new(),
@@ -276,6 +294,8 @@ impl ConfigShape {
     }
 }
 
+/// What [`merge_path`] did, so [`ConfigShape::merge`] knows whether to skip
+/// the paths under a repeated field it has already copied whole.
 #[derive(PartialEq)]
 enum Copied {
     /// A scalar was copied, or nothing could be.
@@ -286,6 +306,11 @@ enum Copied {
 
 /// Walks `segs` through both messages, creating parents in `to`, and copies
 /// the final field.
+///
+/// A message-typed final field is not copied itself (its leaf paths are
+/// merged separately); a repeated message field is copied element-wise up
+/// to the shorter length, so `to`'s element count never changes. A segment
+/// that names no field copies nothing.
 fn merge_path(to: &mut DynamicMessage, from: &DynamicMessage, segs: &[&str]) -> Copied {
     let Some(field) = to.descriptor().get_field_by_name(segs[0]) else {
         return Copied::Field;

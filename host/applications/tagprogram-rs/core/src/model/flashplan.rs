@@ -11,17 +11,34 @@
 //! - No page-size symbol: an image built before images recorded their layout;
 //!   the flash size (`__flash0_end__ - __flash0_base__`) names the MCU and the
 //!   plan is a mass erase.
+//!
+//! Any other page size, or a pre-layout image whose flash size is neither
+//! 256 KB (STM32L432) nor 1 MB (STM32U375), has no plan. The plan is shown in
+//! the Program dialog ([`FlashPlan::summary`]), recorded in the record's
+//! `erase` column ([`FlashPlan::record_label`]) and turned into the erase
+//! that `tagprobe::program` performs by the engine.
+//!
+//! The symbols are read with [`plan_symbols`], the lenient reader, so an
+//! image the strict [`super::elf::Elf`] would refuse can still be planned
+//! (and fail later, with that reader's message).
 
 use serde::Serialize;
 use std::path::Path;
 
 use super::elf::plan_symbols;
 
+/// Start address of internal flash on both supported MCUs; page 0 is here.
 const FLASH_BASE: u32 = 0x0800_0000;
+/// STM32L432 flash page size in bytes; also the value of
+/// `__tag_flash_page_size__` in an L432 tag image.
 const L432_PAGE: u32 = 2048;
+/// STM32U375 flash page size in bytes; also the value of
+/// `__tag_flash_page_size__` in a U375 tag image.
 const U375_PAGE: u32 = 4096;
 
 /// What programming erases.
+///
+/// Serialized by variant name for the view state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub enum Erase {
     /// No plan: the image could not be read or its layout is unknown.
@@ -36,6 +53,9 @@ pub enum Erase {
 }
 
 /// The erase plan for one image.
+///
+/// Port of qtprogram's `FlashPlan` (`flashplan.h`). Built by [`plan_flash`];
+/// the default value is an invalid plan with an empty error.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct FlashPlan {
     /// What is erased.
@@ -48,9 +68,15 @@ pub struct FlashPlan {
     /// Flash page size in bytes; 0 when unknown.
     pub page_size: u32,
     /// The last page [`Erase::BelowCalibration`] erases; -1 otherwise.
+    ///
+    /// A page index counted from flash base `0x0800_0000` in 2048-byte (L432) units, so
+    /// pages `0..=last_erased_page` are erased and the calibration page,
+    /// `last_erased_page + 1`, is not.
     pub last_erased_page: i32,
 }
 
+/// An [`Erase::Invalid`] plan with no error text, page size 0 and no erased
+/// page.
 impl Default for FlashPlan {
     fn default() -> Self {
         FlashPlan {
@@ -64,6 +90,7 @@ impl Default for FlashPlan {
 }
 
 impl FlashPlan {
+    /// An [`Erase::Invalid`] plan carrying `error`, the display-ready reason.
     fn invalid(error: String) -> Self {
         FlashPlan {
             error,
@@ -73,7 +100,8 @@ impl FlashPlan {
 
     /// One line describing the plan, as the Program dialog shows it.
     ///
-    /// For an invalid plan, the error.
+    /// For an invalid plan, the error. A pre-layout image's MCU is named
+    /// from its inferred page size.
     pub fn summary(&self) -> String {
         match self.erase {
             Erase::None => "Program only (STM32U375: every saved region is pinned and kept)".into(),
@@ -110,11 +138,17 @@ impl FlashPlan {
     }
 
     /// The tag's calibration survives programming.
+    ///
+    /// True for program-only (U375) and below-calibration (L432) plans; false
+    /// for a mass erase and for an invalid plan.
     pub fn keeps_calibration(&self) -> bool {
         matches!(self.erase, Erase::None | Erase::BelowCalibration)
     }
 
     /// The tag's stored configuration survives programming.
+    ///
+    /// Only a program-only (U375) plan keeps it: every L432 plan erases the
+    /// pages that hold the configuration.
     pub fn keeps_configuration(&self) -> bool {
         self.erase == Erase::None
     }
@@ -136,6 +170,13 @@ impl FlashPlan {
 /// Never fails outright: an unreadable file, a non-ELF or an unknown layout
 /// gives an [`Erase::Invalid`] plan whose `error` says so (qtprogram's
 /// messages).
+///
+/// The symbols read are `__tag_flash_page_size__`, `__calibration_start__`,
+/// `__calibration_end__`, `__flash0_base__` and `__flash0_end__`; the rules
+/// are in the module documentation. A calibration page is recognised only
+/// when `__calibration_start__` lies above the flash base (`0x0800_0000`) and
+/// `__calibration_end__` above the start; a missing `__calibration_end__`
+/// counts as equal to the start, so means no calibration page.
 pub fn plan_flash(path: &Path) -> FlashPlan {
     let p = path.display();
     let Ok(data) = std::fs::read(path) else {
@@ -212,11 +253,15 @@ pub fn plan_flash(path: &Path) -> FlashPlan {
     }
 }
 
+/// Unit tests of each planning rule, on ELF files built by
+/// [`testelf`](crate::model::elf::testelf).
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::model::elf::testelf;
 
+    /// Writes an ELF with `symbols` and no segments to a temporary directory
+    /// and plans it.
     fn plan(symbols: &[(&str, u32)]) -> FlashPlan {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("t.elf");

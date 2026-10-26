@@ -12,6 +12,9 @@ use std::process::ExitCode;
 
 use tagcore::{Tag, UsbDev};
 
+/// Lists probes, attaches to the one named by serial (or the first), prints
+/// the report and detaches; exits non-zero if attach, info, status or the
+/// state log fails.
 fn main() -> ExitCode {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 

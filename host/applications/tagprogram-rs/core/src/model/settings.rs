@@ -5,6 +5,12 @@
 //! first-run "Attach Automatically?" prompt is shown only while
 //! [`AUTO_ATTACH`] has never been set. Every change is written through at
 //! once, as `QSettings` would eventually.
+//!
+//! The app keeps the file at `settings.json` in the platform config
+//! directory; tests and the headless examples pass a scratch path. The keys
+//! are qtprogram's so the meaning of each value carries over, but the file
+//! is not shared with qtprogram: `QSettings` stores elsewhere, in its own
+//! format.
 
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -32,9 +38,15 @@ pub const LAST_LABEL: &str = "lastLabel";
 pub const RECENT_COUNT: usize = 6;
 
 /// The settings file and its values.
+///
+/// Values are held in memory and every change is saved whole; there is no
+/// locking, so two processes using the same file would overwrite each
+/// other's changes.
 #[derive(Debug, Clone)]
 pub struct Settings {
+    /// The JSON file the settings are read from and written to.
     path: PathBuf,
+    /// The top-level JSON object, key by key, as last loaded or set.
     values: Map<String, Value>,
 }
 
@@ -104,12 +116,21 @@ impl Settings {
     }
 
     /// Sets `key` and writes the file.
+    ///
+    /// # Errors
+    ///
+    /// [`Settings::save`]'s error. The value stays set in memory even when
+    /// the write fails.
     pub fn set(&mut self, key: &str, value: impl Into<Value>) -> Result<(), String> {
         self.values.insert(key.to_string(), value.into());
         self.save()
     }
 
     /// Removes `key` (making it absent) and writes the file.
+    ///
+    /// # Errors
+    ///
+    /// [`Settings::save`]'s error; the key stays removed in memory.
     pub fn remove(&mut self, key: &str) -> Result<(), String> {
         self.values.remove(key);
         self.save()
@@ -117,6 +138,10 @@ impl Settings {
 
     /// Puts `path` first in [`RECENT_FILES`], without duplicates, keeping
     /// at most [`RECENT_COUNT`].
+    ///
+    /// # Errors
+    ///
+    /// [`Settings::save`]'s error.
     pub fn add_recent_file(&mut self, path: &str) -> Result<(), String> {
         let mut recent = self.list(RECENT_FILES);
         recent.retain(|p| p != path);
@@ -128,6 +153,14 @@ impl Settings {
     /// Writes the settings: to a temporary file beside the target, then
     /// renamed over it, so a crash never leaves half a file. Creates the
     /// directory if needed.
+    ///
+    /// The temporary file is the target path with its extension replaced by
+    /// `json.tmp` (`settings.json.tmp`). The JSON is pretty-printed.
+    ///
+    /// # Errors
+    ///
+    /// `"Cannot write <path> (<io error>)."` when the directory cannot be
+    /// created or the file cannot be written or renamed.
     pub fn save(&self) -> Result<(), String> {
         let fail = |e: std::io::Error| format!("Cannot write {} ({e}).", self.path.display());
         if let Some(dir) = self.path.parent() {
@@ -140,6 +173,8 @@ impl Settings {
     }
 }
 
+/// Round-trip, absence, legacy-key and recent-file tests in temporary
+/// directories.
 #[cfg(test)]
 mod tests {
     use super::*;

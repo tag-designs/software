@@ -6,6 +6,20 @@
 //! Settings and the record file go under `<scratch-dir>`; downloaded
 //! releases go in `<scratch-dir>/firmware`. Attaching resets the tag. Exit
 //! status: 0 for a written OK row, 1 otherwise, 2 if it cannot program.
+//!
+//! It drives the engine only as a UI would, through commands, queries and
+//! the published view state: it answers the first-run prompt with automatic
+//! attach **on** (so the station attaches as soon as it finds the base),
+//! creates or opens `<scratch-dir>/programmed-tags.csv`, chooses the
+//! release, waits up to 180 s for the download and attach to settle, then
+//! sends `program` (after the `program_preview` query) or `retest`. While
+//! the session waits for a power cycle it presses Retry every 5 s, and
+//! gives up after 36 tries. `--debug` sets the log level to DEBUG, which
+//! adds the session's per-tick lines. Nothing confirms a label conflict:
+//! the label is used as given.
+//!
+//! This is a hardware procedure: follow `docs/bench/` (supply voltage, board
+//! UUID, erase before flashing) before pointing it at a tag.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -13,6 +27,8 @@ use std::time::{Duration, Instant};
 use serde_json::{Value, json};
 use tagprogram_core::engine::{self, EngineConfig, Event};
 
+/// Polls the latest view state every 200 ms until `done` accepts it or
+/// `timeout` passes, and returns the last state seen either way.
 fn wait_until(latest: &Mutex<Value>, timeout: Duration, done: impl Fn(&Value) -> bool) -> Value {
     let end = Instant::now() + timeout;
     loop {
@@ -24,6 +40,8 @@ fn wait_until(latest: &Mutex<Value>, timeout: Duration, done: impl Fn(&Value) ->
     }
 }
 
+/// Prints the eight checks, one per line: name, level (`FAIL` and `-` for
+/// fail and pending) and text.
 fn print_checks(state: &Value) {
     for c in state["checks"].as_array().into_iter().flatten() {
         let level = match c["level"].as_str().unwrap_or("") {
@@ -40,6 +58,9 @@ fn print_checks(state: &Value) {
     }
 }
 
+/// The station has settled after start-up: a state has arrived and none of
+/// the SWD, Firmware and Tag checks is pending (the download and attach are
+/// done, or failed).
 fn settled(state: &Value) -> bool {
     let checks = state["checks"].as_array();
     let pending = |name: &str| {
@@ -51,6 +72,12 @@ fn settled(state: &Value) -> bool {
     !state.is_null() && !pending("SWD") && !pending("Firmware") && !pending("Tag")
 }
 
+/// Runs one bench program or retest and exits with its status (see the
+/// module documentation).
+///
+/// # Panics
+///
+/// Panics if the view-state mutex is poisoned (the sink panicked).
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
@@ -154,7 +181,9 @@ fn main() {
     }
 }
 
+/// Picks between two view states.
 trait MaxOr {
+    /// `self`, unless it is null, in which case `other`.
     fn max_or(self, other: Value) -> Value;
 }
 

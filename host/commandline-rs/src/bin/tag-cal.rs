@@ -10,6 +10,19 @@
 //! Exits 0 after streaming; 1 if the tag is not IDLE, or the attach, the
 //! first status read, the clock sync, the calibrate request or the final
 //! stop fails.
+//!
+//! Usage: `tag-cal [-d] [-b BUS:DEVICE]`. The clap command name is
+//! `tag-calibrate`, the C++ name, so help and errors print that.
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag; `SetRtc` sets its clock from the host;
+//! `Calibrate` moves it into calibration mode, and `Stop` takes it out on
+//! the way out. The Ctrl-C handler is installed only after the attach, so a
+//! Ctrl-C during the attach kills the process; one after it, even before the
+//! stream starts, still ends with the stop. A tag left in calibration mode
+//! (a killed process or a failed stop) must be stopped with `tag-stop`. A
+//! tag family without a calibration mode refuses (BitTag, for example).
 
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +38,7 @@ use tagcore::proto::{TagState, ack};
 #[derive(Parser)]
 #[command(name = "tag-calibrate")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 }
@@ -32,6 +46,7 @@ struct Cli {
 /// Cleared by Ctrl-C to end the sample stream.
 static EXECUTE: AtomicBool = AtomicBool::new(true);
 
+/// Prints `message` to stderr and returns exit status 1.
 fn fail(message: impl std::fmt::Display) -> ExitCode {
     eprintln!("{message}");
     ExitCode::FAILURE
@@ -71,6 +86,8 @@ fn stream_samples(tag: &Tag) {
     }
 }
 
+/// Attaches, checks the tag is IDLE, syncs its clock, starts calibration,
+/// streams until Ctrl-C and stops the tag.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

@@ -7,6 +7,19 @@
 //! mass-erase reflash wipes; this unblocks power and lifecycle testing on a
 //! freshly reflashed board. Readings taken under it are NOT calibrated: run
 //! tag-cal or qtcalibrate before trusting compass output from the board.
+//!
+//! Usage: `tag-cal-write [-d] [-b BUS:DEVICE]`.
+//!
+//! # Exit status
+//!
+//! 0 when the constants were written; 1 if no base matches, the attach fails
+//! or `WriteCalibration` fails. Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag. The firmware stores the constants as a new
+//! calibration entry, so the tag will then start a run with an uncalibrated
+//! compass; overwrite it with a real calibration before trusting the data.
 
 use std::process::ExitCode;
 
@@ -21,6 +34,7 @@ use tagcore::proto::{CalibrationConstants, calibration_constants};
 #[derive(Parser)]
 #[command(name = "tag-cal-write")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 }
@@ -39,6 +53,7 @@ fn identity_constants() -> CalibrationConstants {
     }
 }
 
+/// Attaches (resetting the tag) and writes [`identity_constants`].
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);

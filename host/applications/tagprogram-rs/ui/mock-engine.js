@@ -1,4 +1,5 @@
-/*
+/**
+ * @file
  * A stand-in engine for designing the page in a plain browser: canned view
  * states in the shape of design/ui-engine-contract.md, and enough behaviour
  * (prompts answered, a fake programming session) to click through. Not used
@@ -8,12 +9,24 @@
  * running, session, progress, powercycle, finished, prompt-auto,
  * prompt-record, prompt-base, alert. A switcher in the corner changes it
  * live unless ?nopanel is given.
+ *
+ * The mock holds no rules: its states and answers are hand-written samples
+ * of the contract's shapes, kept in step with it by hand. When the contract
+ * changes, update the samples here so the preview still exercises every
+ * field the page reads. Defines one global, `MockEngine`.
  */
 (function () {
   "use strict";
 
+  /**
+   * A deep copy of plain JSON data, so states handed to the page cannot be
+   * changed under the mock (and vice versa).
+   * @param {*} o
+   * @returns {*}
+   */
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
+  /** The default scenario: a ready station with a BitTag attached. */
   const STATION = {
     title: "Tag Programmer v2.0",
     firmware: {
@@ -66,7 +79,13 @@
     prompt: null,
   };
 
+  /** Tag panel fields as the engine shows them when no tag is known. */
   const DASH = { uuid: "—", state: "—", firmware: "—", tests: "—", clock: { text: "—", warn: false }, syncEnabled: false };
+  /**
+   * Every action disabled, with `why` as the tooltip.
+   * @param {string} why
+   * @returns {Object} An `actions` section.
+   */
   const busyActions = (why) => ({
     program: { enabled: false, tooltip: why },
     retest: { enabled: false, tooltip: why },
@@ -74,10 +93,23 @@
     attach: { enabled: false, tooltip: why },
   });
 
+  /** Counter giving each canned prompt a fresh id, as the engine does. */
   let promptSeq = 0;
+  /**
+   * `p` with a new prompt id, so the page shows it even after an earlier
+   * prompt of the same kind.
+   * @param {Object} p
+   * @returns {Object}
+   */
   const prompt = (p) => Object.assign({ id: "p" + ++promptSeq }, p);
 
-  /** Builds the named scenario from the station state. */
+  /**
+   * Builds the named scenario from the station state.
+   *
+   * An unknown name gives the station state.
+   * @param {string} name One of SCENARIOS.
+   * @returns {Object} A fresh view state.
+   */
   function scenario(name) {
     const s = clone(STATION);
     const check = (n) => s.checks.find((c) => c.name === n);
@@ -153,9 +185,20 @@
     return s;
   }
 
+  /** The scenario names, in the switcher's order. */
   const SCENARIOS = ["station", "pending", "fail", "running", "finished", "session", "progress", "powercycle",
     "prompt-auto", "prompt-record", "prompt-base", "alert"];
 
+  /**
+   * Creates a mock engine starting in the scenario `?scenario=` names.
+   *
+   * `command` handles the commands the page sends (unknown ones are only
+   * logged), then publishes the state; `query` answers the page's queries
+   * with fixed samples (unknown ones with null); `on` accepts the `state`
+   * and `log` events only. The extra `setScenario(name)` switches state.
+   * @param {URLSearchParams} params The page's query parameters.
+   * @returns {{command: Function, query: Function, on: Function, setScenario: Function}}
+   */
   function create(params) {
     const listeners = { state: [], log: [] };
     let s = scenario(params.get("scenario") || "station");
@@ -165,6 +208,11 @@
     const publish = () => emit("state", s);
     const log = (level, text) => emit("log", { level, text });
 
+    /**
+     * Plays a programming session: 40 progress steps 100 ms apart, then the
+     * state from before it with an OK result for `label`.
+     * @param {string} label
+     */
     function fakeSession(label) {
       let done = 0;
       const steps = ["Stopping the tag", "Erasing flash", "Writing flash", "Connecting to the new image", "Testing"];
@@ -191,6 +239,7 @@
       }, 100);
     }
 
+    /** Command name to its effect on the mock state. */
     const handlers = {
       start: () => log("INFO", "Tag Programmer v2.0 (mock engine)"),
       set_auto_attach: (a) => { s.autoAttach = a.on; },
@@ -255,13 +304,18 @@
     };
   }
 
-  /** The scenario switcher shown in a browser preview. */
+  /**
+   * The scenario switcher shown in a browser preview.
+   * @param {Object} engine A mock engine from create().
+   * @param {string} current The scenario selected at first.
+   */
   function panel(engine, current) {
     const select = Kit.el("select", { class: "kit-select", onchange: (e) => engine.setScenario(e.target.value) },
       SCENARIOS.map((n) => Kit.el("option", { value: n, selected: n === current }, n)));
     document.body.append(Kit.el("div", { class: "mock-panel" }, "Mock state", select));
   }
 
+  /** The global the page passes to Kit.createEngine outside the app. */
   window.MockEngine = {
     create(params) {
       const engine = create(params);

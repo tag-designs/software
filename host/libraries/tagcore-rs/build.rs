@@ -14,6 +14,10 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+/// Compiles the protos (with reflection) and embeds the default configs.
+///
+/// Uses the vendored `protoc` unless `PROTOC` is set. Fails the build if a
+/// proto does not compile or `embedded/proto-c` cannot be read.
 fn main() -> std::io::Result<()> {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());

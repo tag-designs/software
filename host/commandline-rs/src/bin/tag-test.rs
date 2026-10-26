@@ -6,6 +6,28 @@
 //! name or number) and polls until the tag returns to IDLE or
 //! `--test-timeout` expires, and prints the test result. The RTC is synced
 //! again afterwards, since a test may alter it.
+//!
+//! Usage: `tag-test [-d] [-b BUS:DEVICE] [-t|--test NAME|NUMBER]
+//! [--test-timeout S]` (defaults `RUN_ALL` and 30 s). Status is polled once
+//! a second while the test runs. Clock drift prints in seconds (tag minus
+//! host), voltage in volts.
+//!
+//! # Exit status
+//!
+//! 0 once a result has been printed and the clock re-synced, **whatever the
+//! result**: a `TestResult` other than a pass still exits 0, so a script must
+//! read the `Test Result:` line. 1 for an unknown test, a failed attach,
+//! info or status read or clock sync, a tag that is not IDLE, a refused test
+//! request, or a test that does not finish within `--test-timeout`. Option
+//! errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! The attach resets the tag, its clock is set from the host twice, and the
+//! self-test exercises the hardware. On a tag with external NAND, the
+//! external-flash test can write the NAND bad-block map. Run it after every
+//! flash, before measuring anything (step 4 of the flashing protocol in
+//! `AGENTS.md`).
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -20,6 +42,7 @@ use tagcore::proto::{TagState, TestReq, TestResult, state};
 #[derive(Parser)]
 #[command(name = "tag-test")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -78,6 +101,8 @@ fn rtc_drift(tag: &Tag) -> Option<f32> {
     Some(((status.millis - now_ms) as f64 / 1000.0) as f32)
 }
 
+/// Attaches, prints the tag's information and clock drift, sets the clock,
+/// prints the state log, runs the self-test and reports its result.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
@@ -218,10 +243,13 @@ fn main() -> ExitCode {
 }
 
 #[cfg(test)]
+/// Unit tests for self-test selection.
 mod tests {
     use super::*;
 
     #[test]
+    /// Checks names, decimal, hex and octal numbers, and rejects numbers that
+    /// name no test or carry trailing text.
     fn test_req_parses_names_and_numbers() {
         assert_eq!(parse_test_req("RUN_ALL"), Some(TestReq::RunAll));
         assert_eq!(parse_test_req("2"), Some(TestReq::RunRtc));

@@ -10,6 +10,21 @@
 //! erase or the clock sync fails, the tag never settles, does not stop
 //! within `--stop-timeout` or reach IDLE within `--reset-timeout`, or is in
 //! a state it cannot be reset from (TEST, CALIBRATE, EXCEPTION).
+//!
+//! Usage: `tag-reset [-d] [-b BUS:DEVICE] [--set-rtc] [--reset-timeout S]
+//! [--stop-timeout S] [--settle-timeout S]` (defaults 180, 30 and 10 s).
+//! Option errors exit 2 (clap).
+//!
+//! # Hardware side effects
+//!
+//! Destructive: the attach resets the tag, the stop ends any run, and the
+//! erase discards every stored sample and the state-transition log. The
+//! erase is done by the firmware already on the tag, which knows its own log
+//! layout, so run this before flashing a new image (step 2 of the flashing
+//! protocol in `AGENTS.md`). An IDLE tag is left as it is, apart from
+//! `--set-rtc`, which overwrites its clock with the host's. Status reads that
+//! fail while the erase is in progress are skipped, not fatal, since the
+//! firmware may be busy sweeping storage.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -24,6 +39,7 @@ use tagcore::proto::{self, Status, TagState};
 #[derive(Parser)]
 #[command(name = "tag-reset")]
 struct Cli {
+    /// The shared `--debug` and `--base` options.
     #[command(flatten)]
     base: BaseArgs,
 
@@ -54,6 +70,7 @@ fn report_debug(status: &Status) {
     }
 }
 
+/// Prints `message` to stderr and returns exit status 1.
 fn fail(message: impl std::fmt::Display) -> ExitCode {
     eprintln!("{message}");
     ExitCode::FAILURE
@@ -79,6 +96,8 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<Status, String> {
     ))
 }
 
+/// Attaches, settles, stops an acquiring tag, erases a stopped one, checks
+/// it ended IDLE and optionally sets its clock.
 fn main() -> ExitCode {
     let cli = Cli::parse();
     init_logging(&cli.base);
