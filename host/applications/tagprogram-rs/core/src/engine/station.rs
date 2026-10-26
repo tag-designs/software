@@ -443,17 +443,36 @@ impl Station {
         self.refresh_catalog();
         self.load_image();
         let path = self.settings.string(key::RECORD_PATH);
-        if !path.is_empty() {
+        if path.is_empty() {
+            self.check_record();
+            self.raise_record_prompt();
+            return;
+        }
+        // Opening the record can wait on the user: macOS holds the first
+        // open() in Documents until the app is allowed in. Show the window
+        // first, then open it on the next pass of the engine loop.
+        let name = Path::new(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        self.set(
+            Check::Record,
+            Level::Pending,
+            format!(
+                "Opening {name}. If the system asks, allow access to the folder that holds it."
+            ),
+        );
+        let _ = self.tx.send(Msg::Done(Box::new(move |s: &mut Station| {
             let mut record = RecordLog::new();
             match record.open(Path::new(&path)) {
-                Ok(()) => self.record = Some(record),
+                Ok(()) => s.record = Some(record),
                 Err(e) => warn!("{e}"),
             }
-        }
-        self.check_record();
-        if self.record.is_none() {
-            self.raise_record_prompt();
-        }
+            s.check_record();
+            if s.record.is_none() {
+                s.raise_record_prompt();
+            }
+        })));
     }
 
     pub(crate) fn auto_attach(&self) -> bool {

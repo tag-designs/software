@@ -514,10 +514,7 @@ impl Station {
         };
         let driver = self.driver();
         let erase = self.probe_erase(&image);
-        info!(
-            "probe-rs: {chip}, {}, erase {erase:?}",
-            driver.name()
-        );
+        info!("probe-rs: {chip}, {}, erase {erase:?}", driver.name());
         let tx = self.sender();
         self.worker_busy = true;
         self.spawn_work(
