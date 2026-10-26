@@ -84,6 +84,7 @@ design document.
 - [Investigations](investigations/README.md) — Where dated fault investigations and measurement campaigns are kept, and how they are closed.
 - [Firmware build reproducibility: findings (2026-09)](investigations/2026-09-firmware-build-reproducibility.md) *(investigation, closed)* — How the nanopb runtime and generator were found disagreeing, and the first end-to-end release-firmware CI run, its toolchain-checksum failure and its 15-of-15 hash verification.
 - [Offline Log Reconstruction](investigations/2026-10-offline-log-reconstruction.md) *(investigation, closed)* — Whether fw-v0.0.3 downloads can be rebuilt from an SWD capture plus the release package, tag by tag, with the gaps and firmware defects the reading found.
+- [probe-rs evaluation (2026-10)](investigations/2026-10-probe-rs-evaluation.md) *(investigation, open)* — Whether probe-rs could replace tagcore's ST-LINK layer, the SWD recovery primitives and STM32CubeProgrammer in qtprogram - what its source says, and what a spike against the tag bases found.
 
 ### Release
 
@@ -497,6 +498,10 @@ design document.
 ### python / tagsim / Proposals
 
 - [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a simple IMUTag sensor model and writes genuine IMUTag SQLite logs plus ground truth, chiefly to test the future post-processing orientation filter.
+
+### spikes / probe-rs-spike
+
+- [probe-rs spike](../host/spikes/probe-rs-spike/README.md) — A probe-rs experiment against the tag bases - what each subcommand does and where the results are written up.
 
 ### tagserver
 

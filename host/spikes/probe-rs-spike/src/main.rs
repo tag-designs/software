@@ -192,12 +192,12 @@ fn cmd_raw(serial: &Option<String>, clear: bool) -> Result<()> {
             .context("memory interface on AP0")?;
         let mut family = None;
         for f in [&L4, &U3] {
-            if let Ok(id) = mem.read_word_32(f.idcode) {
-                if plausible(id) {
-                    family = Some(f);
-                    println!("MCU {} idcode 0x{id:08x}", f.name);
-                    break;
-                }
+            if let Ok(id) = mem.read_word_32(f.idcode)
+                && plausible(id)
+            {
+                family = Some(f);
+                println!("MCU {} idcode 0x{id:08x}", f.name);
+                break;
             }
         }
         let f = family.ok_or_else(|| anyhow!("neither L4 nor U3 idcode read"))?;
