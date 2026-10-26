@@ -100,9 +100,45 @@ So far, three base-firmware changes stand between our bases and probe-rs:
 3. DP register reads in `SWD_ReadDAPReg` should return the DP register, not
    RDBUFF, and leave DPBANKSEL alone. probe-rs has not needed them yet.
 
+### A field-safe driver: probe-rs over tagcore's command subset
+
+Field bases cannot be reflashed, and there is no record of which base
+firmware is out there, so the three base changes above cannot be relied on.
+probe-rs accepts outside probe drivers (`Probe::from_specific_probe` with the
+public `DebugProbe`, `ArmDebugInterface`, `DapAccess` and
+`ArmMemoryInterface` traits), so the spike adds one,
+[`tagbase.rs`](../../host/spikes/probe-rs-spike/src/tagbase.rs). It sends
+only the commands tagcore's `LinkAdapt` already uses on every base -- mode,
+DFU exit, nRST, SWD enter/exit, voltage, `READMEM_32BIT`/`WRITEMEM_32BIT` with
+the R/W status check in 1 KB chunks, and `READDEBUGREG` for the chip ID -- and
+answers the rest itself:
+
+- DAP register reads come from a table of the part's real values (DPIDR, and
+  AP0's IDR, BASE, CFG and CSW, read from an STM32U375 through a base whose
+  `READ_DAP_REG` works; the L4 values are the standard Cortex-M4 ones); DAP
+  writes are ignored, because memory never goes through DRW/TAR.
+- 8- and 16-bit accesses are done with 32-bit ones (read-modify-write for
+  writes), which suits SRAM and flash-algorithm buffers but not a peripheral
+  register with side effects.
+- nRST is asserted before SWD is entered, as tagcore does, so a sleeping tag
+  answers.
+
+It needed one change to tagcore-rs: `LinkAdapt::open()` and
+`LinkAdapt::enter_swd()`, the two halves of `attach_with_reset()`, made
+public.
+
+On the IMUTag base, through this driver: `raw` and `session` gave the same
+results as the stock driver, and **`program` flashed fw-v0.6 (`56e5e6a0`)
+onto the IMUTag, programmed and verified in 2.2 s**, erasing exactly the 15
+sectors `0x08000000-0x0800E000`. tagcore's `tag-info` then reported the new
+firmware, IDLE, with an empty state log. Logged in
+`captures/2026-10-26-imutag-probe-rs/flash-log.md`.
+
 ## Still to do
 
-- Make base changes 2 and 3, reflash a base, and repeat the program step.
+- Repeat `raw`, `session` and `program` through the tag-base driver on the
+  BitTag programmer base, whose pre-July firmware stands in for the oldest
+  field bases, including PEMPTY handling after programming an L432.
+- Make base changes 2 and 3 for future bases, without depending on them.
 - Measure resting current after a probe-rs session against one of ours, and
   after a fresh power-on, to settle the C_DEBUGEN and DBGMCU questions.
-- Reflash the BitTag programmer base with current firmware and repeat.

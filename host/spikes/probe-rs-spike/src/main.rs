@@ -20,6 +20,8 @@
 //! as with every tool in this tree. `raw` reads only; `raw --clear` writes
 //! the debug registers back to their power-on values.
 
+mod tagbase;
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -40,9 +42,25 @@ struct Cli {
     #[arg(short, long, global = true)]
     serial: Option<String>,
 
+    /// Which probe driver to use: probe-rs's own ST-LINK driver, or ours,
+    /// which uses only the commands every field base supports
+    #[arg(short, long, global = true, value_enum, default_value_t = Driver::Stlink)]
+    driver: Driver,
+
     #[command(subcommand)]
     command: Command,
 }
+
+#[derive(Clone, Copy, ValueEnum, PartialEq, Debug)]
+enum Driver {
+    /// probe-rs's built-in ST-LINK driver
+    Stlink,
+    /// tagbase.rs: probe-rs over tagcore's field-safe ST-LINK subset
+    Tagbase,
+}
+
+/// The driver chosen on the command line, for [`open`].
+static DRIVER: std::sync::OnceLock<Driver> = std::sync::OnceLock::new();
 
 #[derive(Subcommand)]
 enum Command {
@@ -139,6 +157,21 @@ fn stlinks() -> Vec<DebugProbeInfo> {
 }
 
 fn open(serial: &Option<String>) -> Result<Probe> {
+    if DRIVER.get() == Some(&Driver::Tagbase) {
+        let bases = tagcore::LinkAdapt::new().available();
+        let dev = match serial {
+            Some(sn) => bases
+                .iter()
+                .find(|d| &d.serial == sn)
+                .ok_or_else(|| anyhow!("no tag base with serial {sn}"))?,
+            None => bases.first().ok_or_else(|| anyhow!("no tag base found"))?,
+        };
+        println!(
+            "probe: tag base driver, {:04x}:{:04x} serial {}",
+            dev.vid, dev.pid, dev.serial
+        );
+        return tagbase::TagBaseProbe::open(dev).context("opening the tag base");
+    }
     let probes = stlinks();
     let info = match serial {
         Some(sn) => probes
@@ -202,6 +235,18 @@ fn cmd_raw(serial: &Option<String>, clear: bool) -> Result<()> {
     );
     println!("DP  DPIDR     {}", show(&dpidr));
     println!("DP  CTRL/STAT {}", show(&ctrl));
+    let ap0 = FullyQualifiedApAddress::v1_with_default_dp(0);
+    for (name, reg) in [
+        ("CSW", 0x00u64),
+        ("CFG", 0xF4),
+        ("BASE", 0xF8),
+        ("IDR", 0xFC),
+    ] {
+        println!(
+            "AP0 {name:<9} {}",
+            show(&iface.read_raw_ap_register(&ap0, reg))
+        );
+    }
 
     let result = (|| -> Result<()> {
         let mut mem = iface
@@ -404,6 +449,7 @@ fn main() -> Result<()> {
         .with_ansi(false)
         .init();
     let cli = Cli::parse();
+    DRIVER.set(cli.driver).expect("set once");
     match cli.command {
         Command::List => {
             cmd_list();

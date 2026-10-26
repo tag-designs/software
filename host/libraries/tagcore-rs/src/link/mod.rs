@@ -178,8 +178,52 @@ impl LinkAdapt {
         false
     }
 
-    /// Claims the opened probe and puts it in SWD debug mode.
-    fn configure(&mut self, assert_reset: bool) -> bool {
+    /// Opens the probe `usbdev` selects and claims it, leaving DFU mode if
+    /// it is in it, without touching nRST or entering SWD.
+    ///
+    /// For callers that order those steps themselves (a probe-rs driver
+    /// asserts reset before entering SWD, as [`attach`](Self::attach) does).
+    /// Returns false, with the probe closed, if nothing matched or the claim
+    /// failed.
+    pub fn open(&mut self, usbdev: &UsbDev) -> bool {
+        self.handle = None;
+        if self.open_matching(usbdev) && self.claim() {
+            if let Some(mode) = self.current_mode()
+                && mode_code(mode) == stlink::DEV_DFU_MODE
+                && !self.exit_dfu_mode()
+            {
+                error!("exit dfu mode failed");
+                self.detach();
+                return false;
+            }
+            return true;
+        }
+        self.detach();
+        false
+    }
+
+    /// Enters SWD debug mode on an open probe and checks that the probe
+    /// reports it.
+    pub fn enter_swd(&mut self) -> bool {
+        if !self.enter_debug_mode() {
+            error!("enter swd mode command failed");
+            return false;
+        }
+        // Mode 4 is accepted as well as DEBUG_MODE for existing bases.
+        match self.current_mode() {
+            Some(mode) if matches!(mode_code(mode), 4 | stlink::DEV_DEBUG_MODE) => {
+                debug!("ST-LINK mode after debug entry: 0x{mode:x}");
+                true
+            }
+            mode => {
+                error!("enter swd mode failed: 0x{:x}", mode.unwrap_or(0));
+                false
+            }
+        }
+    }
+
+    /// Selects configuration 1 and claims interface 0 of the opened probe.
+    fn claim(&mut self) -> bool {
         let Some(handle) = self.handle.as_mut() else {
             return false;
         };
@@ -203,11 +247,17 @@ impl LinkAdapt {
             return false;
         }
         debug!("Interface claimed !");
-
         if let Some(voltage) = self.voltage() {
             debug!("Target voltage {voltage:.2} V");
         }
+        true
+    }
 
+    /// Claims the opened probe and puts it in SWD debug mode.
+    fn configure(&mut self, assert_reset: bool) -> bool {
+        if !self.claim() {
+            return false;
+        }
         let Some(mode) = self.current_mode() else {
             return true;
         };
@@ -223,21 +273,7 @@ impl LinkAdapt {
             }
             debug!("target reset asserted through ST-LINK");
         }
-        if !self.enter_debug_mode() {
-            error!("enter swd mode command failed");
-            return false;
-        }
-        // Mode 4 is accepted as well as DEBUG_MODE for existing bases.
-        match self.current_mode() {
-            Some(mode) if matches!(mode_code(mode), 4 | stlink::DEV_DEBUG_MODE) => {
-                debug!("ST-LINK mode after debug entry: 0x{mode:x}");
-                true
-            }
-            mode => {
-                error!("enter swd mode failed: 0x{:x}", mode.unwrap_or(0));
-                false
-            }
-        }
+        self.enter_swd()
     }
 
     /// Leaves SWD mode and closes the probe. Does nothing if not attached.

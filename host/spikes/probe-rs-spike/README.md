@@ -17,6 +17,11 @@ cargo run -- session --chip STM32U375RG --sequence tag|st
 RUST_LOG=probe_rs=trace cargo run -- raw   # probe-rs's own trace, to stderr
 ```
 
+Every subcommand takes `-d stlink` (probe-rs's own ST-LINK driver, the
+default) or `-d tagbase` ([`src/tagbase.rs`](src/tagbase.rs): probe-rs over
+the ST-LINK commands every field base supports, built on tagcore-rs's
+`LinkAdapt`).
+
 - `list`: the probes probe-rs finds.
 - `raw`: holds nRST, attaches without a session, reads DPIDR and CTRL/STAT,
   the chip ID, UID, DHCSR, DEMCR and DBGMCU_CR, then releases nRST. With
