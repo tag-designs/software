@@ -51,6 +51,13 @@ differently:
    otherwise press **Attach**.
 3. Press **Program**, type the **label** written on the board, check the rest
    of the dialog, and choose **Erase and Program**.
+
+   If the record already has that label for a different tag, Tag Programmer
+   asks before going on: two tags with one label cannot be told apart
+   afterwards, so check the label on the board. A blank board's UUID is not
+   known until it is programmed, so for one of those it asks whenever the
+   label is in the record at all.
+
 4. Wait for the result. Tag Programmer:
     1. stops the tag if it is running, and has its own firmware erase its log;
     2. erases internal flash as the image requires, writes the image and

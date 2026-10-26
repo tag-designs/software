@@ -196,6 +196,20 @@
     if (ok) send("erase_tag");
   }
 
+  /**
+   * Whether to go ahead with `label`: when the record already holds it for
+   * another tag, asks, with Cancel the default, since two boards sharing a
+   * label make the record ambiguous.
+   */
+  async function labelAccepted(title, label) {
+    const conflict = await engine.query("label_conflict", { label });
+    if (!conflict) return true;
+    return Kit.confirm(title, conflict,
+      "Two tags with one label cannot be told apart in the record. Check the label on the board.",
+      [{ label: "Cancel", value: false, cancel: true, default: true, enter: true },
+       { label: "Use This Label", value: true, destructive: true }], 460);
+  }
+
   /** qtprogram's Program dialog, built from program_preview and label_notes. */
   async function programDialog(initialLabel) {
     if (busy) return;
@@ -238,7 +252,9 @@
       const answer = Kit.dialog({ title: "Program Tag", body, buttons });
       update();
       setTimeout(() => input.select(), 0);
-      if ((await answer) === "program") send("program", { label: input.value.trim() });
+      if ((await answer) !== "program") return;
+      const label = input.value.trim();
+      if (await labelAccepted("Program Tag", label)) send("program", { label });
     } finally {
       busy = false;
     }
@@ -247,7 +263,8 @@
   async function retestDialog() {
     const label = await Kit.promptText("Retest Tag", "Label of the tag to retest:",
       await engine.query("retest_default_label"));
-    if (label !== null && label.trim() !== "") send("retest", { label: label.trim() });
+    if (label === null || label.trim() === "") return;
+    if (await labelAccepted("Retest Tag", label.trim())) send("retest", { label: label.trim() });
   }
 
   async function firmwareChosen() {

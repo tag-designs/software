@@ -409,6 +409,13 @@ impl Station {
             "label_notes" => {
                 json!(self.label_notes(args.get("label").and_then(Value::as_str).unwrap_or("")))
             }
+            "label_conflict" => {
+                let uuid = self.info.as_ref().map(|i| i.uuid.as_str()).unwrap_or("");
+                json!(self.label_conflict(
+                    args.get("label").and_then(Value::as_str).unwrap_or(""),
+                    uuid
+                ))
+            }
             "retest_default_label" => json!(self.retest_default_label()),
             "about" => json!({
                 "title": "About Tag Programmer",
@@ -1334,20 +1341,42 @@ impl Station {
         else {
             return notes;
         };
-        if !label.is_empty() {
-            let uuids = record.uuids_for_label(label);
-            if !uuids.is_empty() && !(uuids.len() == 1 && uuids[0] == uuid) {
-                notes.push(format!(
-                    "{label} is already recorded for UUID {}.",
-                    uuids.join(", ")
-                ));
-            }
+        if let Some(conflict) = self.label_conflict(label, &uuid) {
+            notes.push(conflict);
         }
         let labels = record.labels_for_uuid(&uuid);
         if !labels.is_empty() && !labels.iter().any(|l| l == label) {
             notes.push(format!("This tag is recorded as {}.", labels.join(", ")));
         }
         notes
+    }
+
+    /// The warning when `label` is already recorded for a tag other than
+    /// `uuid`: two boards sharing a label make the record ambiguous. `None`
+    /// when the label is empty, unused, or recorded only for `uuid`, or when
+    /// no record is open.
+    pub(crate) fn label_conflict(&self, label: &str, uuid: &str) -> Option<String> {
+        let label = label.trim();
+        let record = self.record.as_ref()?;
+        if label.is_empty() {
+            return None;
+        }
+        let others: Vec<String> = record
+            .uuids_for_label(label)
+            .into_iter()
+            .filter(|u| u != uuid)
+            .collect();
+        (!others.is_empty()).then(|| {
+            format!(
+                "{label} is already recorded for {} {}.",
+                if others.len() == 1 {
+                    "another tag, UUID"
+                } else {
+                    "other tags, UUIDs"
+                },
+                others.join(", ")
+            )
+        })
     }
 
     fn retest_default_label(&self) -> String {

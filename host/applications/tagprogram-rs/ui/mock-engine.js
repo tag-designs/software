@@ -238,6 +238,7 @@
             kept: ["The RTC trim and the board UUID."],
             notes: [],
           }),
+          label_conflict: () => (args.label === "BitTag-017" ? "BitTag-017 is already recorded for another tag, UUID 0039002A3233510D33353533." : null),
           label_notes: () => (args.label === "BitTag-bench" ? [] : ["This tag is recorded as BitTag-bench."]),
           retest_default_label: () => "BitTag-bench",
           about: () => ({ title: "About Tag Programmer",

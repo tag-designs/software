@@ -42,6 +42,11 @@ it says so below.
 - The record's `host_version` is `tagprogram-rs <version>`, so its rows can be
   told from qtprogram's.
 - Once the session ends, its message stays on the step line until Next Tag.
+- **A label already recorded for another tag must be confirmed.** qtprogram
+  only notes it in the Program dialog. Here, after "Erase and Program" (or
+  Retest), the UI asks `label_conflict` and, when it answers, asks again with
+  Cancel the default. A blank board has no UUID yet, so for one every
+  recorded use of the label counts.
 
 ## Transport
 
@@ -176,6 +181,7 @@ command. Until answered the prompt stays in the state.
 | --- | --- | --- |
 | `program_preview` | -- | `{ ok, reason, tag, image, erase, lost[], kept[], notes[] }` for the Program dialog; `ok:false` with `reason` instead of opening it |
 | `label_notes` | `{label}` | `notes[]` for the label as typed (recorded-label warnings), shown with `program_preview.notes` |
+| `label_conflict` | `{label}` | the warning when the record holds `label` for a UUID other than the attached tag's (any, for a blank board), or `null` |
 | `retest_default_label` | -- | the last label recorded for this tag's UUID, or `""` |
 | `about` | -- | `{ title, text }` |
 | `user_guide_url` | -- | URL or `null` |
