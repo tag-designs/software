@@ -7,8 +7,8 @@
 
 use log::error;
 
+use super::TagMonitor;
 use crate::proto::{Ack, BitTagData, BitTagLog, TagState, ack};
-use crate::tagmonitor::TagMonitor;
 
 const STM32L4_PWR_CR1: u32 = 0x4000_7000;
 const STM32L4_RTC_BKP0R: u32 = 0x4000_2850;

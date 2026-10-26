@@ -14,12 +14,12 @@ use std::sync::{Mutex, MutexGuard};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::linkadapt::{LinkAdaptStats, UsbDev};
+use crate::link::{LinkAdaptStats, UsbDev};
+use crate::monitor::{MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
 use crate::proto::{
     Ack, CalibrationConstants, Config, Empty, LogReq, Req, StateLog, Status, TagInfo, TagState,
     TestReq, ack, log_req, req,
 };
-use crate::tagmonitor::{MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
 
 /// Why a monitor RPC made through a [`Tag`] failed.
 ///

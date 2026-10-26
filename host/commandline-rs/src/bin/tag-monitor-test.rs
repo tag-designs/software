@@ -25,7 +25,7 @@ use std::time::Duration;
 use clap::{CommandFactory, Parser};
 use log::{debug, error, warn};
 use tag_tools::{BaseArgs, exit_on_interrupt, init_logging, parse_bus_device};
-use tagcore::monitor_abi::{command_word, info, op};
+use tagcore::monitor::abi::{command_word, info, op};
 use tagcore::{LinkAdapt, UsbDev};
 
 /// tests the monitor interface

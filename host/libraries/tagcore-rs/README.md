@@ -17,13 +17,28 @@ is not wired into the CMake build.
 | Rust | C++ | Role |
 | --- | --- | --- |
 | `tag.rs` — `Tag`, `TagError` | `tagclass.*` | Thread-safe facade: one method per request, last RPC outcome |
-| `tagmonitor.rs` — `TagMonitor` | `tagmonitor.*` | L4 DebugMonitor and U3 shared-block transports, attach/detach, RPC framing, timeout diagnostics |
-| `rescue.rs` | `legacy_bittag_rescue.cc` | Old BitTag V6 field-rescue helpers |
-| `linkadapt.rs` — `LinkAdapt`, `UsbDev` | `linkadapt.*` | ST-LINK discovery and USB commands (rusb/libusb) |
-| `monitor_abi.rs` | `include/monitor.h` | Monitor ABI constants and the U3 shared block |
+| `monitor/` — `TagMonitor` | `tagmonitor.*` | The monitor protocol, one file per concern (below) |
+| `link/` — `LinkAdapt`, `UsbDev` | `linkadapt.*` | ST-LINK discovery and USB commands (rusb/libusb), one file per concern (below) |
 | `proto.rs` | `tag.pb.h`, `json_util` | prost types generated from `proto/` at build time, with reflection; JSON in and out as the C++ prints and parses it |
 | `textformat.rs` | `TextFormat`, `DebugString()` | Protobuf text format laid out as the C++ prints it |
 | `configshape.rs` — `ConfigShape` | `configshape.*` | Which Config fields each tag type supports, from the embedded `default-config.json` files, and the `--merge` overlay |
+
+`TagMonitor` and `LinkAdapt` are each one type whose methods are spread over
+a folder, one file per concern, so each question has one place to look:
+
+| File | What it holds |
+| --- | --- |
+| `monitor/mod.rs` | The struct and its public API: attach, detach, memory access, keep-alive; target identification; the call dispatcher |
+| `monitor/l4.rs` | STM32L4 transport: DebugMonitor/DCRDR call, attach sequence, timeout report |
+| `monitor/u3.rs` | STM32U3 transport: shared-block call, attach sequence, timeout report |
+| `monitor/rpc.rs` | Protobuf framing over either transport |
+| `monitor/cortex_m.rs` | Arm debug and system-control registers; core halt and register reads for timeout reports |
+| `monitor/abi.rs` | The host/firmware monitor ABI, mirrored from `include/monitor.h` |
+| `monitor/rescue.rs` | Legacy BitTag V6 field-rescue helpers (`legacy_bittag_rescue.cc`) |
+| `link/mod.rs` | The struct, its statistics, attach and detach |
+| `link/discovery.rs` | Finding ST-LINKs (`UsbDev`), reading serials, opening the selected probe |
+| `link/stlink.rs` | The ST-LINK USB protocol: command codes and blocks, bulk transfers, mode changes |
+| `link/target.rs` | Raw target access: memory, debug registers, nRST, voltage |
 
 The attach sequences, timeouts, retry and recovery paths, and log messages
 follow the C++ code. The protocol is described in

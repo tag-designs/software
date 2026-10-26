@@ -39,7 +39,7 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 use tag_tools::{BaseArgs, init_logging, select_base, state_name};
-use tagcore::monitor_abi::{MONITOR_SHARED_ADDR, MONITOR_SHARED_SIZE};
+use tagcore::monitor::abi::{MONITOR_SHARED_ADDR, MONITOR_SHARED_SIZE};
 use tagcore::proto::{Status, TagState};
 use tagcore::{MemAccess, Tag};
 
