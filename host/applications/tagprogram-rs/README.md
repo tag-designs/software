@@ -43,6 +43,11 @@ engine headless with scratch settings. It answers the first-run question with
 automatic attach off, so it lists and identifies the base but never attaches
 to the tag.
 
+`cargo run -p tagprogram-core --example bench -- <scratch-dir> <release> <label> [--retest]`
+is qtprogram's `--bench-program`. It attaches (resetting the tag), programs or
+retests one tag, prints each step and the record row, and exits 0 for a
+written OK row.
+
 Settings live in the platform config directory (`settings.json`, qtprogram's
 keys). Downloaded releases go in the platform data directory under
 `firmware/`. The record defaults to `Documents/Tag Programmer/programmed-tags.csv`,
@@ -64,7 +69,8 @@ probe-rs's progress goes to the log pane.
 
 ## Status
 
-- Built. The engine has been run against a real base and the GitHub release
-  list.
-- Not yet run through a full program cycle on hardware.
-- Not packaged.
+- Program and Retest have passed on a BitTag (bittag-base-v7, stock
+  driver) with fw-v0.6, through the bench runner: mass erase, program,
+  verify, ALL_PASSED, erased and IDLE in 13 s, and the flash read back
+  matching the image.
+- Not yet run on an IMUTag (U375) or through a field base. Not packaged.

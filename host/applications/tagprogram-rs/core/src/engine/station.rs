@@ -878,7 +878,7 @@ impl Station {
                 s.catalog.load();
                 let release = s.chosen_release();
                 if release.is_some() && s.image.is_none() && s.fetching.is_none() {
-                    s.load_image();
+                    s.reload_for_catalog();
                 } else {
                     s.check_firmware();
                 }
@@ -890,7 +890,17 @@ impl Station {
         self.save_setting(key::RELEASE, tag);
         self.remove_setting(key::FILE);
         self.remove_setting(key::LEGACY_IMAGE);
-        self.load_image();
+        self.image = None;
+        self.reload_for_catalog();
+    }
+
+    /// Detects the tag type against the chosen release's targets, which
+    /// change as releases are chosen and downloaded, then loads the image.
+    fn reload_for_catalog(&mut self) {
+        self.detect_target();
+        if self.image.is_none() {
+            self.load_image();
+        }
     }
 
     fn choose_file(&mut self, path: &str) {
@@ -966,7 +976,8 @@ impl Station {
                 }
                 s.catalog.load();
                 if s.chosen_release().as_deref() == Some(tag.as_str()) {
-                    s.load_image();
+                    s.image = None;
+                    s.reload_for_catalog();
                 }
             }
         });
