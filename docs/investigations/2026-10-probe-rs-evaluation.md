@@ -134,11 +134,21 @@ sectors `0x08000000-0x0800E000`. tagcore's `tag-info` then reported the new
 firmware, IDLE, with an empty state log. Logged in
 `captures/2026-10-26-imutag-probe-rs/flash-log.md`.
 
+On the BitTag programmer base -- pre-July firmware, the one probe-rs's own
+driver could not use -- the tag-base driver works: `raw` identified the
+STM32L432 (idcode `0x10016435`) and read memory, and `session` attached
+under reset with the core halted at its reset vector (PC `0x08000514`,
+vector `0x08000515`), DBGMCU_CR and DEMCR 0 afterwards. The BitTag was IDLE
+before and after. The UID reads as zeros on both parts only because the
+part is held in reset during `raw`: the same L432 address matched the
+firmware's UUID when read with the tag running.
+
 ## Still to do
 
-- Repeat `raw`, `session` and `program` through the tag-base driver on the
-  BitTag programmer base, whose pre-July firmware stands in for the oldest
-  field bases, including PEMPTY handling after programming an L432.
+- Program an STM32L432 through the tag-base driver: the release rule mass
+  erases L432 images without calibration pages, and PEMPTY must then be
+  cleared (one register write), neither of which the spike's `program` does
+  yet.
 - Make base changes 2 and 3 for future bases, without depending on them.
 - Measure resting current after a probe-rs session against one of ours, and
   after a fresh power-on, to settle the C_DEBUGEN and DBGMCU questions.
