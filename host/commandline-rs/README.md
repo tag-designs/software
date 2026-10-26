@@ -97,7 +97,15 @@ the same source tree, and the two outputs were compared:
   FINISHED and erased it to IDLE, in both versions; the argument checks and
   `tag-monitor-test` printed the same in both.
 
+The same day, on an IMUTagNandBmp581 (STM32U375, the shared-block
+transport, firmware `8f1350da`), each tool again matched its C++ build:
+`tag-info`, `tag-peek`, `tag-side-channel-check` (including the
+monitor_shared write guard and keep-alive across a 12 s idle),
+`tag-attach-cycle`, `qtmonitor-fixture-capture`, the start, stop and reset
+cycle, and `tag-cal`, which streamed samples and stopped on Ctrl-C.
+`tag-monitor-test` refuses an STM32U3, as the C++ now does.
+
 Not checked on hardware: `--config`/`--merge` (the merge itself is covered by
 tagcore-rs unit tests), the opt-in write, start and unplug checks of
-`tag-side-channel-check`, a tag in calibration mode for `tag-cal`, and any
-STM32U3 tag.
+`tag-side-channel-check`, and `tag-test` on the IMUTag, whose
+external-flash test can write the NAND bad-block map.

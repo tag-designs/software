@@ -114,4 +114,6 @@ qtprogram and anything else that polls the base first.
 
 Checked on 2026-10-26 against a BitTag V6 (STM32L432, firmware `56e5e6a0`) on
 a tag programmer base: the report matched the C++ `tag-info` field for field.
-The STM32U3 transport has not yet been run on hardware.
+The STM32U3 transport was checked the same day on an IMUTagNandBmp581
+(STM32U375, firmware `8f1350da`): the hardware test passes, and the tools
+built on this crate match their C++ counterparts there too.

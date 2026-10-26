@@ -16,7 +16,9 @@
 //! - C_MASKINTS is never left set, since it survives the halt release and
 //!   stalls the firmware with every interrupt masked.
 //!
-//! STM32L4 only. Exits 0 once the handshake completes, 1 otherwise.
+//! STM32L4 only: on an STM32U3, whose monitor is the shared block, it says
+//! so and exits before writing any debug register. Exits 0 once the
+//! handshake completes, 1 otherwise.
 
 use std::process::ExitCode;
 use std::thread::sleep;
@@ -51,6 +53,16 @@ const MON_REQ: u32 = 1 << 19;
 const MON_PEND: u32 = 1 << 17;
 const MON_EN: u32 = 1 << 16;
 const TRCENA: u32 = 1 << 24;
+
+// DBGMCU ID code addresses, which tell the families apart.
+const L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
+const U3_DBGMCU_IDCODE: u32 = 0xE004_4000;
+
+/// True if `idcode` has a real device ID (neither all zero nor all one).
+fn plausible_idcode(idcode: u32) -> bool {
+    let device_id = idcode & 0xfff;
+    device_id != 0 && device_id != 0xfff
+}
 
 fn ms(n: u64) -> Duration {
     Duration::from_millis(n)
@@ -167,6 +179,29 @@ impl TestMonitor {
     /// The steps of [`attach`](Self::attach) after the probe is open, with
     /// the core held in reset.
     fn handshake(&mut self) -> bool {
+        // L4 only. Identify the part while it is held in reset, as
+        // TagMonitor does; on an STM32U3 the DebugMon bits below mean nothing
+        // to the firmware, so refuse before writing any.
+        let is_l4 = self
+            .link
+            .read_debug32(L4_DBGMCU_IDCODE)
+            .is_some_and(plausible_idcode);
+        if !is_l4
+            && let Some(idcode) = self
+                .link
+                .read_debug32(U3_DBGMCU_IDCODE)
+                .filter(|id| plausible_idcode(*id))
+        {
+            eprintln!(
+                "tag-monitor-test drives the STM32L4 DebugMonitor only; this target is an \
+                     STM32U3 (idcode 0x{idcode:x}). Use tag-info or tag-side-channel-check."
+            );
+            // Nothing was written: release reset so the tag boots as it
+            // would at power-on.
+            self.link.assert_reset(true);
+            return false;
+        }
+
         // Program debug control while the core is still held in reset.
         let Some(demcr) = self.link.read_debug32(DEMCR) else {
             error!("debug setup failed");
