@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+summary: Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 ---
 
 # tagcore (Rust)
@@ -9,8 +9,10 @@ summary: Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) - lay
 A Rust crate, `tagcore`, that talks to a tag's firmware monitor through an
 ST-LINK. It is a port of the C++ tag interface in
 [`../tagcore`](../tagcore/README.md): the `Tag` class (`tagclass.*`) and the
-two layers under it, so it is usable on its own. It is not wired into the
-CMake build.
+two layers under it, so it is usable on its own, plus `ConfigShape` and the
+protobuf text/JSON output the command-line tools need. The Rust tools in
+[`../../commandline-rs`](../../commandline-rs/README.md) are built on it. It
+is not wired into the CMake build.
 
 | Rust | C++ | Role |
 | --- | --- | --- |
@@ -19,7 +21,9 @@ CMake build.
 | `rescue.rs` | `legacy_bittag_rescue.cc` | Old BitTag V6 field-rescue helpers |
 | `linkadapt.rs` — `LinkAdapt`, `UsbDev` | `linkadapt.*` | ST-LINK discovery and USB commands (rusb/libusb) |
 | `monitor_abi.rs` | `include/monitor.h` | Monitor ABI constants and the U3 shared block |
-| `proto.rs` | `tag.pb.h` | prost types generated from `proto/` at build time |
+| `proto.rs` | `tag.pb.h`, `json_util` | prost types generated from `proto/` at build time, with reflection; JSON in and out as the C++ prints and parses it |
+| `textformat.rs` | `TextFormat`, `DebugString()` | Protobuf text format laid out as the C++ prints it |
+| `configshape.rs` — `ConfigShape` | `configshape.*` | Which Config fields each tag type supports, from the embedded `default-config.json` files, and the `--merge` overlay |
 
 The attach sequences, timeouts, retry and recovery paths, and log messages
 follow the C++ code. The protocol is described in
@@ -56,6 +60,10 @@ The wire behaviour is the same. The API is Rust-shaped:
 - `Tag` takes `&self` and holds a mutex; `TagMonitor` takes `&mut self`, so
   the borrow checker serialises the link instead of a recursive mutex.
 - `Tag::target_family()` is new: it exposes the family detected at attach.
+- `LinkAdapt`'s debug-register and memory calls are public; the C++ makes
+  them protected, and `tag-monitor-test` subclasses it to reach them.
+- Text format omits the randomised `goo.gle/debugproto` marker that recent
+  C++ protobuf releases insert into `DebugString()`.
 - `git_sha()` stops at the first NUL; the C++ returns all 48 bytes.
 - `read_calibration` takes an `i32`, as the protobuf field does, so "last
   written" (`< 0`) can be asked for directly.
@@ -82,8 +90,10 @@ RUST_LOG=info cargo run --example tag_info [-- <ST-LINK serial>]
 
 The unit tests cover the parts that need no hardware: serial decoding,
 command and memory-range rules, the shared-block layout, legacy record
-decoding, error reporting and protobuf framing. The hardware test attaches
-(resetting the tag), sends only read-only requests (and one calibration write the firmware must refuse), checks the chip UID read
+decoding, error reporting, protobuf framing, text format and JSON spelling,
+and ConfigShape against the real default configs. The hardware test attaches
+(resetting the tag), sends only read-only requests and one calibration write
+the firmware must refuse, checks the chip UID read
 over SWD against the UUID the firmware reports, and detaches. Quit qtmonitor,
 qtprogram and anything else that polls the base first.
 

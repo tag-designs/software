@@ -1,0 +1,13 @@
+[package]
+name = "tag-tools"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.45"
+clap = { version = "4.6.7", features = ["derive"] }
+ctrlc = "3.5.2"
+env_logger = "0.11.11"
+log = "0.4.34"
+prost-reflect = "0.16.5"
+tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }

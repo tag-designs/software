@@ -134,6 +134,27 @@ impl Default for LinkAdaptStats {
     }
 }
 
+/// libusb's own name for an error, such as `LIBUSB_ERROR_TIMEOUT`, so log
+/// lines read as the C++ tools' do (`libusb_error_name()`).
+pub(crate) fn libusb_name(e: &rusb::Error) -> &'static str {
+    use rusb::Error::*;
+    match e {
+        Io => "LIBUSB_ERROR_IO",
+        InvalidParam => "LIBUSB_ERROR_INVALID_PARAM",
+        Access => "LIBUSB_ERROR_ACCESS",
+        NoDevice => "LIBUSB_ERROR_NO_DEVICE",
+        NotFound => "LIBUSB_ERROR_NOT_FOUND",
+        Busy => "LIBUSB_ERROR_BUSY",
+        Timeout => "LIBUSB_ERROR_TIMEOUT",
+        Overflow => "LIBUSB_ERROR_OVERFLOW",
+        Pipe => "LIBUSB_ERROR_PIPE",
+        Interrupted => "LIBUSB_ERROR_INTERRUPTED",
+        NoMem => "LIBUSB_ERROR_NO_MEM",
+        NotSupported => "LIBUSB_ERROR_NOT_SUPPORTED",
+        BadDescriptor | Other => "LIBUSB_ERROR_OTHER",
+    }
+}
+
 /// Nanoseconds since `start`, saturating at `u64::MAX`.
 pub(crate) fn elapsed_ns(start: Instant) -> u64 {
     u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
@@ -264,7 +285,7 @@ impl LinkAdapt {
     /// logged and every later call finds no devices.
     pub fn new() -> Self {
         let ctx = Context::new()
-            .map_err(|e| error!("USB Init error {e}"))
+            .map_err(|e| error!("USB Init error {}", libusb_name(&e)))
             .ok();
         Self {
             ctx,
@@ -286,7 +307,7 @@ impl LinkAdapt {
         let devices = match ctx.devices() {
             Ok(devices) => devices,
             Err(e) => {
-                error!("USB Init error {e}");
+                error!("USB Init error {}", libusb_name(&e));
                 return Vec::new();
             }
         };
@@ -295,7 +316,7 @@ impl LinkAdapt {
             let desc = match dev.device_descriptor() {
                 Ok(desc) => desc,
                 Err(e) => {
-                    error!("USB Init error {e}");
+                    error!("USB Init error {}", libusb_name(&e));
                     break;
                 }
             };
@@ -349,7 +370,7 @@ impl LinkAdapt {
         let devices = match ctx.devices() {
             Ok(devices) => devices,
             Err(e) => {
-                error!("USB Init error {e}");
+                error!("USB Init error {}", libusb_name(&e));
                 return false;
             }
         };
@@ -357,7 +378,7 @@ impl LinkAdapt {
             let desc = match dev.device_descriptor() {
                 Ok(desc) => desc,
                 Err(e) => {
-                    error!("USB Init error {e}");
+                    error!("USB Init error {}", libusb_name(&e));
                     break;
                 }
             };
@@ -377,7 +398,7 @@ impl LinkAdapt {
             let handle = match dev.open() {
                 Ok(handle) => handle,
                 Err(e) => {
-                    error!("USB Open error {e}");
+                    error!("USB Open error {}", libusb_name(&e));
                     continue;
                 }
             };
@@ -428,19 +449,19 @@ impl LinkAdapt {
             Ok(1) => {}
             Ok(_) => {
                 if let Err(e) = handle.set_active_configuration(1) {
-                    error!("setting config failed: {e}");
+                    error!("setting config failed: {}", libusb_name(&e));
                     return false;
                 }
             }
             Err(e) => {
-                error!("couldn't get config: {e}");
+                error!("couldn't get config: {}", libusb_name(&e));
                 return false;
             }
         }
         // Not supported on every platform (Windows), so the result is ignored.
         let _ = handle.set_auto_detach_kernel_driver(true);
         if let Err(e) = handle.claim_interface(0) {
-            error!("claim interface failed {e}");
+            error!("claim interface failed {}", libusb_name(&e));
             return false;
         }
         debug!("Interface claimed !");
@@ -515,7 +536,7 @@ impl LinkAdapt {
         let res = match handle.read_bulk(self.ep_in, buf, USB_TRANSFER_TIMEOUT) {
             Ok(n) => n,
             Err(e) => {
-                error!("{e}");
+                error!("{}", libusb_name(&e));
                 return false;
             }
         };
@@ -540,7 +561,7 @@ impl LinkAdapt {
         let res = match handle.write_bulk(self.ep_out, buf, USB_TRANSFER_TIMEOUT) {
             Ok(n) => n,
             Err(e) => {
-                error!("{e}");
+                error!("{}", libusb_name(&e));
                 return false;
             }
         };
@@ -653,10 +674,15 @@ impl LinkAdapt {
         Some(status)
     }
 
-    // ---- Target access, used by TagMonitor ----
+    // ---- Raw target access ----
+    //
+    // Used by TagMonitor, and by tools that drive the debug port directly
+    // (tag-monitor-test); in C++ these are protected members reached by
+    // subclassing. Nothing here knows about the monitor: a write can halt,
+    // reset or reconfigure the target.
 
     /// Target supply voltage in volts, as measured by the ST-LINK.
-    pub(crate) fn voltage(&mut self) -> Option<f32> {
+    pub fn voltage(&mut self) -> Option<f32> {
         let mut cmd = [0u8; 16];
         cmd[0] = stlink::GET_TARGET_VOLTAGE;
         let mut result = [0u8; 8];
@@ -673,7 +699,7 @@ impl LinkAdapt {
     ///
     /// `addr` and `buf.len()` must be multiples of 4 and the length at most
     /// 65535; the probe rejects anything else. The core is not halted.
-    pub(crate) fn read_mem32(&mut self, addr: u32, buf: &mut [u8]) -> bool {
+    pub fn read_mem32(&mut self, addr: u32, buf: &mut [u8]) -> bool {
         let start = Instant::now();
         let Ok(count) = u16::try_from(buf.len()) else {
             error!("read of {} bytes exceeds one ST-LINK transfer", buf.len());
@@ -701,7 +727,7 @@ impl LinkAdapt {
 
     /// Writes `data` to target memory with 32-bit accesses. Same constraints
     /// as [`read_mem32`](Self::read_mem32).
-    pub(crate) fn write_mem32(&mut self, addr: u32, data: &[u8]) -> bool {
+    pub fn write_mem32(&mut self, addr: u32, data: &[u8]) -> bool {
         let start = Instant::now();
         let Ok(count) = u16::try_from(data.len()) else {
             error!("write of {} bytes exceeds one ST-LINK transfer", data.len());
@@ -728,7 +754,7 @@ impl LinkAdapt {
     }
 
     /// Reads one 32-bit word through the debug-register path.
-    pub(crate) fn read_debug32(&mut self, addr: u32) -> Option<u32> {
+    pub fn read_debug32(&mut self, addr: u32) -> Option<u32> {
         let start = Instant::now();
         let mut result = [0u8; 8];
         if !self.cmd_read(
@@ -750,7 +776,7 @@ impl LinkAdapt {
     }
 
     /// Writes one 32-bit word through the debug-register path.
-    pub(crate) fn write_debug32(&mut self, addr: u32, val: u32) -> bool {
+    pub fn write_debug32(&mut self, addr: u32, val: u32) -> bool {
         let start = Instant::now();
         let mut cmd = debug_cmd(stlink::DEBUG_APIV2_WRITEDEBUGREG, addr);
         cmd[6..10].copy_from_slice(&val.to_le_bytes());
@@ -771,7 +797,7 @@ impl LinkAdapt {
     }
 
     /// Drives the target's nRST line: `high` releases reset, low holds it.
-    pub(crate) fn assert_reset(&mut self, high: bool) -> bool {
+    pub fn assert_reset(&mut self, high: bool) -> bool {
         let mut cmd = debug_cmd(stlink::JTAG_DRIVE_NRST, 0);
         cmd[2] = u8::from(high);
         let mut result = [0u8; 2];

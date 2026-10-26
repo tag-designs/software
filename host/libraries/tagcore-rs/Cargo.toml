@@ -22,10 +22,13 @@ instrumentation = []
 [dependencies]
 log = "0.4.34"
 prost = "0.14.4"
+prost-reflect = { version = "0.16.5", features = ["derive", "serde", "text-format"] }
 rusb = "0.9.4"
+serde_json = "1.0.154"
 
 [build-dependencies]
 prost-build = "0.14.4"
+prost-reflect-build = "0.16.1"
 
 [dev-dependencies]
 env_logger = "0.11.11"

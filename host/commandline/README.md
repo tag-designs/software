@@ -11,6 +11,9 @@ Command-line host tools live here. Most hardware-facing tools link the Qt-free
 Qt-free `sensoranalysis_core` and SQLite instead, and is built in any host
 build; like every tool here it uses no Qt.
 
+Rust ports of the tools that need only the tag interface are in
+[`../commandline-rs`](../commandline-rs/README.md).
+
 Distributed tools -- these are the ones in `host_cli_install_targets` in
 `../CMakeLists.txt`, the ones documented in the user guide, and the ones that
 reach a release:

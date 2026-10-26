@@ -401,6 +401,10 @@ design document.
 
 - [tag-txt-import Check](../host/commandline/test/README.md) — Offline check of tag-txt-import - anonymised fixtures of each legacy .txt variant and repair, and the script that converts them and asserts each conversion report.
 
+### commandline-rs
+
+- [Tag command-line tools (Rust)](../host/commandline-rs/README.md) — Rust ports of the tag command-line tools built on tagcore-rs - which tools exist, which are not ported yet and why, how they differ from the C++, and how they were checked.
+
 ### Common
 
 - [Host Common Qt Helpers](../host/common/README.md) — Small shared Qt helpers used by host applications through the host_common target.
@@ -463,7 +467,7 @@ design document.
 
 ### Libraries / tagcore-rs
 
-- [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+- [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 
 ### Proposals
 

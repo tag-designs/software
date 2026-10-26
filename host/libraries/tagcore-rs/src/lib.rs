@@ -25,12 +25,14 @@
 //! it was meant to observe, so never attach just to see what a tag is doing;
 //! see `docs/bench/verifying-firmware.md`.
 
+pub mod configshape;
 pub mod linkadapt;
 pub mod monitor_abi;
 pub mod proto;
 mod rescue;
 pub mod tag;
 pub mod tagmonitor;
+pub mod textformat;
 
 pub use linkadapt::{LinkAdapt, LinkAdaptStats, UsbDev};
 pub use tag::{Tag, TagError};
