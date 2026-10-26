@@ -255,3 +255,49 @@ Per mAh of cell: 342 days resting, 82 days recording.
   Phase D needs an operator and takes minutes: start a run, move the tag for a
   known interval, stop, and confirm non-zero buckets at those times with zeros
   either side. At `BITPERSEC` a minute of movement places it to the second.
+
+## 2026-10-26 — IDLE after each kind of debug attach, fw-v0.6
+
+Does any debug attach leave a BitTag drawing more in IDLE? Asked for the
+probe-rs evaluation
+([investigation](../../../../docs/investigations/2026-10-probe-rs-evaluation.md)):
+every attach through our bases leaves DHCSR.C_DEBUGEN set until a power-on
+reset, and probe-rs's stock STM32L4 sequence sets DBGMCU_CR during a session.
+
+- **Image:** release fw-v0.6, commit `56e5e6a0`, not dirty;
+  `firmware/BitTag/BitTag.elf`, SHA-256
+  `049f23b3fd81519ddab3d9fb010c7a9dbe9192a86f6b5646318221c6ccb7bbf3` (the
+  release manifest's). Target `BitTag`.
+- **Board:** UUID `2035374D303150190059002F`; physical label not recorded.
+  One board.
+- **Base:** BitTag programmer base, ST-LINK serial `0037001A5556431520303537`,
+  pre-July base firmware.
+- **Supply:** 2.4959-2.4960 V on every window.
+- **Config:** none; IDLE (L432 Shutdown) throughout, empty state log.
+- **Instrument:** Joulescope JS320 `Z2GW`, `joulescope_server.py` held for the
+  whole session (range auto), interpreter `~/.venvs/joulescope/bin/python`
+  with `pyjoulescope_driver` 2.5.4. The desktop app, qtmonitor, qtprogram and
+  the Joulescope MCP server were not running.
+- **Method:** each action, 15 s settle (10 s after the power cycle), then
+  `joulescope_measure.py --use-server --duration 45 --repeat 2`; charge/time.
+- **Evidence:** `captures/2026-10-26-bittag-probe-rs/` (outside the
+  repository), including the flash log for the reflash in this session.
+
+| After | Window 1 | Window 2 |
+| --- | ---: | ---: |
+| State as found (base swapped onto the Joulescope; history unknown) | 0.1204 uA | 0.1204 uA |
+| tagcore attach and detach (`tag-info`) | 0.1204 uA | 0.1203 uA |
+| probe-rs session under reset, ARM default sequence (tag-base driver) | 0.1203 uA | 0.1203 uA |
+| probe-rs session under reset, stock `Stm32Armv7` sequence (DBGMCU_CR 0x7 during the session, 0 after) | 0.1203 uA | 0.1204 uA |
+| probe-rs chip erase, program and verify of the same image (tag-base driver) | 0.1204 uA | 0.1204 uA |
+| Power cycle, no attach since | 0.1206 uA | 0.1206 uA |
+
+**Interpretation.** In IDLE no attach leaves a measurable cost: every case is
+within 0.0003 uA of the never-attached baseline, and the attached cases are, if
+anything, the lower ones. C_DEBUGEN left set by the base, tagcore's monitor
+session, either probe-rs sequence and a probe-rs flash all rest at the
+qualification figure (0.122 uA in fw-v0.5). This is consistent with the
+procedure's note that on the L432 debug state affects Stop modes, not
+Shutdown or Standby. **Not covered:** RUNNING (Standby between minute
+wakes) and any Stop-mode state, where a debug domain left powered would
+show; and STM32U375 tags.

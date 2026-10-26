@@ -157,8 +157,20 @@ So probe-rs, through the tag-base driver, now attaches to, halts and programs
 both STM32L432 and STM32U375 tags through both the oldest base firmware we
 have and current base firmware.
 
+### Resting current after each kind of attach (BitTag, 2.5 V)
+
+Measured with the Joulescope on the BitTag in IDLE (L432 Shutdown): after a
+tagcore attach, a probe-rs session with our sequence, a probe-rs session with
+the stock `Stm32Armv7` sequence, a probe-rs chip-erase-and-program, and a power
+cycle with no attach, every pair of 45 s windows read 0.1203-0.1206 uA at
+2.496 V. No attach leaves a measurable cost in IDLE; the C_DEBUGEN bit the bases
+set and the DBGMCU bits probe-rs's sequence sets during a session are harmless
+there. The numbers and conditions are in the BitTag
+[power results](../../embedded/tags/BitTag/design/power-results.md).
+
 ## Still to do
 
 - Make base changes 2 and 3 for future bases, without depending on them.
-- Measure resting current after a probe-rs session against one of ours, and
-  after a fresh power-on, to settle the C_DEBUGEN and DBGMCU questions.
+- Measure RUNNING (Standby between wakes) after a probe-rs attach, and repeat
+  the resting comparison on an STM32U375, where terminal sleep is Stop 3 and a
+  debug domain left powered would show.
