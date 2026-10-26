@@ -31,9 +31,11 @@ it says so below.
   driver; there is no "Choose Programmer..." and no programmer path setting.
 - The **Base** check shows the base's identity when it has one.
 - The programmer's own output (probe-rs progress) does reach the log pane.
-- **Cancel is not offered in the final start, stop and erase pass.**
-  qtprogram offered it there and then recorded a programmed tag as
-  `CANCELLED: Cancelled before programming`.
+- **No final start, stop and erase.** As qtprogram since a05900f6, the
+  session ends after the self-tests with the tag IDLE: a start belongs to a
+  deployment, and on a PresTag it left the RTC locked so the clock setting
+  after the final erase hung the firmware (`embedded/tags/TODO.md`).
+  `qtprogram-spec.md` describes the earlier sequence.
 - A program failure reads "Programming failed (<error>). The probe's
   messages are in the log." and the Retest read-back failure reads "probe-rs
   could not read it (<error>)", in place of the STM32_Programmer_CLI texts.

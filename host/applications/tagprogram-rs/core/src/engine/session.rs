@@ -75,8 +75,6 @@ pub(crate) struct SessionState {
     pub tick_at: Option<Instant>,
     ticks: u32,
     retest: bool,
-    /// In the final start, stop and erase pass.
-    pub finishing: bool,
     programmed: bool,
     commit_mismatch: bool,
     label: String,
@@ -101,7 +99,6 @@ impl SessionState {
             tick_at: None,
             ticks: 0,
             retest,
-            finishing: false,
             programmed: false,
             commit_mismatch: false,
             label: label.to_owned(),
@@ -118,12 +115,9 @@ impl SessionState {
     }
 
     /// Cancel is offered: power-cycle waits, and the steps before
-    /// programming. qtprogram also offered it in the final erase pass and
-    /// then recorded the programmed tag as CANCELLED; this port does not.
+    /// programming.
     pub(crate) fn cancellable(&self) -> bool {
-        self.running
-            && (self.step == Step::PowerCycle
-                || (!self.finishing && matches!(self.step, Step::Stopping | Step::Erasing)))
+        self.running && matches!(self.step, Step::PowerCycle | Step::Stopping | Step::Erasing)
     }
 }
 
@@ -320,30 +314,6 @@ impl Station {
                 self.sess().ticks = 0;
                 self.set_step(Step::Erasing, "The tag is erasing its log");
             }
-            TagState::Idle if self.sess().finishing => {
-                let _ = self.tag.set_rtc();
-                let s = self.sess();
-                let (result, message) = if s.commit_mismatch {
-                    (
-                        "MISMATCH".to_owned(),
-                        format!(
-                            "Programmed, but the tag reports commit {}, which is not the image's. It is not running the image just written.",
-                            s.git_hash
-                        ),
-                    )
-                } else if s.test_status == TestResult::AllPassed.as_str_name() {
-                    (
-                        "OK".to_owned(),
-                        "Programmed and tested: ALL_PASSED. The tag is erased and IDLE.".to_owned(),
-                    )
-                } else {
-                    (
-                        "TEST_FAILED".to_owned(),
-                        format!("Programmed, but the self-test reported {}.", s.test_status),
-                    )
-                };
-                self.finish(&result, &message);
-            }
             TagState::Idle => self.run_programmer(),
             _ => {
                 if self.sess().ticks == 0 && !matches!(state, TagState::Test | TagState::SReset) {
@@ -460,22 +430,31 @@ impl Station {
             self.finish_retest(&tests);
             return;
         }
-        let _ = self.tag.set_rtc();
-        let started = self.tag.config().and_then(|cfg| self.tag.start(&cfg));
-        if started.is_err() {
-            self.finish(
-                "FAILED: no start after testing",
-                "The programmed tag would not start for its final erase.",
-            );
-            return;
-        }
-        self.sess().finishing = true;
-        info!("Starting, stopping and erasing the tag once");
+        // Done. The programmer does not start the tag: a start belongs to
+        // its deployment, and on a PresTag it leaves the RTC write-protected
+        // until the next reset, so a later SetRtc hangs the firmware
+        // (embedded/tags/TODO.md). The tag stays IDLE.
         let s = self.sess();
-        s.step_text = "Starting, stopping and erasing the tag once".into();
-        s.step = Step::Stopping;
-        s.progress = None;
-        s.ticks = 0;
+        let (result, message) = if s.commit_mismatch {
+            (
+                "MISMATCH".to_owned(),
+                format!(
+                    "Programmed, but the tag reports commit {}, which is not the image's. It is not running the image just written.",
+                    s.git_hash
+                ),
+            )
+        } else if tests == TestResult::AllPassed.as_str_name() {
+            (
+                "OK".to_owned(),
+                "Programmed and tested: ALL_PASSED. The tag is IDLE.".to_owned(),
+            )
+        } else {
+            (
+                "TEST_FAILED".to_owned(),
+                format!("Programmed, but the self-test reported {tests}."),
+            )
+        };
+        self.finish(&result, &message);
     }
 
     fn finish_retest(&mut self, tests: &str) {

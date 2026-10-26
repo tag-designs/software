@@ -2,13 +2,13 @@
 
 Tag Programmer programs a batch of tags. It is the successor to
 [Qt Program](qtprogram.md) and works the same way: for each tag it writes the
-firmware, tests the tag, leaves it erased and IDLE ready for Tag Monitor, and
+firmware, tests the tag, leaves it IDLE ready for Tag Monitor, and
 adds a line to the same CSV record. **Help ▸ Tag Programmer User Guide** opens
 this page.
 
 The difference is the programmer. Tag Programmer writes the firmware itself,
 through the base, so **STM32CubeProgrammer is not needed**. It is also faster:
-a BitTag takes about 15 seconds from start to finish.
+a BitTag takes about 10 seconds from start to finish.
 
 **Programming erases the tag.** Download its data with Tag Monitor first.
 
@@ -56,9 +56,7 @@ differently:
     2. erases internal flash as the image requires, writes the image and
        checks it;
     3. reconnects, sets the clock and runs the self-tests;
-    4. starts and stops the tag once and erases it again, so the new firmware
-       sets up its own storage;
-    5. adds a line to the record.
+    4. adds a line to the record, and leaves the tag IDLE.
 5. Press **Next Tag**, put the next tag in, and press **Attach** (or wait for
    it to attach automatically). Go back to step 3.
 
