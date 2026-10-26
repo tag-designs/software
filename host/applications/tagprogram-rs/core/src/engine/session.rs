@@ -352,8 +352,12 @@ impl Station {
             .and_then(|s| TagState::try_from(s.state).ok());
         match (state, &status) {
             (Some(TagState::SReset), Some(st)) => {
-                let total = if st.erase_sectors_total_plus_one > 0 {
-                    i64::from(st.erase_sectors_total_plus_one - 1)
+                // As qtprogram: a total of zero (none reported) falls back
+                // to the log's or the flash's size, and a bar with no total
+                // is the busy indicator.
+                let reported = i64::from(st.erase_sectors_total_plus_one.max(1) - 1);
+                let total = if reported > 0 {
+                    reported
                 } else {
                     self.info.as_ref().map_or(0, |info| {
                         if info.tag_type == TagType::Imutag as i32 {
@@ -363,7 +367,8 @@ impl Station {
                         }
                     })
                 };
-                self.sess().progress = Some((st.sectors_erased.max(0) as u64, total.max(0) as u64));
+                self.sess().progress =
+                    (total > 0).then(|| (st.sectors_erased.max(0) as u64, total as u64));
             }
             (Some(TagState::Aborted | TagState::Finished), _) => {}
             (Some(TagState::Idle), _) => {

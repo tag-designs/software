@@ -65,7 +65,12 @@ fn main() {
             let config = EngineConfig {
                 cache_dir: paths.app_data_dir()?.join("firmware"),
                 settings_path: paths.app_config_dir()?.join("settings.json"),
-                documents_dir: paths.document_dir()?,
+                // XDG names no Documents folder on a minimal Linux setup
+                // (or a clean container); fall back to ~/Documents, as
+                // qtprogram's QStandardPaths does.
+                documents_dir: paths
+                    .document_dir()
+                    .or_else(|_| paths.home_dir().map(|home| home.join("Documents")))?,
                 user_guide_url: Some(user_guide_url()),
             };
             let _ = log::set_logger(&engine::LOGGER);
