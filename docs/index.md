@@ -461,6 +461,10 @@ design document.
 
 - [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
 
+### Libraries / tagcore-rs
+
+- [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+
 ### Proposals
 
 - [A Linux Release Package for the Host Tools](../host/design/proposals/linux-release-package.md) *(proposal, historical)* — The plan, now built, for a Linux x86_64 host tools package -- a relocatable tarball built on CI against the same aqt Qt and static vcpkg libraries as Windows and macOS, with udev rules for the ST-LINK base.

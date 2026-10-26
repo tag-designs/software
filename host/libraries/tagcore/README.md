@@ -12,6 +12,8 @@ summary: tagcore responsibilities - USB and monitor communication, log writers, 
 Responsibilities:
 
 - USB/tag communication: `tagclass.*`, `tagmonitor.*`, `linkadapt.*`
+  (a Rust port of these three layers is in
+  [`../tagcore-rs`](../tagcore-rs/README.md))
 - Log writing and storage interfaces: `taglogwriter.*`, `txtlogs.*`,
   `sqlitelog.*`
 - Host logging helpers: `log.*`

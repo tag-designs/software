@@ -1,0 +1,31 @@
+# Rust port of the tagcore tag interface: Tag (tagclass), TagMonitor and
+# LinkAdapt, talking to a tag's monitor through an ST-LINK over libusb.
+#
+# The protobuf types are generated at build time from the shared definitions
+# in proto/, so they stay in step with the C++ host tools and the firmware.
+# Requires protoc on PATH (or PROTOC set) and libusb-1.0 (rusb finds it with
+# pkg-config, or builds its own copy where none is installed).
+[package]
+name = "tagcore"
+version = "0.1.0"
+edition = "2024"
+description = "Host-side interface to tag firmware monitors over ST-LINK (Rust port of tagcore's Tag class)"
+publish = false
+
+[features]
+default = ["instrumentation"]
+# Mirrors TAGCORE_ENABLE_INSTRUMENTATION: count and time every USB transfer,
+# ST-LINK command and monitor RPC. Turning it off leaves the statistics at
+# zero with `enabled == false`.
+instrumentation = []
+
+[dependencies]
+log = "0.4.34"
+prost = "0.14.4"
+rusb = "0.9.4"
+
+[build-dependencies]
+prost-build = "0.14.4"
+
+[dev-dependencies]
+env_logger = "0.11.11"
