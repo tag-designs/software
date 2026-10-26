@@ -143,12 +143,22 @@ before and after. The UID reads as zeros on both parts only because the
 part is held in reset during `raw`: the same L432 address matched the
 firmware's UUID when read with the tag running.
 
+Programming the L432 through the same base also works. `program
+--chip-erase` follows the release rule for an L432 image without calibration
+pages (a whole-chip erase, which also clears the internal-flash log), and on
+an STM32L4 it then reads FLASH_SR and clears PEMPTY only if it is set, as
+`flash_release.py` does. fw-v0.6 (`56e5e6a0`) was erased, programmed and
+verified in 1.4 s; PEMPTY was clear afterwards (it is sampled at power-on and
+option-byte load, not at erase, so one session never exposes it). The BitTag
+then booted fw-v0.6, IDLE, and `tag-test` passed every self-test. Logged in
+`captures/2026-10-26-bittag-probe-rs/flash-log.md`.
+
+So probe-rs, through the tag-base driver, now attaches to, halts and programs
+both STM32L432 and STM32U375 tags through both the oldest base firmware we
+have and current base firmware.
+
 ## Still to do
 
-- Program an STM32L432 through the tag-base driver: the release rule mass
-  erases L432 images without calibration pages, and PEMPTY must then be
-  cleared (one register write), neither of which the spike's `program` does
-  yet.
 - Make base changes 2 and 3 for future bases, without depending on them.
 - Measure resting current after a probe-rs session against one of ours, and
   after a fresh power-on, to settle the C_DEBUGEN and DBGMCU questions.

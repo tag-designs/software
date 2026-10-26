@@ -97,6 +97,11 @@ enum Command {
         /// Plan the erase and program without touching flash
         #[arg(long)]
         dry_run: bool,
+        /// Erase the whole chip first, as the release rule does for STM32L432
+        /// images without calibration pages (this also erases the tag's
+        /// internal-flash log)
+        #[arg(long)]
+        chip_erase: bool,
     },
 }
 
@@ -351,6 +356,7 @@ fn cmd_program(
     elf: &std::path::Path,
     seq: Seq,
     dry_run: bool,
+    chip_erase: bool,
 ) -> Result<()> {
     let (registry, target) = target_for(chip, seq)?;
     let probe = open(serial)?;
@@ -365,6 +371,7 @@ fn cmd_program(
         let mut options = probe_rs::flashing::DownloadOptions::default();
         options.verify = true;
         options.dry_run = dry_run;
+        options.do_chip_erase = chip_erase;
         let started = std::time::Instant::now();
         probe_rs::flashing::download_file_with_options(
             &mut session,
@@ -383,14 +390,45 @@ fn cmd_program(
             started.elapsed().as_secs_f64()
         );
         if !dry_run {
+            let mut core = session.core(0)?;
+            clear_l4_pempty(&mut core)?;
             // System reset through AIRCR, so the new image boots.
-            session.core(0)?.reset().context("starting the image")?;
+            core.reset().context("starting the image")?;
             println!("reset: the new image is running");
         }
     }
     println!("session dropped; reading what it left (a fresh raw attach):");
     std::thread::sleep(Duration::from_millis(200));
     cmd_raw(serial, false)
+}
+
+/// STM32L4 FLASH_SR, and its PEMPTY bit (RM0394 3.7.5).
+const L4_FLASH_SR: u64 = 0x4002_2010;
+const L4_FLASH_SR_PEMPTY: u32 = 1 << 17;
+
+/// On an STM32L4, clears FLASH_SR.PEMPTY if programming left it set.
+///
+/// A mass erase sets PEMPTY, and with nSWBOOT0 = 1 and BOOT0 low a set
+/// PEMPTY sends every reset to the ROM bootloader. Writing 1 toggles the bit,
+/// so it is written only when found set -- writing it on a part where it is
+/// clear would set it -- and then read back. The rule and the reasoning are
+/// `embedded/tools/flash_release.py`'s. Does nothing on other parts.
+fn clear_l4_pempty(core: &mut probe_rs::Core<'_>) -> Result<()> {
+    if !core.read_word_32(L4.idcode).is_ok_and(plausible) {
+        return Ok(());
+    }
+    let before = core.read_word_32(L4_FLASH_SR)?;
+    println!("FLASH_SR 0x{before:08x} (PEMPTY={})", (before >> 17) & 1);
+    if before & L4_FLASH_SR_PEMPTY == 0 {
+        return Ok(());
+    }
+    core.write_word_32(L4_FLASH_SR, L4_FLASH_SR_PEMPTY)?;
+    let after = core.read_word_32(L4_FLASH_SR)?;
+    println!("FLASH_SR 0x{after:08x} after clearing PEMPTY");
+    if after & L4_FLASH_SR_PEMPTY != 0 {
+        bail!("PEMPTY is still set; the tag would boot the ROM bootloader");
+    }
+    Ok(())
 }
 
 fn cmd_session(serial: &Option<String>, chip: &str, seq: Seq) -> Result<()> {
@@ -462,7 +500,8 @@ fn main() -> Result<()> {
             elf,
             sequence,
             dry_run,
-        } => cmd_program(&cli.serial, &chip, &elf, sequence, dry_run),
+            chip_erase,
+        } => cmd_program(&cli.serial, &chip, &elf, sequence, dry_run, chip_erase),
     }
     .or_else(|e| bail!("{e:#}"))
 }
