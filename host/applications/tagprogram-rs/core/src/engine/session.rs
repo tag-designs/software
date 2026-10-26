@@ -510,7 +510,7 @@ impl Station {
         let driver = self.driver();
         let erase = self.probe_erase(&image);
         info!(
-            "probe-rs: {chip}, {} driver, erase {erase:?}",
+            "probe-rs: {chip}, {}, erase {erase:?}",
             driver.name()
         );
         let tx = self.sender();
