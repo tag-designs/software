@@ -11,7 +11,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use chrono::Utc;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde_json::json;
 use tagcore::proto::{TagState, TagType, TestReq, TestResult};
 use tagprobe::Progress;
@@ -270,6 +270,20 @@ impl Station {
 
     // ---- the tick ----------------------------------------------------
 
+    /// One DEBUG line per tick: the step and what the tag reported.
+    fn log_tick(step: Step, status: &Result<tagcore::proto::Status, tagcore::TagError>) {
+        match status {
+            Ok(st) => debug!(
+                "tick {step:?}: {} sectors {}/{} test {}",
+                state_name(st.state),
+                st.sectors_erased,
+                st.erase_sectors_total_plus_one - 1,
+                test_name(st.test_status)
+            ),
+            Err(e) => debug!("tick {step:?}: no answer ({e})"),
+        }
+    }
+
     pub(crate) fn session_tick(&mut self) {
         let Some(step) = self.session.as_ref().filter(|s| s.running).map(|s| s.step) else {
             return;
@@ -284,7 +298,9 @@ impl Station {
     }
 
     fn tick_stopping(&mut self) {
-        let Ok(status) = self.tag.status() else {
+        let status = self.tag.status();
+        Self::log_tick(Step::Stopping, &status);
+        let Ok(status) = status else {
             self.finish(
                 "FAILED: the tag stopped answering",
                 "The tag stopped answering before it was programmed.",
@@ -346,7 +362,9 @@ impl Station {
     }
 
     fn tick_erasing(&mut self) {
-        let status = self.tag.status().ok();
+        let status = self.tag.status();
+        Self::log_tick(Step::Erasing, &status);
+        let status = status.ok();
         let state = status
             .as_ref()
             .and_then(|s| TagState::try_from(s.state).ok());
@@ -419,7 +437,9 @@ impl Station {
     }
 
     fn tick_testing(&mut self) {
-        let Ok(status) = self.tag.status() else {
+        let status = self.tag.status();
+        Self::log_tick(Step::Testing, &status);
+        let Ok(status) = status else {
             self.finish(
                 "FAILED: the tag stopped answering",
                 "The tag stopped answering during its self-tests.",

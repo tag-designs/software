@@ -1,7 +1,7 @@
 //! qtprogram's `--bench-program`, on the engine: attach, program one tag with
 //! a release, print each step, and report the record row.
 //!
-//! `cargo run -p tagprogram-core --example bench -- <scratch-dir> <release> <label> [--retest]`
+//! `cargo run -p tagprogram-core --example bench -- <scratch-dir> <release> <label> [--retest] [--debug]`
 //!
 //! Settings and the record file go under `<scratch-dir>`; downloaded
 //! releases go in `<scratch-dir>/firmware`. Attaching resets the tag. Exit
@@ -54,11 +54,16 @@ fn settled(state: &Value) -> bool {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 4 {
-        eprintln!("usage: bench <scratch-dir> <release> <label> [--retest]");
+        eprintln!("usage: bench <scratch-dir> <release> <label> [--retest] [--debug]");
         std::process::exit(2);
     }
     let dir = std::path::PathBuf::from(&args[1]);
     let retest = args.iter().any(|a| a == "--retest");
+    let level = if args.iter().any(|a| a == "--debug") {
+        "DEBUG"
+    } else {
+        "INFO"
+    };
     let config = EngineConfig {
         cache_dir: dir.join("firmware"),
         settings_path: dir.join("settings.json"),
@@ -76,7 +81,7 @@ fn main() {
             eprintln!("[{t:7.1}] {level} {text}");
         }
     });
-    engine.command("set_log_level", json!({ "level": "INFO" }));
+    engine.command("set_log_level", json!({ "level": level }));
     engine.command("start", json!({}));
     let state = wait_until(&latest, Duration::from_secs(5), |s| !s["prompt"].is_null());
     if state["prompt"]["kind"] == "autoAttach" {
