@@ -384,7 +384,7 @@ bool Tag::WriteCalibration(CalibrationConstants &constants)
   req.Clear();
   req.set_allocated_write_calibration(new CalibrationConstants(constants));
   //log_info("%s",req.DebugString().c_str());
-  return Rpc();
+  return Rpc() && (ack.err() == Ack::OK);
 }
 
 

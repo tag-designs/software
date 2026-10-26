@@ -718,9 +718,9 @@ bool TagMonitor::Call(uint8_t operation, int32_t operand, uint32_t *result)
       std::this_thread::sleep_for(MS(1));
     }
 
-    // check for a timeout
+    // check for a timeout: every read failed and the loop ran to the end
 
-    if (i == MONITOR_RESULT_TIMEOUT_MS - 1)
+    if (i == MONITOR_RESULT_TIMEOUT_MS)
     {
       log_error("monitor result read timed out op=%s(0x%x) operand=%d demcr=0x%x",
                 monitor_operation_name(operation), operation, operand, demcr);
@@ -1474,6 +1474,16 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
   if (!call_ok)
   {
     log_error("monitor_call failed\n");
+    return false;
+  }
+
+  // The firmware encodes its reply in the call buffer, so a longer length is
+  // a corrupt result; truncating it to len's 16 bits would read the wrong
+  // number of bytes and parse garbage.
+  if (retval > maxpacket)
+  {
+    log_error("Reply length %u exceeds the monitor buffer (%zu bytes)",
+              retval, maxpacket);
     return false;
   }
 

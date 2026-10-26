@@ -137,6 +137,16 @@ public:
   // Calibration Constants
   
   bool ReadCalibration(CalibrationConstants &constants, uint32_t index);
+  /**
+   * @brief   Stores a set of calibration constants in the tag's flash log.
+   * @param[in] constants  The constants to append; the firmware requires
+   *                       the magnetometer block.
+   * @return  true only if the RPC completed and the firmware answered OK.
+   *          A refusal (INVAL without magnetometer constants, PERM when the
+   *          tag is not IDLE or its firmware has no calibration store) or a
+   *          transport failure returns false; LastError() and DebugMessage()
+   *          say which.
+   */
   bool WriteCalibration(CalibrationConstants &constants);
 
   std::string DebugMessage();

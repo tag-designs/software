@@ -463,8 +463,7 @@ TagServer::call<svc::rpcWriteCalibration>(grpcxx::context &,
   if (!tag_.IsAttached())
     return fail<R>(not_attached());
   CalibrationConstants constants(request);
-  // Tag::WriteCalibration reports only the transport; check the Ack too.
-  if (!tag_.WriteCalibration(constants) || tag_.LastError().err != Ack::OK)
+  if (!tag_.WriteCalibration(constants))
     return fail<R>(from_last_error(tag_, "WriteCalibration"));
   return done<R>();
 }
