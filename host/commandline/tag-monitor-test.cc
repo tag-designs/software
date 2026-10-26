@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <chrono>
@@ -59,17 +61,41 @@ uint8_t sha_str[48] = {0};
 uint32_t version = 0;
 uint32_t rcc_csr = 0;
 
+/**
+ * @class   TestMonitor
+ * @brief   Drives the STM32L4 DebugMonitor handshake directly over LinkAdapt.
+ *
+ * @details An independent implementation of the L4 attach and call sequence
+ *          TagMonitor uses, for checking the monitor interface without
+ *          tagcore's monitor layer. It follows the same rules:
+ *          - Debug control is programmed before reset is released, because
+ *            standby can power-cycle the core debug block; once the tag is
+ *            running, the writes fault (ST-LINK status 0x81).
+ *          - DCRDR is both request and response mailbox, so a new request is
+ *            written only when MON_PEND and MON_REQ are clear, and a call
+ *            waits for MON_REQ to clear before reading the result.
+ *          - C_MASKINTS is never left set: it survives the halt release and
+ *            stalls the firmware with every interrupt masked.
+ *          STM32L4 only; an STM32U3 tag uses the shared-block transport.
+ */
 class TestMonitor : public LinkAdapt
 {
 
   public: 
 
+    /**
+     * @brief   Runs one monitor operation and reads its result.
+     * @param[in]  operation  DBGOP opcode.
+     * @param[in]  operand    Operand, packed above the opcode.
+     * @param[out] result     Receives DCRDR after the handler answers; may be
+     *                        null for MONITORSTOP, which is not waited for.
+     * @return  false if not attached, the monitor is still busy, a register
+     *          access fails, or the handler does not answer within 2.5 s.
+     */
     bool Call(uint8_t operation, int32_t operand, uint32_t *result)
     {
-        static const int TIMEOUT = 500;
-        uint32_t demcr, dhcsr;
-        int err;
-        int i;
+        static const int TIMEOUT_MS = 2500;
+        uint32_t demcr = 0;
 
         if (!IsAttached())
         {
@@ -77,206 +103,170 @@ class TestMonitor : public LinkAdapt
             return false;
         }
 
-    
-        // write debug request data (operand,operation)
-
-        WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff));
-    
-        std::this_thread::sleep_for(MS(1));
-        // write debug interrupt request -- Set MON_PEND, MON_REQ in DEMCR
-        // VC_CORERESET is used as attachment flag to embedded app.
-        // This also causes core to halt in reset vector after reset
-        // Read/Modify/Write DEMCR
-
-        /*
         if (!ReadDebug32(DEMCR, &demcr))
         {
-            log_error("read reg failed %d\n",demcr);
+            log_error("DEMCR read failed");
             return false;
         }
-        */
-
-        WriteDebug32(DEMCR, TRCENA | MON_PEND | MON_REQ | MON_EN | VC_CORERESET);
-
-
-        for (i = 0; i < TIMEOUT*5; i++)
+        if (demcr & (MON_PEND | MON_REQ))
         {
-            ReadDebug32(DEMCR, &demcr);
-            if (~(demcr & (MON_REQ)))
-               break;
+            log_error("monitor busy: demcr=0x%x", demcr);
+            return false;
+        }
+
+        // write the request (operand, operation), then pend DebugMon.
+        // VC_CORERESET is the attachment flag the firmware reads.
+        if (!WriteDebug32(DCRDR, (operand << 8) | (operation & 0xff)) ||
+            !WriteDebug32(DEMCR, demcr | TRCENA | MON_EN | MON_PEND | MON_REQ | VC_CORERESET))
+        {
+            log_error("monitor request write failed");
+            return false;
+        }
+
+        if (operation == MONITORSTOP)
+        {
+            // The tag may sleep as soon as it sees the stop; do not wait.
+            std::this_thread::sleep_for(MS(5));
+            return true;
+        }
+
+        bool answered = false;
+        for (int i = 0; i < TIMEOUT_MS; i++)
+        {
+            if (ReadDebug32(DEMCR, &demcr) && !(demcr & MON_REQ))
+            {
+                answered = true;
+                break;
+            }
             std::this_thread::sleep_for(MS(1));
         }
-
-        // check for timeout
-
-        if (i == TIMEOUT*5)
+        if (!answered)
         {
-            log_error("monitor call timed out\n");
+            log_error("monitor call timed out op=0x%x operand=%d demcr=0x%x",
+                      operation, operand, demcr);
             return false;
         }
-            
+
         if (result)
         {
-           ReadDebug32(DCRDR, result);
-            log_debug("operation = 0x%x operand = 0x%x result = 0x%x\n",operation, operand, *result);
+            if (!ReadDebug32(DCRDR, result))
+            {
+                log_error("monitor result read failed");
+                return false;
+            }
+            log_debug("operation = 0x%x operand = 0x%x result = 0x%x",
+                      operation, operand, *result);
         }
         return true;
     }
 
+    /**
+     * @brief   Resets the tag into its monitor and starts a session.
+     * @details Holds reset (LinkAdapt::Attach(true)), enables debug and arms
+     *          vector catch and the monitor, releases reset, then reads the
+     *          monitor version, SHA string and buffer size and sends
+     *          MONITORSTART. Every step is checked.
+     * @param[in] usbdev  The base to use.
+     * @return  true with a session open; false, with the link closed, if any
+     *          step fails.
+     */
     bool Attach(UsbDev usbdev)
     {
-        int err;
-        uint32_t demcr;
-        uint32_t debugval;
-        uint32_t resetvector;
-
         if (IsAttached()) {
             log_error("Already attached");
             return false;
         }
 
+        if (!LinkAdapt::Attach(true, usbdev))
+        {
+            log_error("Attach failed");
+            return false;
+        }
+        std::this_thread::sleep_for(MS(20));
+
         do
         {
-            // connect to stlink
-#if 0
-            if (!LinkAdapt::Attach(false,usbdev))
+            uint32_t demcr = 0;
+            // Program debug control while the core is still held in reset.
+            if (!ReadDebug32(DEMCR, &demcr) ||
+                !WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN) ||
+                !WriteDebug32(DEMCR, (demcr | TRCENA | MON_EN | VC_CORERESET) &
+                                         ~(MON_REQ | MON_PEND)))
             {
-            log_error("Attach failed");
-            return false;
+                log_error("debug setup failed");
+                break;
             }
-            WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
-#endif
-//#if 0
-            if (!LinkAdapt::Attach(true,usbdev))
+            if (!AssertReset(true))
             {
-            log_error("Attach failed");
-            return false;
+                log_error("reset release failed");
+                break;
             }
-            std::this_thread::sleep_for(MS(20));
-            AssertReset(true);
-         
-            WriteDebug32(DBG_HCSR, DBGKEY | C_HALT| C_DEBUGEN);
-           
             std::this_thread::sleep_for(MS(50));
-//#endif
-            WriteDebug32(DBG_HCSR, DBGKEY | C_MASKINTS | C_STEP | C_DEBUGEN);
-            WriteDebug32(DEMCR, (TRCENA | VC_CORERESET));
-            //WriteDebug32(DEMCR, (TRCENA | VC_CORERESET));
-            WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
-            
 
-            //std::this_thread::sleep_for(MS(2));
-            // remove reset
-
-            // give time for reset to complete
-                // clear the halt
-
-           // WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN);
-           // std::this_thread::sleep_for(MS(2));
-
-
-            uint32_t dhcsr;
-            ReadDebug32(DHCSR, &dhcsr);
-            log_debug("read dhcsr 0x%x\n",dhcsr);
-        
-
-            // do a simple test
-            WriteDebug32(DCRDR,4);
-            WriteDebug32(DEMCR, 0x10B0001U);
-            uint32_t tmp2;
-            ReadDebug32(DEMCR, &tmp2);
-            log_debug("tmp = 0x%x\n",tmp2);
-            ReadDebug32(DCRDR, &tmp2);
-            log_debug("tmp = 0x%x\n",tmp2);
-
-            WriteDebug32(DCRDR,0x200);
-            WriteDebug32(DEMCR, 0x10B0001U);
-            ReadDebug32(DEMCR, &tmp2);
-            log_debug("tmp = 0x%x\n",tmp2);
-            ReadDebug32(DCRDR, &tmp2);
-            log_debug("tmp (2) = 0x%x\n",tmp2);
-
-            WriteDebug32(DCRDR,0x300);
-            WriteDebug32(DEMCR, 0x10B0001U);
-            ReadDebug32(DEMCR, &tmp2);
-            log_debug("tmp = 0x%x\n",tmp2);
-            ReadDebug32(DCRDR, &tmp2);
-            log_debug("tmp (3) = 0x%x\n",tmp2);
-
-            // Call monitor to get pointer to information block
+            uint32_t dhcsr = 0;
+            if (ReadDebug32(DHCSR, &dhcsr))
+            {
+                log_debug("read dhcsr 0x%x", dhcsr);
+                // Clear a C_MASKINTS another tool left set; only possible
+                // while halted, in a write that keeps C_HALT.
+                if ((dhcsr & C_MASKINTS) && (dhcsr & S_HALT))
+                    WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN | C_HALT);
+            }
+            if (!WriteDebug32(DBG_HCSR, DBGKEY | C_DEBUGEN))
+                log_warn("halt release failed");
 
             if (!Call(TAG_MONITORINFO, MONITORVERSION, &version))
             {
-            log_error("couldn't fetch monitor version information");
-            LinkAdapt::Detach();
-            break;
+                log_error("couldn't fetch monitor version information");
+                break;
             }
-
             log_debug("Monitor Version 0x%x", version);
 
             uint32_t tmp = 0;
-
             if (!Call(TAG_MONITORINFO, TAGSHASTR, &tmp))
             {
-            log_error("Couldn't find the address of the sha string");
-            LinkAdapt::Detach();
+                log_error("Couldn't find the address of the sha string");
+                break;
             }
-            else
-            {
             if (!ReadMem32(tmp, (uint8_t *)sha_str, sizeof(sha_str)))
             {
-                log_error("read_mem failed\n");
-                LinkAdapt::Detach();
-                return false;
+                log_error("read_mem failed");
+                break;
             }
-            }
-
-            log_debug("Tag Hash String 0x%x, %s\n", tmp, sha_str);
+            log_debug("Tag Hash String 0x%x, %.*s", tmp, (int)sizeof(sha_str),
+                      sha_str);
 
             if (!Call(TAG_MONITORINFO, MONITORBUFSIZE, &tmp))
             {
-            log_error("couldn't fetch monitor buffer length");
-            LinkAdapt::Detach();
-            break;
+                log_error("couldn't fetch monitor buffer length");
+                break;
             }
-
             maxpacket = tmp;
 
-
-            uint32_t success;
+            uint32_t success = 0;
             if (!Call(MONITORSTART, 0, &success) || !success)
             {
-            log_error("Monitor Start failed");
-            LinkAdapt::Detach();
-            break;
+                log_error("Monitor Start failed");
+                break;
             }
-
             return true;
         } while (0);
 
-        // try detach to clean up
-
-        Detach();
+        LinkAdapt::Detach();
         return false;
     }
 
+    /**
+     * @brief   Ends the session with MONITORSTOP and releases the link.
+     * @details As in TagMonitor, the firmware clears its own debug state on
+     *          MONITORSTOP and may sleep at once, so nothing else is written.
+     */
     void Detach()
     {
-        uint32_t demcr;
-
         if (!IsAttached())
             return;
-       // maxpacket = 0;
-
-        //memset(sha_str,0, sizeof(sha_str));
-        //version = 0;
-        // Detach call to mon->handler
-
-        //Call(MONITORSTOP, 0, 0);
-        // Clear debug register bits
-        ReadDebug32(DEMCR, &demcr);
-        WriteDebug32(DEMCR, (demcr & ~(VC_CORERESET | MON_PEND | MON_REQ | MON_EN)));
-        // release usb
+        if (!Call(MONITORSTOP, 0, nullptr))
+            log_error("Monitor Stop failed during detach");
         LinkAdapt::Detach();
     }
 };
@@ -376,7 +366,14 @@ int main(int argc, char **argv)
 
         // catch ctl-c
         signal(SIGINT, intHandler);
-        
+
+        std::cout << "Monitor version 0x" << std::hex << version << std::dec
+                  << ", buffer " << maxpacket << " bytes, SHA "
+                  << std::string((const char *)sha_str,
+                                 strnlen((const char *)sha_str, sizeof(sha_str)))
+                  << std::endl;
+        // End the session rather than leave it to the firmware's timeout.
+        monitor.Detach();
     }
     else
     {

@@ -237,6 +237,12 @@ int main(int argc, char **argv)
         return 1;
     const auto parsed = options.parse(argc, argv);
     const bool no_keepalive = parsed.count("no-keepalive") > 0;
+    // The idle loop advances by the interval, so a zero one never ends.
+    if (idle_s > 0 && keepalive_s <= 0)
+    {
+        std::cerr << "--interval must be at least 1 second with --idle" << std::endl;
+        return 1;
+    }
     const bool start_running = parsed.count("start-running") > 0;
 
     if (!tag.Attach(dev))

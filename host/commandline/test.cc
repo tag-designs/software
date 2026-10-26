@@ -152,13 +152,17 @@ int main(int argc, char **argv)
 
     Status status;
     int pages;
-    if (tag.GetStatus(status))
+    /* Status default-constructs to STATE_UNSPECIFIED, so a failed read was
+       reported below as a tag that is not idle, with exit 0. */
+    if (!tag.GetStatus(status))
     {
-      if (!status.debug_message().empty()){
-        std::cerr << status.debug_message();
-      }
-      std::cout << "State: " << TagState_Name(status.state()) << std::endl;
+      std::cerr << "GetStatus failed: " << tag.DebugMessage() << std::endl;
+      return 1;
     }
+    if (!status.debug_message().empty()){
+      std::cerr << status.debug_message();
+    }
+    std::cout << "State: " << TagState_Name(status.state()) << std::endl;
 
     // Read state log
 
@@ -178,8 +182,9 @@ int main(int argc, char **argv)
 
     if (status.state() != IDLE)
     {
+      /* No test ran, so there is no result: a failure for a test tool. */
       std::cout << "#  State not idle ! Exiting" << std::endl;
-      return 0;
+      return 1;
     }
 
     // Run Test
@@ -255,7 +260,8 @@ int main(int argc, char **argv)
   {
     if (!parseTestReq(test_name, requested_test))
     {
-      std::cout << "Invalid test: " << test_name << std::endl;
+      std::cerr << "Invalid test: " << test_name << std::endl;
+      return 1;
     }
     else
     {

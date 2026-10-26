@@ -294,7 +294,9 @@ bool selectDevice(Tag &tag, const CaptureOptions &capture, UsbDev &dev)
   if (devs.size() > 1) {
     std::cerr << "Multiple tag bases found; select one with --base:" << std::endl;
     for (const UsbDev &candidate : devs) {
-      std::cerr << "  " << candidate.bus << ":" << candidate.address
+      // bus and address are uint8_t, which a stream prints as characters.
+      std::cerr << "  " << unsigned(candidate.bus) << ":"
+                << unsigned(candidate.address)
                 << " 0x" << std::hex << candidate.vid << ":0x"
                 << candidate.pid << std::dec << std::endl;
     }
@@ -442,7 +444,8 @@ void printSummary(const CaptureOptions &capture,
 int main(int argc, char **argv)
 {
   CaptureOptions capture = parseCaptureOptions(argc, argv);
-  log_set_quiet(true);
+  // Quiet unless --debug, which otherwise set a level nothing was printed at.
+  log_set_quiet(!capture.debug);
   log_set_level(capture.debug ? LOG_DEBUG : LOG_ERROR);
 
   Tag tag;

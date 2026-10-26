@@ -4,6 +4,7 @@
  * connect-under-reset and can't observe a running tag). Uses
  * Tag::ReadMemory(), so addresses must be word aligned. Not for shipping.
  */
+#include <cerrno>
 #include <cstdio>
 #include <iostream>
 #include <cstdlib>
@@ -47,7 +48,21 @@ int main(int argc, char **argv)
     int rc = 0;
     for (const auto &addr_str : addr_strs)
     {
-        uint32_t addr = (uint32_t)strtoul(addr_str.c_str(), nullptr, 0);
+        /* strtoul() returns 0 for text it cannot parse, so a typo read
+           address 0 and printed it as though it had been asked for. Require
+           the whole argument to be a number that fits in 32 bits. */
+        char *end = nullptr;
+        errno = 0;
+        const unsigned long long parsed =
+            std::strtoull(addr_str.c_str(), &end, 0);
+        if (addr_str.empty() || end == addr_str.c_str() || *end != '\0' ||
+            errno == ERANGE || addr_str[0] == '-' || parsed > 0xFFFFFFFFull)
+        {
+            std::cerr << "not an address: " << addr_str << std::endl;
+            rc = 1;
+            continue;
+        }
+        const uint32_t addr = static_cast<uint32_t>(parsed);
         uint32_t value = 0;
         const MemAccess result = tag.ReadMemory(addr, (uint8_t *)&value, sizeof(value));
         if (result != MemAccess::Ok)

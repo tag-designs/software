@@ -115,8 +115,11 @@ int main(int argc, char **argv)
                         //std::cout << "Sensors: " << status.sensors().DebugString() << std::endl;   
                     }
                 }
-                
-                //std::this_thread::sleep_for(MS(50));
+
+                /* The firmware buffers samples between requests, so polling
+                   back to back only competes with the sampling; 100 ms is
+                   qtcalibrate's streaming interval. */
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
             }
             if (!tag.Stop())
@@ -127,7 +130,11 @@ int main(int argc, char **argv)
             }
 
         } else {
-            std::cerr << "Tag not idle" << std::endl;
+            /* Calibration was not started, so this is a failure, not a
+               completed run. */
+            std::cerr << "Tag not idle: " << TagState_Name(status.state())
+                      << std::endl;
+            return 1;
         }
 
    

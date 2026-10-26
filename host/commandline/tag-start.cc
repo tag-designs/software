@@ -399,8 +399,11 @@ int main(int argc, char **argv)
         }
         else
         {
+            /* The tag refused the start ("Start failed" above); exiting 0
+               reported a start that did not happen. */
             std::cout << "Last known state: " << TagState_Name(status.state())
                       << std::endl;
+            return 1;
         }
     }
     else

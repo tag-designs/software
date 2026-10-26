@@ -54,4 +54,12 @@ int main(int argc, char **argv)
 
         std::cout << "Clock Error: " << (status.millis() - ts.time_since_epoch().count()) / 1000.0 << std::endl;
     }
+    else
+    {
+        /* main() fell off the end here, so a tool that never reached the
+           tag exited 0 without a word. */
+        std::cerr << "Attach failed" << std::endl;
+        return 1;
+    }
+    return 0;
 }

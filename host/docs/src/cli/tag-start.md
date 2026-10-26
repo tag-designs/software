@@ -52,6 +52,8 @@ IDLE, and prints it:
   run `tag-start` again; it reports `Start skipped: tag is already RUNNING`.
 - Any other state, such as ABORTED, or a tag still IDLE after
   `--start-timeout` seconds -- the start failed. Exit status 1.
+- `Start failed: ...` -- the tag refused the start, for example because the
+  configuration was not accepted. Exit status 1.
 
 ## Troubleshooting
 

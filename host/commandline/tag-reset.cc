@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -36,6 +37,7 @@ int main(int argc, char **argv)
 
     bool set_rtc = false;
     int reset_timeout_s = 180;
+    int stop_timeout_s = 30;
     int settle_timeout_s = 10;
 
     cxxopts::Options options("tag-reset",
@@ -45,6 +47,11 @@ int main(int argc, char **argv)
          cxxopts::value<bool>(set_rtc)->default_value("false"))
         ("reset-timeout", "Seconds to wait for the erase to finish",
          cxxopts::value<int>(reset_timeout_s)->default_value("180"))
+        ("stop-timeout",
+         "Seconds to wait for a running tag to reach a stopped state. The "
+         "stop request is posted and acknowledged before the state machine "
+         "acts on it",
+         cxxopts::value<int>(stop_timeout_s)->default_value("30"))
         ("settle-timeout",
          "Seconds to wait for the tag to report a definite state after attach. "
          "Attach connects under reset, so the first status can legitimately be "
@@ -120,7 +127,13 @@ int main(int argc, char **argv)
             std::cerr << status.debug_message();
         }
         std::cout << status.DebugString() << std::endl;
-        if (status.state() == RUNNING || status.state() == HIBERNATING)
+        /* The states in which the firmware accepts a stop as ending an
+           acquisition (monitor_acquisition_active() in monitor.c). A
+           CONFIGURED tag, one waiting for its start time, was skipped here,
+           so a tag just started by tag-start was neither stopped nor
+           erased and the reset reported success. */
+        if (status.state() == RUNNING || status.state() == HIBERNATING ||
+            status.state() == CONFIGURED)
         {
             if (!tag.Stop())
             {
@@ -128,15 +141,37 @@ int main(int argc, char **argv)
                           << std::endl;
                 return 1;
             }
-            std::cout << "State: " << TagState_Name(status.state()) << std::endl;
-            if (!tag.GetStatus(status))
+            /* Stop is posted, not performed, so poll for the stopped state
+               as tag-stop does. A single read straight after the request
+               could still say RUNNING, and the erase was then skipped. */
+            const int stop_poll_ms = 2000;
+            const int stop_tries =
+                std::max(1, (stop_timeout_s * 1000 + stop_poll_ms - 1) / stop_poll_ms);
+            bool stopped = false;
+            for (int i = 0; i < stop_tries; i++)
             {
-                std::cerr << "GetStatus after stop failed: "
-                          << tag.DebugMessage() << std::endl;
-                return 1;
+                if (!tag.GetStatus(status))
+                {
+                    std::cerr << "GetStatus after stop failed: "
+                              << tag.DebugMessage() << std::endl;
+                    return 1;
+                }
+                if (status.state() == FINISHED || status.state() == ABORTED)
+                {
+                    stopped = true;
+                    break;
+                }
+                std::this_thread::sleep_for(MS(stop_poll_ms));
             }
             if (!status.debug_message().empty()){
                 std::cerr << status.debug_message();
+            }
+            if (!stopped)
+            {
+                std::cerr << "Tag did not reach a stopped state within "
+                          << stop_timeout_s << " s; last state "
+                          << TagState_Name(status.state()) << std::endl;
+                return 1;
             }
         }
 
@@ -192,6 +227,21 @@ int main(int argc, char **argv)
                           << TagState_Name(status.state()) << std::endl;
                 return 1;
             }
+        }
+
+        /* Anything but IDLE here is a reset that did not happen: a state
+           this tool cannot stop or erase from (TEST, CALIBRATE, EXCEPTION).
+           Reporting it as a final state with exit 0 told a script the tag
+           was reset. Checking first also keeps --set-rtc to IDLE, the only
+           state in which the firmware accepts a clock sync. */
+        if (status.state() != IDLE)
+        {
+            std::cerr << "Tag is " << TagState_Name(status.state())
+                      << "; it can be reset only from RUNNING, HIBERNATING, "
+                         "CONFIGURED, FINISHED or ABORTED" << std::endl;
+            std::cout << "Final state: " << TagState_Name(status.state())
+                      << std::endl;
+            return 1;
         }
 
         if (set_rtc)
