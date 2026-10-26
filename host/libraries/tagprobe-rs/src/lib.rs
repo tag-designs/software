@@ -31,7 +31,8 @@ use probe_rs::flashing::{
     self, DownloadOptions, ElfLoader, FlashProgress, ProgressEvent, ProgressOperation,
 };
 use probe_rs::probe::Probe;
-use probe_rs::probe::list::Lister;
+use probe_rs::probe::stlink::StLinkFactory;
+use probe_rs::probe::{DebugProbeSelector, ProbeFactory};
 use probe_rs::{MemoryInterface, Permissions, Session};
 use tagcore::{LinkAdapt, UsbDev};
 
@@ -173,9 +174,14 @@ pub fn open_probe(usbdev: &UsbDev, driver: Driver) -> Result<Probe, String> {
     match driver {
         Driver::FieldSafe => FieldSafeProbe::open(usbdev).map_err(|e| e.to_string()),
         Driver::Stock => {
-            let probes: Vec<_> = Lister::new()
-                .list_all()
+            // Only the ST-LINK driver, never Lister: listing every kind of
+            // probe enumerates CMSIS-DAP over HID, and on macOS hidapi ties
+            // its IOHIDManager to the first thread that used it, so a second
+            // program from another worker thread aborted the process.
+            let probes: Vec<_> = StLinkFactory
+                .list_probes()
                 .into_iter()
+                .map(|item| item.info)
                 .filter(|p| p.vendor_id == usbdev.vid && p.product_id == usbdev.pid)
                 .collect();
             let info = match probes.iter().find(|p| {
@@ -185,7 +191,16 @@ pub fn open_probe(usbdev: &UsbDev, driver: Driver) -> Result<Probe, String> {
                 None if probes.len() == 1 => &probes[0],
                 None => return Err("Cannot tell this base from the other ST-LINKs".into()),
             };
-            info.open().map_err(|e| e.to_string())
+            let selector = DebugProbeSelector {
+                vendor_id: info.vendor_id,
+                product_id: info.product_id,
+                interface: None,
+                serial_number: info.serial_number.clone(),
+            };
+            StLinkFactory
+                .open(&selector)
+                .map(Probe::from_specific_probe)
+                .map_err(|e| e.to_string())
         }
     }
 }
