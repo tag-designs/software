@@ -54,7 +54,7 @@ other than ALL_PASSED, Approved not ticked), and the user may start anyway,
 which is logged. Approval belongs to the configuration document
 (`qtmon::ConfigDocument`, `core/configdocument.h`), which withdraws it when
 the values change; the Approved box shows it. The document's commands are
-`ConfigTab` slots (`NewFromDefaults()`, `Open()`, `Save()`, `SaveAs()`,
+`ConfigTab` slots (`NewFromDefaults()`, `Open()`, `Save()`,
 `ResetToDefaults()`; see `tagconfiguration/README.md`); Read Configuration and
 Start are the window's, through the tag session. The error log's commands are
 `LogWindow` actions.

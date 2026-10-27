@@ -25,7 +25,7 @@ unsaved-changes flag. The window title shows the name and the flag.
 | **New ▸** tag type | That type's default configuration (`ConfigShape::defaultConfig()`). |
 | **Open…**, **Open Recent** | The file, as that type's defaults with the file merged on top (`ConfigShape::forFile()`, `merge()`). A file without `tag_type` asks for one. |
 | **Read Configuration** | The attached tag's configuration. |
-| **Save**, **Save As…** | Writes the document as protobuf JSON. |
+| **Save…** | Asks for a file, offering the document's own, and writes the document there as protobuf JSON. |
 | **Reset to Defaults** | The document's tag type's defaults. |
 | **Start** | Writes the document to the attached tag and starts it. |
 

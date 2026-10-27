@@ -20,7 +20,7 @@ Commands are in the menus at the top of the window, and on popup menus
 
 | Menu | Commands |
 | --- | --- |
-| **File** | New Configuration ▸, Open Configuration…, Open Recent ▸, Save Configuration, Save Configuration As…, Reset to Defaults, Download Data…, Save Error Log…, Quit |
+| **File** | New Configuration ▸, Open Configuration…, Open Recent ▸, Save Configuration…, Reset to Defaults, Download Data…, Save Error Log…, Quit |
 | **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Erase… |
 | **Log** | Log Level, Clear Error Log |
 | **Help** | Tag Monitor User Guide (opens this page), About Tag Monitor |
@@ -97,8 +97,8 @@ A configuration can come from three places, and none of them needs a tag:
 - Attaching a tag, or **Tag ▸ Read Configuration**, reads the tag's own.
 
 The window title shows which configuration is open, and marks it when it has
-unsaved changes. **File ▸ Save Configuration** writes it back to its file;
-**Save Configuration As…** writes a new one. **Reset to Defaults** puts the tag
+unsaved changes. **File ▸ Save Configuration…** asks for a file, offering the
+one the configuration came from, and writes it. **Reset to Defaults** puts the tag
 type's default values back. Tag Monitor asks before discarding unsaved
 changes.
 

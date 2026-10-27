@@ -599,15 +599,6 @@ bool ConfigTab::Save()
 {
   if (!hasDocument())
     return false;
-  if (doc_.source() == Source::File && !filePath().isEmpty())
-    return writeFile(filePath());
-  return SaveAs();
-}
-
-bool ConfigTab::SaveAs()
-{
-  if (!hasDocument())
-    return false;
   const QString suggested =
       !filePath().isEmpty()
           ? filePath()
@@ -615,7 +606,7 @@ bool ConfigTab::SaveAs()
                 QString::fromStdString(std::string(TagType_Name(doc_.tagType()))).toLower() +
                 "-config.json");
   const QString fileName = HostFileDialog::getSaveFileName(
-      this, tr("Save Configuration As"), suggested,
+      this, tr("Save Configuration"), suggested,
       tr("Configuration (*.json);;All Files (*)"));
   if (fileName.isEmpty())
     return false;

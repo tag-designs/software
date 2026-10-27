@@ -34,16 +34,15 @@ enum class Command {
   Erase,     ///< Tag ▸ Erase….
   Download,  ///< File ▸ Download Data….
   Open,      ///< File ▸ Open Configuration….
-  Save,      ///< File ▸ Save Configuration.
-  SaveAs,    ///< File ▸ Save Configuration As….
+  Save,      ///< File ▸ Save Configuration…: always asks for the file.
   Reset,     ///< File ▸ Reset to Defaults.
 };
 
 /// Every Command, in the order of action-states.txt's columns.
-inline constexpr std::array<Command, 13> kAllCommands = {
-    Command::Attach, Command::Detach, Command::Read,     Command::Start, Command::Stop,
-    Command::Sync,   Command::Test,   Command::Erase,    Command::Download,
-    Command::Open,   Command::Save,   Command::SaveAs,   Command::Reset};
+inline constexpr std::array<Command, 12> kAllCommands = {
+    Command::Attach, Command::Detach, Command::Read,  Command::Start,
+    Command::Stop,   Command::Sync,   Command::Test,  Command::Erase,
+    Command::Download, Command::Open, Command::Save,  Command::Reset};
 
 /// How a command is offered.
 enum class Availability {
@@ -71,13 +70,13 @@ struct CommandInputs {
  *          one is pending); Stop a CONFIGURED, RUNNING, HIBERNATING or
  *          CALIBRATE one; Erase a FINISHED or ABORTED one; Download a
  *          downloadable one (isDownloadableState()) while no download runs.
- *          Configuration commands need no tag: Save, Save As and Reset need a
+ *          Configuration commands need no tag: Save and Reset need a
  *          document, and Open is always available. Start needs an IDLE tag
  *          and a document of that tag's type.
  */
 Availability availability(Command command, const CommandInputs &in);
 
-/// The column name of @p command in action-states.txt ("attach", "saveas", …).
+/// The column name of @p command in action-states.txt ("attach", "download", …).
 const char *commandName(Command command);
 
 /**

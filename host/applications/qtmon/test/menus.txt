@@ -10,8 +10,7 @@ menu &File
     UIUCTAG  -- Start from this tag type's default configuration
   Open Configuration...  [Ctrl+O]  -- Open a configuration file for editing
   Open Recent
-  Save Configuration  [Ctrl+S]  -- Save the configuration to its file
-  Save Configuration As...  [Ctrl+Shift+S]  -- Save the configuration to a new file
+  Save Configuration...  [Ctrl+S]  -- Save the configuration to a file
   Reset to Defaults  -- Replace the configuration's values with its tag type's defaults
   ---
   Download Data...  -- Download the tag's data log to a file
@@ -58,8 +57,7 @@ popup status strip
 popup Configuration tab
   Read Configuration  -- Read the tag's configuration
   Open Configuration...  [Ctrl+O]  -- Open a configuration file for editing
-  Save Configuration  [Ctrl+S]  -- Save the configuration to its file
-  Save Configuration As...  [Ctrl+Shift+S]  -- Save the configuration to a new file
+  Save Configuration...  [Ctrl+S]  -- Save the configuration to a file
   Reset to Defaults  -- Replace the configuration's values with its tag type's defaults
   ---
   Start  -- Write the configuration to the tag and start it

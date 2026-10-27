@@ -26,7 +26,6 @@ enum class Shortcut {
   None,    ///< No shortcut.
   Open,    ///< Ctrl+O / Cmd+O.
   Save,    ///< Ctrl+S / Cmd+S.
-  SaveAs,  ///< Ctrl+Shift+S / Cmd+Shift+S.
   Quit,    ///< The platform's quit key.
 };
 

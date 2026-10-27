@@ -53,10 +53,7 @@ EntryText commandText(Command command)
   case Command::Open:
     return {"Open Configuration...", "Open a configuration file for editing", Shortcut::Open};
   case Command::Save:
-    return {"Save Configuration", "Save the configuration to its file", Shortcut::Save};
-  case Command::SaveAs:
-    return {"Save Configuration As...", "Save the configuration to a new file",
-            Shortcut::SaveAs};
+    return {"Save Configuration...", "Save the configuration to a file", Shortcut::Save};
   case Command::Reset:
     return {"Reset to Defaults",
             "Replace the configuration's values with its tag type's defaults", Shortcut::None};
@@ -93,7 +90,7 @@ const std::vector<Menu> &menuBar()
   static const std::vector<Menu> menus = {
       {"&File",
        {item(MenuItem::NewConfiguration), cmd(Command::Open), item(MenuItem::OpenRecent),
-        cmd(Command::Save), cmd(Command::SaveAs), cmd(Command::Reset), separator(),
+        cmd(Command::Save), cmd(Command::Reset), separator(),
         cmd(Command::Download), item(MenuItem::SaveErrorLog), separator(),
         item(MenuItem::Quit)}},
       {"&Tag",
@@ -117,7 +114,7 @@ const std::vector<MenuEntry> &tagPopup()
 const std::vector<MenuEntry> &configPopup()
 {
   static const std::vector<MenuEntry> entries = {
-      cmd(Command::Read),   cmd(Command::Open),  cmd(Command::Save), cmd(Command::SaveAs),
+      cmd(Command::Read),   cmd(Command::Open),  cmd(Command::Save),
       cmd(Command::Reset),  separator(),         cmd(Command::Start)};
   return entries;
 }

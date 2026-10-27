@@ -46,7 +46,6 @@ Availability availability(Command command, const CommandInputs &in)
   case Command::Open:
     return Availability::Enabled;
   case Command::Save:
-  case Command::SaveAs:
   case Command::Reset:
     return enabledIf(in.document);
   }
@@ -78,8 +77,6 @@ const char *commandName(Command command)
     return "open";
   case Command::Save:
     return "save";
-  case Command::SaveAs:
-    return "saveas";
   case Command::Reset:
     return "reset";
   }

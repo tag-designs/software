@@ -235,11 +235,13 @@ public slots:
      */
     bool OpenFile(const QString &path);
 
-    /// File ▸ Save Configuration: to the document's file, or as Save As.
+    /**
+     * @brief File ▸ Save Configuration…: asks for a file, offering the
+     *        document's own (or "<tagtype>-config.json" in the home
+     *        directory), then saves to it.
+     * @return true when saved; false when cancelled or the write failed.
+     */
     bool Save();
-
-    /// File ▸ Save Configuration As…: asks for a file, then saves to it.
-    bool SaveAs();
 
     /// File ▸ Reset to Defaults: replaces the values with the tag type's defaults.
     void ResetToDefaults();

@@ -491,9 +491,6 @@ QAction *MainWindow::makeAction(const qtmon::EntryText &text)
   case qtmon::Shortcut::Save:
     action->setShortcut(QKeySequence::Save);
     break;
-  case qtmon::Shortcut::SaveAs:
-    action->setShortcut(QKeySequence::SaveAs);
-    break;
   case qtmon::Shortcut::Quit:
     action->setShortcut(QKeySequence::Quit);
     break;
@@ -526,9 +523,6 @@ void MainWindow::runCommand(Command command)
     return ui.configtab->Open();
   case Command::Save:
     ui.configtab->Save();
-    return;
-  case Command::SaveAs:
-    ui.configtab->SaveAs();
     return;
   case Command::Reset:
     return ui.configtab->ResetToDefaults();
