@@ -351,6 +351,10 @@ design document.
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
 - [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/editor-and-start-checks.md) — qtmonitor is a configuration editor as well as a tag monitor -- one document from defaults, a file or a tag, commands as actions in in-window menus, a status strip with Approved, Start and Stop, and Start checks (clock within 2 s, self-test ALL_PASSED, Approved) that warn and let the user continue or cancel.
 
+### Applications / qtmon / Proposals
+
+- [qtmonitor: engine, model and views](../host/applications/qtmon/design/proposals/engine-model-view.md) *(proposal, proposed)* — Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
+
 ### Applications / qtmon / Proposals / config-form-mockup
 
 - [qtmonitor Configuration Form Mockup](../host/applications/qtmon/design/proposals/config-form-mockup/README.md) — A web mockup of qtmonitor's Configuration tab split the proposed way - the panels as a data spec, a stand-in engine owning the document and every rule, and a generic renderer that only draws field kinds and exchanges messages.
@@ -460,8 +464,8 @@ design document.
 - [Deployment Metadata for Processing](../host/libraries/tagcore/design/proposals/deployment-metadata.md) *(proposal, proposed)* — Record, inside each SQLite log, the few deployment facts that change how it is processed - location, time zone, mounting, on-animal interval, elevation or reference pressure, and an optional declination - all optional, read and written through a Qt-free tagcore layer, edited with a small host app (tagmeta) and a command-line twin, and used as defaults by sensorviz, the filter and dataprocessing.
 - [Recovery Library: Identification, Rescue and Python](../host/libraries/tagcore/design/proposals/recovery-identification-rescue-python.md) *(proposal, proposed)* — The unbuilt parts of the SWD recovery library - identifying older images by hash and strings, the rescue-erase procedure, and the Python binding - with the check that ends each.
 - [Retiring the Text Log Format and btviz](../host/libraries/tagcore/design/proposals/retire-text-logs.md) *(proposal, proposed)* — Retire the legacy .txt sensor-log format and btviz - convert the existing BitTag and PresTag .txt collection to SQLite with a command-line importer that round-trip-verifies every conversion, use the conversion and a dual-format field download to prove the SQLite writer on real experiments, then delete the text writer, btviz and their docs; actograms and filtering move to general-purpose tools reading SQLite.
+- [Rust host applications over the C++ libraries](../host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md) *(proposal, proposed)* — How Rust (or other non-Qt) host applications should use the C++ libraries they depend on - what is already Qt-free, one C interface library over them (prototyped for the SQLite writer with a Rust tag-dwnld), shared against static linking measured, and where leaving Qt actually costs.
 - [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
-- [SQLite logs from Rust applications](../host/libraries/tagcore/design/proposals/sqlitelog-for-rust.md) *(proposal, proposed)* — How Rust host applications should write the project's SQLite logs - an evaluation of porting sqlitelog to Rust against feeding the existing C++ writer protobuf messages, and a recommendation to start with the second through tag-log-import and a binary input format.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
 ### Libraries / tagcore / recovery
@@ -476,10 +480,18 @@ design document.
 
 - [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
 
+### Libraries / tagcore-c
+
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+
 ### Libraries / tagcore-rs
 
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 - [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
+
+### Libraries / taglogwriter-rs
+
+- [taglogwriter (Rust)](../host/libraries/taglogwriter-rs/README.md) — taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and the log-import check.
 
 ### Libraries / tagprobe-rs
 
