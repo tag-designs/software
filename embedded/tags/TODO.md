@@ -86,6 +86,16 @@ not been reproduced on a tag.
 
 ## Defects
 
+- **The download clock switch's TIM2 prescaler writes do nothing.**
+  `fast_msi()`/`slow_msi()` in the PresTag, BitPresTag and UIUCTag
+  `datalog.c` raise MSI 12x around one page of `data_logAck()` and write
+  `STM32_ST_TIM->PSC` to compensate. The prescaler is buffered until an update
+  event, which ChibiOS's free-running 32-bit TIM2 does not reach, so the tick
+  runs 12x fast for each page and system time jumps ahead by the excess. Harmless
+  for a download so far; the same pattern in the monitor session made the 60 s
+  watchdog fire after 5 s on UIUCTag (removed 2026-10-26, see
+  `docs/shared/monitor-interface.md`). Either drop the `PSC` lines or make the
+  change take effect without disturbing ChibiOS's counter.
 - **A PresTag accepts SetRtc after it has been started, and hangs.** The tag
   must refuse a `set_rtc` (`Ack::PERM`) once it has been started since its
   last reset; Tag Monitor never sends one then. On PresTag and PresTagRaw

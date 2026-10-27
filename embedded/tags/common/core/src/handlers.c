@@ -85,54 +85,17 @@ const int protobuf_size = PROTOBUFSIZE;
 /** @} */
 
 
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-
-/** @name Optional debug clock scaling
- * Clock helpers speed monitor transfers during debugging and restore the normal
- * low-power clock when the monitor session ends.
- * @{
+/*
+ * The monitor session does not change the CPU clock. It used to raise MSI to
+ * 24 MHz for the whole session where RANGE_MULTIPLIER was defined (UIUCTag and
+ * the BitPresTag variants), and "compensate" by writing TIM2's prescaler. TIM2
+ * is ChibiOS's free-running system timer, and a prescaler write only takes
+ * effect at the next update event -- an overflow days away -- so the system
+ * tick ran 12x fast for the whole session: the 60 s session watchdog fired
+ * after 5 s without a request and the IDLE tag shut down under the host
+ * (measured on a UIUCTag breakout, 2026-10-26). The fast clock is meant only
+ * for log download, where data_logAck() raises it around one page.
  */
-/**
- * @brief Raise MSI and system-tick rates for faster monitor traffic.
- */
-static void fast_msi(void){
-  // change to 24Mhz doesn't require VOS change
-  // Adjust Wait States
-
-  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_FAST;
-
-  // Change MSI frequency P 197 RM0394
-
-  RCC->CR = (RCC->CR & ~(15<<4)) |  STM32_MSIRANGE_FAST;
-
-  // Change TIM2 Prescaler
-
-  STM32_ST_TIM->PSC =  ((STM32_TIMCLK2 * RANGE_MULTIPLIER)/ OSAL_ST_FREQUENCY) - 1;;
-
-}
-
-/**
- * @brief Restore MSI and system-tick rates after monitor traffic ends.
- */
-static void slow_msi(void){
-
- 
-   // Restore MSI frequency P 197 RM0394
-
-   RCC->CR = (RCC->CR & ~(15<<4)) | STM32_MSIRANGE;
-
-  // Adjust Wait States
-
-  FLASH->ACR = (FLASH->ACR & ~(7)) | FLASH_WS_SLOW;
-
-  // Restore TIM2 Prescaler
-
-  STM32_ST_TIM->PSC =  (STM32_TIMCLK2 / OSAL_ST_FREQUENCY) - 1;
-
-}
-/** @} */
-
-#endif
 
 
 /** @name Cooperative monitor request state
@@ -146,9 +109,6 @@ static volatile bool monitor_timeout_pending = false;
 static int monitor_operand = 0;
 static virtual_timer_t monitor_timer;
 static bool monitor_timer_initialized = false;
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-static bool monitor_clock_fast = false;
-#endif
 
 static bool monitorAttachGraceActive(void);
 
@@ -176,15 +136,6 @@ static void monitorStopSessionI(void)
   monitor_enabled = false;
   monitor_pending = false;
   //palClearLine(LINE_testpin);
-
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-  if (monitor_clock_fast)
-  {
-    slow_msi();
-    monitor_clock_fast = false;
-  }
-#endif
-
 }
 
 static void monitorStartSessionI(sysinterval_t timeout, vtfunc_t callback)
@@ -193,14 +144,6 @@ static void monitorStartSessionI(sysinterval_t timeout, vtfunc_t callback)
   monitor_pending = false;
   monitor_timeout_pending = false;
   monitorArmTimeoutI(timeout, callback);
-
-#if defined(RANGE_MULTIPLIER) && RANGE_MULTIPLIER
-  if (!monitor_clock_fast)
-  {
-    fast_msi();
-    monitor_clock_fast = true;
-  }
-#endif
 }
 
 bool isMonitorEnabled(void)
