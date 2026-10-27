@@ -115,10 +115,18 @@ not been reproduced on a tag.
     need the CPU). Still open: the bus or clocks disturbed during the RTC,
     I2C and test work, against the base's 25 immediate WAIT retries. See
     `embedded/bases/TODO.md`; the base debug connector should settle it.
+  - **An empty reply during a self-test.** With the host change below in
+    place, the Rust `tag-test` (ALL_PASSED) still logged one `GetStatus
+    failed: Tag returned an empty or invalid acknowledgement`: a call that
+    completed with DCRDR = 0. Possible causes, not yet told apart:
+    - the handler race above;
+    - a DEMCR read inside a 0x81 burst that came back without MON_REQ;
+    - `monitorServicePending()` answering 0 because `monitor_enabled` was
+      false.
   - **Host side, done:** tagcore's `TagMonitor::Rpc()` now waits for an L4
     tag's MON_REQ and MON_PEND to clear before writing the request buffer
-    (`WaitL4MonitorIdle()`), so a request a failed call left pending is no
-    longer overwritten; qtmonitor pauses its polls for 1.5 s after
+    (`WaitL4MonitorIdle()`; tagcore-rs `wait_l4_idle()` on `tagprogram-rs`),
+    so a request a failed call left pending is no longer overwritten; qtmonitor pauses its polls for 1.5 s after
     Synchronize Clock and Self-Test.
 
 - **A PresTag accepts SetRtc after it has been started, and hangs.** The tag
