@@ -11,7 +11,9 @@ the C++ `SqliteTagLogWriter`, so there is one writer and one schema. Every
 message crosses as its protobuf wire encoding, and the caller interprets no
 log format. The first caller is the Rust `tag-dwnld`, through
 [`taglogwriter-rs`](../taglogwriter-rs/README.md). The interface and its
-contracts are in [`taglogwriter_c.h`](taglogwriter_c.h). Why it exists, and
+contracts are in [`taglogwriter_c.h`](taglogwriter_c.h); how the layers fit,
+how the libraries are built and what to keep in step are in
+[design/architecture.md](design/architecture.md). Why it exists, and
 what else could go behind it, is in the
 [proposal](../tagcore/design/proposals/rust-over-cpp-libraries.md).
 

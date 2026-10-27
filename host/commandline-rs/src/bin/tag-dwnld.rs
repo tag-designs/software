@@ -2,8 +2,10 @@
 //!
 //! Port of `host/commandline/dwnld.cc`. The tag side uses tagcore-rs; the
 //! database is written by the C++ writer (`SqliteTagLogWriter`) through the
-//! `taglogwriter` crate and the `tagcore_c` shared library, so the file is
-//! the one the C++ `tag-dwnld` writes from the same tag.
+//! `taglogwriter` crate and the `tagcore_c` library (static on macOS, shared
+//! on Linux and Windows), so the file is the one the C++ `tag-dwnld` writes
+//! from the same tag: byte for byte, on the IMUTag and UIUCTag downloads it
+//! was checked with.
 //!
 //! The sequence, as in the C++:
 //!
@@ -30,6 +32,34 @@
 //! The attach resets the tag; `--stop` ends a run; `--rescue-exception`
 //! rewrites one backup-state word. Downloading itself changes nothing on the
 //! tag, so a download can be repeated.
+//!
+//! # Differences from the C++
+//!
+//! - An unsupported tag type is reported by the writer when the database is
+//!   created ("Could not open output: SQLite log output does not support tag
+//!   type ..."), not by a separate check first. The writer refuses before
+//!   touching the file, so the effect is the same, and the list of supported
+//!   types stays in one place.
+//! - Durations are printed at full precision (`0.022837829`) rather than
+//!   C++ stream precision (`0.0233391`).
+//! - Option errors exit 2 (clap) rather than 1, as for every Rust tool.
+//!
+//! # Maintaining
+//!
+//! Keep this in step with `dwnld.cc`: same options, messages, exit status
+//! and request sequence, since scripts and the bench procedures use either
+//! tool. Two parts must match the C++ exactly, because they decide what is
+//! read from the tag:
+//!
+//! - [`read_header`] mirrors `readTagLogHeader()`: the same requests, in the
+//!   same order, and the same ways of stopping (a refused calibration read;
+//!   a refused or empty state-log chunk).
+//! - The page loop: the index advances by what the writer consumed, a
+//!   NODATA page below the record count advances it by one, and the loop
+//!   ends when the writer consumes nothing.
+//!
+//! To check a change, download the same finished tag with both tools and
+//! `cmp` the databases; downloading does not change the tag.
 
 use std::io::Write as _;
 use std::process::ExitCode;

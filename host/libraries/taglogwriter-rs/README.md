@@ -11,7 +11,9 @@ A safe Rust interface to the C++ SQLite log writer. `LogWriter` wraps the
 message with prost and passes the bytes, so the database is exactly the one
 the C++ tools write. The protobuf types come from
 [`tagcore-rs`](../tagcore-rs/README.md). The Rust
-[`tag-dwnld`](../../commandline-rs/README.md) is built on it.
+[`tag-dwnld`](../../commandline-rs/README.md) is built on it. The
+[architecture](../tagcore-c/design/architecture.md) covers both crates and
+the library together.
 
 ## Building
 

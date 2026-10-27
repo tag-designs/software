@@ -483,6 +483,7 @@ design document.
 ### Libraries / tagcore-c
 
 - [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
 ### Libraries / tagcore-rs
 

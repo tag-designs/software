@@ -37,10 +37,53 @@
 //! On macOS it links the static archive (`tagcore_c_static`), since each
 //! application is its own bundle, and the executable needs nothing at run
 //! time. On Linux and Windows it links the shared library, one copy of which
-//! serves every tool in the install directory; a binary must find it at run
-//! time: on macOS and Linux its package's build script sets
-//! an rpath from `DEP_TAGCORE_C_LIB_DIR`; on Windows the DLL must sit beside
-//! the executable or on `PATH`.
+//! serves every tool in the install directory, and a binary must find it at
+//! run time: on Linux its package's build script sets an rpath from
+//! `DEP_TAGCORE_C_LIB_DIR` (see `commandline-rs/build.rs`); on Windows the
+//! DLL must sit beside the executable or on `PATH`. `TAGCORE_C_LINK=dylib`
+//! forces the shared library on macOS too.
+//!
+//! # Safety model
+//!
+//! All `unsafe` is in this file, and every call states why it is sound. Three
+//! rules carry the whole argument:
+//!
+//! - **Ownership.** A [`LogWriter`] owns exactly one C handle, never null,
+//!   closed exactly once in `Drop`. Nothing else holds the pointer.
+//! - **Borrowed buffers.** Every pointer passed in (a path, an encoded
+//!   message, an info string) points at Rust memory that lives until the call
+//!   returns. The library copies what it keeps and holds no pointer after the
+//!   call.
+//! - **Returned strings.** `tlw_last_error()` returns memory owned by the
+//!   handle, valid only until the next call on it, so it is copied out at
+//!   once, by the private `LogWriter::last_error`, which is why it is not
+//!   public.
+//!
+//! A handle may move between threads but must not be used from two at once:
+//! `LogWriter` is `Send` and not `Sync`, and every writing method takes
+//! `&mut self`.
+//!
+//! # Maintaining
+//!
+//! The declarations in the private `ffi` module are written by hand from
+//! `host/libraries/tagcore-c/taglogwriter_c.h`; with a dozen functions,
+//! `bindgen` would cost more than it saves. When the header changes:
+//!
+//! 1. Change the matching declaration in `ffi`, and the safe method over it.
+//! 2. If a function's signature or meaning changed, the header raises
+//!    `TLW_ABI_VERSION`; raise `ffi::TLW_ABI_VERSION` to match.
+//!    [`LogWriter::create`] refuses a library whose version differs, so a
+//!    stale library fails with a message instead of misbehaving.
+//! 3. Keep `ffi::TLW_CONFIG` ... `TLW_STATE` equal to the header's
+//!    `tlw_header_kind` values.
+//!
+//! The messages themselves need no such care: both sides compile them from
+//! the same `proto/` files (prost here, protoc for the library), and protobuf
+//! wire encoding is the contract between them. A field added to `proto/`
+//! reaches the C++ writer once both are rebuilt.
+//!
+//! The design, including how the library is built and why, is in
+//! `host/libraries/tagcore-c/design/architecture.md`.
 
 use std::ffi::{CStr, CString, c_int};
 use std::fmt;
@@ -51,6 +94,9 @@ use prost::Message;
 use tagcore::proto::{Ack, CalibrationConstants, Config, State, TagInfo};
 
 /// The raw C interface, as declared in `taglogwriter_c.h`.
+///
+/// Hand-written; see the crate's "Maintaining" section. Each item's comment
+/// is a summary: the header's Doxygen is the contract.
 mod ffi {
     use std::ffi::{c_char, c_int};
 
@@ -213,6 +259,12 @@ impl LogWriter {
     /// Writes `header`: its parts, then the info, calibration and state
     /// tables and the tag's data tables. Call once, first.
     ///
+    /// The parts are passed one at a time (`tlw_header_add`) and written
+    /// together (`tlw_write_header`), so the C side never needs a header
+    /// message of its own and `proto/` gains nothing for this interface. The
+    /// parts accumulate in the handle: a second call would pass them again
+    /// and the writer would fail creating tables that exist.
+    ///
     /// # Errors
     ///
     /// When a part is rejected or the writer fails, for example because the
@@ -262,7 +314,9 @@ impl LogWriter {
     ///
     /// Returns how many log records the page consumed, which advances the
     /// index of the next page to request, or 0 at the end of the log. Both
-    /// depend on the tag type, which is why the writer decides them.
+    /// depend on the tag type, which is why the writer decides them, and why
+    /// a download must call this synchronously, page by page: the next
+    /// request cannot be formed until it returns.
     ///
     /// # Errors
     ///
