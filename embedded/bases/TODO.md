@@ -32,6 +32,18 @@ Delete an item when it is done.
     backup-domain writes, sensor and clock setup in the tests) for longer
     than the retries last. qtmonitor now pauses its polls for 1.5 s after
     these two commands, which quietens the log but does not fix the cause.
+  - **Not seen on `tag-breakout-base-l432-u375-1v8` with a U375 tag**
+    (2026-10-27). The setups differ on both sides, so this does not yet say
+    which side causes the bursts:
+    - **base:** SPI shift-outs (`ll_swd_spi.c`) against the L432-v1 base's
+      bit-banged `ll_swd.c`, with the same `MAX_SWD_RETRY` and `REGRETRIES`;
+    - **tag:** the U3 shared-memory mailbox in SRAM, with no DebugMonitor and
+      no DEMCR polling, against the L4 path, whose failures are mostly the
+      host's DEMCR reads.
+
+    To separate them, run each tag on the other base where the I/O voltages
+    allow it (the U375 base is 1.8 V), or build the L432-v1 base with its
+    `ll_swd_spi.c` (see the item below) and repeat with the UIUCTag.
   - **Debug connector:** a separate SWD connector to the base MCU is planned,
     to break on the fault path and see the acknowledgement the target
     returned.
