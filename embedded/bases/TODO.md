@@ -20,6 +20,18 @@ Delete an item when it is done.
     delay, and the debug-register paths poll `REGRETRIES` (20) times. A target
     stalling its bus for a flash or RTC operation may outlast both. Try a
     retry bounded by time (or with backoff) before anything else.
+  - **Seen so far (2026-10-27):** Synchronize Clock and Self-Test each set
+    off a burst. The failing accesses are SWD writes into the tag's SRAM
+    (the RPC buffer) and debug-register reads, in the second or so after
+    the command is accepted, while the tag sets its RTC or runs its tests.
+    The tag's stop-mode delay (`stopMilliseconds()` in
+    `embedded/tags/common/core/src/time.c`, which zeroes `DBGMCU->CR`) is
+    not the cause: both versions use an ordinary RTOS sleep while a
+    monitor session is open. A busy CPU cannot fail an SWD access by
+    itself, so suspect the bus or clocks being disturbed (RTC and
+    backup-domain writes, sensor and clock setup in the tests) for longer
+    than the retries last. qtmonitor now pauses its polls for 1.5 s after
+    these two commands, which quietens the log but does not fix the cause.
   - **Debug connector:** a separate SWD connector to the base MCU is planned,
     to break on the fault path and see the acknowledgement the target
     returned.

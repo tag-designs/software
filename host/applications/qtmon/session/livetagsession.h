@@ -31,7 +31,8 @@ class QTimer;
  * @details Every slot runs on the worker thread, queued by LiveTagSession,
  *          one at a time. While attached it reads the status every
  *          qtmon::kStatusPollMs, and once more after any command that changes
- *          the tag. A download runs inside download() and blocks the polls
+ *          the tag. After Synchronize Clock and Self-Test it pauses the polls
+ *          briefly, while the tag cannot answer debug accesses reliably. A download runs inside download() and blocks the polls
  *          until it ends; cancelDownload() is the only member another thread
  *          may call.
  */
@@ -84,10 +85,13 @@ private:
   QTimer *timer();
   /// The tag's message for the last refused call, or @p fallback.
   QString refusal(const QString &fallback);
+  /// Skips polls for @p ms, then reads the status once.
+  void quietFor(int ms);
 
   Tag tag_;                          ///< The tag; touched only on this thread.
   QTimer *timer_ = nullptr;          ///< See timer().
   std::atomic_bool cancel_{false};   ///< See cancelDownload().
+  qint64 quiet_until_ms_ = 0;        ///< Polls are skipped until then (host ms); see quietFor().
 };
 
 /**

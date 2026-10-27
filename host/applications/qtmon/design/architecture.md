@@ -106,6 +106,11 @@ reports with a signal (`startSent`, `eraseSent`, `commandFailed`,
   status polls until it ends, which is what the tag needs anyway.
   `cancelDownload()` sets an atomic flag, the one thing another thread may do.
   The job stops after the current page and commits what it wrote.
+- **Polls pause after Synchronize Clock and Self-Test.** For 1.5 s after
+  either is accepted, while the tag cannot answer debug accesses reliably,
+  the worker skips its polls, then reads the status once. Polling through
+  that window only produced bursts of base errors (0x81; see
+  `embedded/bases/TODO.md`). The pause is shorter than `kNoAnswerMs`.
 - **Logging is thread-safe.** The worker logs through `qInfo()` and tagcore's
   `log.c`. `main.cpp`'s `logOutput()` queues any message from another thread to
   the Error Log's text box on the GUI thread.

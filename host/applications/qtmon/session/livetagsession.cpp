@@ -18,6 +18,20 @@ namespace {
 /// acts on a stop after acknowledging it.
 constexpr int kAfterStopMs = 250;
 
+/**
+ * @brief How long the polls pause after Synchronize Clock or Self-Test is
+ *        accepted, ms.
+ *
+ * @details While the tag sets its RTC or runs its self-tests, debug access
+ *          to it fails in bursts (the base reports 0x81; see
+ *          embedded/bases/TODO.md), so polling then only fills the log with
+ *          errors. One status is read when the pause ends, and the model
+ *          judges the command from it as before. It is shorter than
+ *          qtmon::kNoAnswerMs, so the pause alone never shows the tag as not
+ *          answering.
+ */
+constexpr int kQuietAfterBusyMs = 1500;
+
 /// Sends one of the download's messages to Qt's log, which the Error Log tab shows.
 void logDownload(qtmon::LogLevel level, const std::string &text)
 {
@@ -101,10 +115,18 @@ void TagWorker::shutdown()
     tag_.Detach();
 }
 
+void TagWorker::quietFor(int ms)
+{
+  quiet_until_ms_ = QDateTime::currentMSecsSinceEpoch() + ms;
+  QTimer::singleShot(ms, this, &TagWorker::poll);
+}
+
 void TagWorker::poll()
 {
   if (!tag_.IsAttached())
     return;
+  if (QDateTime::currentMSecsSinceEpoch() < quiet_until_ms_)
+    return;  // the read that ends the pause is already scheduled
   float voltage = 0.0f;
   tag_.Voltage(voltage);
   Status status;
@@ -158,7 +180,7 @@ void TagWorker::syncClock()
     emit commandFailed(qtmon::Command::Sync, QString::fromStdString(tag_.DebugMessage()));
     return;
   }
-  poll();
+  quietFor(kQuietAfterBusyMs);
 }
 
 void TagWorker::selfTest()
@@ -171,6 +193,7 @@ void TagWorker::selfTest()
     return;
   }
   emit testSent();
+  quietFor(kQuietAfterBusyMs);
 }
 
 void TagWorker::erase()
