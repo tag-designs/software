@@ -25,8 +25,9 @@ a base answers only one program.
 
 - **The Configuration tab comes first**, and the window opens on it. The
   status strip under the tabs shows the attached tag's type, state, clock,
-  voltage and self-test result whichever tab is open; the Tag tab has the
-  rest (board, firmware, UUID, log counts).
+  voltage and self-test result whichever tab is open; the **Tag Info** tab
+  (called Tag in Tag Monitor) has the rest: board, firmware, UUID and log
+  counts.
 - **Choosing a base.** With several bases plugged in, the list names each
   base the way it identifies itself (its board and firmware) with its
   ST-LINK serial, not only its USB address, so the base with your tag is

@@ -62,7 +62,7 @@ its window opens; every `ready` makes the engine send the whole state again.
     "test":   { "text": "ALL_PASSED", "warn": false }, // "Running" while one runs
     "approved": false, "approvalEnabled": true
   },
-  "tag": {                            // the Tag page
+  "tag": {                            // the Tag Info page
     "enabled": true,                  // false: greyed, still showing the last tag
     "info": { "tagType": "...", "board": "...", "firmware": "...", "flash": "256KB",
               "flashExt": "4MB", "uuid": "...", "gitUrl": "...", "sourcePath": "...",
@@ -165,14 +165,15 @@ one tag type's panels.
 | `default_download_name` | the path Download suggests |
 
 The page builds both its menu bar and its popup menu (the menu bar's menus
-as submenus, on right-click over the Tag page, the strip and the
+as submenus, on right-click over the Tag Info page, the strip and the
 Configuration page) from `menus`, and reads `actions` and `recent` each time
 a menu opens.
 
 ## Deliberate differences from qtmonitor
 
 - The Configuration tab comes first and is shown when the window opens; the
-  status strip carries what matters most from the Tag tab.
+  status strip carries what matters most from the tag tab, which is named
+  Tag Info (qtmonitor's "Tag").
 - The form's date and time boxes are the browser's, which show minutes
   (always :00) in the browser's own format, marked UTC.
 - Download Data... needs the `sqlitelog` feature (the C++ SQLite writer

@@ -105,7 +105,7 @@ pub(super) fn menus_json() -> Value {
     json!({ "menus": menus, "newConfigurationTypes": tag_types })
 }
 
-/// The Tag page's identity fields, as `populateTagInfo` filled them.
+/// The Tag Info page's identity fields, as `populateTagInfo` filled them.
 fn info_json(info: &TagInfo) -> Value {
     json!({
         "tagType": info.tag_type().as_str_name(),
@@ -169,7 +169,7 @@ impl Monitor {
         strip
     }
 
-    /// The Tag page: identity, log counts and whether Download is offered.
+    /// The Tag Info page: identity, log counts and whether Download is offered.
     fn tag_json(&self) -> Value {
         let m = &self.model;
         let (internal, external, downloadable) = match m.status() {

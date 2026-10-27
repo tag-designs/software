@@ -113,7 +113,7 @@ pub(crate) struct Monitor {
     cancel: Arc<AtomicBool>,
     /// The tag as the model knows it.
     pub(super) model: MonitorModel,
-    /// The last attached tag's identity, which the Tag page keeps showing
+    /// The last attached tag's identity, which the Tag Info page keeps showing
     /// (greyed) after a detach, as qtmonitor's labels did.
     pub(super) shown_info: Option<TagInfo>,
     /// Attaching: bases are being listed or the tag thread is attaching.

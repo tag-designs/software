@@ -108,7 +108,7 @@
   }
 
   /**
-   * The Tag page: identity (kept, greyed, after a detach) and log counts.
+   * The Tag Info page: identity (kept, greyed, after a detach) and log counts.
    * @param {Object} t The state's `tag`.
    */
   function renderTag(t) {
@@ -464,7 +464,7 @@
   }
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => showPage(b.dataset.page));
   // The Configuration tab comes first: the status strip already shows what
-  // matters most from the Tag tab.
+  // matters most from the Tag Info tab.
   showPage(["tag", "config", "log"].includes(params.get("page")) ? params.get("page") : "config");
 
   for (const id of ["page-tag", "page-config", "strip"]) $(id).addEventListener("contextmenu", popup);
