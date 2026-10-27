@@ -16,6 +16,13 @@
 #]]
 
 add_library(tagcore_c SHARED taglogwriter_c.cc taglogwriter_c.h)
+
+# A shared library can only take in position-independent code, and on Linux
+# our own archives are not built that way by default (macOS always is, and
+# Windows has no such rule). vcpkg's static libraries are built PIC already,
+# so only these two need it. The release workflow's Linux build failed here
+# ("relocation R_X86_64_PC32 ... recompile with -fPIC") until they were.
+set_target_properties(tagcore proto PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_features(tagcore_c PRIVATE cxx_std_20)
 target_compile_definitions(tagcore_c PRIVATE TAGCORE_C_BUILDING)
 target_include_directories(tagcore_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
