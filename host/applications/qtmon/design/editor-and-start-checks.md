@@ -64,7 +64,7 @@ Those conditions cannot be overridden. Start then checks
 | --- | --- |
 | Clock | The offset at the latest status is within `qtmon::kClockToleranceS`, 2 s. An unset clock is far outside it. |
 | Self-test | The tag reports `test_status` ALL_PASSED. The result is the tag's own, kept in `pState`, so it can predate this session; running Self-Test again is one click. |
-| Approved | The box in the status strip is ticked. Any change to the document's values (an edit, New, Open, Read, Reset) clears it, through `ConfigTab::contentChanged`. Save does not. |
+| Approved | The document is approved: the user ticked the box in the status strip. Approval belongs to the document (`qtmon::ConfigDocument`), which withdraws it on any change to the values (an edit, New, Open, Read, Reset); Save does not. |
 
 The strip shows a failing clock or self-test in red, before Start is pressed.
 If any check fails, Start lists the failures, one short line each, and offers

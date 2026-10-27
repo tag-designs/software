@@ -1,10 +1,17 @@
 ---
 type: proposal
-status: proposed
+status: historical
+superseded-by: host/applications/qtmon/design/architecture.md
 summary: Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
 ---
 
 # qtmonitor: engine, model and views
+
+> **Built, 2026-10-27.** qtmonitor now has this structure; the design as built
+> is [architecture.md](../architecture.md) and the decision is
+> [0036](../../../../../docs/decisions/0036-host-qtmonitor-engine-model-view.md).
+> This proposal is kept as the record of the reasoning, and describes the code
+> as it was before.
 
 **Proposal:** split qtmonitor into three layers, and do it in Qt first.
 

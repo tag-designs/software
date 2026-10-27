@@ -200,6 +200,38 @@ cmake --build <build-dir> --target qtmon_core_check
 It prints the number of checks passed and exits 0, or names the first
 failing check and exits 1.
 
+## The live session on a tag
+
+`qtmon_session_check` runs one whole tag cycle through the live tag session
+(`session/livetagsession.h`) and the monitor model, with no window, as the
+window drives them:
+
+1. attach (the only base);
+2. wait for IDLE;
+3. synchronize the clock;
+4. self-test;
+5. read the configuration and start with it unchanged;
+6. run for `--run-seconds`;
+7. stop;
+8. download to `--output`;
+9. erase;
+10. detach.
+
+Each step prints its outcome and time. It exits 0 when every step passed, and
+1 at the first failure, leaving the tag attached as it is.
+
+**It changes the tag:** the attach resets it, then it is started, stopped
+and erased. Run it only on a bench tag in IDLE with nothing to keep, after
+the steps in [docs/bench/](../../../../docs/bench/README.md): check the supply
+voltage and record the board UUID, with nothing else attached to the base. A
+UIUCTag samples every 5 minutes, so give it `--run-seconds 360` to record
+anything; an IMUTag needs 60.
+
+```sh
+cmake --build <build-dir> --target qtmon_session_check
+<build-dir>/Release/bin/qtmon_session_check --run-seconds 360 --output /tmp/session.db3
+```
+
 ## What the probe does not cover
 
 - **Typing into a widget.** A user's edit reaches `GetConfig()` by the same
