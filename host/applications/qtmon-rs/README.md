@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build and test it.
+summary: Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build, run and test it.
 ---
 
 # Tag Monitor (Rust)
@@ -22,7 +22,7 @@ It follows the structure qtmonitor was given for this purpose
 | Phase | What | State |
 | --- | --- | --- |
 | 1 | Model: the port of `qtmon/core` | done |
-| 2 | Engine on tagcore-rs, view state, Tauri shell, UI | not started |
+| 2 | Engine on tagcore-rs, view state, Tauri shell, UI | done; not yet tried on a tag |
 | 3 | Configuration tab: the panels' rules as a field spec | not started |
 | 4 | Design docs, CMake and packaging | not started |
 
@@ -38,6 +38,31 @@ It follows the structure qtmonitor was given for this purpose
 | `monitormodel.rs` | `monitormodel.h` | The attached tag as known, and what each status settles |
 | `configdocument.rs` | `configdocument.h` | The configuration document, its file format and approval |
 | `menus.rs` | `menus.h` | The menus as data |
+
+## The engine, shell and page
+
+`core/src/engine/` is qtmonitor's `MainWindow` and `LiveTagSession` without
+Qt: a tag thread that owns the `Tag`, and an engine thread that owns the
+model, the document and the view state. `app/` is the Tauri shell and `ui/`
+the page. The protocol between them, and where this port differs from
+qtmonitor, is [design/ui-engine-contract.md](design/ui-engine-contract.md).
+
+## Building and running
+
+```sh
+cargo run -p qtmon                    # the app; attaches to a tag at once
+QTMON_NO_ATTACH=1 cargo run -p qtmon  # the app, without attaching
+open ui/index.html                    # the page alone, against ui/mock-engine.js
+```
+
+Download Data... writes SQLite through the C++ writer, so it is built only
+with the `sqlitelog` feature and `libtagcore_c` from a CMake build
+(`-DBUILD_TAGCORE_C=ON`; see
+[taglogwriter-rs](../../libraries/taglogwriter-rs/README.md)):
+
+```sh
+TAGCORE_C_LIB_DIR=<build-dir>/Release/lib cargo run -p qtmon --features sqlitelog
+```
 
 ## Checking
 

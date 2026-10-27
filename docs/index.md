@@ -376,7 +376,8 @@ design document.
 
 ### Applications / qtmon-rs
 
-- [Tag Monitor (Rust)](../host/applications/qtmon-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build and test it.
+- [Tag Monitor (Rust)](../host/applications/qtmon-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build, run and test it.
+- [Tag Monitor (Rust): UI/engine contract](../host/applications/qtmon-rs/design/ui-engine-contract.md) — The contract between Tag Monitor's Rust engine and its web UI - the threads, the view state the engine publishes, the prompts that replace qtmonitor's dialogs, and the commands and queries the UI sends.
 
 ### Applications / qtprogram
 
