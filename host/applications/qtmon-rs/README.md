@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build, run and test it.
+summary: Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
 ---
 
 # Tag Monitor (Rust)
@@ -17,14 +17,14 @@ It follows the structure qtmonitor was given for this purpose
 ([architecture](../qtmon/design/architecture.md),
 [decision 0036](../../../docs/decisions/0036-host-qtmonitor-engine-model-view.md)).
 
-**Status: in progress, on the `qtmon-rs` branch.**
+**Status: complete on the `qtmon-rs` branch; shipped as `tagmonitor` beside qtmonitor** ([decision 0037](../../../docs/decisions/0037-host-qtmon-rs.md)).
 
 | Phase | What | State |
 | --- | --- | --- |
 | 1 | Model: the port of `qtmon/core` | done |
 | 2 | Engine on tagcore-rs, view state, Tauri shell, UI | done; a full session passed on an IMUTag |
 | 3 | Configuration tab: the panels' rules as a field spec | done; all 710 probe goldens match |
-| 4 | Design docs, CMake and packaging | not started |
+| 4 | Design docs, CMake and packaging | done: [build and packaging](design/build-and-packaging.md) |
 
 ## The model
 
@@ -52,19 +52,23 @@ qtmonitor, is [design/ui-engine-contract.md](design/ui-engine-contract.md).
 ## Building and running
 
 ```sh
-cargo run -p qtmon                    # the app; attaches to a tag at once
-QTMON_NO_ATTACH=1 cargo run -p qtmon  # the app, without attaching
-open ui/index.html                    # the page alone, against ui/mock-engine.js
+cargo run -p tagmonitor                    # the app; attaches to a tag at once
+QTMON_NO_ATTACH=1 cargo run -p tagmonitor  # the app, without attaching
+open ui/index.html                         # the page alone, against ui/mock-engine.js
 ```
 
 Download Data... writes SQLite through the C++ writer, so it is built only
-with the `sqlitelog` feature and `libtagcore_c` from a CMake build
-(`-DBUILD_TAGCORE_C=ON`; see
+with the `sqlitelog` feature and `libtagcore_c` from a CMake build (built
+with `BUILD_RUST_APPS` or `-DBUILD_TAGCORE_C=ON`; see
 [taglogwriter-rs](../../libraries/taglogwriter-rs/README.md)):
 
 ```sh
-TAGCORE_C_LIB_DIR=<build-dir>/Release/lib cargo run -p qtmon --features sqlitelog
+TAGCORE_C_LIB_DIR=<build-dir>/Release/lib cargo run -p tagmonitor --features sqlitelog
 ```
+
+The CMake build (`cmake --build <build-dir> --target tagmonitor`) does all of
+this and installs the app into the host package; see
+[design/build-and-packaging.md](design/build-and-packaging.md).
 
 ## Checking
 

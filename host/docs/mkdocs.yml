@@ -64,6 +64,7 @@ nav:
   - IMUTag Overview: imutag-overview.md
   - Applications:
       - Tag Monitor: apps/qtmonitor.md
+      - Tag Monitor (tagmonitor): apps/tagmonitor.md
       - SensorViz: apps/sensorviz.md
       - Qt Calibrate: apps/qtcalibrate.md
       - Qt Program: apps/qtprogram.md

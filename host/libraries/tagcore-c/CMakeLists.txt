@@ -9,7 +9,9 @@
   archive, so the writer's reference to Tag (SqliteTagLogWriter::writeHeader
   (Tag &)) also brings in the link layer and libusb; they are never called.
 
-  Experimental: off by default (BUILD_TAGCORE_C), not installed or packaged.
+  Built when BUILD_TAGCORE_C or BUILD_RUST_APPS is ON. Tag Monitor in Rust
+  (host/applications/qtmon-rs) writes its downloads through it and installs
+  it on Linux and Windows; macOS links tagcore_c_static into the program.
   See host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md.
 #]]
 

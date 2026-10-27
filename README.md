@@ -52,8 +52,9 @@ non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
 Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
 required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
 Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds Tag Programmer,
-`host/applications/tagprogram-rs`; where `cargo` is not installed it is
-skipped (`BUILD_RUST_APPS`), and on Linux it also needs the WebKitGTK 4.1
+`host/applications/tagprogram-rs`, and Tag Monitor,
+`host/applications/qtmon-rs`; where `cargo` is not installed they are
+skipped (`BUILD_RUST_APPS`), and on Linux they also need the WebKitGTK 4.1
 development files.
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
@@ -382,7 +383,8 @@ Releases after v3.2 carry a Linux package for x86_64,
 `UltralightTags-X.Y-linux-x86_64.tar.gz`. It runs on Ubuntu 24.04, Debian 13
 and other distributions of the same age or newer (glibc 2.39), and needs no
 Qt or anything else installed beyond what a desktop already has. Tag
-Programmer (`tagprogram`) draws its window with WebKitGTK 4.1, which GNOME
+Programmer (`tagprogram`) and Tag Monitor (`tagmonitor`) draw their windows
+with WebKitGTK 4.1, which GNOME
 desktops have; elsewhere install it with `sudo apt install libwebkit2gtk-4.1-0`.
 Unpack it anywhere:
 
@@ -495,7 +497,7 @@ distribution; `--help` lists the rest.
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
 | `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
-| `BUILD_RUST_APPS` | `ON` where `cargo` is found | Build Tag Programmer (`host/applications/tagprogram-rs`) with cargo and install it beside the Qt applications. The release workflow sets it, so a missing `cargo` fails there. |
+| `BUILD_RUST_APPS` | `ON` where `cargo` is found | Build Tag Programmer (`host/applications/tagprogram-rs`) and Tag Monitor (`host/applications/qtmon-rs`) with cargo and install them beside the Qt applications, with `tagcore_c`, through which Tag Monitor writes its downloads. The release workflow sets it, so a missing `cargo` fails there. |
 | `HOST_QT_VERSION` | `6.10.3` | The Qt releases are built with. Configuring against another Qt warns, and fails under `-DREPRODUCIBLE_BUILD=ON`, which the release workflow sets. Empty skips the check. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |

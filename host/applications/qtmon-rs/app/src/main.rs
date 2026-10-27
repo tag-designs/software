@@ -47,7 +47,7 @@ async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<V
 }
 
 /// The published manual's page, used when no built copy is found.
-const ONLINE_GUIDE: &str = "https://tag-designs.github.io/software/user/apps/qtmonitor.html";
+const ONLINE_GUIDE: &str = "https://tag-designs.github.io/software/user/apps/tagmonitor.html";
 
 /// The user manual's Tag Monitor page, searched for as Tag Programmer
 /// searches for its own: `docs`, `host/docs/site` and
@@ -67,8 +67,8 @@ fn user_guide_url() -> String {
         .iter()
         .flat_map(|r| {
             [
-                r.join("apps/qtmonitor.html"),
-                r.join("apps/qtmonitor/index.html"),
+                r.join("apps/tagmonitor.html"),
+                r.join("apps/tagmonitor/index.html"),
             ]
         })
         .find(|p| p.is_file())

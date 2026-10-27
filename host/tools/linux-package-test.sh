@@ -23,8 +23,10 @@
 #      for qtcalibrate (its 3D orientation view included), logs for
 #      sensorviz -- and must exit 0 with its screenshots written and not
 #      blank, and nothing on stderr saying a plugin, library or QML module
-#      failed to load. btviz, qtprogram and tagprogram (Tag Programmer in
-#      Rust) have no capture mode; they must start and stay up.
+#      failed to load. btviz, qtprogram, tagprogram and tagmonitor (Tag
+#      Programmer and Tag Monitor in Rust) have no capture mode; they must
+#      start and stay up. tagmonitor finds no base in the container, says so
+#      in a message box, and stays up.
 #
 # Usage: linux-package-test.sh TARBALL SOURCE_DIR OUT_DIR
 #   TARBALL     the package
@@ -202,6 +204,7 @@ run_apps() {
     run_stays_up "$p" btviz -- "$tt/bin/btviz"
     run_stays_up "$p" qtprogram -- "$tt/bin/qtprogram"
     run_stays_up "$p" tagprogram -- "$tt/bin/tagprogram"
+    run_stays_up "$p" tagmonitor -- "$tt/bin/tagmonitor"
 }
 
 export XDG_RUNTIME_DIR=/tmp/xdg

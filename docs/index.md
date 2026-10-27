@@ -80,6 +80,7 @@ design document.
 - [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
 - [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
 - [0036. Host: qtmonitor as a core, a tag session and a window](decisions/0036-host-qtmonitor-engine-model-view.md) *(decision)* — qtmonitor was restructured into a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands; the Calibrate command was dropped. Behaviour was held fixed by the existing goldens, pixel-identical screenshots, a new core check and a full tag cycle on hardware.
+- [0037. Host: Tag Monitor in Rust (qtmon-rs)](decisions/0037-host-qtmon-rs.md) *(decision)* — Tag Monitor was ported to Rust as qtmon-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
 
 ### Investigations
 
@@ -376,7 +377,8 @@ design document.
 
 ### Applications / qtmon-rs
 
-- [Tag Monitor (Rust)](../host/applications/qtmon-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build, run and test it.
+- [Tag Monitor (Rust)](../host/applications/qtmon-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
+- [Building and packaging Tag Monitor (Rust)](../host/applications/qtmon-rs/design/build-and-packaging.md) — How Tag Monitor in Rust is built and shipped - the cargo workspace, the CMake target that wraps cargo and links the C++ log writer (tagcore_c), the per-platform install layout, the CI build, the third-party notices, and what it shares with Tag Programmer's packaging.
 - [Tag Monitor (Rust): UI/engine contract](../host/applications/qtmon-rs/design/ui-engine-contract.md) — The contract between Tag Monitor's Rust engine and its web UI - the threads, the view state the engine publishes, the prompts that replace qtmonitor's dialogs, and the commands and queries the UI sends.
 
 ### Applications / qtprogram
@@ -493,7 +495,7 @@ design document.
 
 ### Libraries / tagcore-c
 
-- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
 - [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
 ### Libraries / tagcore-rs

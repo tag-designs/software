@@ -23,8 +23,9 @@
 //! panics, which fails the build with the message. Copied from Tag
 //! Programmer's (`tagprogram-rs/app/build.rs`), which
 //! `tagprogram-rs/design/build-and-packaging.md` describes, with one
-//! addition: with the `sqlitelog` feature on Linux and macOS, the binary gets
-//! an rpath to `TAGCORE_C_LIB_DIR`, where a shared `libtagcore_c` is found.
+//! addition: with the `sqlitelog` feature, off Windows, the binary gets an
+//! rpath where a shared `libtagcore_c` is found (`TAGCORE_C_RPATH`, else
+//! `TAGCORE_C_LIB_DIR`); see `../design/build-and-packaging.md`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -112,15 +113,27 @@ fn main() {
     );
     println!("cargo:rustc-env=TAURI_CONFIG={config}");
 
-    // The C++ writer's library, when Download is built in. Only a direct
-    // dependent of taglogwriter sees DEP_TAGCORE_C_LIB_DIR, so the directory
-    // it was found in is read from the same variable taglogwriter reads.
+    // The C++ writer's library, when Download is built in and links it as
+    // a shared library (Linux): the binary looks for it at TAGCORE_C_RPATH
+    // when set -- the package build sets $ORIGIN/../lib, where the package
+    // installs it -- else in TAGCORE_C_LIB_DIR, where the build left it.
+    // Only a direct dependent of taglogwriter sees DEP_TAGCORE_C_LIB_DIR, so
+    // the directory is read from the variable taglogwriter reads. macOS links
+    // it statically (unless TAGCORE_C_LINK=dylib) and Windows has no rpath,
+    // so neither gets one.
     println!("cargo:rerun-if-env-changed=TAGCORE_C_LIB_DIR");
-    if std::env::var_os("CARGO_FEATURE_SQLITELOG").is_some()
-        && std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows")
-        && let Ok(dir) = std::env::var("TAGCORE_C_LIB_DIR")
-    {
-        println!("cargo:rustc-link-arg-bins=-Wl,-rpath,{dir}");
+    println!("cargo:rerun-if-env-changed=TAGCORE_C_RPATH");
+    println!("cargo:rerun-if-env-changed=TAGCORE_C_LINK");
+    let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    // taglogwriter's own default: static on macOS, shared elsewhere.
+    let default_link = if os == "macos" { "static" } else { "dylib" };
+    let shared = std::env::var("TAGCORE_C_LINK").unwrap_or_else(|_| default_link.into()) == "dylib";
+    if std::env::var_os("CARGO_FEATURE_SQLITELOG").is_some() && shared && os != "windows" {
+        let rpath =
+            std::env::var("TAGCORE_C_RPATH").or_else(|_| std::env::var("TAGCORE_C_LIB_DIR"));
+        if let Ok(dir) = rpath {
+            println!("cargo:rustc-link-arg-bins=-Wl,-rpath,{dir}");
+        }
     }
 
     std::env::set_current_dir(&stage).expect("enter staging directory");

@@ -1,7 +1,7 @@
 # The Tauri shell: runs the engine, forwards the page's commands and queries
 # to it, and emits its events to the page. All behaviour is in ../core.
 [package]
-name = "qtmon"
+name = "tagmonitor"
 version = "0.1.0"
 edition = "2024"
 description = "Tag Monitor: attach to a tag, check, configure and start it, and download its data"

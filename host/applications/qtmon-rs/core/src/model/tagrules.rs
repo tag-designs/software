@@ -138,7 +138,6 @@ mod tests {
             vid: 0x483,
             pid: 0x3748,
             serial: "0037ABC".into(),
-            ..UsbDev::default()
         };
         assert_eq!(
             describe_base_with_identity(

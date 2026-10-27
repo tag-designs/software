@@ -35,9 +35,10 @@ add_subdirectory(libraries/sensoranalysis)
 # Qt-free, needs only sqlite3; sensorviz plots through it.
 add_subdirectory(libraries/sensordata)
 # The C interface for Rust and other languages: one shared library exporting
-# only C functions. Experimental and unpackaged, so off unless asked for.
+# only C functions. Tag Monitor in Rust writes its downloads through it, so it
+# is built whenever the Rust applications are; otherwise only when asked for.
 option(BUILD_TAGCORE_C "Build the tagcore_c shared library (C interface for Rust tools)" OFF)
-if(BUILD_TAGCORE_C)
+if(BUILD_TAGCORE_C OR BUILD_RUST_APPS)
   add_subdirectory(libraries/tagcore-c)
 endif()
 add_subdirectory(commandline)
@@ -527,8 +528,10 @@ if(host_install_targets)
     TARGETS ${host_install_targets})
 endif()
 
-# Tag Programmer in Rust. Added last so its install rules run after the Qt
-# deployment steps above, which scan the installed executables.
+# Tag Programmer and Tag Monitor in Rust. Added last so their install rules
+# run after the Qt deployment steps above, which scan the installed
+# executables.
 if(BUILD_RUST_APPS)
   add_subdirectory(applications/tagprogram-rs)
+  add_subdirectory(applications/qtmon-rs)
 endif()
