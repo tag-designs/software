@@ -1,0 +1,30 @@
+# Safe Rust interface to the C++ SQLite tag log writer, through the tagcore_c
+# shared library (host/libraries/tagcore-c). Messages cross as protobuf wire
+# encoding, so the database is exactly the one the C++ tools write.
+#
+# Needs libtagcore_c built by CMake (-DBUILD_TAGCORE_C=ON); build.rs finds it
+# through TAGCORE_C_LIB_DIR. See README.md.
+[package]
+name = "taglogwriter"
+version = "0.1.0"
+edition = "2024"
+description = "Writes tag SQLite logs through the C++ writer (tagcore_c)"
+publish = false
+# Lets a dependent's build script read DEP_TAGCORE_C_LIB_DIR, to set an rpath.
+links = "tagcore_c"
+
+[dependencies]
+prost = "0.14.4"
+tagcore = { version = "0.1.0", path = "../tagcore-rs" }
+
+[dev-dependencies]
+prost-reflect = "0.16.5"
+serde_json = "1.0.154"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

@@ -994,6 +994,7 @@ dependencies = [
  "log",
  "prost-reflect",
  "tagcore",
+ "taglogwriter",
 ]
 
 [[package]]
@@ -1008,6 +1009,14 @@ dependencies = [
  "protoc-bin-vendored",
  "rusb",
  "serde_json",
+]
+
+[[package]]
+name = "taglogwriter"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "tagcore",
 ]
 
 [[package]]

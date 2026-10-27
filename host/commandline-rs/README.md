@@ -39,12 +39,35 @@ connected. **Attaching resets the tag**, as with the C++ tools.
 | `tag-attach-cycle` | `tag-attach-cycle.cc` | Attach and detach repeatedly, for attach-path testing |
 | `tag-monitor-test` | `tag-monitor-test.cc` | Drive the L4 monitor handshake directly through `LinkAdapt` |
 | `qtmonitor-fixture-capture` | `qtmonitor-fixture-capture.cc` | Capture a tag's info, config and status as a qtmonitor test fixture |
+| `tag-dwnld` | `dwnld.cc` | Download a stopped tag's log to SQLite, through the C++ writer (below) |
+
+### tag-dwnld and the C++ writer
+
+`tag-dwnld` reads the tag with tagcore-rs but writes the database with the
+C++ `SqliteTagLogWriter`, through
+[`taglogwriter`](../libraries/taglogwriter-rs/README.md) and the `tagcore_c`
+library, so its file is the one the C++ `tag-dwnld` writes. It is built only
+with the `sqlitelog` feature, and needs that library built by CMake first:
+
+```sh
+cmake -DBUILD_TAGCORE_C=ON <build-dir>
+cmake --build <build-dir> --target tagcore_c_static    # tagcore_c off macOS
+TAGCORE_C_LIB_DIR=<build-dir>/Release/lib \
+    cargo build --release --features sqlitelog --bin tag-dwnld
+```
+
+On macOS it links `libtagcore_c.a`, and the executable needs nothing at run
+time. On Linux and Windows (and with `TAGCORE_C_LINK=dylib`) it links the
+shared library, one copy of which serves every tool in the install
+directory, and finds it through an rpath to that directory. Messages and exit
+status follow the C++; the format check that names an unsupported tag type
+reports the writer's own message ("Could not open output: SQLite log output
+does not support tag type ...").
 
 ## Not ported yet
 
 These need a library that the Rust crate does not have yet:
 
-- `tag-dwnld`: the data-log download and log writers.
 - `tag-capture`, `tag-xflash`, `tag-sramcall` and `tag-rebuild`: the SWD
   capture and recovery library in `tagcore/recovery/`.
 - `tag-log-import` and `tag-txt-import`: `sqlitelog` and `txtlogs`.

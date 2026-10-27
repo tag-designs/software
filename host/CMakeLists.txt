@@ -34,6 +34,12 @@ add_subdirectory(libraries/tagcore)
 add_subdirectory(libraries/sensoranalysis)
 # Qt-free, needs only sqlite3; sensorviz plots through it.
 add_subdirectory(libraries/sensordata)
+# The C interface for Rust and other languages: one shared library exporting
+# only C functions. Experimental and unpackaged, so off unless asked for.
+option(BUILD_TAGCORE_C "Build the tagcore_c shared library (C interface for Rust tools)" OFF)
+if(BUILD_TAGCORE_C)
+  add_subdirectory(libraries/tagcore-c)
+endif()
 add_subdirectory(commandline)
 if(BUILD_TAG_SERVER)
   add_subdirectory(tagserver)
