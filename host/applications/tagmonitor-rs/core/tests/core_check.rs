@@ -5,17 +5,19 @@
 use std::fs;
 use std::path::PathBuf;
 
-use qtmon_core::model::commands::Command;
-use qtmon_core::model::configdocument::{
-    ConfigDocument, DocumentSource, OnAttach, ParseFileError, on_attach,
-};
-use qtmon_core::model::menus::{MenuEntry, MenuItem, Shortcut, command_text, item_text, menu_bar};
-use qtmon_core::model::monitormodel::{MonitorEvent, MonitorModel, NO_ANSWER_MS};
-use qtmon_core::model::startchecks::{StartCheck, start_check_message};
-use qtmon_core::model::tagrules::{describe_base, monitor_version_accepted};
 use tagcore::UsbDev;
 use tagcore::configshape::ConfigShape;
 use tagcore::proto::{Config, Status, TagInfo, TagState, TagType, TestResult};
+use tagmonitor_core::model::commands::Command;
+use tagmonitor_core::model::configdocument::{
+    ConfigDocument, DocumentSource, OnAttach, ParseFileError, on_attach,
+};
+use tagmonitor_core::model::menus::{
+    MenuEntry, MenuItem, Shortcut, command_text, item_text, menu_bar,
+};
+use tagmonitor_core::model::monitormodel::{MonitorEvent, MonitorModel, NO_ANSWER_MS};
+use tagmonitor_core::model::startchecks::{StartCheck, start_check_message};
+use tagmonitor_core::model::tagrules::{describe_base, monitor_version_accepted};
 
 /// A minimal configuration of `tag_type`.
 fn config_of(tag_type: TagType) -> Config {
@@ -355,7 +357,7 @@ fn menu_bar_matches_qtmonitor() {
     assert_eq!(actual, expected);
 
     // Every command is somewhere in the menu bar.
-    for c in qtmon_core::model::commands::ALL_COMMANDS {
+    for c in tagmonitor_core::model::commands::ALL_COMMANDS {
         assert!(
             menu_bar()
                 .iter()

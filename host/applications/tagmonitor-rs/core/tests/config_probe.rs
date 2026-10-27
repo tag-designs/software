@@ -19,10 +19,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use prost::Message;
-use qtmon_core::model::configdocument::DocumentSource;
-use qtmon_core::model::configeditor::{ConfigEditor, OpenResult};
 use serde_json::Value;
 use tagcore::proto::{self, Config, TagState};
+use tagmonitor_core::model::configdocument::DocumentSource;
+use tagmonitor_core::model::configeditor::{ConfigEditor, OpenResult};
 
 /// The probe's directory in the Qt app.
 fn probe_dir() -> PathBuf {

@@ -3,11 +3,11 @@
 //! shows.
 //!
 //! ```sh
-//! cargo run -p qtmon-core --example form_view -- BITTAG
+//! cargo run -p tagmonitor-core --example form_view -- BITTAG
 //! ```
 
-use qtmon_core::model::configeditor::ConfigEditor;
 use tagcore::proto::TagType;
+use tagmonitor_core::model::configeditor::ConfigEditor;
 
 /// Prints the view for the tag type named on the command line (BITTAG by
 /// default) at a fixed clock, so the output does not change from run to run.

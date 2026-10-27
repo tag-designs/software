@@ -20,8 +20,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use qtmon_core::engine::{self, Engine, EngineConfig, Event};
 use serde_json::{Value, json};
+use tagmonitor_core::engine::{self, Engine, EngineConfig, Event};
 use tauri::{Emitter, Manager, State, WindowEvent};
 
 /// The contract's `invoke("command", {cmd, args})`: queued for the engine
@@ -121,7 +121,7 @@ fn main() {
                 settings_path: paths.app_config_dir()?.join("settings.json"),
                 home_dir: paths.home_dir()?,
                 user_guide_url: Some(user_guide_url()),
-                auto_attach: std::env::var_os("QTMON_NO_ATTACH").is_none(),
+                auto_attach: std::env::var_os("TAGMONITOR_NO_ATTACH").is_none(),
             };
             let _ = log::set_logger(&engine::LOGGER);
             let handle = app.handle().clone();

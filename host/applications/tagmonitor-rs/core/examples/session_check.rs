@@ -24,7 +24,7 @@
 //! keep, after the steps in `docs/bench/`.
 //!
 //! ```sh
-//! TAGCORE_C_LIB_DIR=<build>/Release/lib cargo run -p qtmon-core --features sqlitelog \
+//! TAGCORE_C_LIB_DIR=<build>/Release/lib cargo run -p tagmonitor-core --features sqlitelog \
 //!     --example session_check -- --run-seconds 60 --output /tmp/session.db3
 //! ```
 
@@ -32,8 +32,8 @@ use std::process::ExitCode;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
-use qtmon_core::engine::{self, Engine, EngineConfig, Event};
 use serde_json::{Value, json};
+use tagmonitor_core::engine::{self, Engine, EngineConfig, Event};
 
 /// The run: the engine, its events, and the latest view state.
 struct Run {
@@ -306,7 +306,7 @@ fn main() -> ExitCode {
             }
         }
     }
-    let scratch = std::env::temp_dir().join("qtmon-session-check");
+    let scratch = std::env::temp_dir().join("tagmonitor-session-check");
     let config = EngineConfig {
         settings_path: scratch.join("settings.json"),
         home_dir: scratch.clone(),

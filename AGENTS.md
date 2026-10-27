@@ -226,7 +226,7 @@ reported. Note the INPUT paths cover `include/`, `host/libraries/*`,
 directories are not scanned**, so point Doxygen at one explicitly to check it.
 
 Rust crates (`host/libraries/*-rs`, `host/commandline-rs`,
-`host/applications/tagprogram-rs`, `host/applications/qtmon-rs`) are
+`host/applications/tagprogram-rs`, `host/applications/tagmonitor-rs`) are
 documented with rustdoc, not Doxygen:
 `//!` for crate and module docs, `///` on every item including private ones,
 and `# Errors` / `# Panics` / `# Safety` sections where they apply. Each

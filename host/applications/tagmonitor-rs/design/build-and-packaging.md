@@ -27,15 +27,15 @@ carry it.
 | Crate | Path | Role |
 | --- | --- | --- |
 | `tagmonitor` | `app/` | The Tauri shell, the only binary |
-| `qtmon-core` | `core/` | Model and engine; no UI toolkit, unit-testable |
+| `tagmonitor-core` | `core/` | Model and engine; no UI toolkit, unit-testable |
 | `tagcore` | `../../libraries/tagcore-rs` | The monitor protocol over ST-LINK (path dependency) |
 | `taglogwriter` | `../../libraries/taglogwriter-rs` | The C++ SQLite writer, through `tagcore_c` (optional path dependency) |
 
-The `sqlitelog` feature (of both `qtmon-core` and `tagmonitor`) brings in
+The `sqlitelog` feature (of both `tagmonitor-core` and `tagmonitor`) brings in
 `taglogwriter`. Without it the crates build with cargo alone, and Download
 refuses with a message; with it, `TAGCORE_C_LIB_DIR` must name the
 directory holding the library. The CMake build always turns it on. The
-workspace root is `host/applications/qtmon-rs`; its `Cargo.lock` is
+workspace root is `host/applications/tagmonitor-rs`; its `Cargo.lock` is
 committed and release builds use `--locked`.
 
 ## The CMake target
@@ -48,7 +48,7 @@ committed and release builds use `--locked`.
   `tagcore_c` elsewhere;
 - runs `cargo build --release --locked -p tagmonitor --features sqlitelog`
   every time, leaving the up-to-date decision to cargo;
-- sets `CARGO_TARGET_DIR` to `<build>/host/applications/qtmon-rs/cargo`,
+- sets `CARGO_TARGET_DIR` to `<build>/host/applications/tagmonitor-rs/cargo`,
   and `TAGCORE_C_LIB_DIR` to `<build>/<Config>/lib`, where both library
   targets put their output;
 - on Linux, sets `TAGCORE_C_RPATH=$ORIGIN/../lib`, which `app/build.rs`
@@ -111,7 +111,7 @@ into the program, generated as Tag Programmer's is. **Regenerate it whenever
 `Cargo.lock` changes**:
 
 ```sh
-LICENSES/tools/generate_rust_notices.py host/applications/qtmon-rs \
+LICENSES/tools/generate_rust_notices.py host/applications/tagmonitor-rs \
     tagmonitor > LICENSES/host/tagmonitor-THIRD-PARTY-NOTICES.txt
 ```
 

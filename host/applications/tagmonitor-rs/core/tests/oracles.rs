@@ -7,8 +7,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-use qtmon_core::model::commands::action_state_table;
-use qtmon_core::model::startchecks::start_check_table;
+use tagmonitor_core::model::commands::action_state_table;
+use tagmonitor_core::model::startchecks::start_check_table;
 
 /// A file in `host/applications/qtmon/test/`.
 fn qtmon_test_file(name: &str) -> String {

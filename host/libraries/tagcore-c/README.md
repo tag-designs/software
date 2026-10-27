@@ -19,7 +19,7 @@ what else could go behind it, is in the
 
 It is built with `-DBUILD_TAGCORE_C=ON`, and whenever the Rust applications
 are (`BUILD_RUST_APPS`): Tag Monitor in Rust
-([`qtmon-rs`](../../applications/qtmon-rs/README.md)) writes its downloads
+([`tagmonitor-rs`](../../applications/tagmonitor-rs/README.md)) writes its downloads
 through it. The packages carry it inside the Tag Monitor executable on macOS
 (the static archive) and as a shared library beside the program on Linux
 (`tag_tools/lib`) and Windows (`tag_tools/lib`, with the program). It is

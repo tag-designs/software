@@ -31,7 +31,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The kit's path as the page's HTML writes it, relative to `ui/`
-/// (`host/applications/qtmon-rs/ui` up to `host/ui-kit/`). Replaced
+/// (`host/applications/tagmonitor-rs/ui` up to `host/ui-kit/`). Replaced
 /// with `ui-kit/` in the staged copy, where the kit sits inside `dist/`.
 const KIT_HREF: &str = "../../../ui-kit/";
 

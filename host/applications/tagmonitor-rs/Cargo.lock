@@ -2908,18 +2908,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "263a3f48f01e7309e857138bd47f785585b4a005e8e56c6d2824ce91195999c3"
 
 [[package]]
-name = "qtmon-core"
-version = "0.1.0"
-dependencies = [
- "log",
- "prost",
- "prost-reflect",
- "serde_json",
- "tagcore",
- "taglogwriter",
-]
-
-[[package]]
 name = "quick-xml"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3644,12 +3632,24 @@ version = "0.1.0"
 dependencies = [
  "log",
  "objc2-foundation",
- "qtmon-core",
  "serde_json",
+ "tagmonitor-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+]
+
+[[package]]
+name = "tagmonitor-core"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "prost",
+ "prost-reflect",
+ "serde_json",
+ "tagcore",
+ "taglogwriter",
 ]
 
 [[package]]

@@ -1,10 +1,10 @@
 ---
 type: decision
 status: accepted
-summary: Tag Monitor was ported to Rust as qtmon-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
+summary: Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
 ---
 
-# 0037. Host: Tag Monitor in Rust (qtmon-rs)
+# 0037. Host: Tag Monitor in Rust (tagmonitor-rs)
 
 Date: 2026-10-27
 
@@ -44,7 +44,7 @@ Two things made Tag Monitor harder than Tag Programmer:
   type a file is for) are prompts in the view state that the page answers
   by id. The engine owns what happens next, so Save after "unsaved changes"
   continues with what it interrupted. The page holds no rules
-  ([contract](../../host/applications/qtmon-rs/design/ui-engine-contract.md)).
+  ([contract](../../host/applications/tagmonitor-rs/design/ui-engine-contract.md)).
 - **Model Qt's widgets, not only the panels.** `configform.rs` emulates the
   date, spin and radio widgets the panels rely on, and the page draws the
   form generically from the engine's description of each control.
@@ -56,7 +56,7 @@ Two things made Tag Monitor harder than Tag Programmer:
   shared library on Linux (`tag_tools/lib`) and Windows (beside the program
   in `tag_tools/lib`, started by the GUI launcher). `BUILD_RUST_APPS` now
   builds `tagcore_c`
-  ([build and packaging](../../host/applications/qtmon-rs/design/build-and-packaging.md)).
+  ([build and packaging](../../host/applications/tagmonitor-rs/design/build-and-packaging.md)).
 - **Name bases by identity.** With several bases, each is asked the tag
   bases' identify command (which sends nothing to the target) and listed
   with its board, firmware and ST-LINK serial. qtmonitor lists only USB

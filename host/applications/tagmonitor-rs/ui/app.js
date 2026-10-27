@@ -8,7 +8,7 @@
  * In a plain browser the engine is MockEngine (mock-engine.js). Preview
  * parameters: ?scenario=<name> picks a canned state (see mock-engine.js),
  * ?nopanel hides the scenario switcher, ?theme=dark|light forces a theme,
- * ?page=tag|config|log picks the tab.
+ * ?page=config|tag|log picks the tab (Configuration by default).
  *
  * Flow: the engine sends its whole view state (event `state`) after every
  * change and render() redraws from it. Every dialog the engine needs is a
@@ -463,7 +463,9 @@
     }
   }
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => showPage(b.dataset.page));
-  showPage(["tag", "config", "log"].includes(params.get("page")) ? params.get("page") : "tag");
+  // The Configuration tab comes first: the status strip already shows what
+  // matters most from the Tag tab.
+  showPage(["tag", "config", "log"].includes(params.get("page")) ? params.get("page") : "config");
 
   for (const id of ["page-tag", "page-config", "strip"]) $(id).addEventListener("contextmenu", popup);
   $("approved").addEventListener("click", () => send("set_approved", { on: $("approved").checked }));

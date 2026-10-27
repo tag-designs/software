@@ -2,7 +2,7 @@
 """Generate the notices for the Rust crates compiled into a Rust application.
 
 Tag Programmer (``host/applications/tagprogram-rs``) and Tag Monitor
-(``host/applications/qtmon-rs``) are each one executable with
+(``host/applications/tagmonitor-rs``) are each one executable with
 every crate it depends on compiled in, and most of those licenses (MIT, BSD,
 ISC, Zlib, Apache-2.0's NOTICE clause) require their notice to accompany a
 binary distribution. This script asks cargo for the application's dependency
@@ -17,7 +17,7 @@ and installed into the packages. Regenerate it whenever the application's
 
     LICENSES/tools/generate_rust_notices.py host/applications/tagprogram-rs \\
         tagprogram > LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt
-    LICENSES/tools/generate_rust_notices.py host/applications/qtmon-rs \\
+    LICENSES/tools/generate_rust_notices.py host/applications/tagmonitor-rs \\
         tagmonitor > LICENSES/host/tagmonitor-THIRD-PARTY-NOTICES.txt
 
 Like the Qt notices it errs towards listing too much: dependencies for every

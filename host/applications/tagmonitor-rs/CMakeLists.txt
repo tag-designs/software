@@ -1,5 +1,5 @@
 #[[
-  Tag Monitor (qtmon-rs): the Rust port of qtmonitor, built with Cargo and
+  Tag Monitor (tagmonitor-rs): the Rust port of qtmonitor, built with Cargo and
   installed into the host tools package beside the Qt applications as
   tagmonitor, as Tag Programmer (tagprogram-rs) is.
 
@@ -76,7 +76,7 @@ add_custom_target(
           "${CARGO_EXECUTABLE}" build --release --locked -p tagmonitor --features sqlitelog
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   BYPRODUCTS "${_tagmonitor_bin}"
-  COMMENT "Building Tag Monitor (qtmon-rs) with cargo"
+  COMMENT "Building Tag Monitor (tagmonitor-rs) with cargo"
   USES_TERMINAL
   VERBATIM)
 add_dependencies(tagmonitor ${_tagcore_c_target})

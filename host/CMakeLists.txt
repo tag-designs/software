@@ -533,5 +533,5 @@ endif()
 # executables.
 if(BUILD_RUST_APPS)
   add_subdirectory(applications/tagprogram-rs)
-  add_subdirectory(applications/qtmon-rs)
+  add_subdirectory(applications/tagmonitor-rs)
 endif()

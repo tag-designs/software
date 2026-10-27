@@ -95,11 +95,11 @@ pub enum Event {
 ///
 /// ```no_run
 /// use serde_json::json;
-/// use qtmon_core::engine::{self, EngineConfig, Event};
+/// use tagmonitor_core::engine::{self, EngineConfig, Event};
 ///
 /// let config = EngineConfig {
-///     settings_path: "/tmp/qtmon-scratch/settings.json".into(),
-///     home_dir: "/tmp/qtmon-scratch".into(),
+///     settings_path: "/tmp/tagmonitor-scratch/settings.json".into(),
+///     home_dir: "/tmp/tagmonitor-scratch".into(),
 ///     user_guide_url: None,
 ///     auto_attach: false,
 /// };
@@ -246,13 +246,13 @@ pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static)
     {
         let (tx, cancel) = (tx.clone(), cancel.clone());
         std::thread::Builder::new()
-            .name("qtmon-tag".into())
+            .name("tagmonitor-tag".into())
             .spawn(move || tagthread::run(tag_rx, tx, cancel))
             .expect("tag thread");
     }
     let engine = Engine { tx };
     std::thread::Builder::new()
-        .name("qtmon-engine".into())
+        .name("tagmonitor-engine".into())
         .spawn(move || run(Monitor::new(config, tag_tx, cancel), sink, rx))
         .expect("engine thread");
     engine

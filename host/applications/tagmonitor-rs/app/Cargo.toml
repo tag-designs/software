@@ -8,7 +8,7 @@ description = "Tag Monitor: attach to a tag, check, configure and start it, and 
 publish = false
 
 [dependencies]
-qtmon-core = { path = "../core" }
+tagmonitor-core = { path = "../core" }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
@@ -26,7 +26,7 @@ serde_json = "1"
 [features]
 # Download Data... through the C++ SQLite writer; needs libtagcore_c and
 # TAGCORE_C_LIB_DIR (see ../core/Cargo.toml).
-sqlitelog = ["qtmon-core/sqlitelog"]
+sqlitelog = ["tagmonitor-core/sqlitelog"]
 
 # Every item is documented, private ones included (AGENTS.md,
 # "Checking documentation coverage"); keep it that way.

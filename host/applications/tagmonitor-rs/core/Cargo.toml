@@ -1,5 +1,5 @@
 [package]
-name = "qtmon-core"
+name = "tagmonitor-core"
 version = "0.1.0"
 edition = "2024"
 description = "Tag Monitor model and engine: no UI toolkit (port of qtmonitor's core/)"

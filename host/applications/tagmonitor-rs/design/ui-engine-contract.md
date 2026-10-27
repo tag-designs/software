@@ -9,7 +9,7 @@ summary: The contract between Tag Monitor's Rust engine and its web UI - the thr
 Tag Monitor in Rust is split as [Tag Programmer](../../tagprogram-rs/design/ui-engine-contract.md)
 is:
 
-- **`core/`** (`qtmon-core`): the model (`src/model`, the port of
+- **`core/`** (`tagmonitor-core`): the model (`src/model`, the port of
   `qtmon/core`) and the engine (`src/engine`). No UI toolkit. Every rule
   and all state are here.
 - **`ui/`**: a page on [`host/ui-kit`](../../../ui-kit/README.md) that draws
@@ -43,7 +43,7 @@ As Tag Programmer's: `invoke("command", {cmd, args})`, `invoke("query",
 `ui/mock-engine.js` stands in, with scenarios (`?scenario=`).
 
 Nothing happens until the page sends `ready`. The first `ready` attaches
-(unless `QTMON_NO_ATTACH` is set in the environment), as qtmonitor does when
+(unless `TAGMONITOR_NO_ATTACH` is set in the environment), as qtmonitor does when
 its window opens; every `ready` makes the engine send the whole state again.
 
 ## View state (event `state`)
@@ -135,7 +135,7 @@ clamps, rounds and applies the panels' rules (a range re-limits the
 thresholds, a hibernation row first put in use starts at the logging start),
 exactly as qtmonitor's widgets do. `core/src/model/configform.rs` is the
 form; `tests/config_probe.rs` checks it against all of qtmonitor's probe
-goldens, and `cargo run -p qtmon-core --example form_view -- BITTAG` prints
+goldens, and `cargo run -p tagmonitor-core --example form_view -- BITTAG` prints
 one tag type's panels.
 
 ## Commands
@@ -171,6 +171,8 @@ a menu opens.
 
 ## Deliberate differences from qtmonitor
 
+- The Configuration tab comes first and is shown when the window opens; the
+  status strip carries what matters most from the Tag tab.
 - The form's date and time boxes are the browser's, which show minutes
   (always :00) in the browser's own format, marked UTC.
 - Download Data... needs the `sqlitelog` feature (the C++ SQLite writer

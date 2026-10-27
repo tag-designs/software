@@ -17,7 +17,7 @@ It follows the structure qtmonitor was given for this purpose
 ([architecture](../qtmon/design/architecture.md),
 [decision 0036](../../../docs/decisions/0036-host-qtmonitor-engine-model-view.md)).
 
-**Status: complete on the `qtmon-rs` branch; shipped as `tagmonitor` beside qtmonitor** ([decision 0037](../../../docs/decisions/0037-host-qtmon-rs.md)).
+**Status: complete on the `tagmonitor-rs` branch; shipped as `tagmonitor` beside qtmonitor** ([decision 0037](../../../docs/decisions/0037-host-tagmonitor-rs.md)).
 
 | Phase | What | State |
 | --- | --- | --- |
@@ -53,7 +53,7 @@ qtmonitor, is [design/ui-engine-contract.md](design/ui-engine-contract.md).
 
 ```sh
 cargo run -p tagmonitor                    # the app; attaches to a tag at once
-QTMON_NO_ATTACH=1 cargo run -p tagmonitor  # the app, without attaching
+TAGMONITOR_NO_ATTACH=1 cargo run -p tagmonitor  # the app, without attaching
 open ui/index.html                         # the page alone, against ui/mock-engine.js
 ```
 
