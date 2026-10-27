@@ -378,8 +378,12 @@ void debug_printf(const char *fmt, ...)
   if ((SDU1.state != SDU_READY) || (USBD1.state != USB_ACTIVE))
     return;
 
+  // Each line starts with the base's uptime in ms, to line faults up with
+  // what the host logged.
+  int t = chsnprintf(buf, sizeof(buf), "%lu ",
+                     (unsigned long)TIME_I2MS(chVTGetSystemTimeX()));
   va_start(ap, fmt);
-  n = chvsnprintf(buf, sizeof(buf), fmt, ap);
+  n = t + chvsnprintf(buf + t, sizeof(buf) - t, fmt, ap);
   va_end(ap);
 
   if (n <= 0)

@@ -170,7 +170,8 @@ int stlink_eval(uint8_t *buf)
   msg_t rlen;
   uint8_t debug_cmd = *buf++;
 
-  EPRINTF("stlink dbg %02x\r\n", debug_cmd);
+  // One line per command floods the error log; enable when tracing.
+  // EPRINTF("stlink dbg %02x\r\n", debug_cmd);
 
   switch (debug_cmd)
   {
