@@ -70,9 +70,10 @@ and view state are. Tag Programmer's is
 | Call | Does |
 | --- | --- |
 | `Kit.setupPage(title)` | Applies `?theme=dark\|light` and, in a browser, shows the stand-in title bar. Returns the `URLSearchParams`. |
-| `Kit.setTitle(text)` | Sets the document title and the preview title bar. |
+| `Kit.setTitle(text)` | Sets the document title, the preview title bar and, in the app, the window title (which needs the `core:window:allow-set-title` permission). |
 | `Kit.el(tag, attrs, ...children)` | Small element builder. `on*` attributes become listeners. |
-| `Kit.menuBar(host, menus)` | An in-window menu bar, as the Qt apps use. `menus = [{title, items}]`, where an item is `{label, action, checked, disabled, tooltip}` or `"-"`. `items` can be a function, evaluated each time the menu opens, so check marks follow the state. |
+| `Kit.menuBar(host, menus)` | An in-window menu bar, as the Qt apps use. `menus = [{title, items}]`, where an item is `{label, action, checked, disabled, tooltip}` or `"-"`. `items` can be a function, evaluated each time the menu opens, so check marks follow the state. An item with its own `items` is a submenu. |
+| `Kit.contextMenu(ev, items)` | A popup menu at the pointer, from a `contextmenu` event, with items as for a menu (submenus included). |
 | `Kit.dialog({title, body, buttons, width, onOpen})` | A modal sheet. `buttons` run left to right. Each is `{label, value, default, destructive, enabled, cancel, enter}`, or `"spacer"`. It resolves with the value of the button pressed. Escape picks the `cancel` button and Enter the `enter` one. After the call, `b.node` is each button's element, for enabling it live. |
 | `Kit.alert(title, text, info)` | A message box with an OK button. |
 | `Kit.confirm(title, text, info, buttons, width)` | A question box, with `buttons` as for `dialog`. |

@@ -120,8 +120,16 @@
    * @param {string} title
    */
   function setTitle(title) {
+    if (document.title === title) return;
     document.title = title;
     for (const t of document.querySelectorAll(".kit-titlebar .kit-title")) t.textContent = title;
+    // Tauri does not follow document.title. Setting the window's needs the
+    // core:window:allow-set-title permission; without it the call is refused
+    // and the window keeps the title tauri.conf.json gave it.
+    const t = tauri();
+    if (t && t.window && t.window.getCurrentWindow) {
+      Promise.resolve(t.window.getCurrentWindow().setTitle(title)).catch(() => {});
+    }
   }
 
   // ---- Menus ------------------------------------------------------------
@@ -136,7 +144,9 @@
    * Builds an in-window menu bar into `host` from
    * [{title, items: [{label, action, checked, disabled} | "-"]}].
    * `items` may be a function returning the list, evaluated when the menu
-   * opens, so check marks and enabled states follow the current state.
+   * opens, so check marks and enabled states follow the current state. An
+   * item with its own `items` (a list or a function) is a submenu, which
+   * opens to the right on hover.
    *
    * Menus open on mouse-down and track the pointer across titles while one
    * is open; a click outside or Escape closes it. Each call replaces the
@@ -206,6 +216,16 @@
       const cls = ["kit-menu-item"];
       if (item.checked) cls.push("checked");
       if (item.disabled) cls.push("disabled");
+      if (item.items) {
+        // A submenu: filled now, shown by CSS while the item is hovered.
+        const sub = el("div", { class: "kit-menu-dropdown kit-submenu" });
+        fill(sub, typeof item.items === "function" ? item.items() : item.items, close);
+        cls.push("kit-has-submenu");
+        drop.append(el("div", { class: cls.join(" "), title: item.tooltip },
+          el("span", { class: "kit-check" }, "✓"), item.label,
+          el("span", { class: "kit-submenu-arrow" }, "▸"), sub));
+        continue;
+      }
       drop.append(el("div", {
         class: cls.join(" "),
         title: item.tooltip,
@@ -216,6 +236,42 @@
         },
       }, el("span", { class: "kit-check" }, "✓"), item.label));
     }
+  }
+
+  /** Closes the open popup menu; null while none is open. */
+  let closePopup = null;
+
+  /**
+   * Shows a popup (context) menu at the pointer, with `items` as for a menu
+   * bar's menu, submenus included. A press outside it, Escape, or choosing
+   * an item closes it. Call it from a `contextmenu` listener; it prevents
+   * the browser's own menu.
+   *
+   * @param {MouseEvent} ev The contextmenu event, for its position.
+   * @param {Array<Object|string>|Function} items The menu's items.
+   */
+  function contextMenu(ev, items) {
+    ev.preventDefault();
+    if (closePopup) closePopup();
+    const drop = el("div", { class: "kit-menu-dropdown kit-popup" });
+    const close = () => {
+      drop.remove();
+      document.removeEventListener("mousedown", outside, true);
+      document.removeEventListener("keydown", escape, true);
+      closePopup = null;
+    };
+    const outside = (e) => { if (!drop.contains(e.target)) close(); };
+    const escape = (e) => { if (e.key === "Escape") close(); };
+    fill(drop, typeof items === "function" ? items() : items, close);
+    document.body.append(drop);
+    // Keep it inside the window.
+    const x = Math.min(ev.clientX, window.innerWidth - drop.offsetWidth - 4);
+    const y = Math.min(ev.clientY, window.innerHeight - drop.offsetHeight - 4);
+    drop.style.left = Math.max(0, x) + "px";
+    drop.style.top = Math.max(0, y) + "px";
+    document.addEventListener("mousedown", outside, true);
+    document.addEventListener("keydown", escape, true);
+    closePopup = close;
   }
 
   // ---- Dialogs ----------------------------------------------------------
@@ -484,7 +540,7 @@
 
   /** The kit's public API, the one global this script defines. */
   window.Kit = {
-    inApp, createEngine, el, setupPage, setTitle, menuBar,
+    inApp, createEngine, el, setupPage, setTitle, menuBar, contextMenu,
     dialog, alert, confirm, promptText, chooseFromList,
     openFile, saveFile, openUrl, revealPath,
   };

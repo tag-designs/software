@@ -18,9 +18,9 @@
 //!   and never blocks on it, so the view stays live during a download.
 //! - The **tag thread** (`tagthread`) owns the [`tagcore::Tag`]. It polls the
 //!   status, runs the engine's commands in order, and runs downloads. Its
-//!   reports come back as [`Msg::Tag`] on the engine thread's channel.
+//!   reports come back as `Msg::Tag` on the engine thread's channel.
 //!
-//! Everything that reaches the engine thread arrives as a [`Msg`] on one
+//! Everything that reaches the engine thread arrives as a `Msg` on one
 //! channel, so every state change happens there and needs no lock. After
 //! each message, or the 1 s tick that notices a silent tag, the loop
 //! rebuilds the view state (`view.rs`) and sends it only if it differs from
@@ -109,7 +109,7 @@ pub enum Event {
 ///         eprintln!("{level} {text}");
 ///     }
 /// });
-/// engine.command("attach", json!({}));
+/// engine.command("ready", json!({}));
 /// println!("{}", engine.query("about", json!({}))["title"]);
 /// ```
 #[derive(Clone)]
@@ -229,8 +229,9 @@ pub(crate) fn set_log_level(name: &str) {
 /// Starts the engine and tag threads and returns the engine's handle.
 /// `sink` receives every [`Event`].
 ///
-/// With [`EngineConfig::auto_attach`] the engine starts attaching at once,
-/// as qtmonitor does when its window opens.
+/// Nothing happens until the page sends `ready`; then, with
+/// [`EngineConfig::auto_attach`], the engine attaches, as qtmonitor does
+/// when its window opens.
 ///
 /// # Panics
 ///
@@ -264,7 +265,6 @@ pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static)
 /// own, so the threads live until the process exits. A confirmed Quit
 /// detaches the tag first, and only then sends [`Event::Exit`].
 fn run(mut monitor: Monitor, sink: Sink, rx: Receiver<Msg>) {
-    monitor.begin();
     let mut last_state = Value::Null;
     loop {
         let wait = monitor
@@ -281,6 +281,9 @@ fn run(mut monitor: Monitor, sink: Sink, rx: Receiver<Msg>) {
             Err(RecvTimeoutError::Disconnected) => break,
         }
         monitor.fire_timers(Instant::now());
+        if monitor.take_republish() {
+            last_state = Value::Null;
+        }
         let state = monitor.view_state();
         if state != last_state {
             sink(Event::State(state.clone()));

@@ -143,6 +143,10 @@ pub(crate) struct Monitor {
     exit: bool,
     /// Quit was confirmed and the tag is being detached first.
     quitting: bool,
+    /// `ready` has been received once.
+    started: bool,
+    /// The page asked for the whole state again.
+    republish: bool,
 }
 
 use super::EngineConfig;
@@ -181,15 +185,25 @@ impl Monitor {
             next_tick: None,
             exit: false,
             quitting: false,
+            started: false,
+            republish: false,
         }
     }
 
-    /// Runs once on the engine thread before the first message: attaches,
-    /// unless the configuration says not to.
-    pub(crate) fn begin(&mut self) {
-        if self.config.auto_attach {
+    /// The page is listening (the `ready` command): the view state is sent
+    /// again, and the first time, the engine attaches unless the
+    /// configuration says not to, as qtmonitor does when its window opens.
+    fn ready(&mut self) {
+        self.republish = true;
+        if !std::mem::replace(&mut self.started, true) && self.config.auto_attach {
             self.attach();
         }
+    }
+
+    /// True once after `ready`: the loop forgets the last state it sent, so
+    /// a page that reloaded gets the whole state again.
+    pub(crate) fn take_republish(&mut self) -> bool {
+        std::mem::take(&mut self.republish)
     }
 
     /// Sends a command to the tag thread.
@@ -484,6 +498,7 @@ impl Monitor {
                 .to_string()
         };
         match cmd {
+            "ready" => self.ready(),
             "answer" => self.answer(args),
             "new_config" => {
                 if let Some(t) = TagType::from_str_name(&text("tagType")) {

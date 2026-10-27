@@ -1,0 +1,135 @@
+/*
+ * Tag Monitor's layout. The look comes from the UI kit; this file only
+ * places the widgets as qtmonitor's window does (compare
+ * host/docs/src/images/qtmonitor-main-finished.png).
+ */
+
+/* The tab bar, centred above the status strip. */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+.tabs button {
+  font: inherit;
+  color: var(--text);
+  background: var(--control-bg, var(--panel-bg));
+  border: 0.5px solid var(--separator);
+  padding: 2px 11px;
+  cursor: default;
+}
+.tabs button:first-child { border-radius: 5px 0 0 5px; }
+.tabs button:last-child { border-radius: 0 5px 5px 0; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+/* The status strip: one line, values at fixed widths so it does not jump. */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--separator);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.strip .link { min-width: 84px; font-weight: 600; }
+.strip .link .dot-on { color: #2e9d4a; }
+.strip .link .dot-off { color: #c62828; }
+.strip .caption { color: var(--text-secondary); }
+.strip .value { margin-right: 6px; }
+.strip .value.warn { color: var(--fail); font-weight: 600; }
+/* Each value reserves the width of its longest text, but gives some up
+   before the strip would overflow a narrow window. */
+.strip .value { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.strip .w-type { flex-basis: 86px; }
+.strip .w-state { flex-basis: 92px; }
+.strip .w-clock { flex-basis: 74px; }
+.strip .w-voltage { flex-basis: 44px; }
+.strip .w-test { flex-basis: 116px; }
+.strip .caption, .strip .link, .strip .approved, .strip .kit-button { flex: none; }
+.strip .kit-spacer { flex: 1; min-width: 0; }
+.strip .approved { display: flex; align-items: center; gap: 4px; }
+.strip .kit-button { min-width: 64px; }
+
+.pages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 8px;
+}
+.page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.page[hidden] { display: none; }
+
+/* Tag page: identity on the left, log counts on the right. */
+.tag-groups {
+  display: flex;
+  gap: 8px;
+  margin: 20px 22px 0;
+}
+.tag-groups.disabled { opacity: 0.55; }
+.tag-groups .info { flex: 1; }
+.tag-groups .data { width: 190px; }
+.info-form { grid-template-columns: max-content minmax(0, 1fr); }
+.field {
+  display: inline-block;
+  min-height: 17px;
+  padding: 0 4px;
+  text-align: right;
+  background: var(--field-bg, var(--bg));
+  border: 0.5px solid var(--separator);
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data .kit-panel { display: flex; flex-direction: column; gap: 8px; }
+.data .count { display: flex; flex-direction: column; gap: 4px; padding-bottom: 28px; }
+.data .count .field { width: 110px; }
+.data [hidden] { display: none; }
+
+/* Configuration page, until the form arrives (phase 3). */
+.config-none { margin: 40px auto; color: var(--text-secondary); }
+.config-doc { flex: 1; display: flex; flex-direction: column; min-height: 0; margin: 10px 4px 0; }
+.config-doc[hidden] { display: none; }
+.config-head { display: flex; gap: 10px; font-weight: 600; margin-bottom: 6px; }
+.config-text {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  font: 11px ui-monospace, Menlo, monospace;
+  background: var(--panel-bg);
+  border-radius: 6px;
+}
+
+/* Error Log page: the kit's log drawer, filling the page. */
+.log-page { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 4px; }
+.log-page textarea { flex: 1; min-height: 0; }
+
+/* Progress sheets (erase and download). */
+.progress-body { display: flex; flex-direction: column; gap: 10px; min-width: 300px; }
+.progress-body .kit-progress { width: 100%; }
+
+/* Start Anyway: the failing checks as bullets. */
+.failures { margin: 6px 0 0; padding-left: 18px; }
+
+/* Browser preview only: the scenario switcher. */
+.mock-panel {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 200;
+  font-size: 11px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--menu-bg);
+  border: 0.5px solid var(--menu-border);
+  box-shadow: var(--menu-shadow);
+}
+.mock-panel .kit-select { height: 20px; font-size: 11px; }

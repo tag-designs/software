@@ -2,7 +2,7 @@
 //! `TagWorker` (`host/applications/qtmon/session/livetagsession.h`).
 //!
 //! It is the only code that touches the [`Tag`]. It polls the status every
-//! [`STATUS_POLL_MS`](crate::model::monitormodel::STATUS_POLL_MS) while
+//! [`STATUS_POLL_MS`] while
 //! attached, runs each [`TagCmd`] in order, and runs downloads, which block
 //! only it. Everything it learns goes back to the engine thread as a
 //! [`Report`]; it decides nothing.

@@ -244,6 +244,13 @@ html, body {
 .kit-menu-item:hover:not(.disabled) { background: var(--accent); color: var(--accent-text); }
 .kit-menu-item.disabled { color: var(--text-disabled); }
 .kit-menu-sep { height: 1px; margin: 5px 8px; background: var(--separator); }
+/* Submenus open to the right while their item is hovered; a popup menu is
+   a drop-down placed at the pointer. */
+.kit-menu-item.kit-has-submenu { position: relative; }
+.kit-submenu-arrow { margin-left: auto; padding-left: 16px; font-size: 10px; }
+.kit-menu-dropdown.kit-submenu { left: 100%; top: -5px; }
+.kit-menu-item.kit-has-submenu:hover:not(.disabled) > .kit-submenu { display: block; color: var(--text); }
+.kit-menu-dropdown.kit-popup { display: block; position: fixed; z-index: 150; }
 
 /* ---- Controls --------------------------------------------------------- */
 
