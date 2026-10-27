@@ -266,6 +266,14 @@ any wait.
 
 Changes that have already gone wrong once, or that the bench rules forbid:
 
+- **Do not let an attached tag go quiet.** A tag sleeps after about 4.5 s
+  without a request ([monitor interface](../../../../docs/shared/monitor-interface.md#sleep-and-reset-interaction)),
+  and a sleeping tag answers nothing until it is reset. The 400 ms status
+  poll is what keeps it awake. The app opts out of macOS App Nap for this
+  reason (`stay_awake` in `app/src/main.rs`): App Nap stretched the poll past
+  the limit while the window was in the background. A poll that fails after
+  a gap of 4 s or more forgets the tag at once and says it went to sleep, and
+  `wake_tag` attaches again at the start of a session rather than failing.
 - **Do not start the tag** at the end of a session, and do not send SetRtc
   to a started tag.
 - **Do not open probes through `probe_rs::probe::list::Lister`.** It

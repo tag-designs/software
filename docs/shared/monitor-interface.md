@@ -318,6 +318,19 @@ Monitor attachment is part of the low-power contract:
 `MONCONNECTED` remains a narrow attach hint: it is `DEMCR.VC_CORERESET`. It is
 not the U3 session truth. U3 session truth is the shared request word.
 
+**A host must keep talking to an attached tag.** An IDLE tag that hears
+nothing from the host goes to sleep, and once asleep every SWD access fails
+(the base reports status `0x81`, or the USB transfer times out) until a reset.
+Measured on 2026-10-26 on an IDLE UIUCTag (STM32L432, Tag Breakout Base L432
+v1): a status request after 4 s of host silence was answered, and one after
+5 s was not, in every trial. Status polls every 400 ms kept it awake for 30 s,
+and the clock runs from the last request, not from the attach. Traffic to the
+base alone (voltage reads) does not count. Keep the gap between requests well
+under 4 s; Tag Programmer polls every 400 ms, and attaches again at the start
+of a session if the tag does not answer. This is shorter than the 60 s L4
+watchdog above, so some other rule ends the session sooner; that rule has not
+been identified here.
+
 ## Current Target Split
 
 STM32L4 targets, including PresTag:

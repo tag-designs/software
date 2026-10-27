@@ -4265,6 +4265,7 @@ name = "tagprogram"
 version = "0.1.0"
 dependencies = [
  "log",
+ "objc2-foundation",
  "serde_json",
  "tagprogram-core",
  "tauri",

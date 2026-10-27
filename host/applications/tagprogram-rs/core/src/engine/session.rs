@@ -253,7 +253,10 @@ impl Station {
     /// alerts and returns if [`Station::can_program`] refuses. Otherwise saves
     /// the label, stops the status poll and starts a session: at
     /// [`Step::Stopping`] for an attached tag, or straight to the programmer
-    /// for a blank board. The UI has already confirmed any label conflict.
+    /// for a blank board. An attached tag that has gone to sleep is woken
+    /// first with [`Station::wake_tag`] (which resets it); one that still
+    /// does not answer ends the session FAILED with nothing programmed. The
+    /// UI has already confirmed any label conflict.
     pub(crate) fn program(&mut self, label: &str) {
         self.check_record();
         if let Err(why) = self.can_program() {
@@ -280,6 +283,15 @@ impl Station {
         self.session = Some(s);
         if !self.attached() {
             self.run_programmer();
+            return;
+        }
+        // A tag left without requests sleeps and stops answering; wake it
+        // (re-attaching, which resets it) rather than fail at the first tick.
+        if !self.wake_tag() {
+            self.finish(
+                "FAILED: the tag does not answer",
+                "The tag does not answer, even after attaching again. Check that it is seated and powered, then press Attach.",
+            );
             return;
         }
         self.set_step(Step::Stopping, "Stopping the tag");
@@ -327,7 +339,7 @@ impl Station {
             .unwrap_or_default();
         self.session = Some(s);
 
-        if !self.attached() && !self.reattach() {
+        if (!self.attached() && !self.reattach()) || !self.wake_tag() {
             self.finish(
                 "FAILED: the tag does not answer",
                 "The tag does not answer, so it cannot be tested.",

@@ -65,7 +65,12 @@ pub fn next_page(link: &str) -> Option<String> {
         params
             .split(';')
             .any(|p| p.trim() == r#"rel="next""#)
-            .then(|| url.trim().trim_start_matches('<').trim_end_matches('>').to_owned())
+            .then(|| {
+                url.trim()
+                    .trim_start_matches('<')
+                    .trim_end_matches('>')
+                    .to_owned()
+            })
     })
 }
 
@@ -433,7 +438,8 @@ impl Catalog {
                 .and_then(next_page);
             listed.extend(parse_releases(&reply.text().map_err(|e| e.to_string())?));
         }
-        if let Err(e) = std::fs::write(self.cache_dir.join(LISTING_FILE), listing_to_json(&listed)) {
+        if let Err(e) = std::fs::write(self.cache_dir.join(LISTING_FILE), listing_to_json(&listed))
+        {
             log::warn!("Could not save the release listing for offline use: {e}");
         }
         self.set_releases(listed);

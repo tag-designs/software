@@ -78,6 +78,14 @@ pub(crate) const CLOCK_TOLERANCE_S: f64 = 2.0;
 const BASE_POLL: Duration = Duration::from_millis(1000);
 /// How often an attached tag's status is read while no session runs.
 const STATUS_POLL: Duration = Duration::from_millis(400);
+/// How long a tag may go without a host request and still be assumed awake.
+///
+/// A tag's state machine puts it to sleep when nothing has asked it anything
+/// for a few seconds; asleep, every SWD access fails until a reset. On an
+/// IDLE UIUCTag a request after 4 s of quiet was answered and one after 5 s
+/// was not, every time (2026-10-26). The status poll is what keeps an
+/// attached tag awake, so a gap at least this long means it may be asleep.
+const TAG_QUIET_SLEEP: Duration = Duration::from_secs(4);
 
 /// The station checks, in display order.
 ///
@@ -223,6 +231,9 @@ pub(crate) struct Station {
     pub(crate) offset: Option<f64>,
     /// Consecutive failed status polls (see [`MISSED_POLLS`]).
     missed: u32,
+    /// When the tag last answered a status read; `None` when no tag is
+    /// attached. See [`TAG_QUIET_SLEEP`].
+    last_answer: Option<Instant>,
     /// The next monitor attach attempt and the tries left, while attaching.
     attach_retry: Option<(Instant, u32)>,
     /// The next USB listing, while no base is found.
@@ -358,6 +369,7 @@ impl Station {
             status: None,
             offset: None,
             missed: 0,
+            last_answer: None,
             attach_retry: None,
             base_poll: None,
             status_poll: None,
@@ -1067,6 +1079,43 @@ impl Station {
         self.status = None;
         self.offset = None;
         self.missed = 0;
+        self.last_answer = None;
+    }
+
+    /// Makes sure an attached tag answers before a session talks to it:
+    /// true if it does.
+    ///
+    /// A status read is tried first. If the tag does not answer -- typically
+    /// it went to sleep because nothing asked it anything for longer than
+    /// [`TAG_QUIET_SLEEP`] -- the monitor is attached again, **which resets
+    /// the tag**, and `TagInfo` and the status are read afresh. That is
+    /// acceptable at the start of a session: programming replaces the image
+    /// anyway, and a retest starts from a fresh boot either way.
+    pub(crate) fn wake_tag(&mut self) -> bool {
+        if self.read_status() {
+            return true;
+        }
+        let quiet = self.last_answer.map_or(String::new(), |t| {
+            format!(
+                " after {:.0} s without a request",
+                t.elapsed().as_secs_f64()
+            )
+        });
+        warn!(
+            "The tag did not answer{quiet}; it may have gone to sleep. Attaching again, which resets it."
+        );
+        if !self.reattach() {
+            return false;
+        }
+        match self.tag.tag_info() {
+            Ok(info) => {
+                self.info = Some(info);
+                self.read_status();
+                self.check_tag_state();
+                true
+            }
+            Err(_) => false,
+        }
     }
 
     /// Sets the Supply check from the connect check's voltage: qtprogram's
@@ -1099,6 +1148,7 @@ impl Station {
                 self.offset = Some((status.millis - now_ms()) as f64 / 1000.0);
                 self.status = Some(status);
                 self.missed = 0;
+                self.last_answer = Some(Instant::now());
                 true
             }
             Err(_) => false,
@@ -1134,6 +1184,11 @@ impl Station {
     /// The status poll: qtprogram's `poll`. Skipped during a session or
     /// while a worker owns the base. After [`MISSED_POLLS`] failed reads in a
     /// row the tag is forgotten and the user asked to attach again.
+    ///
+    /// A failed read after the tag has gone [`TAG_QUIET_SLEEP`] without an
+    /// answer forgets it at once: the polls were held up (the engine was
+    /// busy, or the process throttled), the tag went to sleep, and it will
+    /// not answer again until it is reset. The Tag row says so.
     fn poll(&mut self) {
         if self.session_running() || !self.attached() || self.worker_busy {
             return;
@@ -1142,14 +1197,20 @@ impl Station {
             self.check_tag_state();
             return;
         }
+        let asleep = self
+            .last_answer
+            .filter(|t| t.elapsed() >= TAG_QUIET_SLEEP)
+            .map(|t| t.elapsed().as_secs_f64());
         self.missed += 1;
-        if self.missed >= MISSED_POLLS {
+        if self.missed >= MISSED_POLLS || asleep.is_some() {
             self.forget_tag();
-            self.set(
-                Check::Tag,
-                Level::Warn,
-                "The tag stopped answering. Press Attach.",
-            );
+            let text = match asleep {
+                Some(s) => format!(
+                    "The tag went to sleep: nothing asked it anything for {s:.0} s. Press Attach."
+                ),
+                None => "The tag stopped answering. Press Attach.".to_owned(),
+            };
+            self.set(Check::Tag, Level::Warn, text);
             self.set(Check::TagState, Level::Pending, "");
             self.set(
                 Check::Swd,

@@ -86,6 +86,31 @@ fn user_guide_url() -> String {
         .unwrap_or_else(|| ONLINE_GUIDE.to_owned())
 }
 
+/// Opts the whole process out of macOS App Nap, for its lifetime.
+///
+/// A tag sleeps after about 4.5 s without a host request (its state machine
+/// does this on purpose), and the engine's 400 ms status poll is what keeps
+/// an attached tag awake. App Nap throttles the timers of an app whose window
+/// is in the background or covered, which stretched that poll past the
+/// tag's limit: the tag fell asleep while the window still showed IDLE, and
+/// the next Program failed with "The tag stopped answering". A
+/// user-initiated activity is the documented opt-out; it still allows the
+/// system to sleep when idle. The activity token is leaked on purpose, so
+/// the opt-out lasts until the process exits. Does nothing on other
+/// platforms.
+fn stay_awake() {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
+        let reason = NSString::from_str("Keeping an attached tag awake");
+        let token = NSProcessInfo::processInfo().beginActivityWithOptions_reason(
+            NSActivityOptions::UserInitiatedAllowingIdleSystemSleep,
+            &reason,
+        );
+        std::mem::forget(token);
+    }
+}
+
 /// Starts Tauri with the dialog and opener plugins, builds the
 /// [`EngineConfig`] from the platform directories, installs the engine's
 /// logger, spawns the engine and registers the two commands.
@@ -96,6 +121,7 @@ fn user_guide_url() -> String {
 /// start or `setup` fails, e.g. when no app data, config or home directory
 /// can be determined.
 fn main() {
+    stay_awake();
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
