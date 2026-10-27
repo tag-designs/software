@@ -1322,6 +1322,36 @@ impl Panel {
         }
     }
 
+    /// The Config fields the panel reads and writes, as ConfigShape paths
+    /// (ConfigPanel::paths); [`check_panels_against_shapes`] checks them
+    /// against each tag type's default configuration.
+    pub fn paths(&self) -> Vec<&'static str> {
+        match self {
+            Panel::Schedule(s) => match s.variant {
+                ScheduleVariant::Interval => vec!["active_interval", "hibernate"],
+                ScheduleVariant::IntervalWithPeriod => {
+                    vec!["active_interval", "hibernate", "period"]
+                }
+                ScheduleVariant::StartDelay => vec!["start_delay"],
+            },
+            Panel::BitTagLog(_) => vec!["bittag_log"],
+            Panel::Adxl(a) => {
+                let mut p = vec!["adxl362.act_thresh_g", "adxl362.inactive_sec"];
+                if a.has_inact() {
+                    p.push("adxl362.inact_thresh_g");
+                }
+                if a.variant == AdxlVariant::Standard {
+                    p.extend(["adxl362.range", "adxl362.freq", "adxl362.filter"]);
+                }
+                if a.owns_accel_type {
+                    p.push("adxl362.accel_type");
+                }
+                p
+            }
+            Panel::Lsm6(_) => vec!["lsm6.odr", "lsm6.accel_rng", "lsm6.gyro_rng"],
+        }
+    }
+
     /// The panel's title, for the page.
     fn title(&self) -> &'static str {
         match self {
@@ -1332,6 +1362,84 @@ impl Panel {
             Panel::Lsm6(_) => "IMU",
         }
     }
+}
+
+/// True when `a` is `b`, or one is a field inside the other.
+fn overlaps(a: &str, b: &str) -> bool {
+    let under = |child: &str, parent: &str| {
+        child.len() > parent.len()
+            && child.starts_with(parent)
+            && child.as_bytes()[parent.len()] == b'.'
+    };
+    a == b || under(a, b) || under(b, a)
+}
+
+/// Checks the panel table ([`panels_for_tag`]) against every tag type's
+/// ConfigShape (its `default-config.json`), as `qtmonitor
+/// --check-config-panels` does, with the same messages; empty when they
+/// agree.
+///
+/// For each tag type with panels: every field a panel owns must be a Config
+/// field the tag's default configuration lists, and every field it lists
+/// must be owned by a panel, or lie inside or around one a panel owns. A tag
+/// type with a default configuration must have panels, and one with panels
+/// a default configuration. A default configuration that failed to load is
+/// reported too.
+///
+/// Run it when a tag type, a panel or a `default-config.json` changes
+/// (`design/adding-a-tag-type.md`); `tests/panels.rs` runs it.
+pub fn check_panels_against_shapes() -> Vec<String> {
+    use tagcore::configshape::ConfigShape;
+    use tagcore::proto::DESCRIPTOR_POOL;
+    let form = ConfigForm::new();
+    let mut problems = Vec::new();
+    let tag_types: Vec<TagType> = DESCRIPTOR_POOL
+        .get_enum_by_name("TagType")
+        .expect("TagType is in the descriptor pool")
+        .values()
+        .filter_map(|v| TagType::try_from(v.number()).ok())
+        .collect();
+    for &tag_type in &tag_types {
+        let tag = tag_type.as_str_name();
+        let ids = panels_for_tag(tag_type);
+        let shape = ConfigShape::for_tag(tag_type);
+        if ids.is_empty() {
+            if !shape.paths().is_empty() {
+                problems.push(format!("{tag}: has a default configuration but no panels"));
+            }
+            continue;
+        }
+        if shape.paths().is_empty() {
+            problems.push(format!("{tag}: has panels but no default configuration"));
+            continue;
+        }
+        let mut owned = Vec::new();
+        for &id in ids {
+            for path in form.panels[id].paths() {
+                owned.push(path);
+                if !ConfigShape::is_config_path(path) {
+                    problems.push(format!(
+                        "{tag}: panel {} owns \"{path}\", which is not a Config field",
+                        PANEL_NAMES[id]
+                    ));
+                } else if !shape.paths().contains(path) {
+                    problems.push(format!(
+                        "{tag}: panel {} edits {path}, which the tag's default configuration does not list",
+                        PANEL_NAMES[id]
+                    ));
+                }
+            }
+        }
+        for path in shape.paths() {
+            if !owned.iter().any(|o| overlaps(path, o)) {
+                problems.push(format!(
+                    "{tag}: no panel edits {path}, which the tag's default configuration lists"
+                ));
+            }
+        }
+    }
+    problems.extend(ConfigShape::load_errors().iter().cloned());
+    problems
 }
 
 /// The page of panels: every panel built once, the tag type choosing which

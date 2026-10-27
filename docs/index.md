@@ -403,7 +403,9 @@ design document.
 ### Applications / tagmonitor-rs
 
 - [Tag Monitor (Rust)](../host/applications/tagmonitor-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
+- [Adding a tag type to Tag Monitor](../host/applications/tagmonitor-rs/design/adding-a-tag-type.md) *(procedure)* — How to make Tag Monitor (Rust, and qtmonitor with it) support a new tag type - the TagType value, the default configuration, the panel table, a new panel when the tag has new fields, the probe cases and goldens, downloads, and the checks that say it is done.
 - [Building and packaging Tag Monitor (Rust)](../host/applications/tagmonitor-rs/design/build-and-packaging.md) — How Tag Monitor in Rust is built and shipped - the cargo workspace, the CMake target that wraps cargo and links the C++ log writer (tagcore_c), the per-platform install layout, the CI build, the third-party notices, and what it shares with Tag Programmer's packaging.
+- [Tag Monitor (Rust): architecture and source map](../host/applications/tagmonitor-rs/design/architecture.md) — How Tag Monitor in Rust is put together - the three layers and two threads, a roadmap of every file and the qtmonitor code it ports, how a command and a form edit travel through the code, where to make common changes, and what keeps it in step with qtmonitor.
 - [Tag Monitor (Rust): UI/engine contract](../host/applications/tagmonitor-rs/design/ui-engine-contract.md) — The contract between Tag Monitor's Rust engine and its web UI - the threads, the view state the engine publishes, the prompts that replace qtmonitor's dialogs, and the commands and queries the UI sends.
 
 ### Applications / tagprogram-rs

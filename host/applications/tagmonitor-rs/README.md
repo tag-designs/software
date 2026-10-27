@@ -26,6 +26,16 @@ It follows the structure qtmonitor was given for this purpose
 | 3 | Configuration tab: the panels' rules as a field spec | done; all 710 probe goldens match |
 | 4 | Design docs, CMake and packaging | done: [build and packaging](design/build-and-packaging.md) |
 
+## Documents
+
+| Document | Read it for |
+| --- | --- |
+| [design/architecture.md](design/architecture.md) | The layers and threads, a map of every file and the qtmonitor code it ports, how a command and an edit travel, and where to make common changes |
+| [design/adding-a-tag-type.md](design/adding-a-tag-type.md) | Supporting a new tag type, in Tag Monitor and qtmonitor together |
+| [design/ui-engine-contract.md](design/ui-engine-contract.md) | The view state, prompts, commands and queries between engine and page, and the deliberate differences from qtmonitor |
+| [design/build-and-packaging.md](design/build-and-packaging.md) | Building with cargo and CMake, `tagcore_c`, the install layout, CI and notices |
+| [decision 0037](../../../docs/decisions/0037-host-tagmonitor-rs.md) | Why it was built this way |
+
 ## The model
 
 `core/src/model/` ports `host/applications/qtmon/core/` module for module:
@@ -83,6 +93,8 @@ cargo test
   document, the monitor model, and the window's remaining rules. It also
   compares the menu bar with the menu-bar part of `test/menus.txt`.
 
+- **`tests/panels.rs`** checks the panel table against every tag type's
+  default configuration, as `qtmonitor --check-config-panels` does.
 - **`tests/config_probe.rs`** replays all 710 configuration probe cases
   (`test/cases/`) and matches the goldens (`test/golden/`): the bytes Start
   sends, the document, the panels shown, the dialogs, and every control's
