@@ -349,6 +349,10 @@ design document.
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
 - [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/editor-and-start-checks.md) — qtmonitor is a configuration editor as well as a tag monitor -- one document from defaults, a file or a tag, commands as actions in in-window menus, a status strip with Approved, Start and Stop, and Start checks (clock within 2 s, self-test ALL_PASSED, Approved) that warn and let the user continue or cancel.
 
+### Applications / qtmon / Proposals
+
+- [qtmonitor: engine, model and views](../host/applications/qtmon/design/proposals/engine-model-view.md) *(proposal, proposed)* — Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
+
 ### Applications / qtmon / Proposals / config-form-mockup
 
 - [qtmonitor Configuration Form Mockup](../host/applications/qtmon/design/proposals/config-form-mockup/README.md) — A web mockup of qtmonitor's Configuration tab split the proposed way - the panels as a data spec, a stand-in engine owning the document and every rule, and a generic renderer that only draws field kinds and exchanges messages.
