@@ -22,12 +22,11 @@ use tagcore::configshape::ConfigShape;
 use tagcore::proto::{Config, TagInfo, TagState, TagType};
 
 use super::download::{self, DEFAULT_DOWNLOAD_NAME, DownloadResult};
-use super::tagthread::{Report, TagCmd, now_ms};
+use super::tagthread::{Report, TagCmd, now_ms, now_s};
 use super::{query_error, set_log_level};
 use crate::model::commands::{ALL_COMMANDS, Availability, Command, availability, command_name};
-use crate::model::configdocument::{
-    ConfigDocument, DocumentSource, OnAttach, ParseFileError, on_attach,
-};
+use crate::model::configdocument::{ConfigDocument, DocumentSource, OnAttach, on_attach};
+use crate::model::configeditor::{ConfigEditor, OpenResult};
 use crate::model::monitormodel::{MonitorEvent, MonitorModel, NO_ANSWER_MS, TEST_TIMEOUT_MS};
 use crate::model::startchecks::{start_check_failures, start_check_message};
 use crate::model::tagrules::{REQUIRED_MONITOR_VERSION, monitor_version_accepted};
@@ -119,11 +118,8 @@ pub(crate) struct Monitor {
     pub(super) shown_info: Option<TagInfo>,
     /// Attaching: bases are being listed or the tag thread is attaching.
     pub(super) attaching: bool,
-    /// The configuration document.
-    pub(super) doc: ConfigDocument,
-    /// The values the form holds, while there is a document. Phase 2 has no
-    /// editor, so these change only by loading or Reset to Defaults.
-    pub(super) form: Option<Config>,
+    /// The configuration document and its form.
+    pub(super) editor: ConfigEditor,
     /// Questions waiting for the UI; the first is shown.
     pub(super) prompts: VecDeque<Prompt>,
     /// The next prompt id.
@@ -174,8 +170,7 @@ impl Monitor {
             model: MonitorModel::new(),
             shown_info: None,
             attaching: false,
-            doc: ConfigDocument::default(),
-            form: None,
+            editor: ConfigEditor::new(),
             prompts: VecDeque::new(),
             next_id: 1,
             recent,
@@ -249,9 +244,10 @@ impl Monitor {
     pub(super) fn available(&self, command: Command) -> Availability {
         availability(
             command,
-            &self
-                .model
-                .command_inputs(self.doc.has_document(), self.doc.tag_type()),
+            &self.model.command_inputs(
+                self.editor.document().has_document(),
+                self.editor.document().tag_type(),
+            ),
         )
     }
 
@@ -285,36 +281,33 @@ impl Monitor {
 
     /// What the form would send now; `None` with no document.
     fn collect(&self) -> Option<Config> {
-        self.form.clone()
+        self.editor.collect(now_s())
     }
 
     /// Whether the document has unsaved changes.
     pub(super) fn is_modified(&self) -> bool {
-        self.doc.is_modified(self.collect().as_ref())
+        self.editor.is_modified(now_s())
     }
 
     /// The document's name for the title: `"BITTAG defaults"`, a file name,
     /// `"BITTAG from tag"`, or empty.
     pub(super) fn document_name(&self) -> String {
-        let tag_type = self.doc.tag_type().as_str_name();
-        match self.doc.source() {
-            DocumentSource::None => String::new(),
-            DocumentSource::Defaults => format!("{tag_type} defaults"),
-            DocumentSource::File => file_name(self.doc.path()),
-            DocumentSource::Tag => format!("{tag_type} from tag"),
+        self.editor.document_name()
+    }
+
+    /// Shows the messages a panel raised on loading (only BitTag's missing
+    /// log format), as qtmonitor's message boxes.
+    fn panel_messages(&mut self, messages: Vec<String>) {
+        for m in messages {
+            info!("{m}");
+            self.alert("Tag Monitor", &m, "", "", "info");
         }
     }
 
-    /// Loads `config` as the document (ConfigTab::load). A reset keeps the
-    /// old baseline, so it shows as unsaved changes.
-    fn load(&mut self, config: Config, source: DocumentSource, path: &str, keep_baseline: bool) {
-        self.doc.load(config.clone(), source, path);
-        self.form = Some(config);
-        if !keep_baseline {
-            let written = self.collect();
-            self.doc.set_baseline(written.as_ref());
-        }
-        self.doc.content_changed();
+    /// Loads `config` as the document (ConfigTab::load).
+    fn load(&mut self, config: Config, source: DocumentSource, path: &str) {
+        let messages = self.editor.load(config, source, path, false, now_s());
+        self.panel_messages(messages);
     }
 
     /// Runs `after` now if nothing is unsaved, else asks first
@@ -334,11 +327,11 @@ impl Monitor {
             After::Open => self.ask(PromptKind::OpenConfig),
             After::OpenFile(path) => self.open_file(&path),
             After::New(tag_type) => {
-                if let Some(defaults) = ConfigShape::default_config(tag_type) {
-                    self.load(defaults, DocumentSource::Defaults, "", false);
+                if let Some(messages) = self.editor.load_defaults(tag_type, now_s()) {
+                    self.panel_messages(messages);
                 }
             }
-            After::AttachConfig(config) => self.load(*config, DocumentSource::Tag, "", false),
+            After::AttachConfig(config) => self.load(*config, DocumentSource::Tag, ""),
             // Detach first, as qtmonitor's session does when it closes; the
             // exit follows the tag thread's Detached.
             After::Quit if self.model.attached() || self.attaching => {
@@ -382,20 +375,19 @@ impl Monitor {
 
     /// Loads the file's text onto its tag type's defaults, or says why not.
     fn open_text(&mut self, path: &str, text: &str, fallback: TagType) {
-        match ConfigDocument::parse_file(text, fallback) {
-            Ok(config) => {
-                let full = absolute(path);
-                self.load(config, DocumentSource::File, &full, false);
-                self.add_recent(&full);
-            }
-            Err(ParseFileError::Parse(detail)) => self.alert(
+        let full = absolute(path);
+        let (result, messages) = self.editor.open_text(text, fallback, &full, now_s());
+        self.panel_messages(messages);
+        match result {
+            OpenResult::Opened => self.add_recent(&full),
+            OpenResult::ParseError(detail) => self.alert(
                 "Open Configuration",
                 &format!("Couldn't read {path}\n\n{detail}"),
                 "",
                 "",
                 "warning",
             ),
-            Err(ParseFileError::NoDefaults(detail)) => self.alert(
+            OpenResult::NoDefaults(detail) => self.alert(
                 "Open Configuration",
                 &format!("Couldn't open {path}\n\n{detail}"),
                 "",
@@ -429,7 +421,7 @@ impl Monitor {
             return false;
         }
         let full = absolute(path);
-        self.doc.saved(&full, config);
+        self.editor.saved(&full, config);
         self.add_recent(&full);
         true
     }
@@ -437,12 +429,13 @@ impl Monitor {
     /// The path Save suggests: the document's file, or
     /// `~/<tagtype>-config.json`.
     pub(super) fn suggested_config_path(&self) -> String {
-        if !self.doc.path().is_empty() {
-            return self.doc.path().to_string();
+        let doc = self.editor.document();
+        if !doc.path().is_empty() {
+            return doc.path().to_string();
         }
         let name = format!(
             "{}-config.json",
-            self.doc.tag_type().as_str_name().to_lowercase()
+            doc.tag_type().as_str_name().to_lowercase()
         );
         self.config
             .home_dir
@@ -453,7 +446,7 @@ impl Monitor {
 
     /// The folder Open starts in: the document's, or home.
     pub(super) fn open_start_dir(&self) -> String {
-        Path::new(self.doc.path())
+        Path::new(self.editor.document().path())
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or(&self.config.home_dir)
@@ -499,6 +492,12 @@ impl Monitor {
         };
         match cmd {
             "ready" => self.ready(),
+            "set_field" => {
+                let id = text("id");
+                if !self.editor.edit(&id, &args["value"]) {
+                    debug!("set_field {id}: no such editable control");
+                }
+            }
             "answer" => self.answer(args),
             "new_config" => {
                 if let Some(t) = TagType::from_str_name(&text("tagType")) {
@@ -508,7 +507,7 @@ impl Monitor {
             "open_recent" => self.confirm_discard(After::OpenFile(text("path"))),
             "set_approved" => {
                 let on = args.get("on").and_then(Value::as_bool).unwrap_or(false);
-                self.doc.set_approved(on);
+                self.editor.set_approved(on);
             }
             "cancel_download" => self.cancel.store(true, Ordering::Relaxed),
             "hide_erase" => self.erase_shown = false,
@@ -552,10 +551,8 @@ impl Monitor {
             Command::Open => self.confirm_discard(After::Open),
             Command::Save => self.ask(PromptKind::SaveConfig(None)),
             Command::Reset => {
-                if let Some(defaults) = ConfigShape::default_config(self.doc.tag_type()) {
-                    let (source, path) = (self.doc.source(), self.doc.path().to_string());
-                    self.load(defaults, source, &path, true);
-                }
+                let messages = self.editor.reset_to_defaults(now_s());
+                self.panel_messages(messages);
             }
         }
     }
@@ -574,7 +571,7 @@ impl Monitor {
     /// The failing start checks' sentences.
     fn start_check_failures(&self) -> Vec<String> {
         let (offset, test) = (self.model.clock_offset_s(), self.model.last_test());
-        start_check_failures(offset, test, self.doc.approved())
+        start_check_failures(offset, test, self.editor.approved())
             .into_iter()
             .map(|c| start_check_message(c, offset, test))
             .collect()
@@ -592,9 +589,8 @@ impl Monitor {
 
     /// Sends the form's configuration to start the tag.
     fn start(&mut self) {
-        match self.collect() {
+        match self.editor.get_config(now_s()) {
             Some(config) => {
-                self.doc.set_config(config.clone());
                 self.send(TagCmd::Start(Box::new(config)));
             }
             None => debug!("Start: the configuration cannot be written"),
@@ -716,7 +712,7 @@ impl Monitor {
                 self.shown_info = Some((*info).clone());
                 self.model.set_attached(*info);
                 self.next_tick = Some(Instant::now() + TICK);
-                match on_attach(self.doc.source()) {
+                match on_attach(self.editor.document().source()) {
                     OnAttach::Keep => {}
                     OnAttach::ReplaceIfDiscarded => {
                         self.confirm_discard(After::AttachConfig(config))
@@ -730,19 +726,21 @@ impl Monitor {
             }
             Report::Detached => {
                 self.model.set_detached();
+                self.editor.detach();
                 self.erase_shown = false;
                 self.download = None;
                 self.silence_s = 0;
                 self.exit |= std::mem::take(&mut self.quitting);
             }
             Report::Status(status, voltage, host_ms) => {
+                self.editor.state_update(status.state());
                 let events = self.model.apply_status(*status, voltage, host_ms);
                 self.silence_s = 0;
                 for event in events {
                     self.monitor_event(event);
                 }
             }
-            Report::ConfigRead(config) => self.load(*config, DocumentSource::Tag, "", false),
+            Report::ConfigRead(config) => self.load(*config, DocumentSource::Tag, ""),
             Report::StartSent(message) => self.model.start_sent(now_ms(), message),
             Report::TestSent => {}
             Report::EraseSent => {

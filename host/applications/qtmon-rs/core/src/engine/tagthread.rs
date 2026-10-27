@@ -86,6 +86,11 @@ pub(crate) enum Report {
     DownloadFinished(super::download::DownloadResult),
 }
 
+/// The host clock, seconds since the epoch.
+pub(crate) fn now_s() -> i64 {
+    now_ms().div_euclid(1000)
+}
+
 /// The host clock, ms since the epoch.
 pub(crate) fn now_ms() -> i64 {
     SystemTime::now()

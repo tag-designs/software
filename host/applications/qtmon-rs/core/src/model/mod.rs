@@ -11,6 +11,8 @@
 
 pub mod commands;
 pub mod configdocument;
+pub mod configeditor;
+pub mod configform;
 pub mod menus;
 pub mod monitormodel;
 pub mod startchecks;

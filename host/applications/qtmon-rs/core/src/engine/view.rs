@@ -14,7 +14,6 @@ use tagcore::textformat::format_g;
 
 use super::monitor::{Monitor, PromptKind, VERSION, file_name};
 use crate::model::commands::{ALL_COMMANDS, Availability, command_name};
-use crate::model::configdocument::ConfigDocument;
 use crate::model::menus::{
     EntryText, MenuEntry, MenuItem, Shortcut, command_text, item_text, menu_bar,
 };
@@ -135,8 +134,8 @@ impl Monitor {
             "clock": blank(),
             "voltage": "",
             "test": blank(),
-            "approved": self.doc.approved(),
-            "approvalEnabled": self.doc.has_document(),
+            "approved": self.editor.approved(),
+            "approvalEnabled": self.editor.document().has_document(),
         });
         if !m.attached() {
             return strip;
@@ -194,15 +193,15 @@ impl Monitor {
         })
     }
 
-    /// The Configuration tab. Phase 2 shows the document as the JSON a save
-    /// would write; the form comes in phase 3.
+    /// The Configuration tab: the document and the form's shown panels.
     fn config_json(&self) -> Value {
+        let doc = self.editor.document();
         json!({
-            "document": self.doc.has_document(),
+            "document": doc.has_document(),
             "name": self.document_name(),
-            "tagType": self.doc.tag_type().as_str_name(),
+            "tagType": doc.tag_type().as_str_name(),
             "modified": self.is_modified(),
-            "text": self.form.as_ref().map(ConfigDocument::file_text),
+            "panels": if doc.has_document() { self.editor.form().view() } else { json!([]) },
         })
     }
 
