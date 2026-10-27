@@ -12,16 +12,25 @@ log, and starting downloads from finished or aborted logs.
 
 ## Operating Modes
 
+How the code is divided -- the Qt-free core, the tag session and its worker
+thread, and the window -- is in [design/architecture.md](design/architecture.md).
+
 ### Live Tag Mode
 
 With no maintainer options, `qtmonitor` operates against real hardware:
 
-1. The main window probes USB tag bases during startup.
-2. `MainWindow::Attach()` reads `TagInfo`, `Config`, and `Status` through
-   `tagcore::Tag`.
-3. The status strip and the Tag tab are refreshed by a 400 ms polling timer.
-4. The Configuration tab is attached to the live `Tag` object so Read and Start
-   issue real monitor commands.
+1. The window's tag session is a `LiveTagSession`
+   (`session/livetagsession.h`): a worker thread that owns the `tagcore::Tag`
+   and makes every monitor call. The window never touches the tag.
+2. At startup the window asks the session for the USB tag bases and attaches
+   (asking which base when there are several); the session reports the tag's
+   `TagInfo` and `Config`.
+3. While attached, the worker reads the status every 400 ms. Each status goes
+   through `qtmon::MonitorModel` (`core/monitormodel.h`), and the window draws
+   the model: the status strip, the Tag tab and which commands are available.
+4. Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Erase and
+   Download Data are session commands; each returns at once and reports its
+   outcome later, so the window never waits on the tag.
 
 This is the packaged user-facing mode.
 
@@ -29,49 +38,50 @@ This is the packaged user-facing mode.
 
 Design and rationale: [Configuration Editor, Menus and Start Checks](design/editor-and-start-checks.md).
 
-Every command is a `QAction`, created in `MainWindow::createActions()` and
-placed in the File, Tag, Log and Help menus (in the window, as in sensorviz) and on
-popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
+Every command is a `QAction`. Its text, tooltip and shortcut, and where it
+appears in the File, Tag, Log and Help menus (in the window, as in sensorviz)
+and on the popup menus, are tables in `core/menus.h`;
+`MainWindow::createActions()` and `createMenus()` build everything from them.
+`qtmonitor --check-menus` prints the result, compared with
+[`test/menus.txt`](test/menus.txt). The status strip (`tagstatusstrip.cpp`), which
 `placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows
 Attached or Detached, the tag type, state, clock
 offset, voltage and self-test result, with the Approved box and Start and
 Stop as tool buttons bound to their actions. Start runs
-`MainWindow::startWithChecks()`: `startCheckFailures()` lists any failing
-check (clock beyond `TagStatusStrip::kClockToleranceS`, a reported self-test
+`MainWindow::startWithChecks()`: `qtmon::startCheckFailures()` lists any failing
+check (clock beyond `qtmon::kClockToleranceS`, a reported self-test
 other than ALL_PASSED, Approved not ticked), and the user may start anyway,
-which is logged. `ConfigTab::contentChanged` clears Approved. The Configuration tab's commands are `ConfigTab`
-slots (`NewFromDefaults()`, `Open()`, `Save()`, `SaveAs()`, `ResetToDefaults()`,
-`ReadFromTag()`, `StartTag()`; see `tagconfiguration/README.md`),
-and the error log's are `LogWindow` actions.
+which is logged. Approval belongs to the configuration document
+(`qtmon::ConfigDocument`, `core/configdocument.h`), which withdraws it when
+the values change; the Approved box shows it. The document's commands are
+`ConfigTab` slots (`NewFromDefaults()`, `Open()`, `Save()`,
+`ResetToDefaults()`; see `tagconfiguration/README.md`); Read Configuration and
+Start are the window's, through the tag session. The error log's commands are
+`LogWindow` actions.
 
-`MainWindow::updateActions()` is the one place that decides which actions are
-enabled, from whether a tag is attached, its state and type, whether a
-download or self-test is pending, and whether the Configuration tab holds a
-configuration. `qtmonitor --check-action-states` prints its decisions for
-every combination of those; the expected table is
+`qtmon::availability()` (`core/commands.h`) is the one rule that decides
+which actions are enabled, from whether a tag is attached, its state and type,
+whether a download or self-test is pending, and whether the Configuration tab
+holds a configuration; `MainWindow::updateActions()` applies it.
+`qtmonitor --check-action-states` prints its decisions for every combination
+of those, and `--check-action-wiring` checks that the window applies them; the expected table is
 [`test/action-states.txt`](test/action-states.txt) (see
 [`test/README.md`](test/README.md)).
 
 ### Fixture Screenshot Mode
 
 Fixture mode is a maintainer-only path for generating documentation screenshots
-from captured fake-tag data. It is enabled with `--fake-fixture` and never calls
-`Tag::Attach()`. Its code, with the screenshot capture, is in
-`mainwindow_fixture.cpp`, apart from the live window in `mainwindow.cpp`.
+from captured fake-tag data. It is enabled with `--fake-fixture`, which makes
+the window's tag session a `FixtureSession` (`session/fixturesession.h`) in
+place of the live one; no tag is touched. The screenshot capture is in
+`mainwindow_fixture.cpp`.
 
-The fixture loader reads `host/docs/fixtures/qtmonitor/*.json`, parses the
+The fixture session reads `host/docs/fixtures/qtmonitor/*.json`, parses the
 embedded protobuf JSON objects into `TagInfo`, `Config`, and named `Status`
-messages, then populates the same widgets used by live mode:
-
-- `populateTagInfo()` fills the Tag Information group.
-- `attachConfig()` calls `ConfigTab::SetConfig()` with the captured/default
-  configuration.
-- `applyStatus()` applies the same state-dependent control visibility rules used
-  by live polling.
-
-Fake mode leaves actions enabled or disabled according to the selected tag
-state, so screenshots match the real UI. The command slots guard against fake
-mode and return without issuing hardware commands.
+messages, and reports them as a live session would: attached, then a status.
+The window handles them exactly as it handles a real tag's -- the same model,
+the same drawing, the same command rule -- so screenshots match the real UI.
+Commands sent to the fixture session are logged and ignored.
 
 Screenshot generation uses the fixture's status of the requested name
 (`idle`, `running` or `finished`) when it has one, and otherwise falls back to

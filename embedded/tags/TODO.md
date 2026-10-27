@@ -86,6 +86,48 @@ not been reproduced on a tag.
 
 ## Defects
 
+- **The L4 DebugMonitor handler can clear the MON_REQ of a request still
+  pending.** Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
+  session-clock fix), reading `common/core/src/handlersL4.c` and `monitor.c`
+  after bursts of base 0x81 errors during Synchronize Clock and Self-Test:
+  - **The handler.** `DebugMon_Handler` latches a PROTOBUF request
+    (`monitor_pending`, DCRDR = 0) and leaves MON_REQ set until the main
+    thread runs it in `monitorServicePending()` at a cooperative point. A
+    second PROTOBUF that arrives while one is pending takes the `else`
+    branch, `monitorClearRequest()`, and clears the pending request's
+    MON_REQ. The host then takes that request as done and reads a reply
+    nobody wrote, and `monitorServicePending()` later finds `monitor_pending`
+    with MON_REQ clear and drops the request. The clear is right when no
+    session is open; while a request is pending it should leave MON_REQ
+    alone.
+  - **Why a request stays pending.** Synchronize Clock runs
+    `SetTimeUnixSec()` inside `proto_eval()` in the main thread: it sets the
+    internal RTC, re-initialises it (`tagRtcInit()`), applies the clock
+    correction, and writes the RV3028 over I2C, all while the host waits for
+    MON_REQ to clear. Self-Test's tests run in the main thread straight after
+    the request is accepted.
+  - **The 0x81s themselves.** `tag-test` shows the host's DEMCR reads failing
+    at the SWD level (base 0x81) for most of the time the main thread spends
+    on those operations: 172 failed reads inside one call's wait, about 330 in
+    the run. The handler race does not explain an access failing outright.
+    Ruled out: stop mode (`stopMilliseconds()` and the idle thread stay awake
+    while a session is open) and interrupt masking (an SWD access does not
+    need the CPU). Still open: the bus or clocks disturbed during the RTC,
+    I2C and test work, against the base's 25 immediate WAIT retries. See
+    `embedded/bases/TODO.md`; the base debug connector should settle it.
+  - **An empty reply during a self-test.** With the host change below in
+    place, the Rust `tag-test` (ALL_PASSED) still logged one `GetStatus
+    failed: Tag returned an empty or invalid acknowledgement`: a call that
+    completed with DCRDR = 0. Possible causes, not yet told apart:
+    - the handler race above;
+    - a DEMCR read inside a 0x81 burst that came back without MON_REQ;
+    - `monitorServicePending()` answering 0 because `monitor_enabled` was
+      false.
+  - **Host side, done:** tagcore's `TagMonitor::Rpc()` now waits for an L4
+    tag's MON_REQ and MON_PEND to clear before writing the request buffer
+    (`WaitL4MonitorIdle()`, and `wait_l4_idle()` in tagcore-rs),
+    so a request a failed call left pending is no longer overwritten; qtmonitor pauses its polls for 1.5 s after
+    Synchronize Clock and Self-Test.
 - **The download clock switch's TIM2 prescaler writes do nothing.**
   `fast_msi()`/`slow_msi()` in the PresTag, BitPresTag and UIUCTag
   `datalog.c` raise MSI 12x around one page of `data_logAck()` and write

@@ -79,6 +79,7 @@ design document.
 - [0033. Host: qtmonitor as a configuration editor, with menus and Start checks](decisions/0033-host-qtmonitor-editor-menus-start-checks.md) *(decision)* — qtmonitor became a configuration editor (Open makes a file the document, replacing Restore's merge into the tag), its buttons became actions in in-window menus with Start and Stop kept beside a status strip, and Start checks clock (2 s), the tag's reported self-test and an Approved box, warning with continue or cancel rather than refusing; Help menus share one user-guide finder.
 - [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
 - [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
+- [0036. Host: qtmonitor as a core, a tag session and a window](decisions/0036-host-qtmonitor-engine-model-view.md) *(decision)* — qtmonitor was restructured into a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands; the Calibrate command was dropped. Behaviour was held fixed by the existing goldens, pixel-identical screenshots, a new core check and a full tag cycle on hardware.
 
 ### Investigations
 
@@ -117,7 +118,7 @@ design document.
 ### Bases
 
 - [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
-- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: unbuilt SPI SWD sources, and SWD speed ideas for a future base.
+- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: the 0x81 (STLINK_DEBUG_ERR_FAULT) errors while a tag is busy, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
 
 ### Bases / Investigations
@@ -349,11 +350,12 @@ design document.
 ### Applications / qtmon
 
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
+- [qtmonitor architecture](../host/applications/qtmon/design/architecture.md) — How qtmonitor's code is divided - a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands - with the data flow, the threading rules, and how each part is checked.
 - [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/editor-and-start-checks.md) — qtmonitor is a configuration editor as well as a tag monitor -- one document from defaults, a file or a tag, commands as actions in in-window menus, a status strip with Approved, Start and Stop, and Start checks (clock within 2 s, self-test ALL_PASSED, Approved) that warn and let the user continue or cancel.
 
 ### Applications / qtmon / Proposals
 
-- [qtmonitor: engine, model and views](../host/applications/qtmon/design/proposals/engine-model-view.md) *(proposal, proposed)* — Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
+- [qtmonitor: engine, model and views](../host/applications/qtmon/design/proposals/engine-model-view.md) *(proposal, historical)* — Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
 
 ### Applications / qtmon / Proposals / config-form-mockup
 

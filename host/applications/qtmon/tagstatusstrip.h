@@ -33,9 +33,6 @@ class TagStatusStrip : public QFrame
   Q_OBJECT
 
 public:
-  /// Largest clock offset, in seconds, that Start's clock check accepts.
-  static constexpr double kClockToleranceS = 2.0;
-
   /**
    * @param[in] start   Action the Start button triggers and mirrors.
    * @param[in] stop    Action the Stop button triggers and mirrors.
@@ -61,19 +58,35 @@ public:
   /// Shows the self-test as running until the next setStatus().
   void setTestRunning();
 
+  /**
+   * @brief Marks the state as stale: "(no answer N s)" after it, in red, or
+   *        clears the mark when @p seconds is 0.
+   * @param[in] seconds  How long the tag has not answered; 0 when it has.
+   */
+  void setNoAnswer(int seconds);
+
   /// Whether "Approved" is ticked.
   bool isApproved() const;
-  /// Ticks or clears "Approved".
+  /// Ticks or clears "Approved", without emitting approvalClicked().
   void setApproved(bool approved);
   /// Enables "Approved" (there is a configuration to approve) or disables
   /// and clears it.
   void setApprovalAvailable(bool available);
 
+signals:
+  /**
+   * @brief The user ticked or cleared "Approved". The approval itself is the
+   *        configuration document's (ConfigTab::setApproved()); the box shows
+   *        it.
+   */
+  void approvalClicked(bool approved);
+
 private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).
   QLabel *tag_ = nullptr;      ///< Tag type; the board UUID is its tooltip.
-  QLabel *state_ = nullptr;    ///< Tag state.
-  QLabel *clock_ = nullptr;    ///< Clock offset; red beyond kClockToleranceS.
+  QLabel *state_ = nullptr;    ///< Tag state, marked when the tag stops answering.
+  QString state_name_;         ///< The state's name, without the no-answer mark.
+  QLabel *clock_ = nullptr;    ///< Clock offset; red beyond qtmon::kClockToleranceS.
   QLabel *voltage_ = nullptr;  ///< Supply voltage.
   QLabel *test_ = nullptr;     ///< Self-test result, or "Running"; red unless ALL_PASSED.
   QCheckBox *approved_ = nullptr;  ///< "Approved": the user reviewed the configuration.

@@ -162,6 +162,24 @@ private:
   char rpcbuf[1024*64];  // communication buffer 
 
   bool Call(uint8_t operation, int32_t operand, uint32_t *result);
+  /**
+   * @brief Waits until no STM32L4 monitor request is pending (DEMCR MON_REQ
+   *        and MON_PEND both clear), so the request buffer may be written.
+   *
+   * @details The tag decodes a request from its buffer only when its main
+   *          thread reaches a cooperative point, which a self-test or an RTC
+   *          set can delay by a second or more. A host call that failed part
+   *          way (the request-setting write reached the tag, but the base
+   *          reported 0x81) leaves that request pending on the tag. Writing
+   *          the next request into the buffer then would overwrite the one
+   *          the tag is about to decode, under its old length.
+   *
+   * @param[in] timeout_ms  How long to wait, ms.
+   * @return true when idle; false, with an error logged, when a request is
+   *         still pending after @p timeout_ms. A failed DEMCR read is
+   *         retried within the timeout.
+   */
+  bool WaitL4MonitorIdle(int timeout_ms);
   bool ReadCoreRegister(uint32_t reg, uint32_t *value);
   // The following are gathered from tag monitor.
   // location of call buf in tag

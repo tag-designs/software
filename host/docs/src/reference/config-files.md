@@ -7,8 +7,8 @@ record of how the tags in an experiment were configured.
 
 ## Saving and Opening
 
-**File ▸ Save Configuration** writes the configuration to the file it came from;
-**File ▸ Save Configuration As…** asks for a new file. **File ▸ Open
+**File ▸ Save Configuration…** asks for a file, offering the one the
+configuration came from, and writes it. **File ▸ Open
 Configuration…** opens a file, and **File ▸ Open Recent** lists the last ten
 files opened or saved. These are also on the Configuration tab's popup menu.
 No tag needs to be attached.

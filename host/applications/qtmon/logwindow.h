@@ -15,7 +15,6 @@
 
 #include <QWidget>
 #include "ui_logwindow.h"
-#include "tagclass.h"
 
 class QAction;
 class QActionGroup;
@@ -71,13 +70,6 @@ class LogWindow : public QWidget
          *        to ERROR, exclusive; INFO at startup.
          */
         QMenu *logLevelMenu() const { return level_menu_; }
-
-    public slots:
-        /**
-         * @brief Called when a tag is attached; the log needs nothing from it.
-         * @return Always true.
-         */
-        bool Attach(Tag &tag);
 
     private slots:
         /// Save Error Log…: writes the log's text to a file the user chooses.

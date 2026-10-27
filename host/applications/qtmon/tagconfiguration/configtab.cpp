@@ -1,8 +1,8 @@
 /**
  * @file    configtab.cpp
  * @brief   ConfigTab: the panel table, building and showing panels, reading
- *          and writing Config, the document (new, open, save, reset), and
- *          Start.
+ *          and writing Config, and the document's commands (new, open, save,
+ *          reset).
  */
 
 //#include <QDate>
@@ -46,43 +46,6 @@
 
 namespace
 {
-
-/**
- * @brief Sets the protobuf JSON option that prints zero-valued fields, under
- *        whichever name this protobuf version uses.
- *
- * @details One of an SFINAE pair, used by writeFile() so that a saved
- *          configuration lists every field, including those at their default.
- *          Newer protobuf releases name the option
- *          always_print_fields_with_no_presence; older ones call it
- *          always_print_primitive_fields. Each overload's return type only
- *          compiles when its member exists, so exactly one survives overload
- *          resolution. Call with a literal @c 0: the @c int overload (new
- *          name) is preferred over the @c long one when both are viable.
- *
- * @param[in,out] options  Print options to modify.
- * @param[in]     value    true to print fields that hold their default value.
- */
-template <typename Options>
-auto setAlwaysPrintDefaultFields(Options &options, bool value, int)
-    -> decltype(options.always_print_fields_with_no_presence = value, void())
-{
-  options.always_print_fields_with_no_presence = value;
-}
-
-/**
- * @brief Fallback of the setAlwaysPrintDefaultFields() pair for protobuf
- *        releases that still name the option always_print_primitive_fields.
- *
- * @param[in,out] options  Print options to modify.
- * @param[in]     value    true to print fields that hold their default value.
- */
-template <typename Options>
-auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
-    -> decltype(options.always_print_primitive_fields = value, void())
-{
-  options.always_print_primitive_fields = value;
-}
 
 /**
  * @brief The configuration panels, in page order. Each is built once.
@@ -137,11 +100,6 @@ ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
   ui.setupUi(this);
 
-  // initialize message box
-
-  msgBox.setWindowTitle("Error");
-  msgBox.setStandardButtons(QMessageBox::Ok);
-
   // Build every panel once, in page order, hidden until a tag selects it.
   panels_.resize(PanelCount);
   panels_[IntervalSchedule] = new SchedulePanel(SchedulePanel::Variant::Interval);
@@ -192,23 +150,28 @@ ConfigTab::~ConfigTab(){}
 
 bool ConfigTab::isModified() const
 {
-  if (!hasDocument())
-    return false;
   Config now;
-  return !collect(now) || now.SerializeAsString() != baseline_;
+  const bool written = collect(now);
+  return doc_.isModified(written ? &now : nullptr);
+}
+
+void ConfigTab::changeContent()
+{
+  doc_.contentChanged();
+  emit contentChanged();
 }
 
 QString ConfigTab::documentName() const
 {
-  const QString type = QString::fromStdString(std::string(TagType_Name(tag_type_)));
-  switch (source_)
+  const QString type = QString::fromStdString(std::string(TagType_Name(doc_.tagType())));
+  switch (doc_.source())
   {
   case Source::None:
     return {};
   case Source::Defaults:
     return tr("%1 defaults").arg(type);
   case Source::File:
-    return QFileInfo(path_).fileName();
+    return QFileInfo(filePath()).fileName();
   case Source::Tag:
     return tr("%1 from tag").arg(type);
   }
@@ -220,14 +183,10 @@ void ConfigTab::Clear()
   for (ConfigPanel *panel : panels_)
     panel->setVisible(false);
   shown_.clear();
-  current_config_.Clear();
-  tag_type_ = TAG_UNSPECIFIED;
-  source_ = Source::None;
-  path_.clear();
-  baseline_.clear();
+  doc_.clear();
   placeholder_->setVisible(true);
   was_modified_ = false;
-  emit contentChanged();
+  changeContent();
   emit documentChanged();
 }
 
@@ -257,7 +216,7 @@ void ConfigTab::controlChanged()
 {
   if (loading_ || !hasDocument())
     return;
-  emit contentChanged();
+  changeContent();
   const bool modified = isModified();
   if (modified != was_modified_)
   {
@@ -269,24 +228,10 @@ void ConfigTab::controlChanged()
 void ConfigTab::updateEditable()
 {
   const bool running_tags_own =
-      source_ == Source::Tag && attached_ && old_state_ != IDLE;
+      doc_.source() == Source::Tag && attached_ && old_state_ != IDLE;
   for (ConfigPanel *panel : panels_)
     panel->setEnabled(!running_tags_own &&
                       std::find(shown_.begin(), shown_.end(), panel) != shown_.end());
-}
-
-/**
- * @brief Enables or disables display-only fixture behavior.
- *
- * @details In fixture mode, StateUpdate() still enables controls according to
- *          tag state so screenshots look like live qtmonitor, but Start and
- *          Read return before using the live Tag pointer.
- *
- * @param[in] enabled   true when the tab is backed by fixture data.
- */
-void ConfigTab::SetFixtureMode(bool enabled)
-{
-  fixture_mode_ = enabled;
 }
 
 /**
@@ -356,15 +301,8 @@ QStringList ConfigTab::CheckPanelsAgainstShapes() const
   return problems;
 }
 
-bool ConfigTab::Attach(Tag &t)
-{
-  tag = &t;
-  return true;
-}
-
 void ConfigTab::Detach()
 {
-  tag = nullptr;
   attached_ = false;
   updateEditable();
 }
@@ -384,8 +322,8 @@ bool ConfigTab::collect(Config &config) const
 {
   if (!hasDocument())
     return false;
-  config = current_config_;
-  config.set_tag_type(tag_type_);
+  config = doc_.config();
+  config.set_tag_type(doc_.tagType());
 
   // Each shown panel writes the fields it owns; everything else passes
   // through from the document.
@@ -404,7 +342,7 @@ bool ConfigTab::GetConfig(Config &config)
     qDebug() << "GetConfig: no document, or a panel holds a value it cannot write";
     return false;
   }
-  current_config_ = config;
+  doc_.setConfig(config);
   return true;
 }
 
@@ -418,13 +356,12 @@ void ConfigTab::load(const Config &config, Source source, const QString &path,
                      bool keep_baseline)
 {
   loading_ = true;
-  current_config_ = config;
-  tag_type_ = config.tag_type();
+  doc_.load(config, source, path.toStdString());
 
   // Show the panels the tag type selects; each loads its own fields.
   shown_.clear();
   std::vector<PanelId> selected;
-  const auto it = panelsForTag().find(tag_type_);
+  const auto it = panelsForTag().find(doc_.tagType());
   if (it != panelsForTag().end())
     selected = it->second;
   for (int i = 0; i < PanelCount; ++i)
@@ -437,21 +374,19 @@ void ConfigTab::load(const Config &config, Source source, const QString &path,
       shown_.push_back(panels_[i]);
   }
   placeholder_->setVisible(false);
-  source_ = source;
-  path_ = path;
   loading_ = false;
 
   if (!keep_baseline)
   {
     Config written;
-    baseline_ = collect(written) ? written.SerializeAsString() : std::string();
+    doc_.setBaseline(collect(written) ? &written : nullptr);
   }
   was_modified_ = isModified();
   updateEditable();
   FitPanelPage();
   setVisible(true);
   setEnabled(true);
-  emit contentChanged();
+  changeContent();
   emit documentChanged();
 }
 
@@ -525,12 +460,12 @@ void ConfigTab::NewFromDefaults(TagType tag_type)
 
 void ConfigTab::ResetToDefaults()
 {
-  const std::optional<Config> defaults = ConfigShape::defaultConfig(tag_type_);
+  const std::optional<Config> defaults = ConfigShape::defaultConfig(doc_.tagType());
   if (!hasDocument() || !defaults)
     return;
   // The values change; the document (its source and file) does not, so the
   // reset shows as unsaved changes.
-  load(*defaults, source_, path_, true);
+  load(*defaults, doc_.source(), filePath(), true);
 }
 
 ConfigTab::OpenResult ConfigTab::OpenFromJsonText(const std::string &json_text,
@@ -538,44 +473,27 @@ ConfigTab::OpenResult ConfigTab::OpenFromJsonText(const std::string &json_text,
                                                   const QString &path,
                                                   QString *detail)
 {
-  Config parsed;
-  const auto status = google::protobuf::util::JsonStringToMessage(json_text, &parsed);
-  if (!status.ok())
+  const qtmon::ParsedFile parsed = qtmon::ConfigDocument::parseFile(json_text, fallback_type);
+  if (detail)
+    *detail = QString::fromStdString(parsed.detail);
+  switch (parsed.result)
   {
-    if (detail)
-      *detail = QString::fromStdString(status.ToString());
+  case qtmon::ParsedFile::Result::Ok:
+    load(parsed.config, Source::File, path);
+    return OpenResult::Opened;
+  case qtmon::ParsedFile::Result::ParseError:
     return OpenResult::ParseError;
-  }
-  std::string shape_error;
-  const std::optional<ConfigShape> file_shape =
-      ConfigShape::forFile(json_text, &shape_error);
-  if (!file_shape)
-  {
-    if (detail)
-      *detail = QString::fromStdString(shape_error);
-    return OpenResult::ParseError;
-  }
-
-  const TagType type =
-      parsed.tag_type() != TAG_UNSPECIFIED ? parsed.tag_type() : fallback_type;
-  std::optional<Config> document = ConfigShape::defaultConfig(type);
-  if (!document)
-  {
-    if (detail)
-      *detail = tr("No default configuration for tag type %1")
-                    .arg(QString::fromStdString(std::string(TagType_Name(type))));
+  case qtmon::ParsedFile::Result::NoDefaults:
     return OpenResult::NoDefaults;
   }
-  ConfigShape::forTag(type).merge(*document, parsed, *file_shape);
-  load(*document, Source::File, path);
-  return OpenResult::Opened;
+  return OpenResult::ParseError;
 }
 
 void ConfigTab::Open()
 {
   if (!confirmDiscard())
     return;
-  const QString start = path_.isEmpty() ? QDir::homePath() : QFileInfo(path_).path();
+  const QString start = filePath().isEmpty() ? QDir::homePath() : QFileInfo(filePath()).path();
   const QString fileName = HostFileDialog::getOpenFileName(
       this, tr("Open Configuration"), start,
       tr("Configuration (*.json);;All Files (*)"));
@@ -599,9 +517,7 @@ bool ConfigTab::OpenFile(const QString &path)
 
   // A file that names no tag type: ask, offering the attached tag's first.
   TagType fallback = TAG_UNSPECIFIED;
-  Config probe;
-  if (google::protobuf::util::JsonStringToMessage(text, &probe).ok() &&
-      probe.tag_type() == TAG_UNSPECIFIED)
+  if (qtmon::ConfigDocument::namesNoTagType(text))
   {
     QStringList names;
     std::vector<TagType> types = ConfigShape::tagTypes();
@@ -649,17 +565,13 @@ bool ConfigTab::writeFile(const QString &path)
                             "valid value."));
     return false;
   }
-  google::protobuf::util::JsonPrintOptions options;
-  options.add_whitespace = true;
-  setAlwaysPrintDefaultFields(options, true, 0);
-  options.preserve_proto_field_names = true;
-
-  std::string json_string;
-  if (!MessageToJsonString(config, &json_string, options).ok())
+  const std::optional<std::string> text = qtmon::ConfigDocument::fileText(config);
+  if (!text)
   {
     QMessageBox::warning(this, tr("Save Configuration"), tr("Couldn't create JSON output"));
     return false;
   }
+  const std::string &json_string = *text;
   std::ofstream fs(path.toStdString());
   if (!fs.is_open())
   {
@@ -675,11 +587,9 @@ bool ConfigTab::writeFile(const QString &path)
   }
 
   // The saved file is now the document, unchanged.
-  source_ = Source::File;
-  path_ = QFileInfo(path).absoluteFilePath();
-  baseline_ = config.SerializeAsString();
+  doc_.saved(QFileInfo(path).absoluteFilePath().toStdString(), config);
   was_modified_ = false;
-  addRecent(path_);
+  addRecent(filePath());
   updateEditable();
   emit documentChanged();
   return true;
@@ -689,132 +599,16 @@ bool ConfigTab::Save()
 {
   if (!hasDocument())
     return false;
-  if (source_ == Source::File && !path_.isEmpty())
-    return writeFile(path_);
-  return SaveAs();
-}
-
-bool ConfigTab::SaveAs()
-{
-  if (!hasDocument())
-    return false;
   const QString suggested =
-      !path_.isEmpty()
-          ? path_
+      !filePath().isEmpty()
+          ? filePath()
           : QDir::home().filePath(
-                QString::fromStdString(std::string(TagType_Name(tag_type_))).toLower() +
+                QString::fromStdString(std::string(TagType_Name(doc_.tagType()))).toLower() +
                 "-config.json");
   const QString fileName = HostFileDialog::getSaveFileName(
-      this, tr("Save Configuration As"), suggested,
+      this, tr("Save Configuration"), suggested,
       tr("Configuration (*.json);;All Files (*)"));
   if (fileName.isEmpty())
     return false;
   return writeFile(fileName);
-}
-
-void ConfigTab::StartTag()
-{
-  if (fixture_mode_) {
-    qInfo() << "Ignoring Start in qtmonitor fixture display mode";
-    return;
-  }
-
-  Config config;
-  if (!GetConfig(config)) {
-    qDebug() << "StartTag failed to get config";
-    return;
-  }
-
-  if (tag == nullptr)
-    return;
-  qDebug().noquote() << "Starting tag with config:"
-                     << QString::fromStdString(config.DebugString());
-  std::string message;
-  if (!tag->Start(config))
-  {
-    message = tag->DebugMessage();
-  }
-  pollStartResult(message, 0);
-}
-
-namespace {
-/// Status reads pollStartResult() makes, including the first, before it
-/// reports Start as failed.
-constexpr int kStartPollAttempts = 8;
-/// Delay between those status reads, in ms; with kStartPollAttempts this
-/// gives the tag about seven seconds to reach RUNNING or CONFIGURED.
-constexpr int kStartPollIntervalMs = 1000;
-}  // namespace
-
-void ConfigTab::pollStartResult(std::string start_call_message, int attempt)
-{
-  Status status;
-  if (tag->GetStatus(status))
-  {
-    old_state_ = status.state();
-    if (old_state_ == RUNNING || old_state_ == CONFIGURED)
-    {
-      // The tag reached the expected post-Start state, even if the
-      // original Start() call itself reported a transient failure -- see
-      // pollStartResult()'s doc comment. Nothing to show the user; just
-      // note the swallowed error for anyone reading logs.
-      if (!start_call_message.empty())
-      {
-        qWarning().noquote()
-            << "Start() reported a transient failure but the tag reached"
-            << QString::fromStdString(TagState_Name(old_state_)) << ":"
-            << QString::fromStdString(start_call_message);
-      }
-      return;
-    }
-  }
-
-  if (attempt + 1 < kStartPollAttempts)
-  {
-    QTimer::singleShot(kStartPollIntervalMs, this,
-                       [this, start_call_message, attempt]() {
-                         pollStartResult(start_call_message, attempt + 1);
-                       });
-    return;
-  }
-
-  QMessageBox startFailedBox;
-  startFailedBox.setWindowTitle("Error");
-  startFailedBox.setIcon(QMessageBox::Warning);
-  startFailedBox.setText("Start Failed");
-  startFailedBox.setStandardButtons(QMessageBox::Ok);
-  if (!start_call_message.empty())
-  {
-    QString info = QString::fromStdString(start_call_message);
-    info += "\nLast known state: ";
-    info += QString::fromStdString(TagState_Name(old_state_));
-    startFailedBox.setInformativeText(info);
-    startFailedBox.setDetailedText(QString::fromStdString(start_call_message));
-  }
-  else
-  {
-    startFailedBox.setInformativeText(
-        "Last known state: " +
-        QString::fromStdString(TagState_Name(old_state_)));
-  }
-  startFailedBox.exec();
-}
-
-void ConfigTab::ReadFromTag()
-{
-  if (fixture_mode_) {
-    qInfo() << "Ignoring Read in qtmonitor fixture display mode";
-    return;
-  }
-
-  if (tag == nullptr || !confirmDiscard())
-    return;
-  Config configin;
-  if (tag->GetConfig(configin)) {
-    SetConfig(configin);
-  }
-  else {
-    msgBox.setText("Tag config read failed");
-    msgBox.exec();
-  }
 }

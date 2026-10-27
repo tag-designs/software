@@ -1,13 +1,12 @@
 /**
  * @file    mainwindow_fixture.cpp
- * @brief   MainWindow's maintainer-only test support: fixture replay and
- *          documentation screenshot capture.
+ * @brief   MainWindow's maintainer-only support: documentation screenshot
+ *          capture and the action wiring check.
  *
- * @details None of this runs when qtmonitor attaches a real tag. Fixture mode
- *          (`--fake-fixture`) loads a captured tag from protobuf JSON and
- *          drives the same widgets live mode uses, so screenshots show the
- *          real UI; the `--capture-*` options save those screens for the user
- *          manual and exit. The live window is in mainwindow.cpp. The
+ * @details None of this runs in normal use. With `--fake-fixture` the window's
+ *          session is a FixtureSession (session/fixturesession.h), which
+ *          replays a captured tag through the same window; the `--capture-*`
+ *          options save its screens for the user manual and exit. The
  *          Configuration tab's headless test mode is separate, in
  *          configprobe.cpp. See README.md in this directory.
  */
@@ -16,99 +15,25 @@
 #include <QDebug>
 #include <QDir>
 #include <QEventLoop>
-#include <QFile>
 #include <QFileInfo>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPixmap>
 #include <QScreen>
 #include <QSize>
 #include <QTimer>
 #include <QWindow>
 
-#include <google/protobuf/util/json_util.h>
-
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include "tag.pb.h"
-
+#include "fixturesession.h"
+#include "menus.h"
 #include "tagconfiguration/configtab.h"
 #include "tagstatusstrip.h"
 
 namespace
 {
-
-/**
- * @brief Resolves fixture paths supplied relative to the source tree.
- *
- * @details Maintainer screenshot commands are usually launched from the build
- *          tree, but fixtures live in the repository. Existing paths and
- *          absolute paths are returned unchanged; otherwise the path is tried
- *          relative to @c TAG_DESIGNS_SOURCE_DIR.
- *
- * @param[in] path   User-supplied fixture or config path.
- *
- * @return The existing absolute/relative path when found, the source-tree
- *         path when that exists, or the original path for caller diagnostics.
- */
-QString resolveSourceRelativePath(const QString &path)
-{
-  const QFileInfo requested(path);
-  if (requested.exists() || requested.isAbsolute()) {
-    return requested.filePath();
-  }
-
-  const QFileInfo sourceRelative(
-      QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path));
-  if (sourceRelative.exists()) {
-    return sourceRelative.filePath();
-  }
-
-  return requested.filePath();
-}
-
-
-/**
- * @brief Serializes one Qt JSON object for protobuf JSON parsing.
- *
- * @param[in] object   Fixture sub-object containing protobuf JSON.
- *
- * @return Compact UTF-8 JSON text suitable for JsonStringToMessage().
- */
-std::string jsonObjectString(const QJsonObject &object)
-{
-  return QJsonDocument(object).toJson(QJsonDocument::Compact).toStdString();
-}
-
-/**
- * @brief Parses one fixture JSON object into a protobuf message.
- *
- * @details The fixture files store captured monitor responses as protobuf JSON.
- *          This helper centralizes error logging so the replay path reports
- *          whether tag info, config, or a named status failed to parse.
- *
- * @param[in] object    Fixture JSON object to parse.
- * @param[out] message  Destination protobuf message.
- * @param[in] context   Human-readable parse context for diagnostics.
- *
- * @return true if parsing succeeded; false if protobuf JSON validation failed.
- */
-template <typename Message>
-bool parseJsonMessage(const QJsonObject &object, Message &message,
-                      const QString &context)
-{
-  google::protobuf::util::JsonParseOptions options;
-  const auto status =
-      google::protobuf::util::JsonStringToMessage(jsonObjectString(object),
-                                                  &message, options);
-  if (!status.ok()) {
-    qWarning().noquote() << "Could not parse" << context
-                         << QString::fromStdString(status.ToString());
-    return false;
-  }
-  return true;
-}
 
 /**
  * @brief Allows pending Qt paint/layout events to complete before capture.
@@ -158,8 +83,7 @@ QString safeFileId(QString value)
 QString MainWindow::resolveScreenshotDir(const QString &path)
 {
   if (path.isEmpty()) {
-    return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR))
-        .filePath("host/docs/src/images");
+    return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath("host/docs/src/images");
   }
 
   const QFileInfo requested(path);
@@ -170,193 +94,10 @@ QString MainWindow::resolveScreenshotDir(const QString &path)
   return QDir(QStringLiteral(TAG_DESIGNS_SOURCE_DIR)).filePath(path);
 }
 
-/**
- * @brief Reports whether a one-shot screenshot capture was requested.
- *
- * @return true if main.cpp should schedule a capture slot and exit afterward;
- *         false for interactive qtmonitor sessions.
- */
 bool MainWindow::shouldQuitAfterStartup() const
 {
   return captureStartupScreenshotOnStartup || captureMainScreenshotsOnStartup
       || captureConfigScreenshotsOnStartup || captureErrorLogScreenshotOnStartup;
-}
-
-/**
- * @brief Loads a qtmonitor fake-tag fixture from protobuf JSON.
- *
- * @details The fixture supplies TagInfo, Config, voltage, and one or more
- *          named Status messages. Inline config is preferred; a `$ref` config
- *          path is accepted for fixture files that store defaults externally.
- *
- * @param[in] path   Fixture path from the command line, absolute or
- *                   source-tree relative.
- *
- * @return true if all required fixture sections parsed; false otherwise.
- */
-bool MainWindow::loadFakeFixture(const QString &path)
-{
-  const QString resolvedPath = resolveSourceRelativePath(path);
-  QFile file(resolvedPath);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    qWarning() << "Unable to open qtmonitor fake fixture" << path
-               << "resolved as" << resolvedPath;
-    return false;
-  }
-
-  QJsonParseError parseError;
-  const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
-  if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-    qWarning() << "Unable to parse qtmonitor fake fixture" << resolvedPath
-               << parseError.errorString();
-    return false;
-  }
-
-  const QJsonObject root = document.object();
-  fakeFixtureId = root.value("id").toString("fixture");
-  fakeVoltage = static_cast<float>(root.value("voltage").toDouble(0.0));
-  if (!parseJsonMessage(root.value("info").toObject(), fakeInfo, "fixture info")) {
-    return false;
-  }
-
-  const QJsonObject configObject = root.value("config").toObject();
-  if (configObject.contains("value")) {
-    fakeConfigLoaded =
-        parseJsonMessage(configObject.value("value").toObject(), fakeConfig,
-                         "fixture config");
-  } else if (configObject.contains("$ref")) {
-    QFile configFile(resolveSourceRelativePath(configObject.value("$ref").toString()));
-    if (!configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-      qWarning() << "Unable to open fixture config ref" << configFile.fileName();
-      return false;
-    }
-    QJsonParseError configError;
-    const QJsonDocument configDocument =
-        QJsonDocument::fromJson(configFile.readAll(), &configError);
-    if (configError.error != QJsonParseError::NoError || !configDocument.isObject()) {
-      qWarning() << "Unable to parse fixture config ref" << configError.errorString();
-      return false;
-    }
-    fakeConfigLoaded =
-        parseJsonMessage(configDocument.object(), fakeConfig, "fixture config ref");
-  }
-
-  if (!fakeConfigLoaded) {
-    qWarning() << "qtmonitor fake fixture has no usable config";
-    return false;
-  }
-
-  fakeStatuses.clear();
-  const QJsonObject statuses = root.value("statuses").toObject();
-  for (auto it = statuses.begin(); it != statuses.end(); ++it) {
-    Status status;
-    if (parseJsonMessage(it.value().toObject(), status,
-                         QString("fixture status %1").arg(it.key()))) {
-      fakeStatuses.insert(it.key().toLower(), status);
-    }
-  }
-  if (fakeStatuses.isEmpty()) {
-    qWarning() << "qtmonitor fake fixture has no statuses";
-    return false;
-  }
-
-  qInfo() << "Loaded qtmonitor fake fixture" << resolvedPath;
-  return true;
-}
-
-/**
- * @brief Applies already-loaded fixture metadata to the qtmonitor widgets.
- *
- * @details This switches the window into fake mode, stops live polling, fills
- *          tag information and configuration, and disables the Error Log tab
- *          because it depends on a live Tag attachment.
- *
- * @return true after the fixture state has been applied.
- *
- * @pre loadFakeFixture() has populated fakeInfo, fakeConfig, and statuses.
- */
-bool MainWindow::setupFakeFixture()
-{
-  fakeMode = true;
-  timer.stop();
-  populateTagInfo(fakeInfo);
-  attachConfig(fakeConfig, true);
-  ui.errorTab->setEnabled(false);
-  setAttachedUiEnabled(true);
-  return true;
-}
-
-/**
- * @brief Selects or derives a fixture status for screenshot replay.
- *
- * @details If the requested state is not present in the fixture, the idle or
- *          current status is reused and adjusted for display. This keeps early
- *          fixtures useful while allowing future captures to provide real
- *          running or finished Status samples.
- *
- * @param[in] name   Requested fixture status name.
- *
- * @return Status message suitable for applyStatus().
- */
-Status MainWindow::fakeStatusForName(const QString &name) const
-{
-  const QString key = name.toLower();
-  Status status;
-  if (fakeStatuses.contains(key)) {
-    status = fakeStatuses.value(key);
-  } else if (fakeStatuses.contains("idle")) {
-    status = fakeStatuses.value("idle");
-  } else if (fakeStatuses.contains("current")) {
-    status = fakeStatuses.value("current");
-  } else {
-    status = fakeStatuses.first();
-  }
-
-  const qint64 now = QDateTime::currentMSecsSinceEpoch();
-  status.set_millis(now);
-  if (key == "idle") {
-    status.set_state(IDLE);
-    status.set_internal_data_count(0);
-    status.set_external_data_count(0);
-  } else if (key == "running") {
-    status.set_state(RUNNING);
-    if (status.internal_data_count() == 0) {
-      status.set_internal_data_count(42);
-    }
-    if (status.external_data_count() == 0) {
-      status.set_external_data_count(7);
-    }
-  } else if (key == "finished") {
-    status.set_state(FINISHED);
-    if (status.internal_data_count() == 0) {
-      status.set_internal_data_count(128);
-    }
-    if (status.external_data_count() == 0) {
-      status.set_external_data_count(512);
-    }
-  }
-  if (status.test_status() == TEST_UNSPECIFIED) {
-    status.set_test_status(ALL_PASSED);
-  }
-  return status;
-}
-
-/**
- * @brief Renders one named fixture status in the live qtmonitor widgets.
- *
- * @param[in] name   Fixture status name such as idle, running, or finished.
- *
- * @return true if fake mode was active and the status was applied; false if no
- *         fixture is loaded.
- */
-bool MainWindow::applyFakeState(const QString &name)
-{
-  if (!fakeMode) {
-    qWarning() << "qtmonitor fake state requested without a fake fixture";
-    return false;
-  }
-  applyStatus(fakeStatusForName(name), fakeVoltage);
-  return true;
 }
 
 /**
@@ -490,19 +231,19 @@ void MainWindow::captureStartupScreenshot()
 }
 
 /**
- * @brief Captures representative Tag State screenshots from a fake fixture.
+ * @brief Captures Tag State screenshots for idle, running and finished from
+ *        the fixture.
  *
- * @details The current implementation renders idle, running, and finished in
- *          sequence. Missing running or finished samples are derived by
- *          fakeStatusForName() so one idle fixture can still demonstrate state
- *          dependent controls.
+ * @details FixtureSession::showState() reports each state as a status, so the
+ *          window draws it exactly as it would a live tag's. Missing running
+ *          or finished samples are derived there from the idle one.
  *
  * @post The process exits with status 0 on success and 1 on failure.
  */
 void MainWindow::captureMainScreenshots()
 {
   bool ok = true;
-  if (!fakeMode) {
+  if (!fixture_) {
     qWarning() << "qtmonitor main screenshots require --fake-fixture";
     ok = false;
   }
@@ -519,27 +260,25 @@ void MainWindow::captureMainScreenshots()
       break;
     }
     ui.mainTabWidget->setCurrentWidget(ui.targetTab);
-    applyFakeState(state);
+    fixture_->showState(state);
     waitForGuiToSettle(250);
-    ok = saveCurrentScreenshot(screenshotPath(
-        QString("qtmonitor-main-%1.png").arg(state)), QSize(1100, 760),
-        QSize(1160, 790));
+    ok = saveCurrentScreenshot(screenshotPath(QString("qtmonitor-main-%1.png").arg(state)),
+                               QSize(1100, 760), QSize(1160, 790));
   }
   qApp->exit(ok ? 0 : 1);
 }
 
 /**
- * @brief Captures idle Configuration-tab screenshots from a fake fixture.
+ * @brief Captures the fixture's idle Configuration tab.
  *
- * @details The fixture id is used in output filenames, and the inner Schedule
- *          and Sensors tabs are selected explicitly before capture.
+ * @details The fixture id is used in the output filename.
  *
  * @post The process exits with status 0 on success and 1 on failure.
  */
 void MainWindow::captureConfigScreenshots()
 {
   bool ok = true;
-  if (!fakeMode) {
+  if (!fixture_) {
     qWarning() << "qtmonitor config screenshots require --fake-fixture";
     ok = false;
   }
@@ -550,17 +289,13 @@ void MainWindow::captureConfigScreenshots()
     ok = false;
   }
 
-  const QString id =
-      safeFileId(fakeFixtureId.isEmpty()
-                     ? QString::fromStdString(TagType_Name(tag_type))
-                     : fakeFixtureId);
   if (ok) {
-    applyFakeState("idle");
+    const QString id = safeFileId(fixture_->id());
+    fixture_->showState("idle");
     ui.mainTabWidget->setCurrentWidget(ui.configtab);
     waitForGuiToSettle(250);
-    ok = saveCurrentScreenshot(
-        screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
-        QSize(1100, 1400));
+    ok = saveCurrentScreenshot(screenshotPath(QString("qtmonitor-config-%1.png").arg(id)),
+                               QSize(1100, 1400));
   }
   qApp->exit(ok ? 0 : 1);
 }
@@ -586,107 +321,106 @@ void MainWindow::captureErrorLogScreenshot()
   if (ok) {
     ui.mainTabWidget->setCurrentWidget(ui.errorTab);
     waitForGuiToSettle(200);
-    ok = saveCurrentScreenshot(screenshotPath("qtmonitor-error-log.png"),
-                               QSize(1100, 560));
+    ok = saveCurrentScreenshot(screenshotPath("qtmonitor-error-log.png"), QSize(1100, 560));
   }
   qApp->exit(ok ? 0 : 1);
 }
 
-QString MainWindow::actionStateTable()
+QStringList MainWindow::checkActionWiring()
 {
-  const QList<QPair<QString, QAction *>> actions = {
-      {"attach", attach_action_},   {"detach", detach_action_},
-      {"read", read_config_action_}, {"start", start_action_},
-      {"stop", stop_action_},       {"sync", sync_action_},
-      {"test", test_action_},       {"calibrate", calibrate_action_},
-      {"erase", erase_action_},     {"download", download_action_},
-      {"open", open_config_action_}, {"save", save_config_action_},
-      {"saveas", save_as_config_action_}, {"reset", reset_config_action_}};
-
-  QStringList lines;
-  QString header = "attached state tagtype document downloading testpending |";
-  for (const auto &a : actions)
-    header += " " + a.first;
-  lines << header;
-
-  // document: "none", "same" (the tag's type) or "other" (another type).
-  auto row = [&](bool attached, TagState state, TagType type, const QString &document,
-                 bool downloading, bool pending) {
-    attached_ui_ = attached;
-    current_state = state;
-    tag_type = type;
-    downloading_ = downloading;
-    test_pending_ = pending;
-    if (document == "none") {
-      ui.configtab->Clear();
-    } else {
-      Config c;
-      c.set_tag_type(document == "same" ? type : (type == IMUTAG ? BITTAG_LE : IMUTAG));
-      ui.configtab->SetConfig(c);
-    }
-    updateActions();
-    QString line = QString("%1 %2 %3 %4 %5 %6 |")
-                       .arg(attached).arg(QString::fromStdString(std::string(TagState_Name(state))))
-                       .arg(QString::fromStdString(std::string(TagType_Name(type))))
-                       .arg(document).arg(downloading).arg(pending);
-    for (const auto &a : actions)
-      line += QString(" %1=%2").arg(a.first,
-                                    !a.second->isVisible() ? "H"
-                                    : a.second->isEnabled() ? "E" : "D");
-    lines << line;
-  };
-
-  const auto *states = TagState_descriptor();
-  for (TagType type : {BITTAG_LE, COMPASSTAG}) {
-    for (const char *document : {"none", "same"})
-      row(false, IDLE, type, document, false, false);
-    for (int i = 0; i < states->value_count(); ++i) {
-      const auto state = static_cast<TagState>(states->value(i)->number());
-      row(true, state, type, "same", false, false);
-    }
-    row(true, IDLE, type, "none", false, false);    // attached, no document
-    row(true, IDLE, type, "other", false, false);   // document for another type
-    row(true, IDLE, type, "same", false, true);     // self-test pending
-    row(true, FINISHED, type, "same", true, false); // download running
-  }
-
-  // Leave the window as a detached qtmonitor.
-  attached_ui_ = false;
-  downloading_ = false;
-  test_pending_ = false;
-  ui.configtab->Clear();
-  updateActions();
-  return lines.join('\n') + '\n';
-}
-
-QString MainWindow::startCheckTable()
-{
-  QStringList lines;
-  lines << "clock_offset_s self_test approved | failing checks";
-  const double offsets[] = {0.0, 1.99, -2.0, 2.01, -30.0, -1.45e9};
-  const TestResult tests[] = {ALL_PASSED, TEST_UNSPECIFIED, TEST_RUNNING, RTC_FAILED};
-  for (double offset : offsets) {
-    for (TestResult test : tests) {
-      for (bool approved : {true, false}) {
-        clock_offset_s_ = offset;
-        last_test_ = test;
-        status_strip_->setApprovalAvailable(true);
-        status_strip_->setApproved(approved);
-        QStringList failing;
-        const QStringList failures = startCheckFailures();
-        for (const QString &f : failures)
-          failing << (f.startsWith("Clock") ? "clock"
-                      : f.startsWith("Self-test") ? "self-test" : "approval");
-        lines << QString("%1 %2 %3 | %4")
-                     .arg(offset, 0, 'g', 4)
-                     .arg(QString::fromStdString(std::string(TestResult_Name(test))))
-                     .arg(approved)
-                     .arg(failing.isEmpty() ? QStringLiteral("none") : failing.join(' '));
+  // Each command's action, found by the text the menus show rather than
+  // through actionFor(), so a wrong entry there cannot hide itself.
+  QList<QPair<qtmon::Command, QString>> texts;
+  for (qtmon::Command command : qtmon::kAllCommands)
+    texts.append({command, tr(qtmon::commandText(command).label)});
+  QStringList problems;
+  QMap<qtmon::Command, const QAction *> byText;
+  for (const auto &[command, text] : texts) {
+    const QAction *found = nullptr;
+    int matches = 0;
+    for (const QAction *action : findChildren<QAction *>()) {
+      if (action->text() == text) {
+        found = action;
+        ++matches;
       }
     }
+    if (matches != 1)
+      problems << QString("%1 actions are labelled \"%2\"; expected one").arg(matches).arg(text);
+    byText.insert(command, found);
   }
-  clock_offset_s_ = 0.0;
-  last_test_ = TEST_UNSPECIFIED;
-  status_strip_->setApproved(false);
+  if (!problems.isEmpty())
+    return problems;
+
+  for (const qtmon::CommandInputs &in : qtmon::actionStateCases()) {
+    applyCommandInputs(in);
+    for (qtmon::Command command : qtmon::kAllCommands) {
+      const QAction *action = byText.value(command);
+      const qtmon::Availability expected = qtmon::availability(command, in);
+      const qtmon::Availability shown = !action->isVisible()  ? qtmon::Availability::Hidden
+                                        : action->isEnabled() ? qtmon::Availability::Enabled
+                                                              : qtmon::Availability::Disabled;
+      if (shown != expected)
+        problems << QString("%1 %2 %3: %4 is %5, the rule says %6")
+                        .arg(in.attached)
+                        .arg(QString::fromStdString(std::string(TagState_Name(in.state))),
+                             QString::fromStdString(std::string(TagType_Name(in.tag_type))),
+                             QString::fromLatin1(qtmon::commandName(command)),
+                             QString::fromLatin1(qtmon::availabilityLetter(shown)),
+                             QString::fromLatin1(qtmon::availabilityLetter(expected)));
+    }
+  }
+
+  // Leave the actions as the model says.
+  updateActions();
+  return problems;
+}
+
+namespace
+{
+
+/**
+ * @brief Appends @p actions as menu entries, a submenu's entries indented
+ *        under it.
+ * @param[in,out] lines    Output lines.
+ * @param[in]     actions  The entries, in order.
+ * @param[in]     indent   Leading spaces for this level.
+ */
+void appendMenuEntries(QStringList &lines, const QList<QAction *> &actions, int indent)
+{
+  const QString pad(indent, QLatin1Char(' '));
+  for (const QAction *action : actions) {
+    if (action->isSeparator()) {
+      lines << pad + "---";
+      continue;
+    }
+    QString line = pad + action->text();
+    if (!action->shortcut().isEmpty())
+      line += "  [" + action->shortcut().toString(QKeySequence::PortableText) + "]";
+    if (!action->toolTip().isEmpty() && action->toolTip() != action->text())
+      line += "  -- " + action->toolTip();
+    if (action->isCheckable())
+      line += action->isChecked() ? "  (checked)" : "  (unchecked)";
+    lines << line;
+    if (action->menu())
+      appendMenuEntries(lines, action->menu()->actions(), indent + 2);
+  }
+}
+
+} // namespace
+
+QString MainWindow::menuTable()
+{
+  QStringList lines;
+  for (const QAction *top : menuBar()->actions()) {
+    lines << "menu " + top->text();
+    if (top->menu())
+      appendMenuEntries(lines, top->menu()->actions(), 2);
+  }
+  lines << "popup Tag page";
+  appendMenuEntries(lines, ui.targetTab->actions(), 2);
+  lines << "popup status strip";
+  appendMenuEntries(lines, status_strip_->actions(), 2);
+  lines << "popup Configuration tab";
+  appendMenuEntries(lines, ui.configtab->actions(), 2);
   return lines.join('\n') + '\n';
 }

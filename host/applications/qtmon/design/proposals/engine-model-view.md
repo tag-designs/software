@@ -1,10 +1,17 @@
 ---
 type: proposal
-status: proposed
+status: historical
+superseded-by: host/applications/qtmon/design/architecture.md
 summary: Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
 ---
 
 # qtmonitor: engine, model and views
+
+> **Built, 2026-10-27.** qtmonitor now has this structure; the design as built
+> is [architecture.md](../architecture.md) and the decision is
+> [0036](../../../../../docs/decisions/0036-host-qtmonitor-engine-model-view.md).
+> This proposal is kept as the record of the reasoning, and describes the code
+> as it was before.
 
 **Proposal:** split qtmonitor into three layers, and do it in Qt first.
 
@@ -74,7 +81,7 @@ to it.
 | `listBases`, `attach(base)`, `detach` | `basesListed(devs)`, `attached(info, config)`, `detached(reason)` |
 | `readConfig` | `configRead(config)` |
 | `start(config)` | `startResult(ok, state, message)`, after polling for a state other than IDLE, as `pollStartResult()` does now |
-| `stop`, `syncClock`, `selfTest`, `calibrate` | `commandDone(op, ok, message)` |
+| `stop`, `syncClock`, `selfTest` | `commandDone(op, ok, message)` |
 | `erase` | `progress(op, value, max)`, `commandDone` |
 | `download(path)` | `progress`, `commandDone` |
 | (its own 400 ms poll) | `status(Status, voltage, host_time)`, `tagLog(text)` |
@@ -163,9 +170,10 @@ Programmer's port tractable.
 
 These are outside this proposal, but worth deciding on their own:
 
-- `TriggerUpdate()` reads the calibration log on every poll while the tag is
-  in CALIBRATE and prints the samples with `qInfo()`. That looks like a
-  leftover from before qtcalibrate.
+- `TriggerUpdate()` read the calibration log on every poll while the tag was
+  in CALIBRATE and printed the samples with `qInfo()`. That, and the Calibrate
+  command, are removed: `tag-cal` streams the same samples for debugging, and
+  qtcalibrate does calibration.
 - `Attach()` checks `qtmonitor_min_version` against a hard-coded `2.0`; the
   tag's own value is commented out.
 

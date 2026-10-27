@@ -1,35 +1,35 @@
-attached state tagtype document downloading testpending | attach detach read start stop sync test calibrate erase download open save saveas reset
-0 IDLE BITTAG_LE none 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=D saveas=D reset=D
-0 IDLE BITTAG_LE same 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 STATE_UNSPECIFIED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 TEST BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE BITTAG_LE same 0 0 | attach=D detach=E read=E start=E stop=D sync=E test=E calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 CONFIGURED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 RUNNING BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 HIBERNATING BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 ABORTED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=E download=E open=E save=E saveas=E reset=E
-1 FINISHED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=E download=E open=E save=E saveas=E reset=E
-1 sRESET BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 EXCEPTION BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=D download=E open=E save=E saveas=E reset=E
-1 CALIBRATE BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE BITTAG_LE none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E calibrate=H erase=D download=D open=E save=D saveas=D reset=D
-1 IDLE BITTAG_LE other 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE BITTAG_LE same 0 1 | attach=D detach=E read=E start=E stop=D sync=E test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 FINISHED BITTAG_LE same 1 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=H erase=E download=D open=E save=E saveas=E reset=E
-0 IDLE COMPASSTAG none 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=D saveas=D reset=D
-0 IDLE COMPASSTAG same 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D calibrate=H erase=D download=D open=E save=E saveas=E reset=E
-1 STATE_UNSPECIFIED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 TEST COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE COMPASSTAG same 0 0 | attach=D detach=E read=E start=E stop=D sync=E test=E calibrate=E erase=D download=D open=E save=E saveas=E reset=E
-1 CONFIGURED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 RUNNING COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 HIBERNATING COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 ABORTED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=E download=E open=E save=E saveas=E reset=E
-1 FINISHED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=E download=E open=E save=E saveas=E reset=E
-1 sRESET COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 EXCEPTION COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=D download=E open=E save=E saveas=E reset=E
-1 CALIBRATE COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D calibrate=D erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE COMPASSTAG none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E calibrate=E erase=D download=D open=E save=D saveas=D reset=D
-1 IDLE COMPASSTAG other 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E calibrate=E erase=D download=D open=E save=E saveas=E reset=E
-1 IDLE COMPASSTAG same 0 1 | attach=D detach=E read=E start=E stop=D sync=E test=D calibrate=E erase=D download=D open=E save=E saveas=E reset=E
-1 FINISHED COMPASSTAG same 1 0 | attach=D detach=E read=D start=D stop=D sync=D test=D calibrate=D erase=E download=D open=E save=E saveas=E reset=E
+attached state tagtype document downloading testpending | attach detach read start stop sync test erase download open save reset
+0 IDLE BITTAG_LE none 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D erase=D download=D open=E save=D reset=D
+0 IDLE BITTAG_LE same 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 STATE_UNSPECIFIED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 TEST BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 IDLE BITTAG_LE same 0 0 | attach=D detach=E read=E start=E stop=D sync=E test=E erase=D download=D open=E save=E reset=E
+1 CONFIGURED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 RUNNING BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 HIBERNATING BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 ABORTED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
+1 FINISHED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
+1 sRESET BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 EXCEPTION BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=E open=E save=E reset=E
+1 CALIBRATE BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 IDLE BITTAG_LE none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=D reset=D
+1 IDLE BITTAG_LE other 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=E reset=E
+1 IDLE BITTAG_LE same 0 1 | attach=D detach=E read=E start=E stop=D sync=E test=D erase=D download=D open=E save=E reset=E
+1 FINISHED BITTAG_LE same 1 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=D open=E save=E reset=E
+0 IDLE COMPASSTAG none 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D erase=D download=D open=E save=D reset=D
+0 IDLE COMPASSTAG same 0 0 | attach=E detach=D read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 STATE_UNSPECIFIED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 TEST COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 IDLE COMPASSTAG same 0 0 | attach=D detach=E read=E start=E stop=D sync=E test=E erase=D download=D open=E save=E reset=E
+1 CONFIGURED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 RUNNING COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 HIBERNATING COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 ABORTED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
+1 FINISHED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
+1 sRESET COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 EXCEPTION COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=E open=E save=E reset=E
+1 CALIBRATE COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
+1 IDLE COMPASSTAG none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=D reset=D
+1 IDLE COMPASSTAG other 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=E reset=E
+1 IDLE COMPASSTAG same 0 1 | attach=D detach=E read=E start=E stop=D sync=E test=D erase=D download=D open=E save=E reset=E
+1 FINISHED COMPASSTAG same 1 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=D open=E save=E reset=E

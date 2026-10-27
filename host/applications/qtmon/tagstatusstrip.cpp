@@ -5,6 +5,8 @@
 
 #include "tagstatusstrip.h"
 
+#include "startchecks.h"
+
 #include <QAction>
 #include <QCheckBox>
 #include <QHBoxLayout>
@@ -86,6 +88,8 @@ TagStatusStrip::TagStatusStrip(QAction *start, QAction *stop, QWidget *parent)
          "ticked; any change to the configuration clears it."));
   row->addWidget(approved_);
   row->addSpacing(6);
+  // clicked, not toggled: only the user's own changes are reported.
+  connect(approved_, &QCheckBox::clicked, this, &TagStatusStrip::approvalClicked);
 
   start_ = actionButton(start);
   stop_ = actionButton(stop);
@@ -109,6 +113,8 @@ void TagStatusStrip::setDetached()
   tag_->clear();
   tag_->setToolTip(tr("Attached tag type and board UUID"));
   state_->clear();
+  state_->setStyleSheet(QString());
+  state_name_.clear();
   clock_->clear();
   clock_->setStyleSheet(QString());
   voltage_->clear();
@@ -119,7 +125,8 @@ void TagStatusStrip::setDetached()
 void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
                                float voltage, TestResult test)
 {
-  state_->setText(QString::fromStdString(std::string(TagState_Name(state))));
+  state_name_ = QString::fromStdString(std::string(TagState_Name(state)));
+  state_->setText(state_name_);
   // Hundredths for a set clock; three figures for one far off (an unset
   // clock is about -1.45e+09 s), so the text stays short.
   clock_->setText(qAbs(clock_offset_s) < 1000.0
@@ -127,10 +134,21 @@ void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
                       : QString::asprintf("%+.3g s", clock_offset_s));
   // Red marks what Start would warn about.
   const QString warn = QStringLiteral("color: #c62828; font-weight: bold;");
-  clock_->setStyleSheet(qAbs(clock_offset_s) > kClockToleranceS ? warn : QString());
+  clock_->setStyleSheet(qAbs(clock_offset_s) > qtmon::kClockToleranceS ? warn : QString());
   test_->setStyleSheet(test != ALL_PASSED ? warn : QString());
   voltage_->setText(QString::number(static_cast<double>(voltage), 'f', 2) + " V");
   test_->setText(QString::fromStdString(std::string(TestResult_Name(test))));
+}
+
+void TagStatusStrip::setNoAnswer(int seconds)
+{
+  if (seconds <= 0) {
+    state_->setText(state_name_);
+    state_->setStyleSheet(QString());
+    return;
+  }
+  state_->setText(tr("%1 (no answer %2 s)").arg(state_name_).arg(seconds));
+  state_->setStyleSheet(QStringLiteral("color: #c62828; font-weight: bold;"));
 }
 
 void TagStatusStrip::setTestRunning()

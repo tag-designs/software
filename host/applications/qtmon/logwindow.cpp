@@ -97,33 +97,6 @@ QSize LogWindow::minimumSizeHint() const
     return QSize(520, 320);
 }
 
-bool LogWindow::Attach(Tag &tag){return true;}
-
-// these help with debugging UI
-// we should disable them except when debug level is enabled
-
-/*
-void LogWindow::on_LogConfigButton_clicked()
-{
-  Config tmp;
-  configtab_->GetConfig(tmp);
-  logtab->append(QString::fromStdString(tmp.DebugString()));
-}
-
-void LogWindow::on_LogTagConfigButton_clicked()
-{
-  Config tmp;
-  if (tag.GetConfig(tmp))
-  {
-    logtab->append(QString::fromStdString(tmp.DebugString()));
-  }
-  else
-  {
-    qDebug() << "tag.GetConfig() returned false";
-  }
-}
-*/
-
 void LogWindow::setLogLevel(QAction *level)
 {
   const int index = level->data().toInt();

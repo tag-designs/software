@@ -139,13 +139,13 @@ commit before the change, then compare the change against them.
 
 ## Which commands are available when
 
-`qtmonitor --check-action-states` prints which actions
-`MainWindow::updateActions()` enables, disables or hides, for every
-combination of:
+`qtmonitor --check-action-states` prints which commands the rule in
+[`core/commands.h`](../core/commands.h) (`qtmon::availability()`) enables,
+disables or hides, for every combination of:
 
 - attached or detached;
 - each tag state;
-- a tag type with calibration (CompassTag) and one without (BitTag LE);
+- two tag types (BitTag LE and CompassTag);
 - a configuration loaded or not;
 - a download running;
 - a self-test pending.
@@ -162,10 +162,32 @@ the enabling rules of the buttons it replaced. A change to when a command is
 available updates the table in the same commit, so the review shows exactly
 which rows moved.
 
+The table checks the rule, which needs no window. That the window applies it
+to the right actions is checked separately: `qtmonitor --check-action-wiring`
+drives the same combinations through `MainWindow::updateActions()`, finds each
+action by its menu text, and compares it with the rule. It prints
+`action wiring: every action follows the rule` and exits 0, or lists each
+disagreement and exits 1.
+
+## The menus
+
+`qtmonitor --check-menus` prints the menu bar and the three popup menus:
+every entry with its shortcut and tooltip, separators, and submenus indented.
+Compare it with the committed text:
+
+```sh
+QT_QPA_PLATFORM=offscreen <qtmonitor> --check-menus | \
+    diff - host/applications/qtmon/test/menus.txt
+```
+
+No output means the menus are unchanged. Open Recent is filled only when it
+opens, so it lists nothing.
+
 ## Which start checks fail when
 
 `qtmonitor --check-start-checks` prints which of Start's checks fail
-(`MainWindow::startCheckFailures()`) for every combination of a clock offset
+(`qtmon::startCheckFailures()`, [`core/startchecks.h`](../core/startchecks.h))
+for every combination of a clock offset
 on and either side of the 2 s tolerance, a reported self-test result, and
 Approved ticked or not:
 
@@ -175,6 +197,56 @@ QT_QPA_PLATFORM=offscreen <qtmonitor> --check-start-checks | \
 ```
 
 No output means nothing changed.
+
+## The core's own checks
+
+`qtmon_core_check` asserts the rules in [`core/`](../core) that the checks
+above cannot reach without a tag: the configuration document's approval and
+unsaved-changes rules and its file round trip, the monitor model's handling
+of statuses, and the window's remaining rules (what attaching does to the
+document, download formats and file names, the version floor, how a base is
+listed, and the start-check sentences). It needs no Qt and no tag:
+
+```sh
+cmake -DBUILD_QTMON_CHECKS=ON <build-dir>
+cmake --build <build-dir> --target qtmon_core_check
+<build-dir>/Release/bin/qtmon_core_check
+```
+
+It prints the number of checks passed and exits 0, or names the first
+failing check and exits 1.
+
+## The live session on a tag
+
+`qtmon_session_check` runs one whole tag cycle through the live tag session
+(`session/livetagsession.h`) and the monitor model, with no window, as the
+window drives them:
+
+1. attach (the only base);
+2. wait for IDLE;
+3. synchronize the clock;
+4. self-test;
+5. read the configuration and start with it unchanged;
+6. run for `--run-seconds`;
+7. stop;
+8. download to `--output`;
+9. erase;
+10. detach.
+
+Each step prints its outcome and time. It exits 0 when every step passed, and
+1 at the first failure, leaving the tag attached as it is.
+
+**It changes the tag:** the attach resets it, then it is started, stopped
+and erased. Run it only on a bench tag in IDLE with nothing to keep, after
+the steps in [docs/bench/](../../../../docs/bench/README.md): check the supply
+voltage and record the board UUID, with nothing else attached to the base. A
+UIUCTag samples every 5 minutes, so give it `--run-seconds 360` to record
+anything; an IMUTag needs 60.
+
+```sh
+cmake --build <build-dir> --target qtmon_session_check
+<build-dir>/Release/bin/qtmon_session_check --run-seconds 360 --output /tmp/session.db3
+```
 
 ## What the probe does not cover
 

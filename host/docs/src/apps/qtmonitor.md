@@ -20,8 +20,8 @@ Commands are in the menus at the top of the window, and on popup menus
 
 | Menu | Commands |
 | --- | --- |
-| **File** | New Configuration ▸, Open Configuration…, Open Recent ▸, Save Configuration, Save Configuration As…, Reset to Defaults, Download Data…, Save Error Log…, Quit |
-| **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Calibrate (CompassTag and IMUTag), Erase… |
+| **File** | New Configuration ▸, Open Configuration…, Open Recent ▸, Save Configuration…, Reset to Defaults, Download Data…, Save Error Log…, Quit |
+| **Tag** | Attach, Detach, Read Configuration, Start, Stop, Synchronize Clock, Self-Test, Erase… |
 | **Log** | Log Level, Clear Error Log |
 | **Help** | Tag Monitor User Guide (opens this page), About Tag Monitor |
 
@@ -59,11 +59,18 @@ Choose **Tag ▸ Synchronize Clock** and **Tag ▸ Self-Test** before starting a
 experiment; the strip shows the clock offset and the self-test result. The
 self-tests usually finish in well under a second, so the tag's state rarely
 shows TEST; the strip shows **Running** until the result arrives, and the Error
-Log records each run's start and result with the tag's UUID. Tags that support
-calibration, currently CompassTag and IMUTag, also have **Tag ▸ Calibrate**.
+Log records each run's start and result with the tag's UUID. Calibration data
+is collected with [Qt Calibrate](qtcalibrate.md), or streamed for debugging with
+the [`tag-cal`](../cli/tag-cal.md) command-line tool; Tag Monitor has no
+calibration command, but **Stop** ends calibration mode on a tag left in it.
 
 When a tag is running, the configuration cannot be edited and **Stop** is
 available.
+
+If the tag stops answering for more than a few seconds, the strip shows its
+last known state in red with **(no answer N s)** after it, and an erase in
+progress says the same. A brief burst usually clears by itself. If it does
+not, choose **Tag ▸ Detach** and then **Tag ▸ Attach**.
 
 ![Tag Monitor with a running CompassTag](../images/qtmonitor-main-running.png)
 
@@ -90,8 +97,8 @@ A configuration can come from three places, and none of them needs a tag:
 - Attaching a tag, or **Tag ▸ Read Configuration**, reads the tag's own.
 
 The window title shows which configuration is open, and marks it when it has
-unsaved changes. **File ▸ Save Configuration** writes it back to its file;
-**Save Configuration As…** writes a new one. **Reset to Defaults** puts the tag
+unsaved changes. **File ▸ Save Configuration…** asks for a file, offering the
+one the configuration came from, and writes it. **Reset to Defaults** puts the tag
 type's default values back. Tag Monitor asks before discarding unsaved
 changes.
 
@@ -208,15 +215,13 @@ seconds. It has no separate sensor controls.
 
 IMUTag's schedule is a **Start Delay** in minutes: logging begins that long
 after **start**, and runs until the tag is stopped. The **IMU** panel configures
-the sample rate and the accelerometer and gyro ranges. Because IMUTag supports
-calibration, **Tag ▸ Calibrate** is available when an IMUTag is attached.
+the sample rate and the accelerometer and gyro ranges.
 
 ![IMUTag configuration](../images/qtmonitor-config-imutag.png)
 
 ### CompassTag
 
 CompassTag uses the schedule for deployment timing and hibernation windows.
-Like IMUTag, it supports calibration (**Tag ▸ Calibrate**). It has no separate
-sensor controls in Tag Monitor.
+It has no separate sensor controls in Tag Monitor.
 
 ![CompassTag configuration](../images/qtmonitor-config-compasstag.png)

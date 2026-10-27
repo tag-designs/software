@@ -157,6 +157,22 @@ commands as follows:
 encoded response length to `DCRDR`, clears `MON_REQ`, and rearms the 60-second L4
 watchdog (`L4_MONITOR_TIMEOUT_S`) while attached.
 
+A protobuf call also writes the request into the protobuf buffer before step 1.
+The buffer belongs to the pending request until the firmware clears `MON_REQ`,
+and the main thread can take a second or more to reach it (Set RTC runs inside
+`proto_eval()`; a self-test runs straight after it is accepted). So
+`TagMonitor::Rpc()` first waits, up to 2.5 s, for `MON_REQ` and `MON_PEND` to
+clear (`WaitL4MonitorIdle()`), and fails without writing if they do not. A
+request that an earlier, failed call left pending on the tag is therefore
+never overwritten.
+
+**Known firmware defect.** A `PROTOBUF` that reaches `DebugMon_Handler` while
+another is still pending is dropped with `monitorClearRequest()`, which clears
+the pending request's `MON_REQ` too. The host then reads a reply that was never
+written, and the pending request is never served. With the wait above, the
+host does not send that second request; the firmware fix is recorded in
+`embedded/tags/TODO.md`.
+
 ### L4 Detach And Timeout
 
 `MONITORSTOP` clears `VC_CORERESET`, `MON_EN`, `MON_PEND`, and `MON_REQ`, then
