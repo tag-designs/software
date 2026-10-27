@@ -41,6 +41,8 @@ Delete an item when it is done.
       no DEMCR polling, against the L4 path, whose failures are mostly the
       host's DEMCR reads.
 
+    The protocol side is taken up in
+    `embedded/tags/common/core/design/proposals/l4-monitor-robustness.md`.
     To separate them, run each tag on the other base where the I/O voltages
     allow it (the U375 base is 1.8 V), or build the L432-v1 base with its
     `ll_swd_spi.c` (see the item below) and repeat with the UIUCTag.

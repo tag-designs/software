@@ -87,7 +87,10 @@ not been reproduced on a tag.
 ## Defects
 
 - **The L4 DebugMonitor handler can clear the MON_REQ of a request still
-  pending.** Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
+  pending.** The fix, and a move to the U3 mailbox if bursts remain, is
+  proposed in
+  [l4-monitor-robustness.md](common/core/design/proposals/l4-monitor-robustness.md).
+  Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
   session-clock fix), reading `common/core/src/handlersL4.c` and `monitor.c`
   after bursts of base 0x81 errors during Synchronize Clock and Self-Test:
   - **The handler.** `DebugMon_Handler` latches a PROTOBUF request

@@ -201,6 +201,10 @@ design document.
 - [Latched Flash Error Flags and STM32U3 Low-Power Entry](../embedded/tags/common/core/design/investigations/2026-09-u3-latched-flash-error-flags.md) *(investigation, closed)* — The 995 uA STM32U3 idle fault attributed to a latched flash ECC flag on 2026-09-02, how the flag gets latched, and why the clear was later found not to be on the cause.
 - [STM32U375 Standby Entry Depends on Image Layout](../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md) *(investigation, closed)* — Why STM32U375 Standby entry depended on image layout -- every perturbation, compiler setting and register comparison tried, the flash-flag and SRAM2 retention side findings, and the reverted page-skip commit.
 
+### Tags / Common Firmware / core / Proposals
+
+- [A more robust monitor for the STM32L4 tags](../embedded/tags/common/core/design/proposals/l4-monitor-robustness.md) *(proposal, proposed)* — Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a marker in the vector table - with what each step needs, what it would and would not fix, and how to check it on the bench.
+
 ### Tags / Common Firmware / modules
 
 - [Tag Common Build Modules](../embedded/tags/common/modules/README.md) — How the makefile module system selects shared sources, include paths and TAG_ feature switches for each tag.
