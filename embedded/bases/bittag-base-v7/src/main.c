@@ -22,6 +22,8 @@
 #include "app.h"
 #include "board.h"
 
+extern SerialUSBDriver SDU1;
+extern const SerialUSBConfig serusbcfg;
 extern bool stlink_open;
 
 #define  RCC_APB1ENR_CRSN     ((uint32_t)0x08000000U)
@@ -173,6 +175,8 @@ int main(void) {
 
   chSysInit();
 
+  sduObjectInit(&SDU1);
+  sduStart(&SDU1, &serusbcfg);
   
   // Activate USB driver 
 

@@ -52,10 +52,10 @@ embedded/bases/common/inc/usbcfg.h
 
 ```text
 embedded/bases/bittag-base-v7/src/main.c
+embedded/bases/bittag-base-v7/src/usbcfg.c
 embedded/bases/common/src/ll_swd.c
 embedded/bases/common/src/stlink.c
 embedded/bases/common/src/stm32adc.c
-embedded/bases/common/src/usbcfg.c
 ```
 
 ### Header Files

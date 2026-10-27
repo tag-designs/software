@@ -1,5 +1,7 @@
 # List of all the project related files.
 
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
+
 include $(BOARDDIR)/BITTAG_BASE_V7/board.mk
 ALLCSRC += \
        main.c \
