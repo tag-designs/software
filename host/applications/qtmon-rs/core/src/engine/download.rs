@@ -88,6 +88,9 @@ pub fn run(
     use taglogwriter::{LogHeader, LogWriter};
 
     let started = Instant::now();
+    // The writer logs to stderr, at DEBUG until told otherwise; follow the
+    // level the UI chose.
+    taglogwriter::set_debug(log::log_enabled!(log::Level::Debug));
     // The external page count where there is one (IMUTag's NAND); older
     // firmware reports only the internal count.
     let status = match tag.status() {
