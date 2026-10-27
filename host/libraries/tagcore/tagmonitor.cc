@@ -1403,6 +1403,29 @@ void TagMonitor::Detach()
   target_idcode = 0;
 }
 
+bool TagMonitor::WaitL4MonitorIdle(int timeout_ms)
+{
+  uint32_t demcr = 0;
+  bool read_ok = false;
+  for (int i = 0; i <= timeout_ms; i++)
+  {
+    read_ok = ReadDebug32(DEMCR, &demcr);
+    if (read_ok && !(demcr & (MON_PEND | MON_REQ)))
+    {
+      if (i > 0)
+        log_debug("previous monitor request finished after %d ms", i);
+      return true;
+    }
+    std::this_thread::sleep_for(MS(1));
+  }
+  if (read_ok)
+    log_error("previous monitor request still pending after %d ms demcr=0x%x; "
+              "not overwriting its buffer", timeout_ms, demcr);
+  else
+    log_error("could not read DEMCR for %d ms before a monitor request", timeout_ms);
+  return false;
+}
+
 // RPC call for monitor
 
 bool TagMonitor::Rpc(Req &req, Ack &ack)
@@ -1441,6 +1464,13 @@ bool TagMonitor::Rpc(Req &req, Ack &ack)
     log_error("Input buffer too long");
     return false;
   }
+
+  // An STM32L4 tag may still hold an earlier request that a failed call left
+  // pending; the buffer is its until the tag clears MON_REQ. The U3 mailbox
+  // has its own handshake in CallU3().
+  static const int L4_IDLE_BEFORE_WRITE_MS = 2500;
+  if (target_family == TargetFamily::STM32L4 && !WaitL4MonitorIdle(L4_IDLE_BEFORE_WRITE_MS))
+    return false;
 
   // copy rpc data to call buffer
   // stlink is faster for word aligned access
