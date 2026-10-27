@@ -266,8 +266,8 @@ any wait.
 
 Changes that have already gone wrong once, or that the bench rules forbid:
 
-- **Do not let an attached tag go quiet.** A tag sleeps after about 4.5 s
-  without a request ([monitor interface](../../../../docs/shared/monitor-interface.md#sleep-and-reset-interaction)),
+- **Do not let an attached tag go quiet.** A UIUCTag shuts down about 4.6 s
+  after the last request ([monitor interface](../../../../docs/shared/monitor-interface.md#sleep-and-reset-interaction)),
   and a sleeping tag answers nothing until it is reset. The 400 ms status
   poll is what keeps it awake. The app opts out of macOS App Nap for this
   reason (`stay_awake` in `app/src/main.rs`): App Nap stretched the poll past

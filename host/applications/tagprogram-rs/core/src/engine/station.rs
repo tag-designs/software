@@ -80,11 +80,11 @@ const BASE_POLL: Duration = Duration::from_millis(1000);
 const STATUS_POLL: Duration = Duration::from_millis(400);
 /// How long a tag may go without a host request and still be assumed awake.
 ///
-/// A tag's state machine puts it to sleep when nothing has asked it anything
-/// for a few seconds; asleep, every SWD access fails until a reset. On an
-/// IDLE UIUCTag a request after 4 s of quiet was answered and one after 5 s
-/// was not, every time (2026-10-26). The status poll is what keeps an
-/// attached tag awake, so a gap at least this long means it may be asleep.
+/// An IDLE UIUCTag ends its monitor session and shuts down about 4.6 s after
+/// the last host request (Joulescope, 2026-10-26); a BitTag stayed attached
+/// through 10 s of quiet. Shut down, a tag answers no SWD access until it is
+/// reset. The status poll is what keeps an attached tag awake, so a gap at
+/// least this long means it may be asleep. See `docs/shared/monitor-interface.md`.
 const TAG_QUIET_SLEEP: Duration = Duration::from_secs(4);
 
 /// The station checks, in display order.
