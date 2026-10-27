@@ -86,6 +86,12 @@ reports with a signal (`startSent`, `eraseSent`, `commandFailed`,
 - **Erase progress comes from sRESET statuses.** The maximum is the tag's own
   `erase_sectors_total_plus_one` when it reports one, or an estimate
   otherwise, and never decreases. The erase ends when the tag reports IDLE.
+- **A tag that stops answering is shown as such.** A failed status read is
+  skipped silently, so the model records when the last status got through.
+  After `kNoAnswerMs` (3 s) without one, the status strip marks the state
+  "(no answer N s)" in red, and an erase in progress says so too. A download
+  pauses the polls on purpose, so it does not count. The window redraws once
+  a second with a live session to notice; a fixture session is never marked.
 - **Approval belongs to the document.** Any load, reset, clear or edit
   withdraws it; saving does not. The status strip's box only shows it and
   reports the user's clicks.

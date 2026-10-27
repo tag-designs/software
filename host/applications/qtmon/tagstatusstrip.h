@@ -58,6 +58,13 @@ public:
   /// Shows the self-test as running until the next setStatus().
   void setTestRunning();
 
+  /**
+   * @brief Marks the state as stale: "(no answer N s)" after it, in red, or
+   *        clears the mark when @p seconds is 0.
+   * @param[in] seconds  How long the tag has not answered; 0 when it has.
+   */
+  void setNoAnswer(int seconds);
+
   /// Whether "Approved" is ticked.
   bool isApproved() const;
   /// Ticks or clears "Approved", without emitting approvalClicked().
@@ -77,7 +84,8 @@ signals:
 private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).
   QLabel *tag_ = nullptr;      ///< Tag type; the board UUID is its tooltip.
-  QLabel *state_ = nullptr;    ///< Tag state.
+  QLabel *state_ = nullptr;    ///< Tag state, marked when the tag stops answering.
+  QString state_name_;         ///< The state's name, without the no-answer mark.
   QLabel *clock_ = nullptr;    ///< Clock offset; red beyond qtmon::kClockToleranceS.
   QLabel *voltage_ = nullptr;  ///< Supply voltage.
   QLabel *test_ = nullptr;     ///< Self-test result, or "Running"; red unless ALL_PASSED.

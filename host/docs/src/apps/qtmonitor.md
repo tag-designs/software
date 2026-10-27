@@ -67,6 +67,11 @@ calibration command, but **Stop** ends calibration mode on a tag left in it.
 When a tag is running, the configuration cannot be edited and **Stop** is
 available.
 
+If the tag stops answering for more than a few seconds, the strip shows its
+last known state in red with **(no answer N s)** after it, and an erase in
+progress says the same. A brief burst usually clears by itself. If it does
+not, choose **Tag ▸ Detach** and then **Tag ▸ Attach**.
+
 ![Tag Monitor with a running CompassTag](../images/qtmonitor-main-running.png)
 
 When a tag has finished logging, **File ▸ Download Data…** saves its data.

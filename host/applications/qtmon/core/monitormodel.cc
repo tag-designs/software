@@ -63,6 +63,7 @@ std::vector<MonitorEvent> MonitorModel::applyStatus(const Status &status, float 
 
   has_status_ = true;
   status_ = status;
+  status_ms_ = host_ms;
   voltage_ = voltage;
   clock_offset_s_ = clockOffsetSeconds(status.millis(), host_ms);
 
@@ -105,6 +106,13 @@ std::vector<MonitorEvent> MonitorModel::applyStatus(const Status &status, float 
     }
   }
   return events;
+}
+
+std::int64_t MonitorModel::silenceMs(std::int64_t now_ms) const
+{
+  if (!attached_ || !has_status_ || downloading_)
+    return 0;
+  return std::max<std::int64_t>(0, now_ms - status_ms_);
 }
 
 void MonitorModel::testSent(std::int64_t now_ms)

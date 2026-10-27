@@ -116,7 +116,7 @@ design document.
 ### Bases
 
 - [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
-- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: unbuilt SPI SWD sources, and SWD speed ideas for a future base.
+- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: the 0x81 (STLINK_DEBUG_ERR_FAULT) errors while a tag is busy, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
 
 ### Bases / Investigations

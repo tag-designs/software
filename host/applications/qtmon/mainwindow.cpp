@@ -25,6 +25,7 @@
 #include <QPushButton>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTimer>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -127,6 +128,15 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
   } else {
     session_ = std::make_unique<LiveTagSession>();
     connectSession();
+    // A failed status read is skipped silently; this redraw is what notices
+    // that none has arrived for a while.
+    silence_timer_ = new QTimer(this);
+    silence_timer_->setInterval(1000);
+    connect(silence_timer_, &QTimer::timeout, this, [this]() {
+      if (model_.attached())
+        render();
+    });
+    silence_timer_->start();
     if (!options.skipAutoAttach)
       attachTag();
   }
@@ -177,6 +187,7 @@ void MainWindow::render()
                              model_.lastTest());
     if (model_.testPending())
       status_strip_->setTestRunning();
+    status_strip_->setNoAnswer(static_cast<int>(silenceS()));
     downloadable = qtmon::isDownloadableState(status.state()) && !model_.downloading();
     // The Configuration tab locks a running tag's own configuration.
     ui.configtab->StateUpdate(status.state());
@@ -187,6 +198,10 @@ void MainWindow::render()
     if (model_.eraseMaximum() > erase_progress_->maximum())
       erase_progress_->setRange(0, model_.eraseMaximum());
     erase_progress_->setValue(model_.eraseValue());
+    const qint64 silent = silenceS();
+    erase_progress_->setLabelText(
+        silent > 0 ? tr("Erasing flash... (no answer from the tag for %1 s)").arg(silent)
+                   : tr("Erasing flash..."));
   }
   updateActions();
 }
@@ -224,6 +239,14 @@ void MainWindow::attachConfig(const Config &config)
     break;
   }
   ui.configtab->SetConfig(config);
+}
+
+qint64 MainWindow::silenceS() const
+{
+  if (!silence_timer_)
+    return 0;  // a fixture answers only when asked to
+  const std::int64_t ms = model_.silenceMs(QDateTime::currentMSecsSinceEpoch());
+  return ms >= qtmon::kNoAnswerMs ? ms / 1000 : 0;
 }
 
 QString MainWindow::tagName() const

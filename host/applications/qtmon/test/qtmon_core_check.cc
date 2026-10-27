@@ -223,8 +223,15 @@ void checkMonitorModel()
   check(e.size() == 1 && e[0].kind == MonitorEvent::Kind::EraseFinished && !m.erasing(),
         "IDLE ends the erase");
 
+  // Silence: the time since the latest status, except while downloading.
+  m.applyStatus(statusOf(IDLE, t0), 0, t0);
+  check(m.silenceMs(t0 + 500) == 500, "silence counts from the latest status");
+  check(m.silenceMs(t0 + qtmon::kNoAnswerMs) >= qtmon::kNoAnswerMs,
+        "no status for kNoAnswerMs is no answer");
+
   // The command rule's inputs.
   m.downloadStarted();
+  check(m.silenceMs(t0 + 60000) == 0, "a download pauses the polls on purpose: not silence");
   m.testSent(t0);
   const qtmon::CommandInputs in = m.commandInputs(true, IMUTAG);
   check(in.attached && in.state == IDLE && in.tag_type == IMUTAG && in.document &&
@@ -236,6 +243,7 @@ void checkMonitorModel()
   check(!m.attached() && !m.hasStatus() && !m.testPending() && !m.downloading() &&
             m.info().uuid().empty(),
         "detach forgets everything");
+  check(m.silenceMs(t0 + 60000) == 0, "a detached tag is not silent");
 }
 
 } // namespace

@@ -22,6 +22,7 @@ class QAction;
 class QMenu;
 class QProgressDialog;
 class QTabBar;
+class QTimer;
 class QTextEdit;
 class ConfigTab;
 class FixtureSession;
@@ -237,6 +238,12 @@ private:
   void attachConfig(const Config &config);
   /// "<tag type> <uuid>", for log messages.
   QString tagName() const;
+  /**
+   * @brief Seconds since a status got through, once that is at least
+   *        qtmon::kNoAnswerMs; 0 while the tag answers, and always with a
+   *        fixture session.
+   */
+  qint64 silenceS() const;
 
   // ---- Screenshot capture (mainwindow_fixture.cpp) ----
 
@@ -260,6 +267,9 @@ private:
   TagStatusStrip *status_strip_ = nullptr;  ///< Tag, state, clock, voltage, self-test; Start and Stop.
   QPointer<QProgressDialog> erase_progress_;     ///< Shown while the model is erasing.
   QPointer<QProgressDialog> download_progress_;  ///< Shown while a download runs.
+  /// Redraws once a second with a live session, so a tag that stops
+  /// answering is shown as such (qtmon::kNoAnswerMs); null with a fixture.
+  QTimer *silence_timer_ = nullptr;
 
   // The commands, made by createActions() and enabled by updateActions().
   QAction *attach_action_ = nullptr;        ///< Tag ▸ Attach.

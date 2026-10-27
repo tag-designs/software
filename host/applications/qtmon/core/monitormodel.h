@@ -39,6 +39,16 @@ inline constexpr std::int64_t kTestMinimumMs = 1000;
 /// Self-Test gives up waiting for a result after this long, ms.
 inline constexpr std::int64_t kTestTimeoutMs = 60000;
 /**
+ * @brief The attached tag counts as not answering when no status has got
+ *        through for this long, ms: about seven missed polls.
+ *
+ * @details A failed status read is skipped silently, so without this a tag
+ *          (or base) that stops answering looks like a tag whose state has
+ *          not changed. Bursts of base errors (0x81) while a tag is busy can
+ *          cause it; see embedded/bases/TODO.md.
+ */
+inline constexpr std::int64_t kNoAnswerMs = 3000;
+/**
  * @brief Start is reported as failed when the tag has not reached RUNNING
  *        or CONFIGURED this long after it was sent, ms.
  *
@@ -110,6 +120,18 @@ public:
   int eraseMaximum() const { return erase_maximum_; }
 
   /**
+   * @brief How long the attached tag has gone without a status getting
+   *        through, ms.
+   *
+   * @param[in] now_ms  Host clock, ms since the epoch.
+   * @return 0 when detached, before the first status, or while a download
+   *         runs (it pauses the polls on purpose); otherwise the time since
+   *         the latest status. kNoAnswerMs or more means the tag is not
+   *         answering.
+   */
+  std::int64_t silenceMs(std::int64_t now_ms) const;
+
+  /**
    * @brief The inputs of the command rule (commands.h), with the document's
    *        facts supplied by the caller.
    * @param[in] document       The Configuration tab holds a document.
@@ -172,6 +194,7 @@ private:
   TagInfo info_;                   ///< See info().
   bool has_status_ = false;        ///< See hasStatus().
   Status status_;                  ///< See status().
+  std::int64_t status_ms_ = 0;     ///< Host clock at the latest status.
   float voltage_ = 0.0f;           ///< See voltage().
   double clock_offset_s_ = 0.0;    ///< See clockOffsetS().
   bool test_pending_ = false;      ///< See testPending().
