@@ -10,4 +10,5 @@
 //! `host/applications/qtmon/test/`, and repeats `qtmon_core_check`'s
 //! assertions.
 
+pub mod engine;
 pub mod model;
