@@ -1,0 +1,21 @@
+[package]
+name = "qtmon-core"
+version = "0.1.0"
+edition = "2024"
+description = "Tag Monitor model and engine: no UI toolkit (port of qtmonitor's core/)"
+publish = false
+
+[dependencies]
+tagcore = { path = "../../../libraries/tagcore-rs" }
+prost = "0.14.4"
+prost-reflect = { version = "0.16.5", features = ["serde"] }
+serde_json = "1"
+log = "0.4"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

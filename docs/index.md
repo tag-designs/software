@@ -374,6 +374,10 @@ design document.
 - [qtmonitor Configuration Probe](../host/applications/qtmon/test/README.md) — How to run qtmonitor's configuration probe over the committed cases, compare the results with the golden set, and regenerate cases or goldens.
 - [Expected Differences in the Configuration Probe](../host/applications/qtmon/test/expected-differences.md) *(results)* — Every accepted change to the qtmonitor configuration-probe goldens, newest first, with the commit, the cases affected and the reason.
 
+### Applications / qtmon-rs
+
+- [Tag Monitor (Rust)](../host/applications/qtmon-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor in progress - what is ported so far, how it is checked against the C++ app's oracles, and how to build and test it.
+
 ### Applications / qtprogram
 
 - [qtprogram](../host/applications/qtprogram/README.md) — qtprogram (Tag Programmer) source layout, how it chooses the internal-flash erase from the image's linker symbols, its program sequence, its command-line modes, and its remembered settings.
