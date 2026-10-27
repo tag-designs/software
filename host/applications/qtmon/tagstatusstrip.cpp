@@ -88,6 +88,8 @@ TagStatusStrip::TagStatusStrip(QAction *start, QAction *stop, QWidget *parent)
          "ticked; any change to the configuration clears it."));
   row->addWidget(approved_);
   row->addSpacing(6);
+  // clicked, not toggled: only the user's own changes are reported.
+  connect(approved_, &QCheckBox::clicked, this, &TagStatusStrip::approvalClicked);
 
   start_ = actionButton(start);
   stop_ = actionButton(stop);

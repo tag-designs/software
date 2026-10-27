@@ -82,6 +82,8 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
   // also buttons on the status strip below the tab bar.
   createActions();
   status_strip_ = new TagStatusStrip(start_action_, stop_action_);
+  connect(status_strip_, &TagStatusStrip::approvalClicked, ui.configtab,
+          &ConfigTab::setApproved);
   placeStatusStripBelowTabs();
   createMenus();
   ui.mainToolBar->hide();  // no toolbar actions yet
@@ -522,10 +524,11 @@ void MainWindow::createActions()
     updateTitle();
     updateActions();
   });
-  // Approval is of the values to be sent: any change to them withdraws it.
+  // Approval belongs to the document, which withdraws it when the values
+  // change; the strip's box shows it.
   connect(config, &ConfigTab::contentChanged, this, [this]() {
     if (status_strip_)
-      status_strip_->setApproved(false);
+      status_strip_->setApproved(ui.configtab->isApproved());
   });
 
   guide_action_ = make(tr("Tag Monitor User Guide"),
@@ -599,7 +602,7 @@ QStringList MainWindow::startCheckFailures() const
 {
   QStringList failures;
   for (qtmon::StartCheck check :
-       qtmon::startCheckFailures(clock_offset_s_, last_test_, status_strip_->isApproved())) {
+       qtmon::startCheckFailures(clock_offset_s_, last_test_, ui.configtab->isApproved())) {
     switch (check) {
     case qtmon::StartCheck::Clock:
       failures << tr("Clock is %1 s off (limit %2 s).")

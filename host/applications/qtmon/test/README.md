@@ -184,6 +184,22 @@ QT_QPA_PLATFORM=offscreen <qtmonitor> --check-start-checks | \
 
 No output means nothing changed.
 
+## The core's own checks
+
+`qtmon_core_check` asserts the rules in [`core/`](../core) that the checks
+above cannot reach without a tag: the configuration document's approval and
+unsaved-changes rules and its file round trip, and the monitor model's
+handling of statuses. It needs no Qt and no tag:
+
+```sh
+cmake -DBUILD_QTMON_CHECKS=ON <build-dir>
+cmake --build <build-dir> --target qtmon_core_check
+<build-dir>/Release/bin/qtmon_core_check
+```
+
+It prints the number of checks passed and exits 0, or names the first
+failing check and exits 1.
+
 ## What the probe does not cover
 
 - **Typing into a widget.** A user's edit reaches `GetConfig()` by the same

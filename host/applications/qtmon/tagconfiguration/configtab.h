@@ -24,6 +24,7 @@
 #include <QLabel>
 #include <vector>
 
+#include "configdocument.h"
 #include "configpanel.h"
 #include "ui_configtab.h"
 #include "tagclass.h"
@@ -33,10 +34,12 @@
  * @brief   The configuration editor: one configuration document, shown as a
  *          page of fixed panels, edited, saved, and started on a tag.
  *
- * @details The tab holds at most one **document**: a Config, its tag type
- *          (which selects the panels, `panelsForTag()` in configtab.cpp), its
- *          source (a tag type's defaults, a file, or a tag) and, for a file,
- *          its path. Every ConfigPanel is built once, in the constructor.
+ * @details The tab holds at most one **document** (qtmon::ConfigDocument,
+ *          core/configdocument.h): a Config, its tag type (which selects the
+ *          panels, `panelsForTag()` in configtab.cpp), its source (a tag
+ *          type's defaults, a file, or a tag), for a file its path, and the
+ *          user's approval for Start. The tab shows it and makes the
+ *          dialogs. Every ConfigPanel is built once, in the constructor.
  *          Loading a document shows the panels its tag type selects and loads
  *          each from it; GetConfig() starts from the document and lets each
  *          shown panel write the fields it owns, so fields no panel owns pass
@@ -59,13 +62,8 @@ class ConfigTab :  public QWidget {
     Q_OBJECT
 
 public:
-    /// Where the document came from.
-    enum class Source {
-        None,      ///< No document.
-        Defaults,  ///< A tag type's default configuration (New).
-        File,      ///< A configuration file (Open, or after Save).
-        Tag,       ///< The attached tag's configuration (attach, Read).
-    };
+    /// Where the document came from; see qtmon::DocumentSource.
+    using Source = qtmon::DocumentSource;
 
     /**
      * @brief Builds the page with every panel hidden and no document.
@@ -106,13 +104,22 @@ public:
     bool SetConfig(const Config &config);
 
     /// True when a document is loaded.
-    bool hasDocument() const { return source_ != Source::None; }
+    bool hasDocument() const { return doc_.hasDocument(); }
     /// The document's source.
-    Source source() const { return source_; }
+    Source source() const { return doc_.source(); }
     /// The document's tag type; TAG_UNSPECIFIED with no document.
-    TagType documentTagType() const { return hasDocument() ? tag_type_ : TAG_UNSPECIFIED; }
+    TagType documentTagType() const { return doc_.tagType(); }
     /// The document's file, for source File; empty otherwise.
-    QString filePath() const { return path_; }
+    QString filePath() const { return QString::fromStdString(doc_.path()); }
+
+    /// Whether the user has approved the document's values for Start.
+    bool isApproved() const { return doc_.approved(); }
+    /**
+     * @brief Records the user's approval (the status strip's Approved box).
+     * @details Ignored with no document. Any later change to the values
+     *          withdraws it; see contentChanged().
+     */
+    void setApproved(bool approved) { doc_.setApproved(approved); }
     /// True when the panels would write something other than what was loaded.
     bool isModified() const;
     /**
@@ -198,7 +205,8 @@ signals:
     /**
      * @brief The values to be sent may have changed: a control was changed,
      *        or a document was loaded, reset or cleared. Not emitted by Save,
-     *        which changes no values. Clears the Start approval.
+     *        which changes no values. The document's approval has already
+     *        been withdrawn when this is emitted.
      */
     void contentChanged();
 
@@ -296,6 +304,9 @@ private:
     /// Height left for the main window's tabs, buttons and frame (pixels).
     static constexpr int kWindowChrome = 260;
 
+    /// Withdraws approval and emits contentChanged().
+    void changeContent();
+
     /**
      * @brief Loads @p config into the panels as the document.
      * @param[in] config         The configuration; its tag_type chooses the panels.
@@ -317,13 +328,9 @@ private:
     /// Adds @p path to the front of the recent files.
     static void addRecent(const QString &path);
 
-    TagType tag_type_ = TAG_UNSPECIFIED;  ///< Tag type of the document.
+    qtmon::ConfigDocument doc_;  ///< The document: values, source, file, baseline, approval.
     TagState old_state_ = STATE_UNSPECIFIED;  ///< Last state from StateUpdate() or a Start poll.
-    Config current_config_;  ///< The document's configuration as last loaded or sent.
     bool fixture_mode_ = false;  ///< Read and Start are no-ops; see SetFixtureMode().
-    Source source_ = Source::None;  ///< See source().
-    QString path_;               ///< See filePath().
-    std::string baseline_;       ///< What the panels wrote just after loading, serialised.
     bool loading_ = false;       ///< Panels are being loaded; ignore their signals.
     bool was_modified_ = false;  ///< isModified() at the last documentChanged().
     bool attached_ = false;      ///< A tag is attached (StateUpdate() seen, no Detach()).

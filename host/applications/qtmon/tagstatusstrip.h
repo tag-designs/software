@@ -60,11 +60,19 @@ public:
 
   /// Whether "Approved" is ticked.
   bool isApproved() const;
-  /// Ticks or clears "Approved".
+  /// Ticks or clears "Approved", without emitting approvalClicked().
   void setApproved(bool approved);
   /// Enables "Approved" (there is a configuration to approve) or disables
   /// and clears it.
   void setApprovalAvailable(bool available);
+
+signals:
+  /**
+   * @brief The user ticked or cleared "Approved". The approval itself is the
+   *        configuration document's (ConfigTab::setApproved()); the box shows
+   *        it.
+   */
+  void approvalClicked(bool approved);
 
 private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).

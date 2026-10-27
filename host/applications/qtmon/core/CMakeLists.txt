@@ -10,6 +10,7 @@
 
 add_library(qtmon_core STATIC
   commands.cc
+  configdocument.cc
   startchecks.cc
   tagrules.cc)
 target_include_directories(qtmon_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
