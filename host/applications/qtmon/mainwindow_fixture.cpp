@@ -28,6 +28,7 @@
 #include "ui_mainwindow.h"
 
 #include "fixturesession.h"
+#include "menus.h"
 #include "tagconfiguration/configtab.h"
 #include "tagstatusstrip.h"
 
@@ -329,20 +330,9 @@ QStringList MainWindow::checkActionWiring()
 {
   // Each command's action, found by the text the menus show rather than
   // through actionFor(), so a wrong entry there cannot hide itself.
-  const QList<QPair<qtmon::Command, QString>> texts = {
-      {qtmon::Command::Attach, tr("Attach")},
-      {qtmon::Command::Detach, tr("Detach")},
-      {qtmon::Command::Read, tr("Read Configuration")},
-      {qtmon::Command::Start, tr("Start")},
-      {qtmon::Command::Stop, tr("Stop")},
-      {qtmon::Command::Sync, tr("Synchronize Clock")},
-      {qtmon::Command::Test, tr("Self-Test")},
-      {qtmon::Command::Erase, tr("Erase...")},
-      {qtmon::Command::Download, tr("Download Data...")},
-      {qtmon::Command::Open, tr("Open Configuration...")},
-      {qtmon::Command::Save, tr("Save Configuration")},
-      {qtmon::Command::SaveAs, tr("Save Configuration As...")},
-      {qtmon::Command::Reset, tr("Reset to Defaults")}};
+  QList<QPair<qtmon::Command, QString>> texts;
+  for (qtmon::Command command : qtmon::kAllCommands)
+    texts.append({command, tr(qtmon::commandText(command).label)});
   QStringList problems;
   QMap<qtmon::Command, const QAction *> byText;
   for (const auto &[command, text] : texts) {

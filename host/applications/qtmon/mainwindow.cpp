@@ -35,6 +35,7 @@
 #include "downloadjob.h"
 #include "fixturesession.h"
 #include "livetagsession.h"
+#include "menus.h"
 #include "qtfiledialog.h"
 #include "qtuserguide.h"
 #include "startchecks.h"
@@ -91,7 +92,7 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
   // Commands are actions in the menus and popup menus; Start and Stop are
   // also buttons on the status strip below the tab bar.
   createActions();
-  status_strip_ = new TagStatusStrip(start_action_, stop_action_);
+  status_strip_ = new TagStatusStrip(actionFor(Command::Start), actionFor(Command::Stop));
   connect(status_strip_, &TagStatusStrip::approvalClicked, ui.configtab,
           &ConfigTab::setApproved);
   placeStatusStripBelowTabs();
@@ -437,54 +438,17 @@ void MainWindow::onDownloadFinished(bool ok, QString error)
 
 void MainWindow::createActions()
 {
-  auto make = [this](const QString &text, const QString &tip, auto slot) {
-    auto *action = new QAction(text, this);
-    action->setToolTip(tip);
-    connect(action, &QAction::triggered, this, slot);
-    return action;
-  };
+  // Every command's action, labelled from the table (core/menus.h); its
+  // availability is applied separately, by updateActions().
+  for (Command command : qtmon::kAllCommands) {
+    auto *action = makeAction(qtmon::commandText(command));
+    connect(action, &QAction::triggered, this, [this, command]() { runCommand(command); });
+    command_actions_[static_cast<size_t>(command)] = action;
+  }
 
-  attach_action_ = make(tr("Attach"), tr("Find a tag base and attach to its tag"),
-                        &MainWindow::attachTag);
-  detach_action_ = make(tr("Detach"), tr("Detach from the tag"), &MainWindow::detachTag);
-  stop_action_ = make(tr("Stop"), tr("Stop the tag"), &MainWindow::stopTag);
-  sync_action_ = make(tr("Synchronize Clock"),
-                      tr("Set the tag's clock from this computer's"),
-                      &MainWindow::syncClock);
-  test_action_ = make(tr("Self-Test"), tr("Run the tag's self-tests"),
-                      &MainWindow::testTag);
-  erase_action_ = make(tr("Erase..."),
-                       tr("Erase the tag's data and return it to IDLE"),
-                       &MainWindow::eraseTag);
-  download_action_ = make(tr("Download Data..."),
-                          tr("Download the tag's data log to a file"),
-                          &MainWindow::downloadData);
-  start_action_ = make(tr("Start"), tr("Write the configuration to the tag and start it"),
-                       &MainWindow::startWithChecks);
-  read_config_action_ = make(tr("Read Configuration"), tr("Read the tag's configuration"),
-                             &MainWindow::readConfig);
-
-  // The document commands belong to the Configuration tab.
+  // The always-available entries the window provides itself.
   ConfigTab *config = ui.configtab;
-  open_config_action_ = new QAction(tr("Open Configuration..."), this);
-  open_config_action_->setToolTip(tr("Open a configuration file for editing"));
-  open_config_action_->setShortcut(QKeySequence::Open);
-  connect(open_config_action_, &QAction::triggered, config, &ConfigTab::Open);
-  save_config_action_ = new QAction(tr("Save Configuration"), this);
-  save_config_action_->setToolTip(tr("Save the configuration to its file"));
-  save_config_action_->setShortcut(QKeySequence::Save);
-  connect(save_config_action_, &QAction::triggered, config, &ConfigTab::Save);
-  save_as_config_action_ = new QAction(tr("Save Configuration As..."), this);
-  save_as_config_action_->setToolTip(tr("Save the configuration to a new file"));
-  save_as_config_action_->setShortcut(QKeySequence::SaveAs);
-  connect(save_as_config_action_, &QAction::triggered, config, &ConfigTab::SaveAs);
-  reset_config_action_ = new QAction(tr("Reset to Defaults"), this);
-  reset_config_action_->setToolTip(
-      tr("Replace the configuration's values with its tag type's defaults"));
-  connect(reset_config_action_, &QAction::triggered, config, &ConfigTab::ResetToDefaults);
-
-  // New ▸ one entry per tag type that has a default configuration.
-  new_config_menu_ = new QMenu(tr("New Configuration"), this);
+  new_config_menu_ = new QMenu(tr(qtmon::itemText(qtmon::MenuItem::NewConfiguration).label), this);
   for (TagType type : ConfigShape::tagTypes()) {
     QAction *action = new_config_menu_->addAction(
         QString::fromStdString(std::string(TagType_Name(type))));
@@ -492,8 +456,14 @@ void MainWindow::createActions()
     connect(action, &QAction::triggered, config,
             [config, type]() { config->NewFromDefaults(type); });
   }
-  recent_config_menu_ = new QMenu(tr("Open Recent"), this);
+  recent_config_menu_ = new QMenu(tr(qtmon::itemText(qtmon::MenuItem::OpenRecent).label), this);
   connect(recent_config_menu_, &QMenu::aboutToShow, this, &MainWindow::fillRecentMenu);
+  quit_action_ = makeAction(qtmon::itemText(qtmon::MenuItem::Quit));
+  connect(quit_action_, &QAction::triggered, this, &QWidget::close);
+  guide_action_ = makeAction(qtmon::itemText(qtmon::MenuItem::UserGuide));
+  connect(guide_action_, &QAction::triggered, this, &MainWindow::showUserGuide);
+  about_action_ = makeAction(qtmon::itemText(qtmon::MenuItem::About));
+  connect(about_action_, &QAction::triggered, this, &MainWindow::showAbout);
 
   connect(config, &ConfigTab::documentChanged, this, [this]() {
     updateTitle();
@@ -505,72 +475,120 @@ void MainWindow::createActions()
     if (status_strip_)
       status_strip_->setApproved(ui.configtab->isApproved());
   });
+}
 
-  guide_action_ = make(tr("Tag Monitor User Guide"),
-                       tr("Open the Tag Monitor page of the user manual"),
-                       &MainWindow::showUserGuide);
-  about_action_ = make(tr("About Tag Monitor"), tr("Version and purpose"),
-                       &MainWindow::showAbout);
+QAction *MainWindow::makeAction(const qtmon::EntryText &text)
+{
+  auto *action = new QAction(tr(text.label), this);
+  if (*text.tooltip)
+    action->setToolTip(tr(text.tooltip));
+  switch (text.shortcut) {
+  case qtmon::Shortcut::None:
+    break;
+  case qtmon::Shortcut::Open:
+    action->setShortcut(QKeySequence::Open);
+    break;
+  case qtmon::Shortcut::Save:
+    action->setShortcut(QKeySequence::Save);
+    break;
+  case qtmon::Shortcut::SaveAs:
+    action->setShortcut(QKeySequence::SaveAs);
+    break;
+  case qtmon::Shortcut::Quit:
+    action->setShortcut(QKeySequence::Quit);
+    break;
+  }
+  return action;
+}
 
-  quit_action_ = new QAction(tr("Quit"), this);
-  quit_action_->setShortcut(QKeySequence::Quit);
-  connect(quit_action_, &QAction::triggered, this, &QWidget::close);
+void MainWindow::runCommand(Command command)
+{
+  switch (command) {
+  case Command::Attach:
+    return attachTag();
+  case Command::Detach:
+    return detachTag();
+  case Command::Read:
+    return readConfig();
+  case Command::Start:
+    return startWithChecks();
+  case Command::Stop:
+    return stopTag();
+  case Command::Sync:
+    return syncClock();
+  case Command::Test:
+    return testTag();
+  case Command::Erase:
+    return eraseTag();
+  case Command::Download:
+    return downloadData();
+  case Command::Open:
+    return ui.configtab->Open();
+  case Command::Save:
+    ui.configtab->Save();
+    return;
+  case Command::SaveAs:
+    ui.configtab->SaveAs();
+    return;
+  case Command::Reset:
+    return ui.configtab->ResetToDefaults();
+  }
+}
+
+QAction *MainWindow::entryAction(const qtmon::MenuEntry &entry)
+{
+  switch (entry.kind) {
+  case qtmon::MenuEntry::Kind::Command:
+    return actionFor(entry.command);
+  case qtmon::MenuEntry::Kind::Separator: {
+    auto *separator = new QAction(this);
+    separator->setSeparator(true);
+    return separator;
+  }
+  case qtmon::MenuEntry::Kind::Item:
+    break;
+  }
+  switch (entry.item) {
+  case qtmon::MenuItem::NewConfiguration:
+    return new_config_menu_->menuAction();
+  case qtmon::MenuItem::OpenRecent:
+    return recent_config_menu_->menuAction();
+  case qtmon::MenuItem::SaveErrorLog:
+    return ui.errorTab->saveAction();
+  case qtmon::MenuItem::ClearErrorLog:
+    return ui.errorTab->clearAction();
+  case qtmon::MenuItem::LogLevel:
+    return ui.errorTab->logLevelMenu()->menuAction();
+  case qtmon::MenuItem::Quit:
+    return quit_action_;
+  case qtmon::MenuItem::UserGuide:
+    return guide_action_;
+  case qtmon::MenuItem::About:
+    return about_action_;
+  }
+  return nullptr;
 }
 
 void MainWindow::createMenus()
 {
   // In the window rather than the macOS menu bar, as in sensorviz.
   menuBar()->setNativeMenuBar(false);
-
-  QMenu *file = menuBar()->addMenu(tr("&File"));
-  file->addMenu(new_config_menu_);
-  file->addAction(open_config_action_);
-  file->addMenu(recent_config_menu_);
-  file->addAction(save_config_action_);
-  file->addAction(save_as_config_action_);
-  file->addAction(reset_config_action_);
-  file->addSeparator();
-  file->addAction(download_action_);
-  file->addAction(ui.errorTab->saveAction());
-  file->addSeparator();
-  file->addAction(quit_action_);
-
-  QMenu *tagMenu = menuBar()->addMenu(tr("&Tag"));
-  tagMenu->addAction(attach_action_);
-  tagMenu->addAction(detach_action_);
-  tagMenu->addSeparator();
-  tagMenu->addAction(read_config_action_);
-  tagMenu->addAction(start_action_);
-  tagMenu->addAction(stop_action_);
-  tagMenu->addSeparator();
-  tagMenu->addAction(sync_action_);
-  tagMenu->addAction(test_action_);
-  tagMenu->addSeparator();
-  tagMenu->addAction(erase_action_);
-
-  QMenu *log = menuBar()->addMenu(tr("&Log"));
-  log->addMenu(ui.errorTab->logLevelMenu());
-  log->addAction(ui.errorTab->clearAction());
-
-  QMenu *help = menuBar()->addMenu(tr("&Help"));
-  help->addAction(guide_action_);
-  help->addAction(about_action_);
+  for (const qtmon::Menu &menu : qtmon::menuBar()) {
+    QMenu *m = menuBar()->addMenu(tr(menu.title));
+    for (const qtmon::MenuEntry &entry : menu.entries)
+      m->addAction(entryAction(entry));
+  }
 
   // Popup menus. Children without a menu of their own (group boxes, labels)
   // pass a right-click up to these widgets.
-  const QList<QAction *> tagCommands = {
-      attach_action_, detach_action_, sync_action_, test_action_,
-      erase_action_, download_action_};
-  ui.targetTab->setContextMenuPolicy(Qt::ActionsContextMenu);
-  ui.targetTab->addActions(tagCommands);
-  status_strip_->setContextMenuPolicy(Qt::ActionsContextMenu);
-  status_strip_->addActions(tagCommands);
-  ui.configtab->setContextMenuPolicy(Qt::ActionsContextMenu);
-  auto *separator = new QAction(this);
-  separator->setSeparator(true);
-  ui.configtab->addActions({read_config_action_, open_config_action_,
-                            save_config_action_, save_as_config_action_,
-                            reset_config_action_, separator, start_action_});
+  auto popup = [this](QWidget *widget, const std::vector<qtmon::MenuEntry> &entries) {
+    widget->setContextMenuPolicy(Qt::ActionsContextMenu);
+    for (const qtmon::MenuEntry &entry : entries)
+      widget->addAction(entryAction(entry));
+  };
+  popup(ui.targetTab, qtmon::tagPopup());
+  popup(status_strip_, qtmon::tagPopup());
+  popup(ui.configtab, qtmon::configPopup());
 }
 
 QStringList MainWindow::startCheckFailures() const
@@ -704,35 +722,7 @@ void MainWindow::applyCommandInputs(const qtmon::CommandInputs &in)
 
 QAction *MainWindow::actionFor(Command command) const
 {
-  switch (command) {
-  case Command::Attach:
-    return attach_action_;
-  case Command::Detach:
-    return detach_action_;
-  case Command::Read:
-    return read_config_action_;
-  case Command::Start:
-    return start_action_;
-  case Command::Stop:
-    return stop_action_;
-  case Command::Sync:
-    return sync_action_;
-  case Command::Test:
-    return test_action_;
-  case Command::Erase:
-    return erase_action_;
-  case Command::Download:
-    return download_action_;
-  case Command::Open:
-    return open_config_action_;
-  case Command::Save:
-    return save_config_action_;
-  case Command::SaveAs:
-    return save_as_config_action_;
-  case Command::Reset:
-    return reset_config_action_;
-  }
-  return nullptr;
+  return command_actions_[static_cast<size_t>(command)];
 }
 
 /********************************************

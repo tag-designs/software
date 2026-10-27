@@ -10,6 +10,7 @@
 
 add_library(qtmon_core STATIC
   commands.cc
+  menus.cc
   configdocument.cc
   downloadjob.cc
   monitormodel.cc

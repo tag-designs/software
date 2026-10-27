@@ -6,6 +6,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <array>
 #include <memory>
 
 #include <QMainWindow>
@@ -14,6 +15,7 @@
 #include <QString>
 
 #include "commands.h"
+#include "menus.h"
 #include "monitormodel.h"
 #include "tagsession.h"
 #include "ui_mainwindow.h"
@@ -196,9 +198,19 @@ private slots:
   void onDownloadFinished(bool ok, QString error);
 
 private:
-  /// Builds every action and connects it to its command.
+  /**
+   * @brief Builds every action from the table in core/menus.h: one per
+   *        qtmon::Command, run by runCommand(), and the window's own items
+   *        (New Configuration, Open Recent, Quit, the user guide, About).
+   */
   void createActions();
-  /// Builds the File, Tag, Log and Help menus and the popup menus.
+  /// One action labelled, described and given a shortcut as @p text says.
+  QAction *makeAction(const qtmon::EntryText &text);
+  /// Runs @p command: the slot or Configuration tab command behind it.
+  void runCommand(qtmon::Command command);
+  /// The action for one table entry: a command's, an item's, or a new separator.
+  QAction *entryAction(const qtmon::MenuEntry &entry);
+  /// Builds the menu bar and the popup menus from the tables in core/menus.h.
   void createMenus();
   /**
    * @brief Puts the status strip between the tab bar and the pages.
@@ -285,22 +297,11 @@ private:
   /// answering is shown as such (qtmon::kNoAnswerMs); null with a fixture.
   QTimer *silence_timer_ = nullptr;
 
-  // The commands, made by createActions() and enabled by updateActions().
-  QAction *attach_action_ = nullptr;        ///< Tag ▸ Attach.
-  QAction *detach_action_ = nullptr;        ///< Tag ▸ Detach.
-  QAction *read_config_action_ = nullptr;   ///< Tag ▸ Read Configuration.
-  QAction *start_action_ = nullptr;         ///< Tag ▸ Start and the Start button; runs startWithChecks().
-  QAction *stop_action_ = nullptr;          ///< Tag ▸ Stop and the Stop button.
-  QAction *sync_action_ = nullptr;          ///< Tag ▸ Synchronize Clock.
-  QAction *test_action_ = nullptr;          ///< Tag ▸ Self-Test.
-  QAction *erase_action_ = nullptr;         ///< Tag ▸ Erase….
-  QAction *open_config_action_ = nullptr;   ///< File ▸ Open Configuration….
-  QAction *save_config_action_ = nullptr;   ///< File ▸ Save Configuration.
-  QAction *save_as_config_action_ = nullptr; ///< File ▸ Save Configuration As….
-  QAction *reset_config_action_ = nullptr;  ///< Reset to Defaults.
-  QMenu *new_config_menu_ = nullptr;     ///< One action per tag type with defaults.
-  QMenu *recent_config_menu_ = nullptr;  ///< Rebuilt each time it opens.
-  QAction *download_action_ = nullptr;  ///< File ▸ Download Data….
+  /// Each command's action, by qtmon::Command; made by createActions() from
+  /// the table in core/menus.h, enabled by updateActions().
+  std::array<QAction *, qtmon::kAllCommands.size()> command_actions_{};
+  QMenu *new_config_menu_ = nullptr;     ///< File ▸ New Configuration: one action per tag type.
+  QMenu *recent_config_menu_ = nullptr;  ///< File ▸ Open Recent; rebuilt each time it opens.
   QAction *quit_action_ = nullptr;      ///< File ▸ Quit; closes the window, which may ask to save.
   QAction *guide_action_ = nullptr;     ///< Help ▸ Tag Monitor User Guide.
   QAction *about_action_ = nullptr;     ///< Help ▸ About Tag Monitor.

@@ -32,12 +32,13 @@ tag. This layout is also the shape a Rust and Tauri port would take; see
    ├─ LiveTagSession ── TagWorker on its own thread owns tagcore's Tag
    └─ FixtureSession ── replays a captured tag for screenshots
  core/ (qtmon_core, no Qt)
-   commands · startchecks · tagrules · monitormodel · configdocument · downloadjob
+   commands · menus · startchecks · tagrules · monitormodel · configdocument · downloadjob
 ```
 
 | Part | Files | Holds |
 | --- | --- | --- |
 | Command rule | `core/commands.h` | `qtmon::Command`, `availability()`: the one rule for every command; `actionStateTable()` |
+| Menus | `core/menus.h` | Every command's text, tooltip and shortcut, the window's own items, and the menu bar and popup menus as tables; the window builds its actions and menus from them in one loop |
 | Start checks | `core/startchecks.h` | `startCheckFailures()`: clock within 2 s, self-test ALL_PASSED, approved; the sentence for each |
 | Tag rules | `core/tagrules.h` | Downloadable states, erase sector count, clock offset, the version floor, how a base is listed |
 | Monitor model | `core/monitormodel.h` | The attached tag as known: identity, latest status, waits (self-test, start), erase progress, debug lines; `applyStatus()` returns what a status settled |
@@ -46,7 +47,7 @@ tag. This layout is also the shape a Rust and Tauri port would take; see
 | Session interface | `session/tagsession.h` | Commands in, reports out as signals |
 | Live session | `session/livetagsession.h` | `TagWorker` (owns the `Tag`, polls every 400 ms, runs commands and downloads) on its own `QThread`; `LiveTagSession` queues commands to it |
 | Fixture session | `session/fixturesession.h` | A captured tag from `host/docs/fixtures/qtmonitor/`; commands are logged and ignored |
-| Window | `mainwindow.cpp`, `mainwindow_fixture.cpp` | Actions and menus; session reports into the model; `render()`; dialogs; screenshot capture and the wiring check |
+| Window | `mainwindow.cpp`, `mainwindow_fixture.cpp` | Actions and menus built from `core/menus.h`; session reports into the model; `render()`; dialogs; screenshot capture, the wiring check and the menu printer |
 | Configuration tab | `tagconfiguration/configtab.h` | The panels over the document, file dialogs, recent files; editability from the tag's state |
 
 ## How a status flows

@@ -38,9 +38,12 @@ This is the packaged user-facing mode.
 
 Design and rationale: [Configuration Editor, Menus and Start Checks](design/editor-and-start-checks.md).
 
-Every command is a `QAction`, created in `MainWindow::createActions()` and
-placed in the File, Tag, Log and Help menus (in the window, as in sensorviz) and on
-popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
+Every command is a `QAction`. Its text, tooltip and shortcut, and where it
+appears in the File, Tag, Log and Help menus (in the window, as in sensorviz)
+and on the popup menus, are tables in `core/menus.h`;
+`MainWindow::createActions()` and `createMenus()` build everything from them.
+`qtmonitor --check-menus` prints the result, compared with
+[`test/menus.txt`](test/menus.txt). The status strip (`tagstatusstrip.cpp`), which
 `placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows
 Attached or Detached, the tag type, state, clock
 offset, voltage and self-test result, with the Approved box and Start and
