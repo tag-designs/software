@@ -210,7 +210,11 @@ private:
   void runCommand(qtmon::Command command);
   /// The action for one table entry: a command's, an item's, or a new separator.
   QAction *entryAction(const qtmon::MenuEntry &entry);
-  /// Builds the menu bar and the popup menus from the tables in core/menus.h.
+  /**
+   * @brief Builds the menu bar from the table in core/menus.h, and gives the
+   *        Tag page, the status strip and the Configuration tab a popup menu
+   *        of the same menus as submenus.
+   */
   void createMenus();
   /**
    * @brief Puts the status strip between the tab bar and the pages.

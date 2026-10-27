@@ -103,20 +103,4 @@ const std::vector<Menu> &menuBar()
   return menus;
 }
 
-const std::vector<MenuEntry> &tagPopup()
-{
-  static const std::vector<MenuEntry> entries = {
-      cmd(Command::Attach), cmd(Command::Detach), cmd(Command::Sync),
-      cmd(Command::Test),   cmd(Command::Erase),  cmd(Command::Download)};
-  return entries;
-}
-
-const std::vector<MenuEntry> &configPopup()
-{
-  static const std::vector<MenuEntry> entries = {
-      cmd(Command::Read),   cmd(Command::Open),  cmd(Command::Save),
-      cmd(Command::Reset),  separator(),         cmd(Command::Start)};
-  return entries;
-}
-
 } // namespace qtmon

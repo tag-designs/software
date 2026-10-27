@@ -567,22 +567,23 @@ void MainWindow::createMenus()
 {
   // In the window rather than the macOS menu bar, as in sensorviz.
   menuBar()->setNativeMenuBar(false);
+  QList<QAction *> menus;
   for (const qtmon::Menu &menu : qtmon::menuBar()) {
     QMenu *m = menuBar()->addMenu(tr(menu.title));
     for (const qtmon::MenuEntry &entry : menu.entries)
       m->addAction(entryAction(entry));
+    menus << m->menuAction();
   }
 
-  // Popup menus. Children without a menu of their own (group boxes, labels)
-  // pass a right-click up to these widgets.
-  auto popup = [this](QWidget *widget, const std::vector<qtmon::MenuEntry> &entries) {
+  // Popup menus: the menu bar's menus as submenus, so every command is a
+  // right-click away. Children without a menu of their own (group boxes,
+  // labels) pass a right-click up to these widgets.
+  for (QWidget *widget : {static_cast<QWidget *>(ui.targetTab),
+                          static_cast<QWidget *>(status_strip_),
+                          static_cast<QWidget *>(ui.configtab)}) {
     widget->setContextMenuPolicy(Qt::ActionsContextMenu);
-    for (const qtmon::MenuEntry &entry : entries)
-      widget->addAction(entryAction(entry));
-  };
-  popup(ui.targetTab, qtmon::tagPopup());
-  popup(status_strip_, qtmon::tagPopup());
-  popup(ui.configtab, qtmon::configPopup());
+    widget->addActions(menus);
+  }
 }
 
 QStringList MainWindow::startCheckFailures() const

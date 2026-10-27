@@ -38,7 +38,7 @@ tag. This layout is also the shape a Rust and Tauri port would take; see
 | Part | Files | Holds |
 | --- | --- | --- |
 | Command rule | `core/commands.h` | `qtmon::Command`, `availability()`: the one rule for every command; `actionStateTable()` |
-| Menus | `core/menus.h` | Every command's text, tooltip and shortcut, the window's own items, and the menu bar and popup menus as tables; the window builds its actions and menus from them in one loop |
+| Menus | `core/menus.h` | Every command's text, tooltip and shortcut, the window's own items, and the menu bar as a table; the window builds its actions and menus from it in one loop, and every popup menu shows the menu bar's menus as submenus |
 | Start checks | `core/startchecks.h` | `startCheckFailures()`: clock within 2 s, self-test ALL_PASSED, approved; the sentence for each |
 | Tag rules | `core/tagrules.h` | Downloadable states, erase sector count, clock offset, the version floor, how a base is listed |
 | Monitor model | `core/monitormodel.h` | The attached tag as known: identity, latest status, waits (self-test, start), erase progress, debug lines; `applyStatus()` returns what a status settled |

@@ -39,9 +39,10 @@ This is the packaged user-facing mode.
 Design and rationale: [Configuration Editor, Menus and Start Checks](design/editor-and-start-checks.md).
 
 Every command is a `QAction`. Its text, tooltip and shortcut, and where it
-appears in the File, Tag, Log and Help menus (in the window, as in sensorviz)
-and on the popup menus, are tables in `core/menus.h`;
-`MainWindow::createActions()` and `createMenus()` build everything from them.
+appears in the File, Tag, Log and Help menus (in the window, as in sensorviz),
+are tables in `core/menus.h`; `MainWindow::createActions()` and
+`createMenus()` build everything from them. A right-click on the Tag page, the
+status strip or the Configuration tab shows the same four menus as submenus.
 `qtmonitor --check-menus` prints the result, compared with
 [`test/menus.txt`](test/menus.txt). The status strip (`tagstatusstrip.cpp`), which
 `placeStatusStripBelowTabs()` puts between the tab bar and the pages, shows

@@ -15,8 +15,8 @@ family.
 
 ### The window
 
-Commands are in the menus at the top of the window, and on popup menus
-(right-click):
+Commands are in the menus at the top of the window. Right-click the Tag tab,
+the status strip or the Configuration tab for the same menus:
 
 | Menu | Commands |
 | --- | --- |
@@ -47,7 +47,7 @@ most commands are greyed out. Connect a base with an installed tag, then choose
 ### Tag
 
 The Tag tab shows the tag's identity and how much data it holds. Right-click it
-for the tag commands.
+for the menus, with the tag commands under **Tag**.
 
 ![Tag Monitor with an idle CompassTag](../images/qtmonitor-main-idle.png)
 
@@ -125,7 +125,7 @@ If a check fails, Start lists what failed and asks whether to **Start Anyway**
 or **Cancel**; Cancel is the default. A tag started anyway is recorded in the
 Error Log with its type, UUID and the checks that failed.
 
-These commands are also on the page's popup menu.
+These commands are also on the page's popup menu, under **File** and **Tag**.
 
 ### Error Log
 

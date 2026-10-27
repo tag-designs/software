@@ -171,7 +171,8 @@ disagreement and exits 1.
 
 ## The menus
 
-`qtmonitor --check-menus` prints the menu bar and the three popup menus:
+`qtmonitor --check-menus` prints the menu bar and the three popup menus
+(each of which shows the menu bar's menus as submenus):
 every entry with its shortcut and tooltip, separators, and submenus indented.
 Compare it with the committed text:
 

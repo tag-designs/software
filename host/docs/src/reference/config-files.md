@@ -10,7 +10,8 @@ record of how the tags in an experiment were configured.
 **File ▸ Save Configuration…** asks for a file, offering the one the
 configuration came from, and writes it. **File ▸ Open
 Configuration…** opens a file, and **File ▸ Open Recent** lists the last ten
-files opened or saved. These are also on the Configuration tab's popup menu.
+files opened or saved. These are also on the Configuration tab's popup menu,
+under **File**.
 No tag needs to be attached.
 
 Opening a file makes it the configuration being edited, for the tag type the

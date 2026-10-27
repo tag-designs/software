@@ -81,14 +81,14 @@ struct Menu {
   std::vector<MenuEntry> entries;  ///< In order.
 };
 
-/// The menu bar: File, Tag, Log and Help, in order.
+/**
+ * @brief The menu bar: File, Tag, Log and Help, in order.
+ *
+ * @details The popup menus (a right-click on the Tag page, the status strip
+ *          or the Configuration tab) show these same menus as submenus, so
+ *          every command is reachable from the mouse.
+ */
 const std::vector<Menu> &menuBar();
-
-/// The popup menu of the Tag page and of the status strip: the tag commands.
-const std::vector<MenuEntry> &tagPopup();
-
-/// The popup menu of the Configuration tab: its document commands and Start.
-const std::vector<MenuEntry> &configPopup();
 
 } // namespace qtmon
 
