@@ -1,6 +1,7 @@
 name: Release host tools
 
-# Builds the Windows, macOS and Linux host tool packages. Pushing a version
+# Builds the Windows, macOS and Linux host tool packages, Tag Programmer
+# (Rust, built by cargo) included. Pushing a version
 # tag (for example `v3.1`) builds all three and opens a *draft* GitHub release
 # with the Windows .zip and the Linux .tar.gz attached. `workflow_dispatch`
 # runs the same builds without publishing, so the pipeline can be exercised
@@ -136,7 +137,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ninja-build \
             autoconf autoconf-archive automake libtool libudev-dev \
-            libgl1-mesa-dev libegl-dev libxkbcommon-dev
+            libgl1-mesa-dev libegl-dev libxkbcommon-dev \
+            libwebkit2gtk-4.1-dev
 
       - name: Cache vcpkg binary packages
         uses: actions/cache@v4
@@ -148,6 +150,18 @@ jobs:
             'cmake/vcpkg-triplets/*') }}
           restore-keys: |
             vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_BASELINE }}-
+
+      # Tag Programmer (host/applications/tagprogram-rs) is built by cargo.
+      # The runners carry rustup; this pins the toolchain to current stable
+      # (the crates need Rust 1.85 or newer, for edition 2024) and caches the
+      # dependency builds under the CMake build tree's cargo directory.
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host/applications/tagprogram-rs -> ../../../build/host/applications/tagprogram-rs/cargo
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -208,6 +222,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="$SRC_DIR/build/install" \
             -DBUILD_HOST=ON \
             -DBUILD_QT_APPS=ON \
+            -DBUILD_RUST_APPS=ON \
             -DBUILD_EMBEDDED=OFF \
             -DBUILD_HOST_DOCS=ON \
             -DBUILD_DEVELOPER_DOCS=OFF \

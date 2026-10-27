@@ -1,0 +1,44 @@
+# Rust port of the tagcore tag interface: Tag (tagclass), TagMonitor and
+# LinkAdapt, talking to a tag's monitor through an ST-LINK over libusb.
+#
+# The protobuf types are generated at build time from the shared definitions
+# in proto/, so they stay in step with the C++ host tools and the firmware.
+# Needs nothing installed: protoc comes from protoc-bin-vendored unless PROTOC
+# names one, and libusb is built from source and linked statically (rusb's
+# `vendored`), so the binaries depend on no libusb on the user's machine.
+[package]
+name = "tagcore"
+version = "0.1.0"
+edition = "2024"
+description = "Host-side interface to tag firmware monitors over ST-LINK (Rust port of tagcore's Tag class)"
+publish = false
+
+[features]
+default = ["instrumentation"]
+# Mirrors TAGCORE_ENABLE_INSTRUMENTATION: count and time every USB transfer,
+# ST-LINK command and monitor RPC. Turning it off leaves the statistics at
+# zero with `enabled == false`.
+instrumentation = []
+
+[dependencies]
+log = "0.4.34"
+prost = "0.14.4"
+prost-reflect = { version = "0.16.5", features = ["derive", "serde", "text-format"] }
+rusb = { version = "0.9.4", features = ["vendored"] }
+serde_json = "1.0.154"
+
+[build-dependencies]
+protoc-bin-vendored = "3"
+prost-build = "0.14.4"
+prost-reflect-build = "0.16.1"
+
+[dev-dependencies]
+env_logger = "0.11.11"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

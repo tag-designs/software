@@ -6,7 +6,9 @@
 # Meant to run as root inside a throwaway container; it installs packages.
 # Normally started by `linux-build-check.sh --package`, which CI also uses.
 # It installs only what a desktop distribution already has -- the display
-# stack, OpenGL, fontconfig, D-Bus, CUPS -- plus the test's own tools, so a
+# stack, OpenGL, fontconfig, D-Bus, CUPS, and WebKitGTK 4.1, which Tag
+# Programmer draws its window with and the package does not carry (GNOME
+# desktops have it; elsewhere it is one package) -- plus the test's own tools, so a
 # library the package should carry and does not shows up here as missing.
 #
 #   1. Self-containment: every ELF file in the package must resolve all its
@@ -21,8 +23,8 @@
 #      for qtcalibrate (its 3D orientation view included), logs for
 #      sensorviz -- and must exit 0 with its screenshots written and not
 #      blank, and nothing on stderr saying a plugin, library or QML module
-#      failed to load. btviz and qtprogram have no capture mode; they must
-#      start and stay up.
+#      failed to load. btviz, qtprogram and tagprogram (Tag Programmer in
+#      Rust) have no capture mode; they must start and stay up.
 #
 # Usage: linux-package-test.sh TARBALL SOURCE_DIR OUT_DIR
 #   TARBALL     the package
@@ -53,6 +55,7 @@ apt-get install -y -qq --no-install-recommends \
     libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
     libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
     libwayland-client0 libwayland-cursor0 libwayland-egl1 \
+    libwebkit2gtk-4.1-0 \
     mutter dbus xvfb xauth imagemagick file binutils sqlite3 ca-certificates \
     >/dev/null || { echo "apt-get failed"; exit 1; }
 
@@ -198,6 +201,7 @@ run_apps() {
     done
     run_stays_up "$p" btviz -- "$tt/bin/btviz"
     run_stays_up "$p" qtprogram -- "$tt/bin/qtprogram"
+    run_stays_up "$p" tagprogram -- "$tt/bin/tagprogram"
 }
 
 export XDG_RUNTIME_DIR=/tmp/xdg

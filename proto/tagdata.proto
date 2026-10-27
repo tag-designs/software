@@ -17,7 +17,7 @@ message TagInfo {
   // hardware
   string board_desc = 2; // board description
   string uuid = 3;       // processor unique id
-  int64 intflashsz = 4;  // internal flash size (bytes)
+  int64 intflashsz = 4;  // internal flash size (KB, from the flash size data register)
   int64 extflashsz = 5;  // external flash size (bytes)
   // software
   string firmware = 6;    // firmware description

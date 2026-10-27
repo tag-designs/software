@@ -1,0 +1,498 @@
+/*
+ * Tag host UI kit: a macOS-native look for the web front ends of the host
+ * applications (Tag Programmer first; qtmonitor and qtcalibrate are meant to
+ * reuse it). Plain CSS, no build step. Colours are tokens on :root, redefined
+ * for dark mode; html[data-theme] forces one theme (the mock pages accept
+ * ?theme=dark|light).
+ *
+ * Measurements follow qtprogram on macOS: 13 px system font, 24 px controls,
+ * 12 px window margins, rounded light-grey group panels with the title above.
+ * See README.md for the component classes.
+ */
+
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-size: 13px;
+  --font-size-small: 11px;
+
+  --win-bg: #ffffff;
+  --panel-bg: #f7f7f7;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-disabled: #a6a6a8;
+  --control-bg: #ebebeb;
+  --control-bg-hover: #e2e2e2;
+  --control-bg-active: #d4d4d4;
+  --accent: #007aff;
+  --accent-hover: #1a87ff;
+  --accent-active: #006ee6;
+  --accent-text: #ffffff;
+  --field-bg: #ffffff;
+  --field-border: #c9c9cc;
+  --focus-ring: rgba(0, 122, 255, 0.45);
+  --separator: #e5e5e5;
+  --titlebar-bg: #f0f0f0;
+
+  --ok: #2e7d32;
+  --warn: #c77700;
+  --fail: #c62828;
+  --pending: #9e9e9e;
+
+  --menu-bg: rgba(246, 246, 246, 0.97);
+  --menu-border: rgba(0, 0, 0, 0.12);
+  --menu-shadow: 0 6px 22px rgba(0, 0, 0, 0.22);
+  --backdrop: rgba(0, 0, 0, 0.18);
+  --dialog-bg: #ffffff;
+  --dialog-shadow: 0 16px 48px rgba(0, 0, 0, 0.30), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+  --log-bg: #ffffff;
+  --log-border: #d2d2d6;
+  --toolbutton-bg: #f2f2f2;
+  --toolbutton-border: #c9c9cc;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='12' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5 7 4.5M1 7.5 4 10.5 7 7.5' fill='none' stroke='%23303030' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --win-bg: #1e1e1e;
+    --panel-bg: #2a2a2b;
+    --text: #e8e8ea;
+    --text-secondary: #9b9ba0;
+    --text-disabled: #6a6a6e;
+    --control-bg: #3a3a3c;
+    --control-bg-hover: #454547;
+    --control-bg-active: #525255;
+    --accent: #0a84ff;
+    --accent-hover: #2a93ff;
+    --accent-active: #0070e0;
+    --field-bg: #1c1c1e;
+    --field-border: #4a4a4d;
+    --focus-ring: rgba(10, 132, 255, 0.55);
+    --separator: #3a3a3c;
+    --titlebar-bg: #2b2b2c;
+    --ok: #4caf50;
+    --warn: #e39a2a;
+    --fail: #ef5350;
+    --pending: #8a8a8e;
+    --menu-bg: rgba(44, 44, 46, 0.97);
+    --menu-border: rgba(255, 255, 255, 0.12);
+    --dialog-bg: #2c2c2e;
+    --dialog-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+    --backdrop: rgba(0, 0, 0, 0.35);
+    --log-bg: #1c1c1e;
+    --log-border: #3e3e41;
+    --toolbutton-bg: #333335;
+    --toolbutton-border: #4a4a4d;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='12' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5 7 4.5M1 7.5 4 10.5 7 7.5' fill='none' stroke='%23d8d8d8' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --win-bg: #1e1e1e;
+  --panel-bg: #2a2a2b;
+  --text: #e8e8ea;
+  --text-secondary: #9b9ba0;
+  --text-disabled: #6a6a6e;
+  --control-bg: #3a3a3c;
+  --control-bg-hover: #454547;
+  --control-bg-active: #525255;
+  --accent: #0a84ff;
+  --accent-hover: #2a93ff;
+  --accent-active: #0070e0;
+  --field-bg: #1c1c1e;
+  --field-border: #4a4a4d;
+  --focus-ring: rgba(10, 132, 255, 0.55);
+  --separator: #3a3a3c;
+  --titlebar-bg: #2b2b2c;
+  --ok: #4caf50;
+  --warn: #e39a2a;
+  --fail: #ef5350;
+  --pending: #8a8a8e;
+  --menu-bg: rgba(44, 44, 46, 0.97);
+  --menu-border: rgba(255, 255, 255, 0.12);
+  --dialog-bg: #2c2c2e;
+  --dialog-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.18);
+  --backdrop: rgba(0, 0, 0, 0.35);
+  --log-bg: #1c1c1e;
+  --log-border: #3e3e41;
+  --toolbutton-bg: #333335;
+  --toolbutton-border: #4a4a4d;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='12' viewBox='0 0 8 12'%3E%3Cpath d='M1 4.5 4 1.5 7 4.5M1 7.5 4 10.5 7 7.5' fill='none' stroke='%23d8d8d8' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+
+/* ---- Window ---------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--win-bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  line-height: 1.25;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+.kit-window {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* A stand-in title bar, shown only when the page is previewed in a browser
+   (the app's own window has a real one). */
+.kit-titlebar {
+  display: none;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  padding-left: 85px;
+  position: relative;
+  background: var(--win-bg);
+  border-bottom: 1px solid var(--separator);
+  font-weight: 600;
+  font-size: 13px;
+}
+.kit-preview .kit-titlebar { display: flex; }
+.kit-titlebar .kit-traffic {
+  position: absolute;
+  left: 13px;
+  top: 10px;
+  display: flex;
+  gap: 8px;
+}
+.kit-titlebar .kit-traffic span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
+}
+.kit-titlebar .kit-traffic span:nth-child(2) { background: #febc2e; }
+.kit-titlebar .kit-traffic span:nth-child(3) { background: #28c840; }
+
+.kit-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 10px;
+  min-height: 0;
+}
+
+.kit-selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+/* ---- Menu bar (in the window, as qtprogram's) ------------------------- */
+
+.kit-menubar {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  margin: 0 -6px;
+  flex: none;
+}
+.kit-menu {
+  position: relative;
+}
+.kit-menu > .kit-menu-title {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: default;
+}
+.kit-menu.open > .kit-menu-title { background: var(--accent); color: var(--accent-text); }
+.kit-menu-dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 22px;
+  min-width: 220px;
+  padding: 5px;
+  background: var(--menu-bg);
+  border: 0.5px solid var(--menu-border);
+  border-radius: 8px;
+  box-shadow: var(--menu-shadow);
+  z-index: 50;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.kit-menu.open > .kit-menu-dropdown { display: block; }
+.kit-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.kit-menu-item .kit-check { width: 12px; text-align: center; visibility: hidden; }
+.kit-menu-item.checked .kit-check { visibility: visible; }
+.kit-menu-item:hover:not(.disabled) { background: var(--accent); color: var(--accent-text); }
+.kit-menu-item.disabled { color: var(--text-disabled); }
+.kit-menu-sep { height: 1px; margin: 5px 8px; background: var(--separator); }
+
+/* ---- Controls --------------------------------------------------------- */
+
+.kit-button {
+  font: inherit;
+  height: 24px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--control-bg);
+  color: var(--text);
+  white-space: nowrap;
+  cursor: default;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.05);
+}
+.kit-button:hover:not(:disabled) { background: var(--control-bg-hover); }
+.kit-button:active:not(:disabled) { background: var(--control-bg-active); }
+.kit-button:disabled { color: var(--text-disabled); }
+.kit-button.default {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.kit-button.default:hover:not(:disabled) { background: var(--accent-hover); }
+.kit-button.default:active:not(:disabled) { background: var(--accent-active); }
+.kit-button.default:disabled { background: var(--control-bg); color: var(--text-disabled); }
+.kit-button.destructive { color: var(--fail); }
+.kit-button.small { height: 20px; padding: 0 9px; font-size: 12px; border-radius: 5px; }
+.kit-button:focus-visible, .kit-select:focus-visible, .kit-toolbutton:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+.kit-select {
+  font: inherit;
+  height: 24px;
+  padding: 0 26px 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--control-bg) var(--chevron) no-repeat right 9px center;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  white-space: pre;
+  text-overflow: ellipsis;
+}
+.kit-select:hover:not(:disabled) { background-color: var(--control-bg-hover); }
+.kit-select:disabled { color: var(--text-disabled); }
+.kit-select option { white-space: pre; }
+
+.kit-field {
+  font: inherit;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  background: var(--field-bg);
+  color: var(--text);
+  -webkit-user-select: text;
+  user-select: text;
+}
+.kit-field:focus { outline: 3px solid var(--focus-ring); outline-offset: 0; border-color: var(--accent); }
+
+.kit-toolbutton {
+  font: inherit;
+  font-size: 12px;
+  height: 26px;
+  padding: 0 8px 0 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--toolbutton-border);
+  border-radius: 4px;
+  background: var(--toolbutton-bg);
+  color: var(--text);
+}
+.kit-toolbutton .kit-arrow {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.12s;
+}
+.kit-toolbutton[aria-pressed="true"] .kit-arrow { transform: rotate(90deg); }
+
+.kit-progress {
+  width: 200px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--control-bg);
+  overflow: hidden;
+  position: relative;
+  flex: none;
+}
+.kit-progress > div {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  width: 0;
+}
+.kit-progress.busy > div {
+  width: 30%;
+  position: absolute;
+  animation: kit-busy 1.2s ease-in-out infinite;
+}
+@keyframes kit-busy {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* ---- Group boxes and panels ------------------------------------------- */
+
+.kit-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.kit-group-title {
+  font-size: var(--font-size-small);
+  padding: 0 0 4px 7px;
+  height: 16px;
+}
+.kit-panel {
+  flex: 1;
+  background: var(--panel-bg);
+  border-radius: 9px;
+  padding: 14px 16px;
+}
+
+/* Status rows: dot, name, text, buttons. */
+.kit-status-grid {
+  display: grid;
+  grid-template-columns: 12px max-content 1fr max-content;
+  column-gap: 7px;
+  row-gap: 10px;
+  align-items: start;
+}
+.kit-status-grid .kit-dot { line-height: 18px; font-size: 13px; }
+.kit-status-grid .kit-status-name { line-height: 18px; white-space: nowrap; padding-right: 3px; }
+.kit-status-grid .kit-status-text {
+  line-height: 18px;
+  min-height: 32px;
+  word-break: break-word;
+}
+.kit-status-grid .kit-status-buttons { display: flex; gap: 6px; }
+.kit-dot.ok { color: var(--ok); }
+.kit-dot.warn { color: var(--warn); }
+.kit-dot.fail { color: var(--fail); }
+.kit-dot.pending { color: var(--pending); }
+
+/* Key/value form: labels right-aligned. */
+.kit-form {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: baseline;
+}
+.kit-form > * { line-height: 18px; }
+.kit-form > .kit-form-label { text-align: right; white-space: nowrap; }
+.kit-form > .kit-form-value { min-width: 0; white-space: pre-wrap; word-break: break-word; }
+.kit-form > .kit-form-value.single { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+
+.kit-text-ok { color: var(--ok); }
+.kit-text-fail { color: var(--fail); }
+.kit-text-warn { color: var(--warn); }
+.kit-text-secondary { color: var(--text-secondary); }
+
+/* ---- Dialogs ---------------------------------------------------------- */
+
+.kit-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  z-index: 100;
+}
+.kit-dialog {
+  min-width: 320px;
+  max-width: min(640px, calc(100vw - 40px));
+  background: var(--dialog-bg);
+  border-radius: 10px;
+  box-shadow: var(--dialog-shadow);
+  overflow: hidden;
+}
+.kit-dialog-title {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  background: var(--titlebar-bg);
+  border-bottom: 1px solid var(--separator);
+}
+.kit-dialog-body { padding: 18px 20px 6px; }
+.kit-dialog-body .kit-message-title { font-weight: 600; margin-bottom: 8px; }
+.kit-dialog-body .kit-message-text { white-space: pre-wrap; line-height: 1.35; }
+.kit-dialog-body .kit-message-info { white-space: pre-wrap; margin-top: 8px; color: var(--text-secondary); font-size: 12px; }
+.kit-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+}
+.kit-dialog-buttons .kit-spacer { flex: 1; }
+.kit-dialog-buttons .kit-button { min-width: 72px; }
+.kit-list {
+  margin-top: 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 5px;
+  background: var(--field-bg);
+  max-height: 220px;
+  overflow: auto;
+}
+.kit-list-item { padding: 4px 8px; }
+.kit-list-item.selected { background: var(--accent); color: var(--accent-text); }
+
+/* ---- Log drawer ------------------------------------------------------- */
+
+.kit-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 180px;
+  flex: 1;
+}
+.kit-log[hidden] { display: none; }
+.kit-log textarea {
+  flex: 1;
+  min-height: 140px;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--log-bg);
+  color: var(--text);
+  border: 1px solid var(--log-border);
+  border-radius: 5px;
+  padding: 6px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.kit-log .kit-log-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kit-log .kit-log-bar .kit-spacer { flex: 1; }

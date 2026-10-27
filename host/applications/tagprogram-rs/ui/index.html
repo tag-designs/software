@@ -1,0 +1,98 @@
+<!doctype html>
+<!--
+  Tag Programmer's window. A generic renderer of the engine's view state
+  (design/ui-engine-contract.md); every rule lives in the engine. Opened as a
+  file in a browser it runs against mock-engine.js; see app.js for the
+  preview query parameters.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tag Programmer</title>
+  <link rel="stylesheet" href="../../../ui-kit/kit.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="kit-window">
+    <div class="kit-titlebar">
+      <div class="kit-traffic"><span></span><span></span><span></span></div>
+      <span class="kit-title">Tag Programmer</span>
+    </div>
+    <div class="kit-content">
+      <div id="menubar"></div>
+
+      <div class="choice">
+        <label for="firmware">Firmware</label>
+        <select id="firmware" class="kit-select"></select>
+        <button id="release-notes" class="kit-button" type="button">Release Notes</button>
+        <label for="target">Tag type</label>
+        <select id="target" class="kit-select"></select>
+        <span id="target-note"></span>
+      </div>
+
+      <div class="panels">
+        <div class="kit-group station">
+          <div class="kit-group-title">Station</div>
+          <div class="kit-panel"><div id="checks" class="kit-status-grid"></div></div>
+        </div>
+        <div class="kit-group tag">
+          <div class="kit-group-title">Tag</div>
+          <div class="kit-panel">
+            <div class="kit-form">
+              <span class="kit-form-label">Label</span><span id="tag-label" class="kit-form-value single kit-selectable"></span>
+              <span class="kit-form-label">UUID</span><span id="tag-uuid" class="kit-form-value single kit-selectable"></span>
+              <span class="kit-form-label">State</span><span id="tag-state" class="kit-form-value single kit-selectable"></span>
+              <span class="kit-form-label">Firmware</span><span id="tag-firmware" class="kit-form-value single kit-selectable"></span>
+              <span class="kit-form-label">Tests</span><span id="tag-tests" class="kit-form-value single kit-selectable"></span>
+              <span class="kit-form-label">Clock</span>
+              <span class="kit-form-value clock-row">
+                <span id="tag-clock" class="kit-selectable" title="The tag's clock minus this computer's, in seconds"></span>
+                <button id="sync" class="kit-button small" type="button" title="Set the tag's clock to this computer's">Sync</button>
+              </span>
+              <span class="kit-form-label">Result</span><span id="tag-result" class="kit-form-value single kit-selectable"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="program" class="kit-button default" type="button">Program</button>
+        <button id="retest" class="kit-button" type="button">Retest</button>
+        <button id="next-tag" class="kit-button" type="button">Next Tag</button>
+        <button id="attach" class="kit-button" type="button">Attach</button>
+        <span class="kit-spacer"></span>
+        <button id="show-csv" class="kit-button" type="button">Show CSV</button>
+      </div>
+
+      <div class="session">
+        <span id="step" class="kit-selectable"></span>
+        <div id="progress" class="kit-progress" hidden><div></div></div>
+        <button id="retry" class="kit-button" type="button" hidden>Retry</button>
+        <button id="cancel" class="kit-button" type="button" hidden>Cancel</button>
+      </div>
+
+      <div class="bottom">
+        <span id="batch"></span>
+        <button id="log-toggle" class="kit-toolbutton" type="button" aria-pressed="false"><span class="kit-arrow">❯</span>Log</button>
+      </div>
+
+      <div id="log" class="kit-log" hidden>
+        <textarea id="log-text" readonly title="log of error messages" spellcheck="false"></textarea>
+        <div class="kit-log-bar">
+          <button id="save-log" class="kit-button" type="button" title="Save error log to file">Save Error Log</button>
+          <span class="kit-spacer"></span>
+          <label for="log-level">Log Level</label>
+          <select id="log-level" class="kit-select" title="Set error logging level">
+            <option>TRACE</option><option>DEBUG</option><option selected>INFO</option><option>WARN</option><option>ERROR</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../../ui-kit/kit.js"></script>
+  <script src="mock-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

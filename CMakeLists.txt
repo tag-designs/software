@@ -65,6 +65,17 @@ endif()
 
 option(BUILD_HOST "Build host libraries and tools" ON)
 option(BUILD_QT_APPS "Build Qt host applications" ON)
+# The Rust applications (Tag Programmer, host/applications/tagprogram-rs) are
+# built by cargo. On by default where cargo is installed, so a machine without
+# Rust still builds everything else; the release workflow turns it on, which
+# makes a missing cargo an error there.
+find_program(_cargo_for_default cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
+if(_cargo_for_default)
+  set(_build_rust_apps_default ON)
+else()
+  set(_build_rust_apps_default OFF)
+endif()
+option(BUILD_RUST_APPS "Build the Rust host applications with cargo" ${_build_rust_apps_default})
 option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ${BUILD_QT_APPS})
 option(BUILD_DEVELOPER_DOCS "Build developer architecture and API documentation by default" OFF)
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})

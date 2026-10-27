@@ -11,6 +11,7 @@ GENERATE_XML           = NO
 
 INPUT                  = @PROJECT_SOURCE_DIR@/include \
                          @PROJECT_SOURCE_DIR@/host/libraries/tagcore \
+                         @PROJECT_SOURCE_DIR@/host/libraries/tagcore-c \
                          @PROJECT_SOURCE_DIR@/host/libraries/sensoranalysis \
                          @PROJECT_SOURCE_DIR@/host/libraries/sensorui \
                          @PROJECT_SOURCE_DIR@/host/common \

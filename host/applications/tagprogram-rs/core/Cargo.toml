@@ -1,0 +1,30 @@
+[package]
+name = "tagprogram-core"
+version = "0.1.0"
+edition = "2024"
+description = "Tag Programmer model and engine: no UI toolkit"
+publish = false
+
+[dependencies]
+tagcore = { path = "../../../libraries/tagcore-rs" }
+tagprobe = { path = "../../../libraries/tagprobe-rs" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+sha2 = "0.10"
+regex = "1"
+tar = "0.4"
+flate2 = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

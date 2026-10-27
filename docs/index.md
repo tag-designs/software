@@ -78,12 +78,14 @@ design document.
 - [0032. Host: configuration shape from default configs, fixed panels per tag type](decisions/0032-host-config-shape-and-fixed-panels.md) *(decision)* — Which Config fields a tag supports comes from its default config, read at run time by tagcore's ConfigShape, which also gives Restore and tag-start --merge one merge rule; qtmonitor's configuration screen is fixed panels selected by tag type; the change was proven equivalent on the host by a probe and golden results; tag-reported presence through proto3 optional fields was deferred.
 - [0033. Host: qtmonitor as a configuration editor, with menus and Start checks](decisions/0033-host-qtmonitor-editor-menus-start-checks.md) *(decision)* — qtmonitor became a configuration editor (Open makes a file the document, replacing Restore's merge into the tag), its buttons became actions in in-window menus with Start and Stop kept beside a status strip, and Start checks clock (2 s), the tag's reported self-test and an Approved box, warning with continue or cancel rather than refusing; Help menus share one user-guide finder.
 - [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
+- [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
 
 ### Investigations
 
 - [Investigations](investigations/README.md) — Where dated fault investigations and measurement campaigns are kept, and how they are closed.
 - [Firmware build reproducibility: findings (2026-09)](investigations/2026-09-firmware-build-reproducibility.md) *(investigation, closed)* — How the nanopb runtime and generator were found disagreeing, and the first end-to-end release-firmware CI run, its toolchain-checksum failure and its 15-of-15 hash verification.
 - [Offline Log Reconstruction](investigations/2026-10-offline-log-reconstruction.md) *(investigation, closed)* — Whether fw-v0.0.3 downloads can be rebuilt from an SWD capture plus the release package, tag by tag, with the gaps and firmware defects the reading found.
+- [probe-rs evaluation (2026-10)](investigations/2026-10-probe-rs-evaluation.md) *(investigation, open)* — Whether probe-rs could replace tagcore's ST-LINK layer, the SWD recovery primitives and STM32CubeProgrammer in qtprogram - what its source says, and what a spike against the tag bases found.
 
 ### Release
 
@@ -349,6 +351,14 @@ design document.
 - [QtMonitor](../host/applications/qtmon/README.md) — qtmonitor live and fixture screenshot modes, screenshot commands and sizing.
 - [qtmonitor: Configuration Editor, Menus and Start Checks](../host/applications/qtmon/design/editor-and-start-checks.md) — qtmonitor is a configuration editor as well as a tag monitor -- one document from defaults, a file or a tag, commands as actions in in-window menus, a status strip with Approved, Start and Stop, and Start checks (clock within 2 s, self-test ALL_PASSED, Approved) that warn and let the user continue or cancel.
 
+### Applications / qtmon / Proposals
+
+- [qtmonitor: engine, model and views](../host/applications/qtmon/design/proposals/engine-model-view.md) *(proposal, proposed)* — Restructure qtmonitor into an engine that owns the tag on its own thread, a Qt-free model that holds every rule (action states, start checks, the configuration document), and views that only draw the model and send commands - done in Qt first, step by step under the existing goldens, so a Rust and Tauri port becomes a translation of each layer.
+
+### Applications / qtmon / Proposals / config-form-mockup
+
+- [qtmonitor Configuration Form Mockup](../host/applications/qtmon/design/proposals/config-form-mockup/README.md) — A web mockup of qtmonitor's Configuration tab split the proposed way - the panels as a data spec, a stand-in engine owning the document and every rule, and a generic renderer that only draws field kinds and exchanges messages.
+
 ### Applications / qtmon / tagconfiguration
 
 - [QtMonitor Configuration Panels](../host/applications/qtmon/tagconfiguration/README.md) — How qtmonitor's Configuration tab is built from fixed panels selected by tag type, how panels read and write Config, the cross-check against the tags' default configs, and adding tags, fields and panels.
@@ -383,6 +393,14 @@ design document.
 
 - [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
+### Applications / tagprogram-rs
+
+- [Tag Programmer (Rust)](../host/applications/tagprogram-rs/README.md) — Tag Programmer in Rust - qtprogram's station and programming session ported to a toolkit-free engine, programming through probe-rs instead of STM32CubeProgrammer, with a Tauri shell over a web front end.
+- [Building and packaging Tag Programmer](../host/applications/tagprogram-rs/design/build-and-packaging.md) — How Tag Programmer is built and shipped - the cargo workspace, what build.rs stages and why, the CMake target that wraps cargo, the per-platform install layout and signing, the CI build, the third-party notices, and the platform pitfalls each of those choices answers.
+- [qtprogram (Tag Programmer v2.0): functional and visual specification](../host/applications/tagprogram-rs/design/qtprogram-spec.md) *(results)* — A functional and visual specification of qtprogram (Tag Programmer v2.0), read from its source and manual, that the Rust port reproduces.
+- [Tag Programmer engine](../host/applications/tagprogram-rs/design/engine.md) — How Tag Programmer's engine works - one thread that owns all state, the message loop and its deadline timers, worker threads for slow work, the station's checks and attach path, the programming session's step machine, and the hazards a maintainer must not reintroduce.
+- [Tag Programmer: UI/engine contract](../host/applications/tagprogram-rs/design/ui-engine-contract.md) — The contract between Tag Programmer's engine and its web UI - the view state the engine publishes, the commands and queries the UI sends, the prompts - and the model API the engine is built on.
+
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-txt-import, tag-cal-write and dataprocessing.
@@ -396,6 +414,10 @@ design document.
 ### Command Line / test
 
 - [tag-txt-import Check](../host/commandline/test/README.md) — Offline check of tag-txt-import - anonymised fixtures of each legacy .txt variant and repair, and the script that converts them and asserts each conversion report.
+
+### commandline-rs
+
+- [Tag command-line tools (Rust)](../host/commandline-rs/README.md) — Rust ports of the tag command-line tools built on tagcore-rs - which tools exist, which are not ported yet and why, how they differ from the C++, and how they were checked.
 
 ### Common
 
@@ -442,6 +464,7 @@ design document.
 - [Deployment Metadata for Processing](../host/libraries/tagcore/design/proposals/deployment-metadata.md) *(proposal, proposed)* — Record, inside each SQLite log, the few deployment facts that change how it is processed - location, time zone, mounting, on-animal interval, elevation or reference pressure, and an optional declination - all optional, read and written through a Qt-free tagcore layer, edited with a small host app (tagmeta) and a command-line twin, and used as defaults by sensorviz, the filter and dataprocessing.
 - [Recovery Library: Identification, Rescue and Python](../host/libraries/tagcore/design/proposals/recovery-identification-rescue-python.md) *(proposal, proposed)* — The unbuilt parts of the SWD recovery library - identifying older images by hash and strings, the rescue-erase procedure, and the Python binding - with the check that ends each.
 - [Retiring the Text Log Format and btviz](../host/libraries/tagcore/design/proposals/retire-text-logs.md) *(proposal, proposed)* — Retire the legacy .txt sensor-log format and btviz - convert the existing BitTag and PresTag .txt collection to SQLite with a command-line importer that round-trip-verifies every conversion, use the conversion and a dual-format field download to prove the SQLite writer on real experiments, then delete the text writer, btviz and their docs; actograms and filtering move to general-purpose tools reading SQLite.
+- [Rust host applications over the C++ libraries](../host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md) *(proposal, proposed)* — How Rust (or other non-Qt) host applications should use the C++ libraries they depend on - what is already Qt-free, one C interface library over them (prototyped for the SQLite writer with a Rust tag-dwnld), shared against static linking measured, and where leaving Qt actually costs.
 - [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
@@ -456,6 +479,25 @@ design document.
 ### Libraries / tagcore / test
 
 - [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
+
+### Libraries / tagcore-c
+
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+
+### Libraries / tagcore-rs
+
+- [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+- [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
+
+### Libraries / taglogwriter-rs
+
+- [taglogwriter (Rust)](../host/libraries/taglogwriter-rs/README.md) — taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and the log-import check.
+
+### Libraries / tagprobe-rs
+
+- [tagprobe (Rust)](../host/libraries/tagprobe-rs/README.md) — tagprobe - programming, connect checks and flash read-back for tags through a base, on probe-rs, with a field-safe ST-LINK driver for bases whose firmware predates the identify command.
+- [tagprobe design](../host/libraries/tagprobe-rs/design/architecture.md) — How tagprobe programs tags through probe-rs - choosing a driver from the base's identity, how the field-safe driver maps probe-rs's DAP model onto the commands every base supports, one session per operation under reset, the program sequence (erase plan, verify, PEMPTY, start), and the threading and base-sharing rules callers must keep.
 
 ### Proposals
 
@@ -486,9 +528,17 @@ design document.
 
 - [tagsim: Synthetic IMUTag Logs from Pattern Flights](../host/python/tagsim/design/proposals/imutag-simulator.md) *(proposal, proposed)* — A Python test tool, tagsim, that replays R/C pattern-aerobatics flights through a simple IMUTag sensor model and writes genuine IMUTag SQLite logs plus ground truth, chiefly to test the future post-processing orientation filter.
 
+### spikes / probe-rs-spike
+
+- [probe-rs spike](../host/spikes/probe-rs-spike/README.md) — A probe-rs experiment against the tag bases - what each subcommand does and where the results are written up.
+
 ### tagserver
 
 - [tag-server](../host/tagserver/README.md) — tag-server, the tagcore Tag API over gRPC on a local socket for test programs - building it, running it, its calls and error codes, and what it does not do.
+
+### ui-kit
+
+- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
 
 ### User Guide Tooling
 

@@ -106,7 +106,7 @@ typedef struct _TagInfo {
     /* hardware */
     char board_desc[60]; /* board description */
     char uuid[30]; /* processor unique id */
-    int64_t intflashsz; /* internal flash size (bytes) */
+    int64_t intflashsz; /* internal flash size (KB, from the flash size data register) */
     int64_t extflashsz; /* external flash size (bytes) */
     /* software */
     char firmware[60]; /* firmware description */

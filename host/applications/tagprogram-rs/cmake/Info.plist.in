@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>Tag Programmer</string>
+  <key>CFBundleExecutable</key>
+  <string>tagprogram</string>
+  <key>CFBundleIconFile</key>
+  <string>icon.icns</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.tagdesigns.tagprogram</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>Tag Programmer</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@ULTRALIGHT_PACKAGE_VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@ULTRALIGHT_PACKAGE_VERSION@</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>@CMAKE_OSX_DEPLOYMENT_TARGET@</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Tag Programmer keeps its record of programmed tags in your Documents folder, in Tag Programmer/programmed-tags.csv.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Tag Programmer reads firmware images and writes its record wherever you choose them, including the Desktop.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>Tag Programmer reads firmware images you choose from the Downloads folder.</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>

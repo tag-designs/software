@@ -38,6 +38,7 @@ programs.
 | --- | --- | --- | --- |
 | [Qt](third-party/qt.txt) | 6.10.3 | [LGPL-3.0-only](texts/LGPL-3.0-only.txt); Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard [GPL-3.0-only](texts/GPL-3.0-only.txt) | Qt applications (shared libraries) |
 | [Third-party code inside Qt](Qt-THIRD-PARTY-NOTICES.txt) | — | various, listed in the file | Qt applications |
+| [Rust crates in Tag Programmer](tagprogram-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tagprogram |
 | [QCustomPlot](third-party/qcustomplot.txt) | 2.1.1 | [GPL-3.0-or-later](texts/GPL-3.0-only.txt) | sensorviz, btviz |
 | [libusb](third-party/libusb.txt) | 1.0.29 | [LGPL-2.1-or-later](texts/LGPL-2.1-or-later.txt) | programs that talk to a tag |
 | [Protocol Buffers](third-party/protobuf.txt) | 6.33.4 | BSD-3-Clause | all programs |

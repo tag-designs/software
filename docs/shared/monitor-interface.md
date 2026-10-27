@@ -318,6 +318,25 @@ Monitor attachment is part of the low-power contract:
 `MONCONNECTED` remains a narrow attach hint: it is `DEMCR.VC_CORERESET`. It is
 not the U3 session truth. U3 session truth is the shared request word.
 
+**A host must keep talking to an attached tag.** On L4 the session ends when
+the 60 s watchdog above runs out without a request, and an IDLE tag then
+enters terminal sleep, after which every SWD access fails (the base reports
+status `0x81`, or the USB transfer times out) until a reset.
+
+**UIUCTag images up to and including fw-v0.6 end the session after 5 s, not
+60 s.** Where `RANGE_MULTIPLIER` was defined (UIUCTag and the BitPresTag
+variants) the session raised MSI to 24 MHz and wrote TIM2's prescaler to
+compensate; TIM2 is the free-running ChibiOS system timer and a prescaler
+write only takes effect at an update event it never reaches, so the tick ran
+12x fast for the whole session. Measured on a UIUCTag breakout (fw-v0.6,
+2.496 V): 2.9 mA attached, then 0.16 uA about 4.6 s after the last request;
+400 ms polls kept it attached for 30 s. Later images do not change the clock
+for the session (only `data_logAck()` raises it, around one page of a
+download); the same breakout then stayed attached through 15 s of quiet and
+drew 433 uA attached. Hosts should keep the gap between requests well under
+5 s for the tags already in the field: Tag Programmer polls every 400 ms, and
+attaches again at the start of a session if the tag does not answer.
+
 ## Current Target Split
 
 STM32L4 targets, including PresTag:
