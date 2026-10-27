@@ -76,8 +76,8 @@ pub(crate) enum PromptKind {
         /// `"warning"`, `"error"` or `"info"`.
         style: &'static str,
     },
-    /// Several bases: which one to attach through.
-    ChooseBase(Vec<UsbDev>),
+    /// Several bases, each with its identity: which one to attach through.
+    ChooseBase(Vec<(UsbDev, Option<String>)>),
     /// Start checks failed: start anyway?
     StartAnyway(Vec<String>),
     /// Erase the tag's state and data?
@@ -623,7 +623,7 @@ impl Monitor {
         match prompt.kind {
             PromptKind::Alert { .. } => {}
             PromptKind::ChooseBase(bases) => match (ok, index.and_then(|i| bases.get(i))) {
-                (true, Some(base)) => self.send(TagCmd::Attach(base.clone())),
+                (true, Some((base, _))) => self.send(TagCmd::Attach(base.clone())),
                 _ => self.attaching = false,
             },
             PromptKind::StartAnyway(failures) => {
@@ -694,7 +694,7 @@ impl Monitor {
                     self.attaching = false;
                     self.alert("Warning", "No Tag Bases Found", "", "", "warning");
                 }
-                1 => self.send(TagCmd::Attach(bases[0].clone())),
+                1 => self.send(TagCmd::Attach(bases[0].0.clone())),
                 _ => self.ask(PromptKind::ChooseBase(bases)),
             },
             Report::Attached(info, config) => {

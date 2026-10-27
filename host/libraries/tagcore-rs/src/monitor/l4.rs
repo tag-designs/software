@@ -474,8 +474,17 @@ impl TagMonitor {
             return false;
         };
         self.maxpacket = size as usize;
+        // A real monitor's buffer is a few KB, so a size past the host's
+        // buffer means the reads are not coming from a tag: most often there
+        // is no tag on this base.
         if self.maxpacket > self.rpcbuf.len() {
-            error!("RPC buffer is too small");
+            error!(
+                "RPC buffer is too small: the tag reports a {}-byte monitor buffer, \
+                 more than the host's {}; implausible, so the reads are likely junk. \
+                 Is a tag connected to this base?",
+                self.maxpacket,
+                self.rpcbuf.len()
+            );
             return false;
         }
 

@@ -2,7 +2,8 @@
 //!
 //! Port of `host/applications/qtmon/core/tagrules.h`: which states can be
 //! downloaded, how far an erase has to go, how far the tag's clock is off,
-//! the oldest Tag Monitor a tag accepts, and how a base is listed.
+//! the oldest Tag Monitor a tag accepts, and how a base is listed (with,
+//! beyond qtmonitor, what the base says it is).
 
 use tagcore::UsbDev;
 use tagcore::proto::{Status, TagState, TagType};
@@ -87,4 +88,72 @@ pub fn describe_base(base: &UsbDev) -> String {
         "{:03}:{:03}    0x{:x}:0x{:x}",
         base.bus, base.address, base.vid, base.pid
     )
+}
+
+/// One field of a base identity string (`key=value;...`).
+fn identity_field<'a>(identity: &'a str, key: &str) -> Option<&'a str> {
+    identity
+        .split(';')
+        .find_map(|f| f.strip_prefix(key)?.strip_prefix('='))
+        .filter(|v| !v.is_empty())
+}
+
+/// A base in the list to choose from: [`describe_base`], then what the base
+/// says it is, so the base with the tag can be picked out:
+/// `"002:005    0x483:0x3748    BITTAG_BASE_V7 fw a1b2c3d+  (ST-LINK 0037...)"`.
+/// The firmware hash gets `+` when it was built from a dirty tree. A base
+/// that does not identify itself shows its ST-LINK serial only.
+///
+/// Not in qtmonitor, which lists [`describe_base`] alone.
+pub fn describe_base_with_identity(base: &UsbDev, identity: Option<&str>) -> String {
+    let mut text = describe_base(base);
+    if let Some(id) = identity {
+        text += &format!("    {}", identity_field(id, "base").unwrap_or("tag base"));
+        if let Some(fw) = identity_field(id, "fw") {
+            let dirty = if identity_field(id, "dirty") == Some("1") {
+                "+"
+            } else {
+                ""
+            };
+            text += &format!(" fw {fw}{dirty}");
+        }
+    }
+    if !base.serial.is_empty() {
+        text += &format!("  (ST-LINK {})", base.serial);
+    }
+    text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A base that identifies itself, one built from a dirty tree, and one
+    /// that predates the identify command.
+    #[test]
+    fn a_base_is_listed_with_its_identity() {
+        let base = UsbDev {
+            bus: 2,
+            address: 5,
+            vid: 0x483,
+            pid: 0x3748,
+            serial: "0037ABC".into(),
+            ..UsbDev::default()
+        };
+        assert_eq!(
+            describe_base_with_identity(
+                &base,
+                Some("base=BITTAG_BASE_V7;fw=a1b2c3d;dirty=1;date=2026-10-27")
+            ),
+            "002:005    0x483:0x3748    BITTAG_BASE_V7 fw a1b2c3d+  (ST-LINK 0037ABC)"
+        );
+        assert_eq!(
+            describe_base_with_identity(&base, Some("base=U375_BASE;fw=9f171a2;dirty=0")),
+            "002:005    0x483:0x3748    U375_BASE fw 9f171a2  (ST-LINK 0037ABC)"
+        );
+        assert_eq!(
+            describe_base_with_identity(&base, None),
+            "002:005    0x483:0x3748  (ST-LINK 0037ABC)"
+        );
+    }
 }

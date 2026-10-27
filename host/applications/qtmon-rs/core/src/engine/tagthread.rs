@@ -15,7 +15,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use log::debug;
 use tagcore::proto::{Config, Status, TagInfo, TestReq};
-use tagcore::{Tag, UsbDev};
+use tagcore::{LinkAdapt, Tag, UsbDev};
 
 use super::Msg;
 use crate::model::commands::Command;
@@ -60,8 +60,9 @@ pub(crate) enum TagCmd {
 /// What the tag thread learned, for the engine thread.
 #[derive(Debug)]
 pub(crate) enum Report {
-    /// The connected bases, possibly none.
-    BasesFound(Vec<UsbDev>),
+    /// The connected bases, possibly none, each with its identity when
+    /// there are several to choose from (see [`identify`]).
+    BasesFound(Vec<(UsbDev, Option<String>)>),
     /// Attached: the tag's identity and configuration.
     Attached(Box<TagInfo>, Box<Config>),
     /// Attaching failed; the text says so.
@@ -97,6 +98,24 @@ pub(crate) fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+/// The base's identity (`base=...;fw=...;dirty=...;...`), from the tag
+/// bases' identify command, or `None` for a base that predates it or cannot
+/// be opened.
+///
+/// Opens the base's USB interface only, asks, and closes it: nothing is
+/// sent to the target, so a tag on the base is not reset. Takes up to about
+/// 300 ms for a base that does not answer. Not for a base the [`Tag`] has
+/// open.
+fn identify(base: &UsbDev) -> Option<String> {
+    let mut link = LinkAdapt::new();
+    if !link.open(base) {
+        return None;
+    }
+    let identity = link.base_identity();
+    link.detach();
+    identity
 }
 
 /// The tag thread's state.
@@ -144,7 +163,19 @@ impl TagThread {
     fn run(&mut self, cmd: TagCmd) {
         let attached = self.tag.is_attached();
         match cmd {
-            TagCmd::FindBases => self.report(Report::BasesFound(self.tag.available())),
+            TagCmd::FindBases => {
+                let bases = self.tag.available();
+                // One base needs no choosing, so it is not asked.
+                let several = bases.len() > 1 && !attached;
+                let found = bases
+                    .into_iter()
+                    .map(|b| {
+                        let id = if several { identify(&b) } else { None };
+                        (b, id)
+                    })
+                    .collect();
+                self.report(Report::BasesFound(found));
+            }
             TagCmd::Attach(base) => {
                 if attached {
                     self.report(Report::AttachFailed("Already Attached to Tag".into()));

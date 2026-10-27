@@ -18,7 +18,7 @@ use crate::model::menus::{
     EntryText, MenuEntry, MenuItem, Shortcut, command_text, item_text, menu_bar,
 };
 use crate::model::startchecks::CLOCK_TOLERANCE_S;
-use crate::model::tagrules::{describe_base, is_downloadable_state};
+use crate::model::tagrules::{describe_base_with_identity, is_downloadable_state};
 
 /// The clock offset as the status strip prints it: `%+.2f s` under 1000 s,
 /// else `%+.3g s` (an unset clock is about `-1.45e+09 s`).
@@ -225,7 +225,7 @@ impl Monitor {
                 "kind": "chooseBase",
                 "title": "Available Bases",
                 "label": "Please select a base",
-                "items": bases.iter().map(describe_base).collect::<Vec<_>>(),
+                "items": bases.iter().map(|(b, id)| describe_base_with_identity(b, id.as_deref())).collect::<Vec<_>>(),
             }),
             PromptKind::StartAnyway(failures) => json!({
                 "kind": "startAnyway",

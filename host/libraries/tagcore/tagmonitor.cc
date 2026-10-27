@@ -888,8 +888,14 @@ bool TagMonitor::AttachL4()
 
     maxpacket = tmp;
 
+    // A real monitor's buffer is a few KB, so a size past the host's buffer
+    // means the reads are not coming from a tag: most often there is no tag
+    // on this base.
     if (maxpacket > sizeof(rpcbuf)) {
-      log_error("RPC buffer is too small");
+      log_error("RPC buffer is too small: the tag reports a %u-byte monitor buffer, more "
+                "than the host's %zu; implausible, so the reads are likely junk. Is a tag "
+                "connected to this base?",
+                static_cast<unsigned>(maxpacket), sizeof(rpcbuf));
       LinkAdapt::Detach();
       break;
     }
