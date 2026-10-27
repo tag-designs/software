@@ -119,6 +119,20 @@ public:
    */
   QStringList checkActionWiring();
 
+  /**
+   * @brief The window's menus as text; for `qtmonitor --check-menus`.
+   *
+   * @details Every menu in the menu bar, depth first, then the popup menus of
+   *          the Tag page, the status strip and the Configuration tab: one line
+   *          per entry with its text, shortcut and tooltip, `---` for a
+   *          separator, and a submenu's entries indented under it. Open
+   *          Recent is filled only when it opens, so it lists none. Compared
+   *          with test/menus.txt.
+   *
+   * @return The text, one line per entry, ending with a newline.
+   */
+  QString menuTable();
+
 public slots:
   /// Capture the no-tag startup state for documentation.
   void captureStartupScreenshot();

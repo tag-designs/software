@@ -38,11 +38,11 @@ tag. This layout is also the shape a Rust and Tauri port would take; see
 | Part | Files | Holds |
 | --- | --- | --- |
 | Command rule | `core/commands.h` | `qtmon::Command`, `availability()`: the one rule for every command; `actionStateTable()` |
-| Start checks | `core/startchecks.h` | `startCheckFailures()`: clock within 2 s, self-test ALL_PASSED, approved |
-| Tag rules | `core/tagrules.h` | Downloadable states, erase sector count, clock offset |
+| Start checks | `core/startchecks.h` | `startCheckFailures()`: clock within 2 s, self-test ALL_PASSED, approved; the sentence for each |
+| Tag rules | `core/tagrules.h` | Downloadable states, erase sector count, clock offset, the version floor, how a base is listed |
 | Monitor model | `core/monitormodel.h` | The attached tag as known: identity, latest status, waits (self-test, start), erase progress, debug lines; `applyStatus()` returns what a status settled |
-| Configuration document | `core/configdocument.h` | The Config, source, file, unsaved-changes baseline, approval; reading and writing configuration files |
-| Download loop | `core/downloadjob.h` | `DownloadJob::run()`: status, header, pages until the writer consumes nothing; cancel between pages |
+| Configuration document | `core/configdocument.h` | The Config, source, file, unsaved-changes baseline, approval; reading and writing configuration files; what attaching does to it (`onAttach()`) |
+| Download loop | `core/downloadjob.h` | `DownloadJob::run()`: status, header, pages until the writer consumes nothing; cancel between pages. Which formats a tag offers, the suggested name, and the chosen file's extension (`downloadPath()`) |
 | Session interface | `session/tagsession.h` | Commands in, reports out as signals |
 | Live session | `session/livetagsession.h` | `TagWorker` (owns the `Tag`, polls every 400 ms, runs commands and downloads) on its own `QThread`; `LiveTagSession` queues commands to it |
 | Fixture session | `session/fixturesession.h` | A captured tag from `host/docs/fixtures/qtmonitor/`; commands are logged and ignored |
@@ -123,6 +123,7 @@ reports with a signal (`startSent`, `eraseSent`, `commandFailed`,
 | `qtmonitor --check-action-states` | `availability()` against `test/action-states.txt` | nothing |
 | `qtmonitor --check-start-checks` | `startCheckFailures()` against `test/start-checks.txt` | nothing |
 | `qtmonitor --check-action-wiring` | The window applies the rule to the right actions, found by menu text | a display (offscreen works) |
+| `qtmonitor --check-menus` | The menu bar and popup menus against `test/menus.txt` | a display (offscreen works) |
 | `qtmonitor --config-probe` | The Configuration tab over every case, against `test/golden/` | a display |
 | `qtmon_core_check` | The document's and the model's rules | nothing (no Qt) |
 | `qtmon_session_check` | One whole tag cycle through `LiveTagSession` and `MonitorModel` | a bench tag; changes it |

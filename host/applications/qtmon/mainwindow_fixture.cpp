@@ -16,6 +16,8 @@
 #include <QDir>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QMenu>
+#include <QMenuBar>
 #include <QPixmap>
 #include <QScreen>
 #include <QSize>
@@ -27,6 +29,7 @@
 
 #include "fixturesession.h"
 #include "tagconfiguration/configtab.h"
+#include "tagstatusstrip.h"
 
 namespace
 {
@@ -380,4 +383,54 @@ QStringList MainWindow::checkActionWiring()
   // Leave the actions as the model says.
   updateActions();
   return problems;
+}
+
+namespace
+{
+
+/**
+ * @brief Appends @p actions as menu entries, a submenu's entries indented
+ *        under it.
+ * @param[in,out] lines    Output lines.
+ * @param[in]     actions  The entries, in order.
+ * @param[in]     indent   Leading spaces for this level.
+ */
+void appendMenuEntries(QStringList &lines, const QList<QAction *> &actions, int indent)
+{
+  const QString pad(indent, QLatin1Char(' '));
+  for (const QAction *action : actions) {
+    if (action->isSeparator()) {
+      lines << pad + "---";
+      continue;
+    }
+    QString line = pad + action->text();
+    if (!action->shortcut().isEmpty())
+      line += "  [" + action->shortcut().toString(QKeySequence::PortableText) + "]";
+    if (!action->toolTip().isEmpty() && action->toolTip() != action->text())
+      line += "  -- " + action->toolTip();
+    if (action->isCheckable())
+      line += action->isChecked() ? "  (checked)" : "  (unchecked)";
+    lines << line;
+    if (action->menu())
+      appendMenuEntries(lines, action->menu()->actions(), indent + 2);
+  }
+}
+
+} // namespace
+
+QString MainWindow::menuTable()
+{
+  QStringList lines;
+  for (const QAction *top : menuBar()->actions()) {
+    lines << "menu " + top->text();
+    if (top->menu())
+      appendMenuEntries(lines, top->menu()->actions(), 2);
+  }
+  lines << "popup Tag page";
+  appendMenuEntries(lines, ui.targetTab->actions(), 2);
+  lines << "popup status strip";
+  appendMenuEntries(lines, status_strip_->actions(), 2);
+  lines << "popup Configuration tab";
+  appendMenuEntries(lines, ui.configtab->actions(), 2);
+  return lines.join('\n') + '\n';
 }

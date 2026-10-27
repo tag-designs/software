@@ -30,6 +30,20 @@ enum class DocumentSource {
   Tag,       ///< The attached tag's configuration (attach, Read).
 };
 
+/// What attaching a tag does to the document (onAttach()).
+enum class OnAttach {
+  Keep,                ///< Keep the document: the user opened or created it, and may be about to start this tag with it.
+  Replace,             ///< Make the tag's configuration the document.
+  ReplaceIfDiscarded,  ///< Replace a previous tag's configuration, asking first if it has unsaved changes.
+};
+
+/**
+ * @brief What attaching a tag does to a document from @p source.
+ * @details Keep for Defaults and File, ReplaceIfDiscarded for Tag (a
+ *          previous tag's), Replace with no document.
+ */
+OnAttach onAttach(DocumentSource source);
+
 /// The result of reading a configuration file (ConfigDocument::parseFile()).
 struct ParsedFile {
   /// Outcome of reading the file.

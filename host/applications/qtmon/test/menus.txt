@@ -1,0 +1,65 @@
+menu &File
+  New Configuration
+    BITTAG  -- Start from this tag type's default configuration
+    BITTAG_LE  -- Start from this tag type's default configuration
+    PRESTAG  -- Start from this tag type's default configuration
+    BITTAGNG  -- Start from this tag type's default configuration
+    BITPRESTAG  -- Start from this tag type's default configuration
+    COMPASSTAG  -- Start from this tag type's default configuration
+    IMUTAG  -- Start from this tag type's default configuration
+    UIUCTAG  -- Start from this tag type's default configuration
+  Open Configuration...  [Ctrl+O]  -- Open a configuration file for editing
+  Open Recent
+  Save Configuration  [Ctrl+S]  -- Save the configuration to its file
+  Save Configuration As...  [Ctrl+Shift+S]  -- Save the configuration to a new file
+  Reset to Defaults  -- Replace the configuration's values with its tag type's defaults
+  ---
+  Download Data...  -- Download the tag's data log to a file
+  Save Error Log...  -- Save the error log to a text file
+  ---
+  Quit  [Exit]
+menu &Tag
+  Attach  -- Find a tag base and attach to its tag
+  Detach  -- Detach from the tag
+  ---
+  Read Configuration  -- Read the tag's configuration
+  Start  -- Write the configuration to the tag and start it
+  Stop  -- Stop the tag
+  ---
+  Synchronize Clock  -- Set the tag's clock from this computer's
+  Self-Test  -- Run the tag's self-tests
+  ---
+  Erase...  -- Erase the tag's data and return it to IDLE
+menu &Log
+  Log Level
+    TRACE  (unchecked)
+    DEBUG  (unchecked)
+    INFO  (checked)
+    WARN  (unchecked)
+    ERROR  (unchecked)
+  Clear Error Log  -- Clear the error log
+menu &Help
+  Tag Monitor User Guide  -- Open the Tag Monitor page of the user manual
+  About Tag Monitor  -- Version and purpose
+popup Tag page
+  Attach  -- Find a tag base and attach to its tag
+  Detach  -- Detach from the tag
+  Synchronize Clock  -- Set the tag's clock from this computer's
+  Self-Test  -- Run the tag's self-tests
+  Erase...  -- Erase the tag's data and return it to IDLE
+  Download Data...  -- Download the tag's data log to a file
+popup status strip
+  Attach  -- Find a tag base and attach to its tag
+  Detach  -- Detach from the tag
+  Synchronize Clock  -- Set the tag's clock from this computer's
+  Self-Test  -- Run the tag's self-tests
+  Erase...  -- Erase the tag's data and return it to IDLE
+  Download Data...  -- Download the tag's data log to a file
+popup Configuration tab
+  Read Configuration  -- Read the tag's configuration
+  Open Configuration...  [Ctrl+O]  -- Open a configuration file for editing
+  Save Configuration  [Ctrl+S]  -- Save the configuration to its file
+  Save Configuration As...  [Ctrl+Shift+S]  -- Save the configuration to a new file
+  Reset to Defaults  -- Replace the configuration's values with its tag type's defaults
+  ---
+  Start  -- Write the configuration to the tag and start it

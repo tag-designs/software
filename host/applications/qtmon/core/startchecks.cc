@@ -23,6 +23,22 @@ std::vector<StartCheck> startCheckFailures(double clock_offset_s, TestResult tes
   return failures;
 }
 
+std::string startCheckMessage(StartCheck check, double clock_offset_s, TestResult test)
+{
+  char text[96];
+  switch (check) {
+  case StartCheck::Clock:
+    std::snprintf(text, sizeof text, "Clock is %.3g s off (limit %g s).", clock_offset_s,
+                  kClockToleranceS);
+    return text;
+  case StartCheck::SelfTest:
+    return "Self-test is " + TestResult_Name(test) + ".";
+  case StartCheck::Approval:
+    return "Configuration is not approved.";
+  }
+  return {};
+}
+
 std::string startCheckTable()
 {
   std::string out = "clock_offset_s self_test approved | failing checks\n";

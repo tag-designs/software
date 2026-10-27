@@ -8,7 +8,9 @@
  *          without a tag: the configuration document's approval and
  *          unsaved-changes rules and file round trip, and the monitor
  *          model's handling of statuses (self-test and start waits, erase
- *          progress, the tag's debug text). The command and start-check
+ *          progress, the tag's debug text), and the window's remaining rules
+ *          (attaching, download formats and file names, the version floor,
+ *          base names, start-check sentences). The command and start-check
  *          tables are checked against test/action-states.txt and
  *          test/start-checks.txt by `qtmonitor --check-*` instead.
  *
@@ -23,7 +25,10 @@
 
 #include "configdocument.h"
 #include "configshape.h"
+#include "downloadjob.h"
 #include "monitormodel.h"
+#include "startchecks.h"
+#include "tagrules.h"
 
 namespace {
 
@@ -246,6 +251,60 @@ void checkMonitorModel()
   check(m.silenceMs(t0 + 60000) == 0, "a detached tag is not silent");
 }
 
+
+/// The window's remaining rules: attaching, downloads, versions, bases, messages.
+void checkWindowRules()
+{
+  using qtmon::DocumentSource;
+  using qtmon::OnAttach;
+  check(qtmon::onAttach(DocumentSource::None) == OnAttach::Replace, "no document: the tag's");
+  check(qtmon::onAttach(DocumentSource::Defaults) == OnAttach::Keep, "defaults are kept");
+  check(qtmon::onAttach(DocumentSource::File) == OnAttach::Keep, "a file is kept");
+  check(qtmon::onAttach(DocumentSource::Tag) == OnAttach::ReplaceIfDiscarded,
+        "a previous tag's is replaced, asking about unsaved changes");
+
+  const std::vector<qtmon::DownloadFormat> formats = qtmon::downloadFormats(UIUCTAG);
+  check(formats.size() == 1 && formats[0].extension == ".db3" &&
+            formats[0].filter == "SQLite database (*.db3)",
+        "a UIUCTag downloads as SQLite");
+  check(qtmon::downloadFormats(TAG_UNSPECIFIED).empty(), "an unknown tag type cannot be downloaded");
+  check(qtmon::defaultDownloadName(IMUTAG) == "untitled.db3", "the suggested name");
+  check(&qtmon::formatForFilter(formats, "nonsense") == &formats[0],
+        "an unknown filter is the default format");
+  const qtmon::DownloadFormat &db3 = formats[0];
+  check(qtmon::downloadPath("/d/run", db3, formats) == "/d/run.db3", "no extension: added");
+  check(qtmon::downloadPath("/d/run.", db3, formats) == "/d/run..db3",
+        "an empty extension: added, as QFileInfo saw it");
+  check(qtmon::downloadPath("/d/run.DB3", db3, formats) == "/d/run.DB3",
+        "the chosen extension in another case: kept");
+  check(qtmon::downloadPath("/d/run.sqlite", db3, formats) == "/d/run.sqlite",
+        "a foreign extension: kept as typed");
+  check(qtmon::downloadPath("/d/v1.2/run", db3, formats) == "/d/v1.2/run.db3",
+        "a dot in the directory is not an extension");
+
+  check(qtmon::monitorVersionAccepted(2.1f) && !qtmon::monitorVersionAccepted(1.9f),
+        "the version floor is 2.0");
+  UsbDev base;
+  base.bus = 1;
+  base.address = 6;
+  base.vid = 0x483;
+  base.pid = 0x3748;
+  check(qtmon::describeBase(base) == "001:006    0x483:0x3748", "how a base is listed");
+
+  check(qtmon::startCheckMessage(qtmon::StartCheck::Clock, -30.0, ALL_PASSED) ==
+            "Clock is -30 s off (limit 2 s).",
+        "the clock sentence");
+  check(qtmon::startCheckMessage(qtmon::StartCheck::Clock, -1.45e9, ALL_PASSED) ==
+            "Clock is -1.45e+09 s off (limit 2 s).",
+        "an unset clock's sentence");
+  check(qtmon::startCheckMessage(qtmon::StartCheck::SelfTest, 0, RTC_FAILED) ==
+            "Self-test is RTC_FAILED.",
+        "the self-test sentence");
+  check(qtmon::startCheckMessage(qtmon::StartCheck::Approval, 0, ALL_PASSED) ==
+            "Configuration is not approved.",
+        "the approval sentence");
+}
+
 } // namespace
 
 /// Runs every check; exits 1 at the first failure.
@@ -254,6 +313,7 @@ int main()
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   checkConfigDocument();
   checkMonitorModel();
+  checkWindowRules();
   std::printf("qtmon_core_check: %d checks passed\n", g_checks);
   return 0;
 }

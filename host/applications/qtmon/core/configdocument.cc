@@ -43,6 +43,20 @@ auto setAlwaysPrintDefaultFields(Options &options, bool value, long)
 
 } // namespace
 
+OnAttach onAttach(DocumentSource source)
+{
+  switch (source) {
+  case DocumentSource::Defaults:
+  case DocumentSource::File:
+    return OnAttach::Keep;
+  case DocumentSource::Tag:
+    return OnAttach::ReplaceIfDiscarded;
+  case DocumentSource::None:
+    break;
+  }
+  return OnAttach::Replace;
+}
+
 void ConfigDocument::load(const Config &config, DocumentSource source,
                           const std::string &path)
 {

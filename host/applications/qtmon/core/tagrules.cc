@@ -5,6 +5,8 @@
 
 #include "tagrules.h"
 
+#include <cstdio>
+
 namespace qtmon {
 
 bool isDownloadableState(TagState state)
@@ -36,6 +38,19 @@ double clockOffsetSeconds(std::int64_t tag_millis, std::int64_t host_millis)
   // As a double throughout, as qtmonitor always computed it.
   const double host = static_cast<double>(host_millis);
   return (static_cast<double>(tag_millis) - host) / 1000.0;
+}
+
+bool monitorVersionAccepted(float monitor_version)
+{
+  return monitor_version >= kRequiredMonitorVersion;
+}
+
+std::string describeBase(const UsbDev &base)
+{
+  char text[48];
+  std::snprintf(text, sizeof text, "%03u:%03u    0x%x:0x%x", unsigned(base.bus),
+                unsigned(base.address), unsigned(base.vid), unsigned(base.pid));
+  return text;
 }
 
 } // namespace qtmon

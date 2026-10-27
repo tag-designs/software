@@ -18,12 +18,55 @@
 #include <atomic>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "tag.pb.h"
 #include "tagclass.h"
 #include "taglogwriter.h"
 
 namespace qtmon {
+
+/// A file type a tag's download can be saved as, for the save dialog.
+struct DownloadFormat {
+  TagLogStorageFormat format;  ///< The writer's format.
+  std::string filter;          ///< The save dialog's filter, e.g. "SQLite database (*.db3)".
+  std::string extension;       ///< With its dot, e.g. ".db3".
+};
+
+/**
+ * @brief The formats a download from a tag of @p tag_type can be saved as,
+ *        the default first.
+ * @return Empty when the tag type has no log format, so it cannot be
+ *         downloaded.
+ */
+std::vector<DownloadFormat> downloadFormats(TagType tag_type);
+
+/// The file name the save dialog suggests: "untitled" with the default format's extension.
+std::string defaultDownloadName(TagType tag_type);
+
+/**
+ * @brief The format the user chose in the save dialog.
+ * @param[in] formats  downloadFormats(); not empty.
+ * @param[in] filter   The dialog's selected filter.
+ * @return The format with that filter, or the default (the first).
+ */
+const DownloadFormat &formatForFilter(const std::vector<DownloadFormat> &formats,
+                                      const std::string &filter);
+
+/**
+ * @brief The file a download is written to, from the path the user chose.
+ *
+ * @details A name with no extension gets the chosen format's. A name with
+ *          another download format's extension has it replaced by the chosen
+ *          one's (compared without regard to case). Any other extension is
+ *          kept as the user typed it.
+ *
+ * @param[in] chosen    The path from the save dialog.
+ * @param[in] selected  The chosen format.
+ * @param[in] formats   downloadFormats().
+ */
+std::string downloadPath(const std::string &chosen, const DownloadFormat &selected,
+                         const std::vector<DownloadFormat> &formats);
 
 /// How serious a message from the download is.
 enum class LogLevel { Debug, Info, Warning, Error };

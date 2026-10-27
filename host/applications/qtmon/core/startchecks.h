@@ -43,6 +43,16 @@ std::vector<StartCheck> startCheckFailures(double clock_offset_s, TestResult tes
                                            bool approved);
 
 /**
+ * @brief The sentence Start shows for a failing @p check.
+ * @param[in] check           The check.
+ * @param[in] clock_offset_s  The clock offset, for Clock.
+ * @param[in] test            The self-test result, for SelfTest.
+ * @return e.g. "Clock is -30 s off (limit 2 s).", "Self-test is RTC_FAILED.",
+ *         "Configuration is not approved."
+ */
+std::string startCheckMessage(StartCheck check, double clock_offset_s, TestResult test);
+
+/**
  * @brief startCheckFailures() for a fixed set of offsets, results and
  *        approvals; the text of `qtmonitor --check-start-checks`.
  * @return A header line, then one line per combination, each ending "\n".

@@ -30,7 +30,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include "configdocument.h"
 #include "configshape.h"
+#include "downloadjob.h"
 #include "fixturesession.h"
 #include "livetagsession.h"
 #include "qtfiledialog.h"
@@ -45,9 +47,6 @@ using qtmon::Command;
 
 namespace
 {
-
-/// The lowest qtmonitor version a tag may require; see onAttached().
-constexpr float kRequiredMonitorVersion = 2.0f;
 
 /**
  * @brief Shows a warning without waiting for it to be dismissed.
@@ -224,18 +223,14 @@ void MainWindow::populateTagInfo(const TagInfo &info)
 
 void MainWindow::attachConfig(const Config &config)
 {
-  // A configuration the user opened or created stays: they may be about to
-  // start this tag with it. Otherwise the tag's own is read in, asking first
-  // if a previous tag's configuration has unsaved changes.
-  switch (ui.configtab->source()) {
-  case ConfigTab::Source::Defaults:
-  case ConfigTab::Source::File:
+  switch (qtmon::onAttach(ui.configtab->source())) {
+  case qtmon::OnAttach::Keep:
     return;
-  case ConfigTab::Source::Tag:
+  case qtmon::OnAttach::ReplaceIfDiscarded:
     if (!ui.configtab->confirmDiscard())
       return;
     break;
-  case ConfigTab::Source::None:
+  case qtmon::OnAttach::Replace:
     break;
   }
   ui.configtab->SetConfig(config);
@@ -271,13 +266,8 @@ void MainWindow::onBasesFound(std::vector<UsbDev> bases)
   size_t index = 0;
   if (bases.size() > 1) {
     QStringList items;
-    for (const UsbDev &dev : bases) {
-      const QString bus = QString::number(dev.bus).rightJustified(3, '0');
-      const QString address = QString::number(dev.address).rightJustified(3, '0');
-      const QString vid = QString::number(dev.vid, 16);
-      const QString pid = QString::number(dev.pid, 16);
-      items << QString("%1:%2    0x%3:0x%4").arg(bus, address, vid, pid);
-    }
+    for (const UsbDev &dev : bases)
+      items << QString::fromStdString(qtmon::describeBase(dev));
     QInputDialog dialog(this);
     dialog.setOption(QInputDialog::UseListViewForComboBoxItems);
     dialog.setComboBoxItems(items);
@@ -293,13 +283,11 @@ void MainWindow::onBasesFound(std::vector<UsbDev> bases)
 
 void MainWindow::onAttached(TagInfo info, Config config)
 {
-  // The tag can name the oldest qtmonitor it works with; the firmware does
-  // not set it yet (TagInfo.qtmonitor_min_version), so a fixed floor stands in.
-  if (kRequiredMonitorVersion > version) {
+  if (!qtmon::monitorVersionAccepted(version)) {
     showMessage(this, tr("Warning"),
                 tr("monitor version %1 less than required version %2")
                     .arg(version)
-                    .arg(kRequiredMonitorVersion));
+                    .arg(qtmon::kRequiredMonitorVersion));
     session_->detach();
     return;
   }
@@ -589,22 +577,9 @@ QStringList MainWindow::startCheckFailures() const
 {
   QStringList failures;
   for (qtmon::StartCheck check : qtmon::startCheckFailures(
-           model_.clockOffsetS(), model_.lastTest(), ui.configtab->isApproved())) {
-    switch (check) {
-    case qtmon::StartCheck::Clock:
-      failures << tr("Clock is %1 s off (limit %2 s).")
-                      .arg(QString::number(model_.clockOffsetS(), 'g', 3))
-                      .arg(qtmon::kClockToleranceS);
-      break;
-    case qtmon::StartCheck::SelfTest:
-      failures << tr("Self-test is %1.")
-                      .arg(QString::fromStdString(std::string(TestResult_Name(model_.lastTest()))));
-      break;
-    case qtmon::StartCheck::Approval:
-      failures << tr("Configuration is not approved.");
-      break;
-    }
-  }
+           model_.clockOffsetS(), model_.lastTest(), ui.configtab->isApproved()))
+    failures << QString::fromStdString(
+        qtmon::startCheckMessage(check, model_.clockOffsetS(), model_.lastTest()));
   return failures;
 }
 
@@ -819,58 +794,27 @@ void MainWindow::eraseTag()
 void MainWindow::downloadData()
 {
   const TagType tag_type = model_.info().tag_type();
-  const TagLogStorageFormat storage_format = defaultTagLogStorageFormat(tag_type);
-  const std::vector<TagLogStorageFormat> formats = supportedTagLogStorageFormats(tag_type);
-  // SQLite is the only download format, so a tag type without a SQLite schema
-  // cannot be saved.
+  const std::vector<qtmon::DownloadFormat> formats = qtmon::downloadFormats(tag_type);
   if (formats.empty()) {
     QMessageBox::warning(this, tr("Cannot save log"),
                          tr("This tag type has no SQLite log format, so its data "
                             "cannot be downloaded."));
     return;
   }
-  QStringList filter_list;
-  for (TagLogStorageFormat format : formats)
-    filter_list << QString::fromStdString(tagLogFileFilter(format));
+  QStringList filters;
+  for (const qtmon::DownloadFormat &format : formats)
+    filters << QString::fromStdString(format.filter);
   QString selected_filter;
-  const QString filter = filter_list.join(";;");
-  const QString initial_path =
-      QDir::homePath() + "/untitled" +
-      QString::fromStdString(defaultTagLogExtension(storage_format));
-
-  QString fileName = HostFileDialog::getSaveFileName(this, tr("Save File"), initial_path,
-                                                     filter, &selected_filter);
-  if (fileName.isEmpty())
+  const QString chosen = HostFileDialog::getSaveFileName(
+      this, tr("Save File"),
+      QDir(QDir::homePath()).filePath(QString::fromStdString(qtmon::defaultDownloadName(tag_type))),
+      filters.join(";;"), &selected_filter);
+  if (chosen.isEmpty())
     return;
-
-  TagLogStorageFormat selected_storage_format = storage_format;
-  for (TagLogStorageFormat format : formats) {
-    if (selected_filter == QString::fromStdString(tagLogFileFilter(format))) {
-      selected_storage_format = format;
-      break;
-    }
-  }
-
-  // Give the file the chosen format's extension when it has none, or
-  // another supported format's.
-  const QString selected_extension =
-      QString::fromStdString(defaultTagLogExtension(selected_storage_format));
-  const QString selected_suffix = selected_extension.mid(1);
-  const QFileInfo file_info(fileName);
-  bool suffix_matches_supported_format = false;
-  for (TagLogStorageFormat format : formats) {
-    const QString suffix = QString::fromStdString(defaultTagLogExtension(format)).mid(1);
-    if (file_info.suffix().compare(suffix, Qt::CaseInsensitive) == 0) {
-      suffix_matches_supported_format = true;
-      break;
-    }
-  }
-  if (file_info.suffix().isEmpty()) {
-    fileName += selected_extension;
-  } else if (suffix_matches_supported_format &&
-             file_info.suffix().compare(selected_suffix, Qt::CaseInsensitive) != 0) {
-    fileName = file_info.path() + "/" + file_info.completeBaseName() + selected_extension;
-  }
+  const qtmon::DownloadFormat &format =
+      qtmon::formatForFilter(formats, selected_filter.toStdString());
+  const QString fileName =
+      QString::fromStdString(qtmon::downloadPath(chosen.toStdString(), format, formats));
 
   auto *progress = new QProgressDialog(tr("Downloading .."), tr("Cancel"), 0, 0, this);
   progress->setAttribute(Qt::WA_DeleteOnClose);
@@ -884,6 +828,6 @@ void MainWindow::downloadData()
 
   model_.downloadStarted();
   render();
-  session_->download(fileName, selected_storage_format);
+  session_->download(fileName, format.format);
   progress->show();
 }

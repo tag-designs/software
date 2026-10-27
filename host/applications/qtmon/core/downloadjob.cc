@@ -5,6 +5,8 @@
 
 #include "downloadjob.h"
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <memory>
@@ -20,7 +22,62 @@ std::string writerError(const TagLogWriter *writer, const char *fallback)
   return writer && !writer->lastError().empty() ? writer->lastError() : std::string(fallback);
 }
 
+/// @p text in lower case (ASCII), for comparing extensions.
+std::string lower(std::string text)
+{
+  std::transform(text.begin(), text.end(), text.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return text;
+}
+
 } // namespace
+
+std::vector<DownloadFormat> downloadFormats(TagType tag_type)
+{
+  std::vector<DownloadFormat> out;
+  for (TagLogStorageFormat format : supportedTagLogStorageFormats(tag_type))
+    out.push_back({format, tagLogFileFilter(format), defaultTagLogExtension(format)});
+  // The default format first.
+  const TagLogStorageFormat preferred = defaultTagLogStorageFormat(tag_type);
+  std::stable_partition(out.begin(), out.end(),
+                        [preferred](const DownloadFormat &f) { return f.format == preferred; });
+  return out;
+}
+
+std::string defaultDownloadName(TagType tag_type)
+{
+  return "untitled" + defaultTagLogExtension(defaultTagLogStorageFormat(tag_type));
+}
+
+const DownloadFormat &formatForFilter(const std::vector<DownloadFormat> &formats,
+                                      const std::string &filter)
+{
+  for (const DownloadFormat &f : formats)
+    if (f.filter == filter)
+      return f;
+  return formats.front();
+}
+
+std::string downloadPath(const std::string &chosen, const DownloadFormat &selected,
+                         const std::vector<DownloadFormat> &formats)
+{
+  // Split as QFileInfo does: the directory ("." when there is none), the
+  // name before its last dot, and the suffix after it.
+  const std::size_t slash = chosen.find_last_of('/');
+  const std::string dir = slash == std::string::npos ? "." : chosen.substr(0, slash);
+  const std::string name = slash == std::string::npos ? chosen : chosen.substr(slash + 1);
+  const std::size_t dot = name.find_last_of('.');
+  // No suffix, or an empty one ("data."): add the chosen extension.
+  if (dot == std::string::npos || dot + 1 == name.size())
+    return chosen + selected.extension;
+  const std::string suffix = lower(name.substr(dot));
+  bool known = false;
+  for (const DownloadFormat &f : formats)
+    known = known || lower(f.extension) == suffix;
+  if (known && suffix != lower(selected.extension))
+    return dir + "/" + name.substr(0, dot) + selected.extension;
+  return chosen;
+}
 
 DownloadJob::DownloadJob(Tag &tag, TagLogStorageFormat format, std::string path)
     : tag_(tag), format_(format), path_(std::move(path))

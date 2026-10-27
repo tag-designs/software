@@ -210,6 +210,9 @@ int main(int argc, char *argv[])
       "Check that the window applies the command rule to the right actions, "
       "print any disagreement and exit (1 on disagreement)."));
   parser.addOption(QCommandLineOption(
+      "check-menus",
+      "Print the menu bar and popup menus, with shortcuts and tooltips, and exit."));
+  parser.addOption(QCommandLineOption(
       "check-start-checks",
       "Print which start checks fail for every combination of clock offset, "
       "self-test result and approval, and exit."));
@@ -247,6 +250,16 @@ int main(int argc, char *argv[])
 
   if (parser.isSet("check-action-states")) {
     std::fputs(qtmon::actionStateTable().c_str(), stdout);
+    return 0;
+  }
+
+  if (parser.isSet("check-menus")) {
+    HostStyle::apply(a);
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    MainWindowOptions options;
+    options.skipAutoAttach = true;
+    MainWindow window(options);
+    std::fputs(qPrintable(window.menuTable()), stdout);
     return 0;
   }
 

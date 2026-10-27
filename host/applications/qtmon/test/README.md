@@ -169,6 +169,20 @@ action by its menu text, and compares it with the rule. It prints
 `action wiring: every action follows the rule` and exits 0, or lists each
 disagreement and exits 1.
 
+## The menus
+
+`qtmonitor --check-menus` prints the menu bar and the three popup menus:
+every entry with its shortcut and tooltip, separators, and submenus indented.
+Compare it with the committed text:
+
+```sh
+QT_QPA_PLATFORM=offscreen <qtmonitor> --check-menus | \
+    diff - host/applications/qtmon/test/menus.txt
+```
+
+No output means the menus are unchanged. Open Recent is filled only when it
+opens, so it lists nothing.
+
 ## Which start checks fail when
 
 `qtmonitor --check-start-checks` prints which of Start's checks fail
@@ -188,8 +202,10 @@ No output means nothing changed.
 
 `qtmon_core_check` asserts the rules in [`core/`](../core) that the checks
 above cannot reach without a tag: the configuration document's approval and
-unsaved-changes rules and its file round trip, and the monitor model's
-handling of statuses. It needs no Qt and no tag:
+unsaved-changes rules and its file round trip, the monitor model's handling
+of statuses, and the window's remaining rules (what attaching does to the
+document, download formats and file names, the version floor, how a base is
+listed, and the start-check sentences). It needs no Qt and no tag:
 
 ```sh
 cmake -DBUILD_QTMON_CHECKS=ON <build-dir>

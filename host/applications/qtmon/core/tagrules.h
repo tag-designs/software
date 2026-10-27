@@ -13,7 +13,9 @@
 #define QTMON_CORE_TAGRULES_H
 
 #include <cstdint>
+#include <string>
 
+#include "linkadapt.h"
 #include "tag.pb.h"
 
 namespace qtmon {
@@ -78,6 +80,28 @@ int eraseSectorMaximum(const Status &status, TagType tag_type,
  *         gives about -1.45e9 s.
  */
 double clockOffsetSeconds(std::int64_t tag_millis, std::int64_t host_millis);
+
+/**
+ * @brief The oldest qtmonitor version a tag may require.
+ *
+ * @details The tag can name it (TagInfo.qtmonitor_min_version), but no
+ *          firmware sets it yet, so this fixed floor stands in for it.
+ */
+inline constexpr float kRequiredMonitorVersion = 2.0f;
+
+/**
+ * @brief Whether qtmonitor @p monitor_version may attach to tags.
+ * @return false when it is older than kRequiredMonitorVersion; qtmonitor
+ *         then says so and detaches.
+ */
+bool monitorVersionAccepted(float monitor_version);
+
+/**
+ * @brief How a tag base is listed when there are several to choose from:
+ *        "BBB:AAA    0xVID:0xPID", bus and address zero-padded to three
+ *        digits, the IDs in hexadecimal.
+ */
+std::string describeBase(const UsbDev &base);
 
 } // namespace qtmon
 
