@@ -145,7 +145,7 @@ combination of:
 
 - attached or detached;
 - each tag state;
-- a tag type with calibration (CompassTag) and one without (BitTag LE);
+- two tag types (BitTag LE and CompassTag);
 - a configuration loaded or not;
 - a download running;
 - a self-test pending.

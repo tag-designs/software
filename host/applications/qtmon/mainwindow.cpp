@@ -106,23 +106,6 @@ bool isDownloadableState(TagState state)
   return state == FINISHED || state == ABORTED || state == EXCEPTION;
 }
 
-/**
- * @brief Reports whether qtmonitor exposes the Calibrate action for a tag.
- *
- * @details Only tags with firmware support for the calibration state should
- *          present the button. Hiding unsupported actions keeps tags without
- *          calibration workflows from showing an attractive but ineffective
- *          control.
- *
- * @param[in] tag_type   Tag type from TagInfo or fixture metadata.
- *
- * @return true for tag families with calibration support; false otherwise.
- */
-bool tagSupportsCalibration(TagType tag_type)
-{
-  return tag_type == COMPASSTAG || tag_type == IMUTAG;
-}
-
 } // namespace
 
 /**
@@ -515,48 +498,6 @@ void MainWindow::TriggerUpdate(void)
     if (tag.GetStatus(status))
     {
       applyStatus(status, voltage);
-
-      if (status.state() == CALIBRATE)
-      {
-        Ack ack;
-        float mx,my,mz,ax,ay,az;
-        tag.GetCalibrationLog(ack);
-        if (ack.has_calibration_log()) {
-            for(auto const &sdata : ack.calibration_log().data())
-            {
-              bool saw_sensor_data = false;
-              if (sdata.has_mag()){
-                  mx = sdata.mag().mx();
-                  my = sdata.mag().my();
-                  mz = sdata.mag().mz();
-                  qInfo() << "Mag: " << mx << my << mz;
-                  saw_sensor_data = true;
-              }
-
-              if (sdata.has_accel()){
-                ax = sdata.accel().ax();
-                ay = sdata.accel().ay();
-                az = sdata.accel().az();
-                qInfo() << "Accel: " << ax << ay << az;
-                saw_sensor_data = true;
-              }
-
-              if (!saw_sensor_data) {
-                qInfo() << "Calibration sample had no sensor data";
-              }
-            }
-        }
-        else {
-          qInfo() << "No calibration log";
-        }
-      }
-
-      /*
-      if ((status.state() == CALIBRATE)  && status.has_sensors()){
-        QString sensors = QString::fromStdString(status.sensors().DebugString());
-        sensors = sensors.replace("\n",", ");
-        qInfo() << "Sensors: " << sensors;
-      }*/
     }
   }
 }
@@ -586,8 +527,6 @@ void MainWindow::createActions()
                       &MainWindow::syncClock);
   test_action_ = make(tr("Self-Test"), tr("Run the tag's self-tests"),
                       &MainWindow::testTag);
-  calibrate_action_ = make(tr("Calibrate"), tr("Put the tag in its calibration state"),
-                           &MainWindow::calibrateTag);
   erase_action_ = make(tr("Erase..."),
                        tr("Erase the tag's data and return it to IDLE"),
                        &MainWindow::eraseTag);
@@ -681,7 +620,6 @@ void MainWindow::createMenus()
   tagMenu->addSeparator();
   tagMenu->addAction(sync_action_);
   tagMenu->addAction(test_action_);
-  tagMenu->addAction(calibrate_action_);
   tagMenu->addSeparator();
   tagMenu->addAction(erase_action_);
 
@@ -697,7 +635,7 @@ void MainWindow::createMenus()
   // pass a right-click up to these widgets.
   const QList<QAction *> tagCommands = {
       attach_action_, detach_action_, sync_action_, test_action_,
-      calibrate_action_, erase_action_, download_action_};
+      erase_action_, download_action_};
   ui.targetTab->setContextMenuPolicy(Qt::ActionsContextMenu);
   ui.targetTab->addActions(tagCommands);
   status_strip_->setContextMenuPolicy(Qt::ActionsContextMenu);
@@ -834,10 +772,10 @@ void MainWindow::updateActions()
   detach_action_->setEnabled(attached);
   sync_action_->setEnabled(idle);
   test_action_->setEnabled(idle && !test_pending_);
-  calibrate_action_->setVisible(attached && tagSupportsCalibration(tag_type));
-  calibrate_action_->setEnabled(idle && tagSupportsCalibration(tag_type));
   erase_action_->setEnabled(attached && (state == FINISHED || state == ABORTED));
   download_action_->setEnabled(attached && isDownloadableState(state) && !downloading_);
+  // CALIBRATE is entered only from the command line (tag-cal), but qtmonitor
+  // can still stop a tag left in it.
   stop_action_->setEnabled(attached && (state == CONFIGURED || state == RUNNING ||
                                         state == HIBERNATING || state == CALIBRATE));
 
@@ -917,17 +855,6 @@ void MainWindow::stopTag()
     return;
   }
   QTimer::singleShot(250,this,[this]() { TriggerUpdate(); });
-}
-
-void MainWindow::calibrateTag()
-{
-  if (fakeMode) {
-    return;
-  }
-  if (!tagSupportsCalibration(tag_type)) {
-    return;
-  }
-  tag.Calibrate();
 }
 
 void MainWindow::testTag()

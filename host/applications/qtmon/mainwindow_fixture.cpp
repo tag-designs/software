@@ -598,8 +598,8 @@ QString MainWindow::actionStateTable()
       {"attach", attach_action_},   {"detach", detach_action_},
       {"read", read_config_action_}, {"start", start_action_},
       {"stop", stop_action_},       {"sync", sync_action_},
-      {"test", test_action_},       {"calibrate", calibrate_action_},
-      {"erase", erase_action_},     {"download", download_action_},
+      {"test", test_action_},       {"erase", erase_action_},
+      {"download", download_action_},
       {"open", open_config_action_}, {"save", save_config_action_},
       {"saveas", save_as_config_action_}, {"reset", reset_config_action_}};
 

@@ -15,8 +15,9 @@ summary: Restructure qtmonitor into an engine that owns the tag on its own threa
 3. **Views** draw the model and turn gestures into commands; they decide
    nothing.
 
-This is the shape Tag Programmer already has
-([engine](../../../tagprogram-rs/design/engine.md)), and the shape the
+This is the shape Tag Programmer already has (its engine design is
+`host/applications/tagprogram-rs/design/engine.md`, on the `tagprogram-rs`
+branch), and the shape the
 [configuration form mockup](config-form-mockup/README.md) proposes for the
 Configuration tab. Done in Qt, each step is checked by the goldens qtmonitor
 already has. Afterwards, a Rust and Tauri version is a translation of each
@@ -74,7 +75,7 @@ to it.
 | `listBases`, `attach(base)`, `detach` | `basesListed(devs)`, `attached(info, config)`, `detached(reason)` |
 | `readConfig` | `configRead(config)` |
 | `start(config)` | `startResult(ok, state, message)`, after polling for a state other than IDLE, as `pollStartResult()` does now |
-| `stop`, `syncClock`, `selfTest`, `calibrate` | `commandDone(op, ok, message)` |
+| `stop`, `syncClock`, `selfTest` | `commandDone(op, ok, message)` |
 | `erase` | `progress(op, value, max)`, `commandDone` |
 | `download(path)` | `progress`, `commandDone` |
 | (its own 400 ms poll) | `status(Status, voltage, host_time)`, `tagLog(text)` |
@@ -163,9 +164,10 @@ Programmer's port tractable.
 
 These are outside this proposal, but worth deciding on their own:
 
-- `TriggerUpdate()` reads the calibration log on every poll while the tag is
-  in CALIBRATE and prints the samples with `qInfo()`. That looks like a
-  leftover from before qtcalibrate.
+- `TriggerUpdate()` read the calibration log on every poll while the tag was
+  in CALIBRATE and printed the samples with `qInfo()`. That, and the Calibrate
+  command, are removed: `tag-cal` streams the same samples for debugging, and
+  qtcalibrate does calibration.
 - `Attach()` checks `qtmonitor_min_version` against a hard-coded `2.0`; the
   tag's own value is commented out.
 

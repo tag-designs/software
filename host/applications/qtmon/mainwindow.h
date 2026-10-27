@@ -103,9 +103,9 @@ public:
    * @brief Which actions updateActions() enables, for every combination of
    *        the inputs it reads; for `qtmonitor --check-action-states`.
    *
-   * @details Sets each combination of attached, tag state, tag type (one
-   *          with calibration, one without), configuration document (none, of
-   *          the tag's type, of another type), download
+   * @details Sets each combination of attached, tag state, tag type (two
+   *          types), configuration document (none, of the tag's type, of
+   *          another type), download
    *          running and self-test pending, calls updateActions(), and records
    *          each action as E (enabled), D (disabled) or H (hidden). Leaves the
    *          window detached. See host/applications/qtmon/test/README.md.
@@ -176,11 +176,7 @@ private slots:
 
   // timer tick
 
-  /**
-   * @brief One status poll: voltage and Status into applyStatus(); in
-   *        CALIBRATE, also drains the calibration log into the calibration
-   *        window.
-   */
+  /// One status poll: voltage and Status into applyStatus().
   void TriggerUpdate();
 
   // Tag commands, each behind an action (see createActions()).
@@ -190,7 +186,6 @@ private slots:
   void syncClock();      ///< Tag ▸ Synchronize Clock: set the tag's RTC.
   void stopTag();        ///< Tag ▸ Stop, and the Stop button.
   void testTag();        ///< Tag ▸ Self-Test: run every self-test.
-  void calibrateTag();   ///< Tag ▸ Calibrate: enter the calibration state.
   void eraseTag();       ///< Tag ▸ Erase…: confirm, erase, show progress.
   void downloadData();   ///< File ▸ Download Data…: save the log as SQLite.
   void showUserGuide();  ///< Help ▸ Tag Monitor User Guide: open the manual page.
@@ -277,7 +272,6 @@ private:
   QAction *stop_action_ = nullptr;          ///< Tag ▸ Stop and the Stop button.
   QAction *sync_action_ = nullptr;          ///< Tag ▸ Synchronize Clock.
   QAction *test_action_ = nullptr;          ///< Tag ▸ Self-Test.
-  QAction *calibrate_action_ = nullptr;     ///< Tag ▸ Calibrate; hidden for tags without calibration.
   QAction *erase_action_ = nullptr;         ///< Tag ▸ Erase….
   QAction *open_config_action_ = nullptr;   ///< File ▸ Open Configuration….
   QAction *save_config_action_ = nullptr;   ///< File ▸ Save Configuration.
