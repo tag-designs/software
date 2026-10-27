@@ -592,62 +592,67 @@ void MainWindow::captureErrorLogScreenshot()
   qApp->exit(ok ? 0 : 1);
 }
 
-QString MainWindow::actionStateTable()
+QStringList MainWindow::checkActionWiring()
 {
-  const QList<QPair<QString, QAction *>> actions = {
-      {"attach", attach_action_},   {"detach", detach_action_},
-      {"read", read_config_action_}, {"start", start_action_},
-      {"stop", stop_action_},       {"sync", sync_action_},
-      {"test", test_action_},       {"erase", erase_action_},
-      {"download", download_action_},
-      {"open", open_config_action_}, {"save", save_config_action_},
-      {"saveas", save_as_config_action_}, {"reset", reset_config_action_}};
+  // Each command's action, found by the text the menus show rather than
+  // through actionFor(), so a wrong entry there cannot hide itself.
+  const QList<QPair<qtmon::Command, QString>> texts = {
+      {qtmon::Command::Attach, tr("Attach")},
+      {qtmon::Command::Detach, tr("Detach")},
+      {qtmon::Command::Read, tr("Read Configuration")},
+      {qtmon::Command::Start, tr("Start")},
+      {qtmon::Command::Stop, tr("Stop")},
+      {qtmon::Command::Sync, tr("Synchronize Clock")},
+      {qtmon::Command::Test, tr("Self-Test")},
+      {qtmon::Command::Erase, tr("Erase...")},
+      {qtmon::Command::Download, tr("Download Data...")},
+      {qtmon::Command::Open, tr("Open Configuration...")},
+      {qtmon::Command::Save, tr("Save Configuration")},
+      {qtmon::Command::SaveAs, tr("Save Configuration As...")},
+      {qtmon::Command::Reset, tr("Reset to Defaults")}};
+  QStringList problems;
+  QMap<qtmon::Command, const QAction *> byText;
+  for (const auto &[command, text] : texts) {
+    const QAction *found = nullptr;
+    for (const QAction *action : findChildren<QAction *>())
+      if (action->text() == text)
+        found = found ? nullptr : action;  // must be exactly one
+    if (!found)
+      problems << QString("no single action is labelled \"%1\"").arg(text);
+    byText.insert(command, found);
+  }
+  if (!problems.isEmpty())
+    return problems;
 
-  QStringList lines;
-  QString header = "attached state tagtype document downloading testpending |";
-  for (const auto &a : actions)
-    header += " " + a.first;
-  lines << header;
-
-  // document: "none", "same" (the tag's type) or "other" (another type).
-  auto row = [&](bool attached, TagState state, TagType type, const QString &document,
-                 bool downloading, bool pending) {
-    attached_ui_ = attached;
-    current_state = state;
-    tag_type = type;
-    downloading_ = downloading;
-    test_pending_ = pending;
-    if (document == "none") {
+  for (const qtmon::CommandInputs &in : qtmon::actionStateCases()) {
+    attached_ui_ = in.attached;
+    current_state = in.state;
+    tag_type = in.tag_type;
+    downloading_ = in.downloading;
+    test_pending_ = in.test_pending;
+    if (!in.document) {
       ui.configtab->Clear();
     } else {
       Config c;
-      c.set_tag_type(document == "same" ? type : (type == IMUTAG ? BITTAG_LE : IMUTAG));
+      c.set_tag_type(in.document_type);
       ui.configtab->SetConfig(c);
     }
     updateActions();
-    QString line = QString("%1 %2 %3 %4 %5 %6 |")
-                       .arg(attached).arg(QString::fromStdString(std::string(TagState_Name(state))))
-                       .arg(QString::fromStdString(std::string(TagType_Name(type))))
-                       .arg(document).arg(downloading).arg(pending);
-    for (const auto &a : actions)
-      line += QString(" %1=%2").arg(a.first,
-                                    !a.second->isVisible() ? "H"
-                                    : a.second->isEnabled() ? "E" : "D");
-    lines << line;
-  };
-
-  const auto *states = TagState_descriptor();
-  for (TagType type : {BITTAG_LE, COMPASSTAG}) {
-    for (const char *document : {"none", "same"})
-      row(false, IDLE, type, document, false, false);
-    for (int i = 0; i < states->value_count(); ++i) {
-      const auto state = static_cast<TagState>(states->value(i)->number());
-      row(true, state, type, "same", false, false);
+    for (qtmon::Command command : qtmon::kAllCommands) {
+      const QAction *action = byText.value(command);
+      const qtmon::Availability expected = qtmon::availability(command, in);
+      const qtmon::Availability shown = !action->isVisible()  ? qtmon::Availability::Hidden
+                                        : action->isEnabled() ? qtmon::Availability::Enabled
+                                                              : qtmon::Availability::Disabled;
+      if (shown != expected)
+        problems << QString("%1 %2 %3: %4 is %5, the rule says %6")
+                        .arg(in.attached)
+                        .arg(QString::fromStdString(std::string(TagState_Name(in.state))),
+                             QString::fromStdString(std::string(TagType_Name(in.tag_type))),
+                             QString::fromLatin1(qtmon::commandName(command)),
+                             QString::fromLatin1(qtmon::availabilityLetter(shown)),
+                             QString::fromLatin1(qtmon::availabilityLetter(expected)));
     }
-    row(true, IDLE, type, "none", false, false);    // attached, no document
-    row(true, IDLE, type, "other", false, false);   // document for another type
-    row(true, IDLE, type, "same", false, true);     // self-test pending
-    row(true, FINISHED, type, "same", true, false); // download running
   }
 
   // Leave the window as a detached qtmonitor.
@@ -656,37 +661,5 @@ QString MainWindow::actionStateTable()
   test_pending_ = false;
   ui.configtab->Clear();
   updateActions();
-  return lines.join('\n') + '\n';
-}
-
-QString MainWindow::startCheckTable()
-{
-  QStringList lines;
-  lines << "clock_offset_s self_test approved | failing checks";
-  const double offsets[] = {0.0, 1.99, -2.0, 2.01, -30.0, -1.45e9};
-  const TestResult tests[] = {ALL_PASSED, TEST_UNSPECIFIED, TEST_RUNNING, RTC_FAILED};
-  for (double offset : offsets) {
-    for (TestResult test : tests) {
-      for (bool approved : {true, false}) {
-        clock_offset_s_ = offset;
-        last_test_ = test;
-        status_strip_->setApprovalAvailable(true);
-        status_strip_->setApproved(approved);
-        QStringList failing;
-        const QStringList failures = startCheckFailures();
-        for (const QString &f : failures)
-          failing << (f.startsWith("Clock") ? "clock"
-                      : f.startsWith("Self-test") ? "self-test" : "approval");
-        lines << QString("%1 %2 %3 | %4")
-                     .arg(offset, 0, 'g', 4)
-                     .arg(QString::fromStdString(std::string(TestResult_Name(test))))
-                     .arg(approved)
-                     .arg(failing.isEmpty() ? QStringLiteral("none") : failing.join(' '));
-      }
-    }
-  }
-  clock_offset_s_ = 0.0;
-  last_test_ = TEST_UNSPECIFIED;
-  status_strip_->setApproved(false);
-  return lines.join('\n') + '\n';
+  return problems;
 }

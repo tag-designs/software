@@ -31,6 +31,8 @@
 #include "ui_mainwindow.h"
 #include "qthoststyle.h"
 #include "configprobe.h"
+#include "commands.h"
+#include "startchecks.h"
 #include "tagconfiguration/configtab.h"
 #include <cstdio>
 
@@ -194,6 +196,10 @@ int main(int argc, char *argv[])
       "Print which actions are enabled for every combination of tag state and "
       "the other inputs, and exit."));
   parser.addOption(QCommandLineOption(
+      "check-action-wiring",
+      "Check that the window applies the command rule to the right actions, "
+      "print any disagreement and exit (1 on disagreement)."));
+  parser.addOption(QCommandLineOption(
       "check-start-checks",
       "Print which start checks fail for every combination of clock offset, "
       "self-test result and approval, and exit."));
@@ -223,24 +229,29 @@ int main(int argc, char *argv[])
                           parser.value("config-probe-out"));
   }
 
+  // The rules these print are Qt-free (core/); the window applies them.
   if (parser.isSet("check-start-checks")) {
-    HostStyle::apply(a);
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-    MainWindowOptions options;
-    options.skipAutoAttach = true;
-    MainWindow window(options);
-    std::fputs(qPrintable(window.startCheckTable()), stdout);
+    std::fputs(qtmon::startCheckTable().c_str(), stdout);
     return 0;
   }
 
   if (parser.isSet("check-action-states")) {
+    std::fputs(qtmon::actionStateTable().c_str(), stdout);
+    return 0;
+  }
+
+  if (parser.isSet("check-action-wiring")) {
     HostStyle::apply(a);
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     MainWindowOptions options;
     options.skipAutoAttach = true;
     MainWindow window(options);
-    std::fputs(qPrintable(window.actionStateTable()), stdout);
-    return 0;
+    const QStringList problems = window.checkActionWiring();
+    for (const QString &problem : problems)
+      std::fprintf(stderr, "%s\n", qPrintable(problem));
+    std::printf("action wiring: %s\n",
+                problems.isEmpty() ? "every action follows the rule" : "MISMATCH");
+    return problems.isEmpty() ? 0 : 1;
   }
 
   MainWindowOptions windowOptions;

@@ -36,19 +36,20 @@ popup menus by `createMenus()`. The status strip (`tagstatusstrip.cpp`), which
 Attached or Detached, the tag type, state, clock
 offset, voltage and self-test result, with the Approved box and Start and
 Stop as tool buttons bound to their actions. Start runs
-`MainWindow::startWithChecks()`: `startCheckFailures()` lists any failing
-check (clock beyond `TagStatusStrip::kClockToleranceS`, a reported self-test
+`MainWindow::startWithChecks()`: `qtmon::startCheckFailures()` lists any failing
+check (clock beyond `qtmon::kClockToleranceS`, a reported self-test
 other than ALL_PASSED, Approved not ticked), and the user may start anyway,
 which is logged. `ConfigTab::contentChanged` clears Approved. The Configuration tab's commands are `ConfigTab`
 slots (`NewFromDefaults()`, `Open()`, `Save()`, `SaveAs()`, `ResetToDefaults()`,
 `ReadFromTag()`, `StartTag()`; see `tagconfiguration/README.md`),
 and the error log's are `LogWindow` actions.
 
-`MainWindow::updateActions()` is the one place that decides which actions are
-enabled, from whether a tag is attached, its state and type, whether a
-download or self-test is pending, and whether the Configuration tab holds a
-configuration. `qtmonitor --check-action-states` prints its decisions for
-every combination of those; the expected table is
+`qtmon::availability()` (`core/commands.h`) is the one rule that decides
+which actions are enabled, from whether a tag is attached, its state and type,
+whether a download or self-test is pending, and whether the Configuration tab
+holds a configuration; `MainWindow::updateActions()` applies it.
+`qtmonitor --check-action-states` prints its decisions for every combination
+of those, and `--check-action-wiring` checks that the window applies them; the expected table is
 [`test/action-states.txt`](test/action-states.txt) (see
 [`test/README.md`](test/README.md)).
 

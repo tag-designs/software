@@ -5,6 +5,8 @@
 
 #include "tagstatusstrip.h"
 
+#include "startchecks.h"
+
 #include <QAction>
 #include <QCheckBox>
 #include <QHBoxLayout>
@@ -127,7 +129,7 @@ void TagStatusStrip::setStatus(TagState state, double clock_offset_s,
                       : QString::asprintf("%+.3g s", clock_offset_s));
   // Red marks what Start would warn about.
   const QString warn = QStringLiteral("color: #c62828; font-weight: bold;");
-  clock_->setStyleSheet(qAbs(clock_offset_s) > kClockToleranceS ? warn : QString());
+  clock_->setStyleSheet(qAbs(clock_offset_s) > qtmon::kClockToleranceS ? warn : QString());
   test_->setStyleSheet(test != ALL_PASSED ? warn : QString());
   voltage_->setText(QString::number(static_cast<double>(voltage), 'f', 2) + " V");
   test_->setText(QString::fromStdString(std::string(TestResult_Name(test))));

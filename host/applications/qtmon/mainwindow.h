@@ -15,6 +15,7 @@
 #include <QPromise>
 #include "tagclass.h"
 #include "ui_mainwindow.h"
+#include "commands.h"
 
 class QAction;
 class QMenu;
@@ -100,31 +101,21 @@ public:
   bool shouldQuitAfterStartup() const;
 
   /**
-   * @brief Which actions updateActions() enables, for every combination of
-   *        the inputs it reads; for `qtmonitor --check-action-states`.
+   * @brief Checks that the window applies the command rule to the right
+   *        actions; for `qtmonitor --check-action-wiring`.
    *
-   * @details Sets each combination of attached, tag state, tag type (two
-   *          types), configuration document (none, of the tag's type, of
-   *          another type), download
-   *          running and self-test pending, calls updateActions(), and records
-   *          each action as E (enabled), D (disabled) or H (hidden). Leaves the
-   *          window detached. See host/applications/qtmon/test/README.md.
+   * @details Drives every case of qtmon::actionStateCases() through the
+   *          window (attachment, tag state and type, the Configuration tab's
+   *          document, download and self-test flags), calls updateActions(),
+   *          and compares each action's visibility and enabled state with
+   *          qtmon::availability(). Each action is found by its menu text,
+   *          not through actionFor(), so a wrong entry there is caught. The rule itself is checked by
+   *          `--check-action-states`; this checks only the wiring. Leaves the
+   *          window detached with no document.
    *
-   * @return One header line, then one line per combination.
+   * @return One line per disagreement; empty when every action agrees.
    */
-  QString actionStateTable();
-
-  /**
-   * @brief Which start checks fail, for every combination of their inputs;
-   *        for `qtmonitor --check-start-checks`.
-   *
-   * @details Sets each combination of clock offset, reported self-test
-   *          result and approval, and records startCheckFailures(). See
-   *          host/applications/qtmon/test/README.md.
-   *
-   * @return One header line, then one line per combination.
-   */
-  QString startCheckTable();
+  QStringList checkActionWiring();
 
 public slots:
 
@@ -232,19 +223,23 @@ private:
   /**
    * @brief Enables, disables and shows the actions for the current state.
    *
-   * @details The single place where command availability is decided, from
-   *          whether a tag is attached, its state and type, whether a download
-   *          or self-test is in progress, and whether the Configuration tab
-   *          holds a configuration. Called after every change to those.
+   * @details Applies qtmon::availability() (core/commands.h), the one rule
+   *          for every command, to the matching actions, from whether a tag
+   *          is attached, its state and type, whether a download or self-test
+   *          is in progress, and the Configuration tab's document. Called
+   *          after every change to those.
    */
   void updateActions();
+  /// The action that carries @p command.
+  QAction *actionFor(qtmon::Command command) const;
   /**
    * @brief The start checks that fail now, one line each, empty when all pass.
    *
-   * @details Start warns, and asks whether to continue, when the clock at the
-   *          latest status is more than TagStatusStrip::kClockToleranceS from
-   *          this computer's, when the tag's reported self-test result is not
-   *          ALL_PASSED, or when "Approved" is not ticked.
+   * @details The failing checks of qtmon::startCheckFailures()
+   *          (core/startchecks.h), each as the sentence Start shows: the
+   *          clock at the latest status more than qtmon::kClockToleranceS off,
+   *          a reported self-test result other than ALL_PASSED, or "Approved"
+   *          not ticked.
    */
   QStringList startCheckFailures() const;
   /// Shows the configuration document's name and unsaved-changes mark in the title.

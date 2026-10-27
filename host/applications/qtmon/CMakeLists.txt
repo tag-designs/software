@@ -15,6 +15,9 @@
 cmake_minimum_required(VERSION 3.15)
 
 message("Configure qtmonitor")
+
+# The Qt-free core, before any Qt setting so none applies to it.
+add_subdirectory(core)
 # Find includes in corresponding build directories
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -116,7 +119,7 @@ endif()
 
 # Use the Widgets module from Qt 5
 
-target_link_libraries(qtmonitor PRIVATE tagcore host_common Qt6::Widgets)
+target_link_libraries(qtmonitor PRIVATE qtmon_core tagcore host_common Qt6::Widgets)
 
 #[[
   @brief  Case generator for the configuration probe.

@@ -139,9 +139,9 @@ commit before the change, then compare the change against them.
 
 ## Which commands are available when
 
-`qtmonitor --check-action-states` prints which actions
-`MainWindow::updateActions()` enables, disables or hides, for every
-combination of:
+`qtmonitor --check-action-states` prints which commands the rule in
+[`core/commands.h`](../core/commands.h) (`qtmon::availability()`) enables,
+disables or hides, for every combination of:
 
 - attached or detached;
 - each tag state;
@@ -162,10 +162,18 @@ the enabling rules of the buttons it replaced. A change to when a command is
 available updates the table in the same commit, so the review shows exactly
 which rows moved.
 
+The table checks the rule, which needs no window. That the window applies it
+to the right actions is checked separately: `qtmonitor --check-action-wiring`
+drives the same combinations through `MainWindow::updateActions()`, finds each
+action by its menu text, and compares it with the rule. It prints
+`action wiring: every action follows the rule` and exits 0, or lists each
+disagreement and exits 1.
+
 ## Which start checks fail when
 
 `qtmonitor --check-start-checks` prints which of Start's checks fail
-(`MainWindow::startCheckFailures()`) for every combination of a clock offset
+(`qtmon::startCheckFailures()`, [`core/startchecks.h`](../core/startchecks.h))
+for every combination of a clock offset
 on and either side of the 2 s tolerance, a reported self-test result, and
 Approved ticked or not:
 

@@ -33,9 +33,6 @@ class TagStatusStrip : public QFrame
   Q_OBJECT
 
 public:
-  /// Largest clock offset, in seconds, that Start's clock check accepts.
-  static constexpr double kClockToleranceS = 2.0;
-
   /**
    * @param[in] start   Action the Start button triggers and mirrors.
    * @param[in] stop    Action the Stop button triggers and mirrors.
@@ -73,7 +70,7 @@ private:
   QLabel *link_ = nullptr;  ///< Attached (green marker) or Detached (red).
   QLabel *tag_ = nullptr;      ///< Tag type; the board UUID is its tooltip.
   QLabel *state_ = nullptr;    ///< Tag state.
-  QLabel *clock_ = nullptr;    ///< Clock offset; red beyond kClockToleranceS.
+  QLabel *clock_ = nullptr;    ///< Clock offset; red beyond qtmon::kClockToleranceS.
   QLabel *voltage_ = nullptr;  ///< Supply voltage.
   QLabel *test_ = nullptr;     ///< Self-test result, or "Running"; red unless ALL_PASSED.
   QCheckBox *approved_ = nullptr;  ///< "Approved": the user reviewed the configuration.

@@ -40,7 +40,8 @@ configuration model in
 ## Actions, menus and the status strip
 
 `MainWindow::createActions()` makes every command an action, and
-`updateActions()` sets every action's enabled state in one place, from the
+`updateActions()` sets every action's enabled state in one place, applying
+the Qt-free rule `qtmon::availability()` (`core/commands.h`), from the
 attached tag's state, the document, a running download and a pending
 self-test. Menus and popup menus only place the actions, so a command behaves
 the same wherever it is chosen.
@@ -57,11 +58,11 @@ most-used commands and change the state a user must not miss.
 
 Start is available only with an attached IDLE tag whose type is the document's.
 Those conditions cannot be overridden. Start then checks
-(`MainWindow::startCheckFailures()`):
+(`qtmon::startCheckFailures()`, `core/startchecks.h`):
 
 | Check | Passes when |
 | --- | --- |
-| Clock | The offset at the latest status is within `TagStatusStrip::kClockToleranceS`, 2 s. An unset clock is far outside it. |
+| Clock | The offset at the latest status is within `qtmon::kClockToleranceS`, 2 s. An unset clock is far outside it. |
 | Self-test | The tag reports `test_status` ALL_PASSED. The result is the tag's own, kept in `pState`, so it can predate this session; running Self-Test again is one click. |
 | Approved | The box in the status strip is ticked. Any change to the document's values (an edit, New, Open, Read, Reset) clears it, through `ConfigTab::contentChanged`. Save does not. |
 

@@ -56,57 +56,13 @@
 #include "qtuserguide.h"
 #include "abstractdownload.h"
 #include "taglogwriter.h"
+#include "commands.h"
+#include "startchecks.h"
+#include "tagrules.h"
 
 
-namespace
-{
+using qtmon::Command;
 
-/// Bytes per IMUTag data-log page, used only as a fallback for older IMUTag
-/// firmware that predates Status.erase_sectors_total_plus_one. New firmware
-/// reports the erase total directly, so the UI does not need tag-specific
-/// page geometry.
-constexpr int kImuDataLogPageBytes = 2048;
-
-/**
- * @brief   Number of erase sectors needed to cover a byte count, rounded up.
- *
- * @param[in] bytes        Bytes of external flash in use, or the flash size.
- * @param[in] sector_size  Erase sector size in bytes.
- *
- * @return  ceil(@p bytes / @p sector_size); 0 when either argument is zero or
- *          negative, so a tag reporting no geometry shows no erase progress
- *          rather than dividing by zero.
- *
- * @note    The result is narrowed to int; flash sizes on these tags are far
- *          below the point where that could overflow.
- */
-int roundedSectorCount(qint64 bytes, int sector_size)
-{
-  if (bytes <= 0 || sector_size <= 0)
-    return 0;
-  return static_cast<int>((bytes + sector_size - 1) / sector_size);
-}
-
-/**
- * @brief   Whether a tag in @p state may be offered the download controls.
- *
- * @details EXCEPTION is included because the tag is no longer collecting data;
- *          letting the user download from it avoids requiring a reset that
- *          could erase the evidence.
- *
- * @param[in] state  The tag's last reported state.
- *
- * @return  true for FINISHED, ABORTED and EXCEPTION; false for every other
- *          state, including those where the tag is still logging.
- */
-bool isDownloadableState(TagState state)
-{
-  // EXCEPTION is no longer collecting data, so allow users to reach the
-  // download controls instead of requiring a reset that could erase evidence.
-  return state == FINISHED || state == ABORTED || state == EXCEPTION;
-}
-
-} // namespace
 
 /**
  * @brief Creates the main window and chooses live or fixture replay startup.
@@ -184,15 +140,7 @@ MainWindow::~MainWindow()
 
 int MainWindow::eraseSectorMaximum(const Status &status) const
 {
-  if (status.erase_sectors_total_plus_one() > 0)
-    return status.erase_sectors_total_plus_one() - 1;
-
-  if (tag_type == IMUTAG)
-    return roundedSectorCount(
-        static_cast<qint64>(status.external_data_count()) * kImuDataLogPageBytes,
-        sector_size);
-
-  return roundedSectorCount(external_flash_size, sector_size);
+  return qtmon::eraseSectorMaximum(status, tag_type, external_flash_size, sector_size);
 }
 
 void MainWindow::logTagDebugMessage(const QString &message)
@@ -319,9 +267,8 @@ void MainWindow::applyStatus(const Status &status, float voltage)
     logTagDebugMessage(QString::fromStdString(status.debug_message()));
   }
 
-  double timeerr = QDateTime::currentMSecsSinceEpoch();
-  timeerr = status.millis() - timeerr;
-  clock_offset_s_ = timeerr / 1000.0;
+  clock_offset_s_ =
+      qtmon::clockOffsetSeconds(status.millis(), QDateTime::currentMSecsSinceEpoch());
   last_test_ = status.test_status();
   status_strip_->setStatus(status.state(), clock_offset_s_, voltage,
                            status.test_status());
@@ -346,7 +293,7 @@ void MainWindow::applyStatus(const Status &status, float voltage)
       status_strip_->setTestRunning();
     }
   }
-  ui.datadownloadgroupBox->setEnabled(isDownloadableState(status.state()) &&
+  ui.datadownloadgroupBox->setEnabled(qtmon::isDownloadableState(status.state()) &&
                                       !downloading_);
 
   current_state = status.state();
@@ -651,15 +598,23 @@ void MainWindow::createMenus()
 QStringList MainWindow::startCheckFailures() const
 {
   QStringList failures;
-  if (qAbs(clock_offset_s_) > TagStatusStrip::kClockToleranceS)
-    failures << tr("Clock is %1 s off (limit %2 s).")
-                    .arg(QString::number(clock_offset_s_, 'g', 3))
-                    .arg(TagStatusStrip::kClockToleranceS);
-  if (last_test_ != ALL_PASSED)
-    failures << tr("Self-test is %1.")
-                    .arg(QString::fromStdString(std::string(TestResult_Name(last_test_))));
-  if (!status_strip_->isApproved())
-    failures << tr("Configuration is not approved.");
+  for (qtmon::StartCheck check :
+       qtmon::startCheckFailures(clock_offset_s_, last_test_, status_strip_->isApproved())) {
+    switch (check) {
+    case qtmon::StartCheck::Clock:
+      failures << tr("Clock is %1 s off (limit %2 s).")
+                      .arg(QString::number(clock_offset_s_, 'g', 3))
+                      .arg(qtmon::kClockToleranceS);
+      break;
+    case qtmon::StartCheck::SelfTest:
+      failures << tr("Self-test is %1.")
+                      .arg(QString::fromStdString(std::string(TestResult_Name(last_test_))));
+      break;
+    case qtmon::StartCheck::Approval:
+      failures << tr("Configuration is not approved.");
+      break;
+    }
+  }
   return failures;
 }
 
@@ -764,31 +719,54 @@ void MainWindow::placeStatusStripBelowTabs()
 
 void MainWindow::updateActions()
 {
-  const bool attached = attached_ui_;
-  const TagState state = current_state;
-  const bool idle = attached && state == IDLE;
+  qtmon::CommandInputs in;
+  in.attached = attached_ui_;
+  in.state = current_state;
+  in.tag_type = tag_type;
+  in.document = ui.configtab->hasDocument();
+  in.document_type = ui.configtab->documentTagType();
+  in.downloading = downloading_;
+  in.test_pending = test_pending_;
+  for (Command command : qtmon::kAllCommands) {
+    QAction *action = actionFor(command);
+    const qtmon::Availability a = qtmon::availability(command, in);
+    action->setVisible(a != qtmon::Availability::Hidden);
+    action->setEnabled(a == qtmon::Availability::Enabled);
+  }
+  status_strip_->setApprovalAvailable(in.document);
+}
 
-  attach_action_->setEnabled(!attached);
-  detach_action_->setEnabled(attached);
-  sync_action_->setEnabled(idle);
-  test_action_->setEnabled(idle && !test_pending_);
-  erase_action_->setEnabled(attached && (state == FINISHED || state == ABORTED));
-  download_action_->setEnabled(attached && isDownloadableState(state) && !downloading_);
-  // CALIBRATE is entered only from the command line (tag-cal), but qtmonitor
-  // can still stop a tag left in it.
-  stop_action_->setEnabled(attached && (state == CONFIGURED || state == RUNNING ||
-                                        state == HIBERNATING || state == CALIBRATE));
-
-  // Configuration documents need no tag. Read needs an IDLE tag; Start also
-  // needs a document of that tag's type.
-  const bool document = ui.configtab->hasDocument();
-  save_config_action_->setEnabled(document);
-  save_as_config_action_->setEnabled(document);
-  reset_config_action_->setEnabled(document);
-  read_config_action_->setEnabled(idle);
-  start_action_->setEnabled(document && idle &&
-                            ui.configtab->documentTagType() == tag_type);
-  status_strip_->setApprovalAvailable(document);
+QAction *MainWindow::actionFor(Command command) const
+{
+  switch (command) {
+  case Command::Attach:
+    return attach_action_;
+  case Command::Detach:
+    return detach_action_;
+  case Command::Read:
+    return read_config_action_;
+  case Command::Start:
+    return start_action_;
+  case Command::Stop:
+    return stop_action_;
+  case Command::Sync:
+    return sync_action_;
+  case Command::Test:
+    return test_action_;
+  case Command::Erase:
+    return erase_action_;
+  case Command::Download:
+    return download_action_;
+  case Command::Open:
+    return open_config_action_;
+  case Command::Save:
+    return save_config_action_;
+  case Command::SaveAs:
+    return save_as_config_action_;
+  case Command::Reset:
+    return reset_config_action_;
+  }
+  return nullptr;
 }
 
 /********************************************
@@ -890,7 +868,7 @@ void MainWindow::eraseTag()
   if (ret == QMessageBox::Ok)
   {
     Status status;
-    int erase_sector_maximum = roundedSectorCount(external_flash_size, sector_size);
+    int erase_sector_maximum = qtmon::roundedSectorCount(external_flash_size, sector_size);
     if (tag.GetStatus(status))
       erase_sector_maximum = eraseSectorMaximum(status);
 
@@ -1020,7 +998,7 @@ void MainWindow::downloadData()
   connect(download_thread,&QThread::finished,this,[this,restart_status_timer]() {
     downloading_ = false;
     ui.datadownloadgroupBox->setEnabled(tag.IsAttached() &&
-                                        isDownloadableState(current_state));
+                                        qtmon::isDownloadableState(current_state));
     updateActions();
     if (restart_status_timer && tag.IsAttached()) {
       timer.start(400);
