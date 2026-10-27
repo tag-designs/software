@@ -38,6 +38,44 @@ const L4_FLASH_SR: u32 = 0x4002_2010;
 const L4_FLASH_SR_PEMPTY: u32 = 1 << 17;
 
 impl TagMonitor {
+    /// Waits until no monitor request is pending on an STM32L4 tag (DEMCR
+    /// MON_REQ and MON_PEND both clear), so the call buffer may be written.
+    ///
+    /// The tag decodes a request from its buffer only when its main thread
+    /// reaches a cooperative point, which a self-test or an RTC set can delay
+    /// by a second or more. A call that failed part way (the request-setting
+    /// write reached the tag, but the base reported 0x81) leaves that request
+    /// pending; writing the next request into the buffer then would overwrite
+    /// the one the tag is about to decode, under its old length. Port of
+    /// `TagMonitor::WaitL4MonitorIdle`.
+    ///
+    /// Returns `false`, with an error logged, when a request is still
+    /// pending after `timeout_ms`; a failed DEMCR read is retried within the
+    /// timeout. Blocks for up to `timeout_ms`.
+    pub(super) fn wait_l4_idle(&mut self, timeout_ms: u32) -> bool {
+        let mut last = None;
+        for i in 0..=timeout_ms {
+            last = self.link.read_debug32(DEMCR);
+            if let Some(demcr) = last
+                && demcr & (MON_PEND | MON_REQ) == 0
+            {
+                if i > 0 {
+                    debug!("previous monitor request finished after {i} ms");
+                }
+                return true;
+            }
+            sleep(ms(1));
+        }
+        match last {
+            Some(demcr) => error!(
+                "previous monitor request still pending after {timeout_ms} ms demcr=0x{demcr:x}; \
+                 not overwriting its buffer"
+            ),
+            None => error!("could not read DEMCR for {timeout_ms} ms before a monitor request"),
+        }
+        false
+    }
+
     /// [`call`](Self::call) over the STM32L4 DebugMonitor/DCRDR transport.
     ///
     /// [`op::MONITORSTOP`] returns 1 without waiting for the firmware to

@@ -15,7 +15,7 @@ use log::error;
 use prost::Message;
 
 use super::abi::op;
-use super::{INSTRUMENTED, TagMonitor};
+use super::{INSTRUMENTED, TagMonitor, TargetFamily};
 use crate::link::elapsed_ns;
 use crate::proto::{Ack, Req};
 
@@ -65,6 +65,16 @@ impl TagMonitor {
 
         if size + 2 > self.maxpacket {
             error!("Input buffer too long");
+            return None;
+        }
+
+        // An STM32L4 tag may still hold an earlier request that a failed call
+        // left pending; the buffer is its until the tag clears MON_REQ. The U3
+        // mailbox has its own handshake in call_u3().
+        const L4_IDLE_BEFORE_WRITE_MS: u32 = 2500;
+        if self.target_family == TargetFamily::Stm32L4
+            && !self.wait_l4_idle(L4_IDLE_BEFORE_WRITE_MS)
+        {
             return None;
         }
 
