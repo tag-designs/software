@@ -209,3 +209,104 @@ impl ConfigEditor {
         taken
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The probe cases' clock: 2026-10-08 12:22:03 UTC.
+    const NOW: i64 = 1_791_460_923;
+
+    /// The value of control `id` in the form's view.
+    fn value(editor: &ConfigEditor, id: &str) -> Value {
+        editor
+            .form()
+            .controls()
+            .into_iter()
+            .find(|c| c.id == id)
+            .map(|c| c.view()["value"].clone())
+            .unwrap_or(Value::Null)
+    }
+
+    /// An edit marks the document modified and withdraws approval; the
+    /// value sent follows the edit.
+    #[test]
+    fn an_edit_modifies_and_withdraws_approval() {
+        let mut e = ConfigEditor::new();
+        e.load_defaults(TagType::Prestag, NOW).unwrap();
+        e.set_approved(true);
+        assert!(!e.is_modified(NOW));
+        assert!(e.edit("period", &json!(120)));
+        assert!(e.is_modified(NOW) && !e.approved());
+        assert_eq!(e.get_config(NOW).unwrap().period, 120);
+        // The spin box clamps, as QSpinBox does.
+        e.edit("period", &json!(1000));
+        assert_eq!(value(&e, "period"), json!(300));
+    }
+
+    /// Choosing a range re-limits both thresholds and clamps them, as the
+    /// Standard ADXL362 panel's range buttons do.
+    #[test]
+    fn the_range_clamps_the_thresholds() {
+        let mut e = ConfigEditor::new();
+        e.load_defaults(TagType::Bittag, NOW).unwrap();
+        e.edit("adxl.act", &json!(1.9));
+        e.edit("adxl.range", &json!(1)); // ±2 g: thresholds up to 1 g
+        assert_eq!(value(&e, "adxl.act"), json!(1.0));
+        assert_eq!(
+            e.get_config(NOW).unwrap().adxl362.unwrap().act_thresh_g,
+            1.0
+        );
+    }
+
+    /// A hibernation row first put in use starts at the logging start,
+    /// rounded up to the hour, and lasts an hour.
+    #[test]
+    fn a_new_hibernation_row_starts_at_the_logging_start() {
+        let mut e = ConfigEditor::new();
+        e.load_defaults(TagType::Bittag, NOW).unwrap();
+        assert!(e.edit("hib0.in_use", &json!(true)));
+        let start = value(&e, "start").as_i64().unwrap();
+        assert_eq!(value(&e, "hib0.start"), json!(start));
+        assert_eq!(value(&e, "hib0.end"), json!(start + 3600));
+        let sent = e.get_config(NOW).unwrap();
+        assert_eq!(sent.hibernate[0].start_epoch as i64, start);
+    }
+
+    /// The tag's own configuration is read-only while that tag runs.
+    #[test]
+    fn a_running_tags_own_configuration_is_read_only() {
+        let mut e = ConfigEditor::new();
+        e.set_config(ConfigShape::default_config(TagType::Prestag).unwrap(), NOW);
+        e.state_update(TagState::Running);
+        assert!(!e.edit("period", &json!(30)));
+        e.state_update(TagState::Idle);
+        assert!(e.edit("period", &json!(30)));
+    }
+
+    /// Start On a time in the past is sent as immediately (0).
+    #[test]
+    fn a_start_in_the_past_is_sent_as_immediately() {
+        let mut e = ConfigEditor::new();
+        e.load_defaults(TagType::Compasstag, NOW).unwrap();
+        e.edit("start_mode", &json!(1));
+        let start = value(&e, "start").as_i64().unwrap();
+        assert_eq!(
+            e.get_config(NOW)
+                .unwrap()
+                .active_interval
+                .unwrap()
+                .start_epoch as i64,
+            start
+        );
+        assert_eq!(
+            e.get_config(start + 1)
+                .unwrap()
+                .active_interval
+                .unwrap()
+                .start_epoch,
+            0
+        );
+    }
+}

@@ -89,21 +89,21 @@
 .data .count .field { width: 110px; }
 .data [hidden] { display: none; }
 
-/* Configuration page, until the form arrives (phase 3). */
-.config-none { margin: 40px auto; color: var(--text-secondary); }
+/* Configuration page: the engine's panels, drawn by kind. */
+.config-none { margin: 40px auto; max-width: 460px; text-align: center; color: var(--text-secondary); }
 .config-doc { flex: 1; display: flex; flex-direction: column; min-height: 0; margin: 10px 4px 0; }
 .config-doc[hidden] { display: none; }
 .config-head { display: flex; gap: 10px; font-weight: 600; margin-bottom: 6px; }
-.config-text {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  margin: 0;
-  padding: 8px;
-  font: 11px ui-monospace, Menlo, monospace;
-  background: var(--panel-bg);
-  border-radius: 6px;
-}
+.config-panels { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+.config-panels .groups { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.config-panels .groups > .kit-group { flex: 0 1 auto; }
+.config-panels .radios { display: flex; flex-direction: column; gap: 3px; }
+.config-panels .radios label, .config-panels .check { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.config-panels .kit-form { grid-template-columns: max-content max-content; margin-top: 4px; }
+.config-panels .kit-field.number { width: 80px; text-align: right; }
+.config-panels .kit-field.datetime { width: 170px; }
+.config-panels .unit { margin-left: 4px; color: var(--text-secondary); }
+.config-panels .disabled { opacity: 0.5; }
 
 /* Error Log page: the kit's log drawer, filling the page. */
 .log-page { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 4px; }

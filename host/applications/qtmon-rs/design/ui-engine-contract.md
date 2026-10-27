@@ -74,7 +74,9 @@ its window opens; every `ready` makes the engine send the whole state again.
   "config": {                         // the Configuration tab
     "document": true, "name": "COMPASSTAG from tag", "tagType": "COMPASSTAG",
     "modified": false,
-    "text": "{ ... }"                 // the JSON Save would write; phase 3 replaces it with the form
+    "panels": [                       // the shown panels, in page order; see The form
+      { "name": "IntervalSchedule", "title": "Logging Schedule", "controls": [ ... ] }
+    ]
   },
   "actions": {                        // every command: the core availability rule
     "attach": { "visible": true, "enabled": false }, "detach": { ... }, "read": { ... },
@@ -111,6 +113,31 @@ The file dialogs are prompts, not the page's own, so the engine decides
 where they start and what happens next: Save after Unsaved continues with
 what was interrupted; Download adds `.db3` to a name with no extension.
 
+## The form
+
+The Configuration tab is drawn from `config.panels`, a list of the panels
+the document's tag type shows (qtmonitor's panel table), each a `title` and
+its `controls`. A control is
+
+```jsonc
+{ "id": "adxl.act", "kind": "number", "group": "Activity Detection",
+  "label": "Active Threshold", "tooltip": "Wakeup threshold", "enabled": true,
+  "value": 0.5, "min": 0.03, "max": 2, "step": 0.03125, "decimals": 2, "suffix": "g" }
+```
+
+with `kind` one of `radio` (`choices: [{id, text, tooltip}]`, `value` the
+chosen id), `check` (`text`, `value` a bool), `number` (`min`, `max`,
+`step`, `decimals`, `suffix`) or `datetime` (`value`, `min`, `max` in
+seconds since the epoch, whole UTC hours). `group` names the box it sits in;
+a group named as its panel is the panel itself. The page sends each edit as
+`set_field {id, value}` and shows what the next state holds: the engine
+clamps, rounds and applies the panels' rules (a range re-limits the
+thresholds, a hibernation row first put in use starts at the logging start),
+exactly as qtmonitor's widgets do. `core/src/model/configform.rs` is the
+form; `tests/config_probe.rs` checks it against all of qtmonitor's probe
+goldens, and `cargo run -p qtmon-core --example form_view -- BITTAG` prints
+one tag type's panels.
+
 ## Commands
 
 | `cmd` | `args` | Does |
@@ -118,6 +145,7 @@ what was interrupted; Download adds `.db3` to a name with no extension.
 | `ready` | -- | the page is listening: resend the state; attach the first time |
 | `attach`, `detach`, `read`, `start`, `stop`, `sync`, `test`, `erase`, `download`, `open`, `save`, `reset` | -- | the menu commands, by the core table's names; ignored unless `actions` enables them |
 | `answer` | `{id, button, index?, path?}` | answers the shown prompt |
+| `set_field` | `{id, value}` | one edit of a form control (see The form); ignored while the form is read-only |
 | `new_config` | `{tagType}` | File ▸ New Configuration ▸ type (asks about unsaved changes) |
 | `open_recent` | `{path}` | File ▸ Open Recent ▸ file |
 | `set_approved` | `{on}` | the strip's Approved box |
@@ -143,9 +171,8 @@ a menu opens.
 
 ## Deliberate differences from qtmonitor
 
-- The Configuration tab shows the document as JSON until phase 3 ports the
-  form. The document rules (sources, unsaved changes, approval, Open, Save,
-  Reset, recent files) are already qtmonitor's.
+- The form's date and time boxes are the browser's, which show minutes
+  (always :00) in the browser's own format, marked UTC.
 - Download Data... needs the `sqlitelog` feature (the C++ SQLite writer
   through `taglogwriter`); without it the download refuses with a message.
 - There is no fixture mode or screenshot capture; the browser mock serves

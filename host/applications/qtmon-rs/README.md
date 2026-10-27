@@ -22,8 +22,8 @@ It follows the structure qtmonitor was given for this purpose
 | Phase | What | State |
 | --- | --- | --- |
 | 1 | Model: the port of `qtmon/core` | done |
-| 2 | Engine on tagcore-rs, view state, Tauri shell, UI | done; not yet tried on a tag |
-| 3 | Configuration tab: the panels' rules as a field spec | not started |
+| 2 | Engine on tagcore-rs, view state, Tauri shell, UI | done; a full session passed on an IMUTag |
+| 3 | Configuration tab: the panels' rules as a field spec | done; all 710 probe goldens match |
 | 4 | Design docs, CMake and packaging | not started |
 
 ## The model
@@ -38,6 +38,8 @@ It follows the structure qtmonitor was given for this purpose
 | `monitormodel.rs` | `monitormodel.h` | The attached tag as known, and what each status settles |
 | `configdocument.rs` | `configdocument.h` | The configuration document, its file format and approval |
 | `menus.rs` | `menus.h` | The menus as data |
+| `configform.rs` | `tagconfiguration/*panel*`, `hibernate`, `hourtime.h` | The panels, and the Qt widget behaviour they rely on |
+| `configeditor.rs` | `tagconfiguration/configtab.cpp` | The document and the form together: load, New, Open, Reset, editable |
 
 ## The engine, shell and page
 
@@ -76,6 +78,14 @@ cargo test
 - **`tests/core_check.rs`** repeats `qtmon_core_check`'s assertions: the
   document, the monitor model, and the window's remaining rules. It also
   compares the menu bar with the menu-bar part of `test/menus.txt`.
+
+- **`tests/config_probe.rs`** replays all 710 configuration probe cases
+  (`test/cases/`) and matches the goldens (`test/golden/`): the bytes Start
+  sends, the document, the panels shown, the dialogs, and every control's
+  value, range, step, decimals and enabled state.
+- **`examples/session_check.rs`** runs one whole tag cycle through the
+  engine, as `qtmon_session_check` does; it changes the tag (see its
+  header).
 
 These are the same files that hold qtmonitor fixed, so the two
 implementations cannot drift apart without a test failing.

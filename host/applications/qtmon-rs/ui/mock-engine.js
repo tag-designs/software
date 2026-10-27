@@ -71,7 +71,12 @@
     flash: "256KB", flashExt: "4MB", buildDate: "Aug 26 2026 : 13:43:36", sourcePath: "/embedded/tags/CompassTag",
   };
 
-  const CONFIG_TEXT = JSON.stringify({ tag_type: "COMPASSTAG", period_s: 60, compass: { odr: "ODR_10HZ" } }, null, 2);
+  /**
+   * The Configuration form for BITTAG defaults, as the engine sends it
+   * (state.config.panels). Regenerate it with
+   * `cargo run -p qtmon-core --example form_view -- BITTAG`.
+   */
+  const FORM = [{"controls":[{"choices":[{"id":0,"text":"Immediately","tooltip":"Start data collection as soon as possible."},{"id":1,"text":"On","tooltip":"Start data collection at a specific time."}],"enabled":true,"group":"Start","id":"start_mode","kind":"radio","label":"","tooltip":"Set data collection starting conditions.","value":0},{"enabled":true,"group":"Start","id":"start","kind":"datetime","label":"","max":253402300799,"min":1791460980,"tooltip":"Programmed date/time to start data collection (UTC, whole hours)","value":1791464400},{"choices":[{"id":0,"text":"Indefinitely","tooltip":"Collect data for as long as possible, until either battery or storage runs out."},{"id":1,"text":"Until","tooltip":"Stop collecting data at a specific time."}],"enabled":true,"group":"Run","id":"run_mode","kind":"radio","label":"","tooltip":"Set data collection ending conditions.","value":0},{"enabled":true,"group":"Run","id":"end","kind":"datetime","label":"","max":253402300799,"min":1791464400,"tooltip":"Programmed date/time to halt data collection (UTC, whole hours)","value":1791464400},{"enabled":true,"group":"Hibernation","id":"hib0.in_use","kind":"check","label":"","text":"In use","tooltip":"Hibernate between the start and end below. Unchecked, the row is not used.","value":false},{"enabled":false,"group":"Hibernation","id":"hib0.start","kind":"datetime","label":"Start","max":253402300799,"min":-6857222400,"tooltip":"Start hibernating at this date/time (UTC, whole hours)","value":0},{"enabled":false,"group":"Hibernation","id":"hib0.end","kind":"datetime","label":"End","max":253402300799,"min":-6857222400,"tooltip":"Stop hibernating at this date/time (UTC, whole hours). The tag checks once an hour, on the hour, whether to stop hibernating.","value":0},{"enabled":true,"group":"Hibernation","id":"hib1.in_use","kind":"check","label":"","text":"In use","tooltip":"Hibernate between the start and end below. Unchecked, the row is not used.","value":false},{"enabled":false,"group":"Hibernation","id":"hib1.start","kind":"datetime","label":"Start","max":253402300799,"min":-6857222400,"tooltip":"Start hibernating at this date/time (UTC, whole hours)","value":0},{"enabled":false,"group":"Hibernation","id":"hib1.end","kind":"datetime","label":"End","max":253402300799,"min":-6857222400,"tooltip":"Stop hibernating at this date/time (UTC, whole hours). The tag checks once an hour, on the hour, whether to stop hibernating.","value":0}],"name":"IntervalSchedule","title":"Logging Schedule"},{"controls":[{"choices":[{"id":1,"text":"Activity Bit Per Second","tooltip":""},{"id":2,"text":"Activity Count Per Minute","tooltip":""},{"id":3,"text":"Activity Count Per Four Minutes","tooltip":""},{"id":4,"text":"Activity Count Per Five Minutes","tooltip":""}],"enabled":true,"group":"BitTag Internal Log","id":"bittag_log","kind":"radio","label":"","tooltip":"Set format for BitTag log","value":4}],"name":"BitTagLogFormat","title":"BitTag Internal Log"},{"controls":[{"choices":[{"id":1,"text":"+/- 2g","tooltip":""},{"id":2,"text":"+/- 4g","tooltip":""},{"id":3,"text":"+/- 8g","tooltip":""}],"enabled":true,"group":"Range","id":"adxl.range","kind":"radio","label":"","tooltip":"Set Accelerometer Range","value":2},{"choices":[{"id":1,"text":"12.5 Hz","tooltip":"12.5 samples/second"},{"id":2,"text":"25 Hz","tooltip":"25 samples/second"},{"id":3,"text":"50 Hz","tooltip":"50 samples/second"},{"id":4,"text":"100 Hz","tooltip":"100 samples/second"},{"id":5,"text":"200 Hz","tooltip":"200 samples/second"},{"id":6,"text":"400 Hz","tooltip":"400 samples/second"}],"enabled":true,"group":"Sample Rate","id":"adxl.freq","kind":"radio","label":"","tooltip":"Set Accelerometer Sample Rate","value":3},{"choices":[{"id":2,"text":"1/4 Sample Rate","tooltip":"filter cutoff -- 1/4 sample rate"},{"id":1,"text":"1/2 Sample Rate","tooltip":"filter cutoff -- 1/2 sample rate"}],"enabled":true,"group":"Filter","id":"adxl.filter","kind":"radio","label":"","tooltip":"Set Accelerometer Anti-Alias Filter","value":2},{"decimals":2,"enabled":true,"group":"Activity Detection","id":"adxl.act","kind":"number","label":"Active Threshold","max":2.0,"min":0.03,"step":0.03125,"suffix":"g","tooltip":"Wakeup threshold","value":0.5},{"decimals":2,"enabled":true,"group":"Activity Detection","id":"adxl.inact","kind":"number","label":"Inactive Threshold","max":2.0,"min":0.03,"step":0.03125,"suffix":"g","tooltip":"Sleep threshold","value":0.5},{"decimals":2,"enabled":true,"group":"Activity Detection","id":"adxl.inactive","kind":"number","label":"Inactivity","max":5.1,"min":0.02,"step":0.02,"suffix":"sec","tooltip":"Time below wakeup threshold to become inactive","value":0.5}],"name":"Adxl362Standard","title":"Accelerometer"}];
 
   /**
    * Creates the mock.
@@ -82,7 +87,7 @@
     const listeners = {};
     let nextId = 1;
     // The simulated tag and document.
-    const sim = { attached: true, state: "IDLE", document: true, modified: false, approved: false,
+    const sim = { form: clone(FORM), attached: true, state: "IDLE", document: true, modified: false, approved: false,
       erase: null, download: null, prompt: null, test: "ALL_PASSED" };
     let timer = null;
 
@@ -107,7 +112,7 @@
     function view() {
       const a = sim.attached;
       const item = (text, warn) => ({ text, warn: !!warn });
-      const name = sim.document ? "COMPASSTAG from tag" : "";
+      const name = sim.document ? "BITTAG defaults" : "";
       return {
         title: "Tag Monitor v2.1" + (name ? " — " + name : ""),
         modified: sim.modified,
@@ -120,8 +125,8 @@
         },
         tag: { enabled: a, info: INFO, internalCount: a ? "128" : "", externalCount: a ? "512" : null,
           downloadEnabled: actions().download.enabled },
-        config: { document: sim.document, name, tagType: "COMPASSTAG", modified: sim.modified,
-          text: sim.document ? CONFIG_TEXT : null },
+        config: { document: sim.document, name, tagType: "BITTAG", modified: sim.modified,
+          panels: sim.document ? sim.form : [] },
         actions: actions(),
         recent: [{ path: "/Users/me/configs/compass-1min.json", name: "compass-1min.json" }],
         erase: sim.erase, download: sim.download, prompt: sim.prompt,
@@ -156,7 +161,7 @@
       if (name === "prompt-unsaved") {
         sim.modified = true;
         ask({ kind: "unsaved", title: "Unsaved Configuration",
-          text: "The configuration \"COMPASSTAG from tag\" has unsaved changes.", informative: "Save them before continuing?" });
+          text: "The configuration \"BITTAG defaults\" has unsaved changes.", informative: "Save them before continuing?" });
       }
       if (name === "prompt-base") {
         sim.attached = false;
@@ -186,6 +191,12 @@
         case "reset": sim.modified = true; sim.approved = false; break;
         case "new_config": Object.assign(sim, { document: true, modified: false, approved: false }); break;
         case "set_approved": sim.approved = !!args.on; break;
+        case "set_field":
+          // No rules here: the value is kept as sent.
+          for (const p of sim.form) for (const k of p.controls) if (k.id === args.id) k.value = args.value;
+          sim.modified = true;
+          sim.approved = false;
+          break;
         case "hide_erase": sim.erase = null; break;
         case "cancel_download": sim.download = null; log("INFO", "Downloaded 96 blocks"); break;
         case "quit": log("INFO", "Quit (the app would close)"); break;

@@ -123,8 +123,10 @@
   }
 
   /**
-   * The Configuration page: the document's name and, until the form
-   * arrives, the JSON a save would write.
+   * The Configuration page: the document's name and the engine's panels.
+   * The form is rebuilt only when its panels or controls change; otherwise
+   * each control's value, range and enabled state are updated in place, so
+   * a field being typed into keeps its focus.
    * @param {Object} c The state's `config`.
    */
   function renderConfig(c) {
@@ -132,7 +134,131 @@
     $("config-doc").hidden = !c.document;
     $("config-name").textContent = c.name;
     $("config-modified").textContent = c.modified ? "unsaved changes" : "";
-    if ($("config-text").textContent !== (c.text || "")) $("config-text").textContent = c.text || "";
+    const sig = c.panels.map((p) => p.name + ":" + p.controls.map((k) => k.id).join(",")).join("|");
+    if (sig !== formSig) {
+      formSig = sig;
+      buildForm(c.panels);
+    }
+    for (const p of c.panels) for (const k of p.controls) updateControl(k);
+  }
+
+  let formSig = "";            // the panels and controls the form was built for
+  let formNodes = {};          // control id -> its input elements
+
+  /**
+   * Sends one edit; the engine clamps or rounds it and the next state shows
+   * the value it kept.
+   * @param {string} id The control's id.
+   * @param {*} value A number, a bool, a choice id, or epoch seconds.
+   */
+  const edit = (id, value) => send("set_field", { id, value });
+
+  /** Epoch seconds as a datetime-local value in UTC ("2026-10-08T13:00"). */
+  const utcText = (s) => new Date(s * 1000).toISOString().slice(0, 16);
+  /** A datetime-local value, read as UTC, in epoch seconds; null if empty. */
+  const utcSeconds = (text) => (text ? Math.round(Date.parse(text + ":00Z") / 1000) : null);
+
+  /**
+   * Builds the form: each panel a group, its controls in sub-groups by the
+   * `group` the engine gives (a group named as the panel is the panel
+   * itself), radio buttons stacked, everything else in label and field rows.
+   * @param {Array<Object>} panels The state's `config.panels`.
+   */
+  function buildForm(panels) {
+    formNodes = {};
+    const host = $("config-panels");
+    host.replaceChildren();
+    for (const p of panels) {
+      const groups = el("div", { class: "groups" });
+      const byGroup = new Map();
+      for (const k of p.controls) {
+        if (!byGroup.has(k.group)) byGroup.set(k.group, []);
+        byGroup.get(k.group).push(k);
+      }
+      for (const [title, controls] of byGroup) {
+        const body = el("div", {});
+        const radio = controls.find((k) => k.kind === "radio");
+        let form = null;
+        for (const k of controls) {
+          if (k.kind === "radio") { body.append(radioNode(k)); continue; }
+          if (!form) { form = el("div", { class: "kit-form" }); body.append(form); }
+          form.append(el("span", { class: "kit-form-label" }, k.label), fieldNode(k));
+        }
+        if (title === p.title) { groups.append(body); continue; }
+        groups.append(el("div", { class: "kit-group", title: radio ? radio.tooltip : "" },
+          el("div", { class: "kit-group-title" }, title), el("div", { class: "kit-panel" }, body)));
+      }
+      host.append(el("div", { class: "kit-group" },
+        el("div", { class: "kit-group-title" }, p.title), el("div", { class: "kit-panel" }, groups)));
+    }
+  }
+
+  /**
+   * Radio buttons for a choice control.
+   * @param {Object} k The control.
+   * @returns {HTMLElement}
+   */
+  function radioNode(k) {
+    const inputs = [];
+    const box = el("div", { class: "radios" }, k.choices.map((c) => {
+      const input = el("input", { type: "radio", name: "f-" + k.id, value: String(c.id),
+        onchange: () => edit(k.id, c.id) });
+      inputs.push(input);
+      return el("label", { title: c.tooltip || "" }, input, c.text);
+    }));
+    formNodes[k.id] = { k, inputs, box };
+    return box;
+  }
+
+  /**
+   * The field of a check box, number or date control.
+   * @param {Object} k The control.
+   * @returns {HTMLElement}
+   */
+  function fieldNode(k) {
+    let input;
+    let wrap;
+    if (k.kind === "check") {
+      input = el("input", { type: "checkbox", onchange: () => edit(k.id, input.checked) });
+      wrap = el("label", { class: "check", title: k.tooltip }, input, k.text);
+    } else if (k.kind === "number") {
+      input = el("input", { class: "kit-field number", type: "number", title: k.tooltip,
+        onchange: () => { const v = parseFloat(input.value); if (!Number.isNaN(v)) edit(k.id, v); } });
+      wrap = el("span", {}, input, el("span", { class: "unit" }, k.suffix));
+    } else {
+      input = el("input", { class: "kit-field datetime", type: "datetime-local", step: "3600", title: k.tooltip,
+        onchange: () => { const v = utcSeconds(input.value); if (v !== null) edit(k.id, v); } });
+      wrap = el("span", {}, input, el("span", { class: "unit" }, "UTC"));
+    }
+    formNodes[k.id] = { k, inputs: [input], box: wrap };
+    return wrap;
+  }
+
+  /**
+   * Shows a control's value, range and enabled state; a field with focus is
+   * left alone while the user types.
+   * @param {Object} k The control from the state.
+   */
+  function updateControl(k) {
+    const n = formNodes[k.id];
+    if (!n) return;
+    n.box.classList.toggle("disabled", !k.enabled);
+    for (const input of n.inputs) input.disabled = !k.enabled;
+    if (k.kind === "radio") {
+      for (const input of n.inputs) input.checked = Number(input.value) === k.value;
+      return;
+    }
+    const input = n.inputs[0];
+    if (k.kind === "check") { input.checked = k.value; return; }
+    if (document.activeElement === input) return;
+    if (k.kind === "number") {
+      input.min = k.min; input.max = k.max; input.step = k.step;
+      input.value = Number(k.value).toFixed(k.decimals);
+    } else {
+      input.min = utcText(Math.max(k.min, -62135596800));
+      input.max = utcText(Math.min(k.max, 253402297200));
+      input.value = utcText(k.value);
+    }
   }
 
   /**
