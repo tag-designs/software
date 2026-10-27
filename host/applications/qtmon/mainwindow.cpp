@@ -1,78 +1,88 @@
 /**
  * @file    mainwindow.cpp
- * @brief   qtmonitor's main window: attach, status polling, tag commands and
- *          downloads.
+ * @brief   qtmonitor's main window: commands sent to the tag session, the
+ *          session's reports fed to the model, and the model drawn.
  *
- * @details The maintainer-only fixture replay and screenshot capture are in
- *          mainwindow_fixture.cpp.
+ * @details The maintainer-only screenshot capture and the action wiring
+ *          check are in mainwindow_fixture.cpp. The window holds no tag and
+ *          no tag state of its own: see mainwindow.h and
+ *          design/architecture.md.
  */
 
-
-#include <QMainWindow>
 #include <QAction>
-#include <QMenu>
-#include <QMenuBar>
-#include <QPushButton>
-#include <QCloseEvent>
-#include <QFileInfo>
-#include <QTabBar>
-#include <QTabWidget>
 #include <QApplication>
-#include <QDate>
+#include <QCloseEvent>
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QInputDialog>
+#include <QLayout>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QProgressDialog>
-#include <QTime>
-#include <QThread>
-#include <QTimer>
-#include <QLayout>
-#include <QFutureWatcher>
-#include <QtConcurrent/QtConcurrent>
-#include <QPromise>
+#include <QPushButton>
+#include <QTabBar>
+#include <QTabWidget>
 
-#include <ctime>
-#include <fstream>
-#include <iomanip>
-#include <utility>
-
-#include <streambuf>
-
-
-#include "tagclass.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "qtfiledialog.h"
 
-#include "tag.pb.h"
-
-#include "tagconfiguration/configtab.h"
 #include "configshape.h"
-#include "tagstatusstrip.h"
+#include "fixturesession.h"
+#include "livetagsession.h"
+#include "qtfiledialog.h"
 #include "qtuserguide.h"
-#include "abstractdownload.h"
-#include "taglogwriter.h"
-#include "commands.h"
 #include "startchecks.h"
+#include "tagconfiguration/configtab.h"
+#include "taglogwriter.h"
 #include "tagrules.h"
-
+#include "tagstatusstrip.h"
 
 using qtmon::Command;
 
+namespace
+{
+
+/// The lowest qtmonitor version a tag may require; see onAttached().
+constexpr float kRequiredMonitorVersion = 2.0f;
 
 /**
- * @brief Creates the main window and chooses live or fixture replay startup.
+ * @brief Shows a warning without waiting for it to be dismissed.
  *
- * @details With default options the constructor follows normal qtmonitor
- *          behavior by probing USB and attaching to a live tag. Fixture options
- *          load captured protobuf JSON, populate the same widgets, and avoid
- *          starting the live status timer. Parameters are documented in
- *          mainwindow.h.
+ * @details A modal exec() would run a nested event loop, in which the next
+ *          status could arrive and re-enter the window; open() returns at
+ *          once and the box deletes itself when closed.
+ *
+ * @param[in] parent       The window.
+ * @param[in] title        Window title.
+ * @param[in] text         The main sentence.
+ * @param[in] informative  Further text, or empty.
+ * @param[in] detailed     Text behind Show Details, or empty.
+ * @param[in] icon         The box's icon.
  */
+void showMessage(QWidget *parent, const QString &title, const QString &text,
+                 const QString &informative = QString(), const QString &detailed = QString(),
+                 QMessageBox::Icon icon = QMessageBox::Warning)
+{
+  auto *box = new QMessageBox(icon, title, text, QMessageBox::Ok, parent);
+  box->setAttribute(Qt::WA_DeleteOnClose);
+  if (!informative.isEmpty())
+    box->setInformativeText(informative);
+  if (!detailed.isEmpty())
+    box->setDetailedText(detailed);
+  box->open();
+}
+
+/// A TagState's name, as the tag reports it.
+QString stateName(TagState state)
+{
+  return QString::fromStdString(std::string(TagState_Name(state)));
+}
+
+} // namespace
+
 MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
     : QMainWindow(parent) {
   ui.setupUi(this);
@@ -93,100 +103,94 @@ MainWindow::MainWindow(const MainWindowOptions &options, QWidget *parent)
   // Spare height on the Tag page goes below its groups, not between rows.
   qobject_cast<QBoxLayout *>(ui.widget_3->layout())->addStretch(1);
   screenshotDir = resolveScreenshotDir(options.screenshotDir);
-  fakeFixturePath = options.fakeFixturePath;
   captureStartupScreenshotOnStartup = options.captureStartupScreenshot;
   captureMainScreenshotsOnStartup = options.captureMainScreenshots;
   captureConfigScreenshotsOnStartup = options.captureConfigScreenshots;
   captureErrorLogScreenshotOnStartup = options.captureErrorLogScreenshot;
 
-  // start on main tab
-
   ui.mainTabWidget->setCurrentIndex(0);
-
-  // Change Main Window title
-
   updateTitle();
 
-  // Tag state poll timer
-
-  connect(this, SIGNAL(StateUpdate(TagState)), ui.configtab, SLOT(StateUpdate(TagState)));
-  connect(&timer, SIGNAL(timeout()), this, SLOT(TriggerUpdate()));
-
-  // Normal mode attaches to a physical tag and starts the polling timer. Fake
-  // fixture mode is intentionally routed through the same UI population helpers
-  // so documentation screenshots exercise the real qtmonitor widgets.
-  if (!fakeFixturePath.isEmpty()) {
-    if (loadFakeFixture(fakeFixturePath)) {
-      setupFakeFixture();
-      applyFakeState(options.fakeState);
-    } else {
-      setAttachedUiEnabled(false);
+  // A fixture replays a captured tag through the same window, so screenshots
+  // show exactly what a user sees; otherwise the worker thread owns a real tag.
+  if (!options.fakeFixturePath.isEmpty()) {
+    auto fixture = std::make_unique<FixtureSession>();
+    fixture_ = fixture.get();
+    const bool loaded = fixture->load(options.fakeFixturePath);
+    session_ = std::move(fixture);
+    connectSession();
+    if (loaded) {
+      ui.errorTab->setEnabled(false);
+      session_->attach(UsbDev());
+      fixture_->showState(options.fakeState);
     }
-  } else if (options.skipAutoAttach) {
-    setAttachedUiEnabled(false);
-    ui.configtab->Detach();
   } else {
-    attachTag();
+    session_ = std::make_unique<LiveTagSession>();
+    connectSession();
+    if (!options.skipAutoAttach)
+      attachTag();
   }
-  updateActions();
+  render();
 }
 
-MainWindow::~MainWindow()
+MainWindow::~MainWindow() = default;
+
+void MainWindow::connectSession()
 {
-  ui.configtab->Detach();
-  if (!fakeMode) {
-    tag.Detach();
-  }
+  TagSession *s = session_.get();
+  connect(s, &TagSession::basesFound, this, &MainWindow::onBasesFound);
+  connect(s, &TagSession::attached, this, &MainWindow::onAttached);
+  connect(s, &TagSession::attachFailed, this, &MainWindow::onAttachFailed);
+  connect(s, &TagSession::detached, this, &MainWindow::onDetached);
+  connect(s, &TagSession::statusRead, this, &MainWindow::onStatus);
+  connect(s, &TagSession::configRead, this, &MainWindow::onConfigRead);
+  connect(s, &TagSession::startSent, this, &MainWindow::onStartSent);
+  connect(s, &TagSession::testSent, this, &MainWindow::onTestSent);
+  connect(s, &TagSession::eraseSent, this, &MainWindow::onEraseSent);
+  connect(s, &TagSession::commandFailed, this, &MainWindow::onCommandFailed);
+  connect(s, &TagSession::downloadProgress, this, &MainWindow::onDownloadProgress);
+  connect(s, &TagSession::downloadFinished, this, &MainWindow::onDownloadFinished);
 }
 
+/********************************************
+ *        Drawing the model
+ ********************************************/
 
-int MainWindow::eraseSectorMaximum(const Status &status) const
+void MainWindow::render()
 {
-  return qtmon::eraseSectorMaximum(status, tag_type, external_flash_size, sector_size);
-}
-
-void MainWindow::logTagDebugMessage(const QString &message)
-{
-  for (const QChar ch : message) {
-    if (ch == QLatin1Char('\r'))
-      continue;
-    if (ch == QLatin1Char('\n')) {
-      qDebug().noquote() << "Log:" << tag_debug_line_buffer;
-      tag_debug_line_buffer.clear();
-      continue;
-    }
-    tag_debug_line_buffer.append(ch);
-  }
-}
-
-/**
- * @brief Enables or disables top-level widgets that depend on an attachment.
- *
- * @details Both live mode and fixture mode use this helper so fake replay
- *          screenshots have the same broad UI affordances as a connected tag.
- *          State-specific actions are refined by applyStatus(), through
- *          updateActions().
- *
- * @param[in] enabled   true when a live or fake tag is considered attached.
- */
-void MainWindow::setAttachedUiEnabled(bool enabled)
-{
-  attached_ui_ = enabled;
-  ui.TagInformation->setEnabled(enabled);
-  ui.datadownloadgroupBox->setEnabled(false);
-  if (!enabled) {
+  const bool attached = model_.attached();
+  ui.TagInformation->setEnabled(attached);
+  bool downloadable = false;
+  if (!attached) {
     status_strip_->setDetached();
+    ui.configtab->Detach();
+  } else if (model_.hasStatus()) {
+    const Status &status = model_.status();
+    ui.internalCount->setText(QString::number(status.internal_data_count()));
+    if (status.external_data_count() != 0) {
+      ui.externalCount->setText(QString::number(status.external_data_count()));
+      ui.ExternalLog->setVisible(true);
+    } else {
+      ui.ExternalLog->setVisible(false);
+    }
+    status_strip_->setStatus(status.state(), model_.clockOffsetS(), model_.voltage(),
+                             model_.lastTest());
+    if (model_.testPending())
+      status_strip_->setTestRunning();
+    downloadable = qtmon::isDownloadableState(status.state()) && !model_.downloading();
+    // The Configuration tab locks a running tag's own configuration.
+    ui.configtab->StateUpdate(status.state());
+  }
+  ui.datadownloadgroupBox->setEnabled(downloadable);
+
+  if (erase_progress_ && model_.erasing()) {
+    if (model_.eraseMaximum() > erase_progress_->maximum())
+      erase_progress_->setRange(0, model_.eraseMaximum());
+    erase_progress_->setValue(model_.eraseValue());
   }
   updateActions();
 }
 
-/**
- * @brief Copies tag identity metadata into the Tag Information widgets.
- *
- * @param[in] info   TagInfo message read from hardware or fixture JSON.
- *
- * @post The cached tag type and external flash size reflect @p info.
- */
 void MainWindow::populateTagInfo(const TagInfo &info)
 {
   ui.info_tagtype->setText(QString::fromStdString(TagType_Name(info.tag_type())));
@@ -196,34 +200,15 @@ void MainWindow::populateTagInfo(const TagInfo &info)
   ui.info_gitUrl->setText(QString::fromStdString(info.gitrepo()));
   ui.info_uuid->setText(QString::fromStdString(info.uuid()));
   ui.info_flash->setText(QString::number(info.intflashsz()) + "KB");
-  ui.info_flash_ext->setText(QString::number(info.extflashsz() / (1024 * 1024))
-                             + "MB");
-  external_flash_size = info.extflashsz();
+  ui.info_flash_ext->setText(QString::number(info.extflashsz() / (1024 * 1024)) + "MB");
   ui.info_buildDate->setText(QString::fromStdString(info.build_time()));
   ui.info_srcpath->setText(QString::fromStdString(info.source_path()));
-  tag_type = info.tag_type();
-  tag_uuid_ = QString::fromStdString(info.uuid());
-  ui.configtab->SetAttachedTagType(tag_type);
-  status_strip_->setAttached(tag_type, tag_uuid_);
+  ui.configtab->SetAttachedTagType(info.tag_type());
+  status_strip_->setAttached(info.tag_type(), QString::fromStdString(info.uuid()));
 }
 
-/**
- * @brief Populates the Configuration tab from live or fixture configuration.
- *
- * @details Live mode attaches the tab to the Tag and keeps a document the
- *          user opened or created; see mainwindow.h.
- *
- * @param[in] config       Configuration protobuf to display.
- * @param[in] fixtureMode  true for documentation replay, false for live tag IO.
- */
-void MainWindow::attachConfig(const Config &config, bool fixtureMode)
+void MainWindow::attachConfig(const Config &config)
 {
-  ui.configtab->SetFixtureMode(fixtureMode);
-  if (fixtureMode) {
-    ui.configtab->SetConfig(config);
-    return;
-  }
-  ui.configtab->Attach(tag);
   // A configuration the user opened or created stays: they may be about to
   // start this tag with it. Otherwise the tag's own is read in, asking first
   // if a previous tag's configuration has unsaved changes.
@@ -241,218 +226,199 @@ void MainWindow::attachConfig(const Config &config, bool fixtureMode)
   ui.configtab->SetConfig(config);
 }
 
-/**
- * @brief Applies one status sample to all Tag State controls.
- *
- * @details This is the shared state-rendering path for timer-driven live
- *          updates and fake replay screenshots. It updates labels, log counts,
- *          test status, state-specific buttons, download availability, and
- *          Configuration-tab enablement.
- *
- * @param[in] status   Status protobuf read from hardware or fixture replay.
- * @param[in] voltage  Last reported tag voltage in volts.
- *
- * @post current_state is updated and StateUpdate is emitted.
- */
-void MainWindow::applyStatus(const Status &status, float voltage)
+QString MainWindow::tagName() const
 {
-  setAttachedUiEnabled(true);
-  ui.internalCount->setText(QString::number(status.internal_data_count()));
-  if (status.external_data_count() != 0) {
-    ui.externalCount->setText(QString::number(status.external_data_count()));
-    ui.ExternalLog->setVisible(true);
-  } else {
-    ui.ExternalLog->setVisible(false);
-  }
-
-  if (!status.debug_message().empty()) {
-    logTagDebugMessage(QString::fromStdString(status.debug_message()));
-  }
-
-  clock_offset_s_ =
-      qtmon::clockOffsetSeconds(status.millis(), QDateTime::currentMSecsSinceEpoch());
-  last_test_ = status.test_status();
-  status_strip_->setStatus(status.state(), clock_offset_s_, voltage,
-                           status.test_status());
-  if (test_pending_) {
-    // The tag runs every test in one pass, usually faster than this poll, so
-    // TEST is rarely seen. Wait for a finished result from a poll at least
-    // kTestMinimumMs after the command, so the previous run's result, which a
-    // poll can see before the tag has begun, is not taken for this one.
-    const qint64 elapsed = test_started_.msecsTo(QDateTime::currentDateTime());
-    const QString who = QString("%1 %2")
-                            .arg(QString::fromStdString(std::string(TagType_Name(tag_type))),
-                                 tag_uuid_);
-    if (elapsed >= kTestMinimumMs && status.test_status() != TEST_RUNNING) {
-      test_pending_ = false;
-      qInfo().noquote() << "Self-test on" << who << "finished:"
-                        << QString::fromStdString(std::string(TestResult_Name(status.test_status())));
-    } else if (elapsed > kTestTimeoutMs) {
-      test_pending_ = false;
-      qWarning().noquote() << "Self-test on" << who << "gave no result within"
-                           << kTestTimeoutMs / 1000 << "s";
-    } else {
-      status_strip_->setTestRunning();
-    }
-  }
-  ui.datadownloadgroupBox->setEnabled(qtmon::isDownloadableState(status.state()) &&
-                                      !downloading_);
-
-  current_state = status.state();
-  emit StateUpdate(current_state);
-  updateActions();
-  if (fakeMode) {
-    ui.configtab->SetFixtureMode(true);
-  }
-
-  if (status.state() == IDLE) {
-    emit IdleState();
-  }
-
-  if (status.state() == sRESET) {
-    emit EraseProgress(status.sectors_erased(), eraseSectorMaximum(status));
-    emit SectorsErased(status.sectors_erased());
-  }
+  return QString("%1 %2").arg(
+      QString::fromStdString(std::string(TagType_Name(model_.info().tag_type()))),
+      QString::fromStdString(model_.info().uuid()));
 }
 
-bool MainWindow::Attach()
+/********************************************
+ *        Session reports
+ ********************************************/
+
+void MainWindow::onBasesFound(std::vector<UsbDev> bases)
 {
-  if (tag.IsAttached())
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Warning");
-    msgBox.setText("Already Attached to Tag");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-    return false;
+  if (bases.empty()) {
+    showMessage(this, tr("Warning"), tr("No Tag Bases Found"));
+    render();
+    return;
   }
 
-  std::vector<UsbDev> usbdevs;
-  if (!tag.Available(usbdevs) || (usbdevs.size() == 0))
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Warning");
-    msgBox.setText("No Tag Bases Found");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-    return false;
-  }
-
-  int index = 0;
-  if (usbdevs.size() > 1)
-  {
+  size_t index = 0;
+  if (bases.size() > 1) {
     QStringList items;
-
-    for (int j = 0; j < usbdevs.size(); j++)
-    {
-      QString bus = QString::number(usbdevs[j].bus).rightJustified(3, '0');
-      QString address = QString::number(usbdevs[j].address).rightJustified(3, '0');
-      QString vid = QString::number(usbdevs[j].vid, 16); //.rightJustified(4,'0');
-      QString pid = QString::number(usbdevs[j].pid, 16); //.rightJustified(4,'0');
-      QString s = QString("%1:%2    0x%3:0x%4").arg(bus, address, vid, pid);
-      items << s;
+    for (const UsbDev &dev : bases) {
+      const QString bus = QString::number(dev.bus).rightJustified(3, '0');
+      const QString address = QString::number(dev.address).rightJustified(3, '0');
+      const QString vid = QString::number(dev.vid, 16);
+      const QString pid = QString::number(dev.pid, 16);
+      items << QString("%1:%2    0x%3:0x%4").arg(bus, address, vid, pid);
     }
-
-    QInputDialog *inputDialog = new QInputDialog();
-    //inputDialog->setOption(QInputDialog::NoButtons);
-    inputDialog->setOption(QInputDialog::UseListViewForComboBoxItems);
-    inputDialog->setComboBoxItems(items);
-    inputDialog->setWindowTitle("Available Bases");
-    inputDialog->setLabelText("Please select a base");
-    if (!inputDialog->exec())
-      return false;
-    QString item = inputDialog->textValue();
-    if (!item.isEmpty())
-    {
-      index = items.indexOf(item);
-    }
-    if (index > usbdevs.size())
-      index = 0;
+    QInputDialog dialog(this);
+    dialog.setOption(QInputDialog::UseListViewForComboBoxItems);
+    dialog.setComboBoxItems(items);
+    dialog.setWindowTitle(tr("Available Bases"));
+    dialog.setLabelText(tr("Please select a base"));
+    if (!dialog.exec())
+      return;
+    const int chosen = items.indexOf(dialog.textValue());
+    index = chosen >= 0 ? static_cast<size_t>(chosen) : 0;
   }
-
-  if (tag.Attach(usbdevs[index]))
-  {
-    std::string str;
-    int size;
-    Config config;
-    Status status;
-    TagInfo info;
-    tag_debug_line_buffer.clear();
-    tag.GetTagInfo(info);
-    tag.GetConfig(config);
-    tag.GetStatus(status);
-    if (!status.debug_message().empty()){
-      logTagDebugMessage(QString::fromStdString(status.debug_message()));
-    }
-
-    // check qtmonitor version 
-
-    float min_version = 2.0;//info.qtmonitor_min_version();
-
-    if (min_version > version) {
-      QMessageBox msgBox;
-      QString message = QString("monitor version %1 less than required version %2").arg(version).arg(min_version);
-      msgBox.setWindowTitle("Warning");
-      msgBox.setText(message);
-      msgBox.setStandardButtons(QMessageBox::Ok);
-      msgBox.exec();
-      detachTag();
-      return false;
-    }
-
-    populateTagInfo(info);
-    attachConfig(config, false);
-    ui.errorTab->Attach(tag);
-
-     
-
-    // start the StateUpdate timer
-    
-    TriggerUpdate();
-    timer.start(400);
-    return true;
-  }
-  else
-  {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Warning");
-    msgBox.setText("Could not attach to tag");
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    msgBox.exec();
-
-    //timer.stop();
-    //TriggerUpdate(); // should this be here?
-    return false;
-  }
-  
+  session_->attach(bases[index]);
 }
 
-// While tag is attached, this
-// method is called at regular intervals
-
-void MainWindow::TriggerUpdate(void)
+void MainWindow::onAttached(TagInfo info, Config config)
 {
+  // The tag can name the oldest qtmonitor it works with; the firmware does
+  // not set it yet (TagInfo.qtmonitor_min_version), so a fixed floor stands in.
+  if (kRequiredMonitorVersion > version) {
+    showMessage(this, tr("Warning"),
+                tr("monitor version %1 less than required version %2")
+                    .arg(version)
+                    .arg(kRequiredMonitorVersion));
+    session_->detach();
+    return;
+  }
+  model_.attached(info);
+  populateTagInfo(info);
+  attachConfig(config);
+  render();
+}
 
-  Status status;
+void MainWindow::onAttachFailed(QString message)
+{
+  showMessage(this, tr("Warning"), message);
+  render();
+}
 
-  if (tag.IsAttached())
-  {
-    std::string msg;
+void MainWindow::onDetached()
+{
+  model_.detached();
+  if (erase_progress_)
+    erase_progress_->close();
+  render();
+}
 
-    float voltage = 0.0f;
-    tag.Voltage(voltage);
-
-    // update status data
-
-    if (tag.GetStatus(status))
-    {
-      applyStatus(status, voltage);
+void MainWindow::onStatus(Status status, float voltage, qint64 host_ms)
+{
+  const std::vector<qtmon::MonitorEvent> events = model_.applyStatus(status, voltage, host_ms);
+  render();
+  for (const qtmon::MonitorEvent &event : events) {
+    const QString text = QString::fromStdString(event.text);
+    switch (event.kind) {
+    case qtmon::MonitorEvent::Kind::TagLogLine:
+      qDebug().noquote() << "Log:" << text;
+      break;
+    case qtmon::MonitorEvent::Kind::TestFinished:
+      qInfo().noquote() << "Self-test on" << tagName() << "finished:"
+                        << QString::fromStdString(std::string(TestResult_Name(event.test)));
+      break;
+    case qtmon::MonitorEvent::Kind::TestTimedOut:
+      qWarning().noquote() << "Self-test on" << tagName() << "gave no result within"
+                           << qtmon::kTestTimeoutMs / 1000 << "s";
+      break;
+    case qtmon::MonitorEvent::Kind::StartSucceeded:
+      // The tag started although the call reported an error: note the
+      // overcome error for anyone reading the log.
+      if (!text.isEmpty())
+        qWarning().noquote() << "Start() reported a transient failure but the tag reached"
+                             << stateName(event.state) << ":" << text;
+      break;
+    case qtmon::MonitorEvent::Kind::StartFailed: {
+      const QString state = tr("Last known state: %1").arg(stateName(event.state));
+      if (text.isEmpty())
+        showMessage(this, tr("Error"), tr("Start Failed"), state);
+      else
+        showMessage(this, tr("Error"), tr("Start Failed"), text + "\n" + state, text);
+      break;
+    }
+    case qtmon::MonitorEvent::Kind::EraseFinished:
+      if (erase_progress_)
+        erase_progress_->close();
+      break;
     }
   }
 }
 
+void MainWindow::onConfigRead(Config config)
+{
+  ui.configtab->SetConfig(config);
+}
 
+void MainWindow::onStartSent(QString call_message)
+{
+  model_.startSent(QDateTime::currentMSecsSinceEpoch(), call_message.toStdString());
+  render();
+}
 
+void MainWindow::onTestSent()
+{
+  // The model has awaited the result since Self-Test was chosen (testTag()).
+}
+
+void MainWindow::onEraseSent()
+{
+  model_.eraseSent();
+  auto *progress = new QProgressDialog(tr("Erasing flash..."), tr("Close"), 0,
+                                       model_.eraseMaximum(), this);
+  progress->setAttribute(Qt::WA_DeleteOnClose);
+  progress->setWindowModality(Qt::WindowModal);
+  progress->setMinimumDuration(0);
+  // Close only hides the progress; the erase continues on the tag.
+  connect(progress, &QProgressDialog::canceled, progress, &QProgressDialog::close);
+  erase_progress_ = progress;
+  progress->show();
+  render();
+}
+
+void MainWindow::onCommandFailed(Command command, QString message)
+{
+  switch (command) {
+  case Command::Read:
+    showMessage(this, tr("Error"), message);
+    break;
+  case Command::Sync:
+    showMessage(this, tr("Sync Failed"), tr("The tag did not accept the clock sync command."),
+                message, message);
+    break;
+  case Command::Stop:
+    showMessage(this, tr("Stop Failed"), message);
+    break;
+  case Command::Test:
+    model_.testRefused();
+    qWarning().noquote() << "Self-test on" << tagName() << "was refused:" << message;
+    showMessage(this, tr("Self-Test Failed"), message);
+    break;
+  case Command::Erase:
+    showMessage(this, tr("Erase Failed"), message);
+    break;
+  default:
+    showMessage(this, tr("Warning"), message);
+    break;
+  }
+  render();
+}
+
+void MainWindow::onDownloadProgress(int value, int maximum)
+{
+  if (!download_progress_)
+    return;
+  if (download_progress_->maximum() != maximum)
+    download_progress_->setRange(0, maximum);
+  download_progress_->setValue(value);
+}
+
+void MainWindow::onDownloadFinished(bool ok, QString error)
+{
+  model_.downloadEnded();
+  if (download_progress_)
+    download_progress_->close();
+  if (!ok)
+    showMessage(this, tr("Download Failed"), error, QString(), QString(),
+                QMessageBox::Critical);
+  render();
+}
 
 /********************************************
  *        Actions and menus
@@ -482,15 +448,13 @@ void MainWindow::createActions()
   download_action_ = make(tr("Download Data..."),
                           tr("Download the tag's data log to a file"),
                           &MainWindow::downloadData);
+  start_action_ = make(tr("Start"), tr("Write the configuration to the tag and start it"),
+                       &MainWindow::startWithChecks);
+  read_config_action_ = make(tr("Read Configuration"), tr("Read the tag's configuration"),
+                             &MainWindow::readConfig);
 
-  // The configuration commands belong to the Configuration tab.
+  // The document commands belong to the Configuration tab.
   ConfigTab *config = ui.configtab;
-  start_action_ = new QAction(tr("Start"), this);
-  start_action_->setToolTip(tr("Write the configuration to the tag and start it"));
-  connect(start_action_, &QAction::triggered, this, &MainWindow::startWithChecks);
-  read_config_action_ = new QAction(tr("Read Configuration"), this);
-  read_config_action_->setToolTip(tr("Read the tag's configuration"));
-  connect(read_config_action_, &QAction::triggered, config, &ConfigTab::ReadFromTag);
   open_config_action_ = new QAction(tr("Open Configuration..."), this);
   open_config_action_->setToolTip(tr("Open a configuration file for editing"));
   open_config_action_->setShortcut(QKeySequence::Open);
@@ -601,17 +565,17 @@ void MainWindow::createMenus()
 QStringList MainWindow::startCheckFailures() const
 {
   QStringList failures;
-  for (qtmon::StartCheck check :
-       qtmon::startCheckFailures(clock_offset_s_, last_test_, ui.configtab->isApproved())) {
+  for (qtmon::StartCheck check : qtmon::startCheckFailures(
+           model_.clockOffsetS(), model_.lastTest(), ui.configtab->isApproved())) {
     switch (check) {
     case qtmon::StartCheck::Clock:
       failures << tr("Clock is %1 s off (limit %2 s).")
-                      .arg(QString::number(clock_offset_s_, 'g', 3))
+                      .arg(QString::number(model_.clockOffsetS(), 'g', 3))
                       .arg(qtmon::kClockToleranceS);
       break;
     case qtmon::StartCheck::SelfTest:
       failures << tr("Self-test is %1.")
-                      .arg(QString::fromStdString(std::string(TestResult_Name(last_test_))));
+                      .arg(QString::fromStdString(std::string(TestResult_Name(model_.lastTest()))));
       break;
     case qtmon::StartCheck::Approval:
       failures << tr("Configuration is not approved.");
@@ -629,8 +593,8 @@ void MainWindow::startWithChecks()
     box.setIcon(QMessageBox::Warning);
     box.setWindowTitle(tr("Start Tag"));
     box.setText(tr("Start the tag anyway?"));
-    box.setInformativeText(QStringLiteral("\u2022 ") +
-                           failures.join(QStringLiteral("\n\u2022 ")));
+    box.setInformativeText(QStringLiteral("• ") +
+                           failures.join(QStringLiteral("\n• ")));
     QPushButton *anyway = box.addButton(tr("Start Anyway"), QMessageBox::AcceptRole);
     QPushButton *cancel = box.addButton(QMessageBox::Cancel);
     box.setDefaultButton(cancel);
@@ -638,11 +602,14 @@ void MainWindow::startWithChecks()
     box.exec();
     if (box.clickedButton() != anyway)
       return;
-    qWarning().noquote() << "Starting"
-                         << QString::fromStdString(std::string(TagType_Name(tag_type)))
-                         << tag_uuid_ << "although:" << failures.join(" ");
+    qWarning().noquote() << "Starting" << tagName() << "although:" << failures.join(" ");
   }
-  ui.configtab->StartTag();
+  Config config;
+  if (!ui.configtab->GetConfig(config)) {
+    qDebug() << "Start: the configuration cannot be written";
+    return;
+  }
+  session_->start(config);
 }
 
 void MainWindow::updateTitle()
@@ -650,7 +617,7 @@ void MainWindow::updateTitle()
   QString title = tr("Tag Monitor v%1").arg(version);
   const QString name = ui.configtab->documentName();
   if (!name.isEmpty())
-    title += QStringLiteral(" \u2014 ") + name + QStringLiteral("[*]");
+    title += QStringLiteral(" — ") + name + QStringLiteral("[*]");
   setWindowTitle(title);
   setWindowModified(ui.configtab->isModified());
 }
@@ -722,21 +689,19 @@ void MainWindow::placeStatusStripBelowTabs()
 
 void MainWindow::updateActions()
 {
-  qtmon::CommandInputs in;
-  in.attached = attached_ui_;
-  in.state = current_state;
-  in.tag_type = tag_type;
-  in.document = ui.configtab->hasDocument();
-  in.document_type = ui.configtab->documentTagType();
-  in.downloading = downloading_;
-  in.test_pending = test_pending_;
+  applyCommandInputs(
+      model_.commandInputs(ui.configtab->hasDocument(), ui.configtab->documentTagType()));
+  status_strip_->setApprovalAvailable(ui.configtab->hasDocument());
+}
+
+void MainWindow::applyCommandInputs(const qtmon::CommandInputs &in)
+{
   for (Command command : qtmon::kAllCommands) {
     QAction *action = actionFor(command);
     const qtmon::Availability a = qtmon::availability(command, in);
     action->setVisible(a != qtmon::Availability::Hidden);
     action->setEnabled(a == qtmon::Availability::Enabled);
   }
-  status_strip_->setApprovalAvailable(in.document);
 }
 
 QAction *MainWindow::actionFor(Command command) const
@@ -773,143 +738,64 @@ QAction *MainWindow::actionFor(Command command) const
 }
 
 /********************************************
- *        Tag commands
+ *        Commands
  ********************************************/
 
 void MainWindow::attachTag()
 {
-  if (fakeMode) {
+  if (model_.attached()) {
+    showMessage(this, tr("Warning"), tr("Already Attached to Tag"));
     return;
   }
-  // A successful Attach() has already shown the first status, which marked
-  // the tag attached (applyStatus()).
-  if (!Attach()) {
-    setAttachedUiEnabled(false);
-  }
+  session_->findBases();
 }
 
 void MainWindow::detachTag()
 {
-  if (fakeMode) {
+  session_->detach();
+}
+
+void MainWindow::readConfig()
+{
+  if (!ui.configtab->confirmDiscard())
     return;
-  }
-  tag.Detach();
-  timer.stop();
-  TriggerUpdate();
-  test_pending_ = false;
-  setAttachedUiEnabled(false);
-  ui.configtab->Detach();
-  tag_debug_line_buffer.clear();
-  updateActions();
+  session_->readConfig();
 }
 
 void MainWindow::syncClock()
 {
-  if (fakeMode) {
-    return;
-  }
-  if (!tag.SetRtc()) {
-    QMessageBox syncFailedBox;
-    syncFailedBox.setWindowTitle(tr("Sync Failed"));
-    syncFailedBox.setIcon(QMessageBox::Warning);
-    syncFailedBox.setText(tr("The tag did not accept the clock sync command."));
-    const std::string message = tag.DebugMessage();
-    if (!message.empty())
-    {
-      syncFailedBox.setInformativeText(QString::fromStdString(message));
-      syncFailedBox.setDetailedText(QString::fromStdString(message));
-    }
-    syncFailedBox.exec();
-    return;
-  }
-  TriggerUpdate();
+  session_->syncClock();
 }
 
 void MainWindow::stopTag()
 {
-  if (fakeMode) {
-    return;
-  }
-  if (!tag.Stop()) {
-    QMessageBox::warning(this,tr("Stop Failed"),
-                         tr("The tag did not accept the stop command."));
-    return;
-  }
-  QTimer::singleShot(250,this,[this]() { TriggerUpdate(); });
+  session_->stop();
 }
 
 void MainWindow::testTag()
 {
-  if (fakeMode) {
+  if (model_.state() != IDLE)
     return;
-  }
-  if (current_state == IDLE)
-  {
-    std::string msg;
-    tag.Test(RUN_ALL); // need to check return !
-    test_pending_ = true;
-    test_started_ = QDateTime::currentDateTime();
-    qInfo().noquote() << "Self-test started on"
-                      << QString::fromStdString(std::string(TagType_Name(tag_type)))
-                      << tag_uuid_;
-    status_strip_->setTestRunning();
-    updateActions();
-  }
+  session_->selfTest();
+  model_.testSent(QDateTime::currentMSecsSinceEpoch());
+  qInfo().noquote() << "Self-test started on" << tagName();
+  render();
 }
 
 void MainWindow::eraseTag()
 {
-  if (fakeMode) {
-    return;
-  }
-  QMessageBox msgBox;
-  msgBox.setWindowTitle("Reset Tag");
-  msgBox.setText("Erase tag state and data ?");
-  msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
-  msgBox.setDefaultButton(QMessageBox::Cancel);
-  int ret = msgBox.exec();
-  if (ret == QMessageBox::Ok)
-  {
-    Status status;
-    int erase_sector_maximum = qtmon::roundedSectorCount(external_flash_size, sector_size);
-    if (tag.GetStatus(status))
-      erase_sector_maximum = eraseSectorMaximum(status);
-
-    if (!tag.Erase())
-    {
-      QMessageBox::warning(this,tr("Erase Failed"),
-                           tr("The tag did not accept the erase command."));
-    } else {
-      if (!timer.isActive())
-        timer.start(400);
-
-      QProgressDialog progress("Erasing flash...", "Close", 0,
-                               erase_sector_maximum, this);
-      progress.setWindowModality(Qt::WindowModal);
-      progress.setMinimumDuration(0);
-      connect(this,&MainWindow::EraseProgress,&progress,
-              [&progress](int value, int maximum) {
-                if (maximum > progress.maximum())
-                  progress.setRange(0, maximum);
-                progress.setValue(value);
-              });
-      connect(this,SIGNAL(SectorsErased(int)),&progress,SLOT(setValue(int)));
-      connect(this,SIGNAL(IdleState()), &progress, SLOT(close()));
-      progress.exec();
-    }
-  }
+  QMessageBox box(this);
+  box.setWindowTitle(tr("Reset Tag"));
+  box.setText(tr("Erase tag state and data ?"));
+  box.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
+  box.setDefaultButton(QMessageBox::Cancel);
+  if (box.exec() == QMessageBox::Ok)
+    session_->erase();
 }
-
-// Start a tag-data download from the UI. The window chooses a default storage
-// format for the current tag type and owns only the user interaction. The
-// download loop and file/database writing are delegated to AbstractDownload and
-// the host-lib TagLogWriter implementations.
 
 void MainWindow::downloadData()
 {
-  if (fakeMode) {
-    return;
-  }
+  const TagType tag_type = model_.info().tag_type();
   const TagLogStorageFormat storage_format = defaultTagLogStorageFormat(tag_type);
   const std::vector<TagLogStorageFormat> formats = supportedTagLogStorageFormats(tag_type);
   // SQLite is the only download format, so a tag type without a SQLite schema
@@ -921,22 +807,18 @@ void MainWindow::downloadData()
     return;
   }
   QStringList filter_list;
-  for (TagLogStorageFormat format : formats) {
+  for (TagLogStorageFormat format : formats)
     filter_list << QString::fromStdString(tagLogFileFilter(format));
-  }
   QString selected_filter;
-  QString filter = filter_list.join(";;");
-  QString initial_path = QDir::homePath()
-      + "/untitled"
-      + QString::fromStdString(defaultTagLogExtension(storage_format));
-  
-  QString fileName = HostFileDialog::getSaveFileName(
-      this, tr("Save File"), initial_path, filter, &selected_filter);
+  const QString filter = filter_list.join(";;");
+  const QString initial_path =
+      QDir::homePath() + "/untitled" +
+      QString::fromStdString(defaultTagLogExtension(storage_format));
 
-  if (fileName.isEmpty()) {
-      qDebug() << "null filename";
-      return;
-  }
+  QString fileName = HostFileDialog::getSaveFileName(this, tr("Save File"), initial_path,
+                                                     filter, &selected_filter);
+  if (fileName.isEmpty())
+    return;
 
   TagLogStorageFormat selected_storage_format = storage_format;
   for (TagLogStorageFormat format : formats) {
@@ -946,6 +828,8 @@ void MainWindow::downloadData()
     }
   }
 
+  // Give the file the chosen format's extension when it has none, or
+  // another supported format's.
   const QString selected_extension =
       QString::fromStdString(defaultTagLogExtension(selected_storage_format));
   const QString selected_suffix = selected_extension.mid(1);
@@ -960,58 +844,23 @@ void MainWindow::downloadData()
   }
   if (file_info.suffix().isEmpty()) {
     fileName += selected_extension;
-  } else if (suffix_matches_supported_format
-             && file_info.suffix().compare(selected_suffix, Qt::CaseInsensitive) != 0) {
+  } else if (suffix_matches_supported_format &&
+             file_info.suffix().compare(selected_suffix, Qt::CaseInsensitive) != 0) {
     fileName = file_info.path() + "/" + file_info.completeBaseName() + selected_extension;
   }
 
-  qDebug() <<  "connecting progess dialog";
+  auto *progress = new QProgressDialog(tr("Downloading .."), tr("Cancel"), 0, 0, this);
+  progress->setAttribute(Qt::WA_DeleteOnClose);
+  progress->setWindowModality(Qt::WindowModal);
+  progress->setMinimumDuration(0);
+  // Cancel asks the worker to stop after the current page; the dialog closes
+  // when the download reports that it has finished.
+  connect(progress, &QProgressDialog::canceled, this,
+          [this]() { session_->cancelDownload(); });
+  download_progress_ = progress;
 
-  // Create Progress Dialog
-
-  QProgressDialog *pd = new QProgressDialog("Downloading ..","Cancel",0,0,this);
-  pd->setWindowModality(Qt::WindowModal);
-  pd->setMinimumDuration(0);
-
-  // This is deliberately an explicit format value instead of a hidden
-  // tag-type switch inside AbstractDownload. A future UI can replace the
-  // default with a user-selected format for tags that support more than one.
-  AbstractDownload *dl = new AbstractDownload(tag, selected_storage_format, fileName.toStdString());
-  QThread *download_thread = new QThread(this);
-  dl->moveToThread(download_thread);
-
-  connect(download_thread,&QThread::started,dl,&AbstractDownload::exec);
-  connect(dl,&AbstractDownload::progressRangeChanged,pd,&QProgressDialog::setRange);
-  connect(dl,&AbstractDownload::progressValueChanged,pd,&QProgressDialog::setValue);
-  connect(dl,&AbstractDownload::downloadError,this,[this](const QString &message) {
-    QMessageBox::critical(this,tr("Download Failed"),message);
-  });
-  connect(pd,&QProgressDialog::canceled,dl,&AbstractDownload::cancel,Qt::DirectConnection);
-  connect(dl,&AbstractDownload::downloadFinished,pd,&QProgressDialog::close);
-  connect(dl,&AbstractDownload::downloadFinished,download_thread,&QThread::quit);
-  connect(dl,&AbstractDownload::downloadFinished,dl,&QObject::deleteLater);
-  connect(download_thread,&QThread::finished,download_thread,&QObject::deleteLater);
-  connect(download_thread,&QThread::finished,pd,&QObject::deleteLater);
-
-  const bool restart_status_timer = timer.isActive();
-  timer.stop();
-  downloading_ = true;
-  ui.datadownloadgroupBox->setEnabled(false);
-  updateActions();
-  connect(download_thread,&QThread::finished,this,[this,restart_status_timer]() {
-    downloading_ = false;
-    ui.datadownloadgroupBox->setEnabled(tag.IsAttached() &&
-                                        qtmon::isDownloadableState(current_state));
-    updateActions();
-    if (restart_status_timer && tag.IsAttached()) {
-      timer.start(400);
-      TriggerUpdate();
-    }
-  });
-
-  qDebug() <<  "starting download";
-
-  download_thread->start();
-  pd->show();
-  return;
+  model_.downloadStarted();
+  render();
+  session_->download(fileName, selected_storage_format);
+  progress->show();
 }

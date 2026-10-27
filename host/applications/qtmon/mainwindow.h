@@ -6,31 +6,29 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <memory>
+
 #include <QMainWindow>
-#include <QDateTime>
-#include <QMap>
+#include <QPointer>
 #include <QSize>
 #include <QString>
-#include <QTimer>
-#include <QPromise>
-#include "tagclass.h"
-#include "ui_mainwindow.h"
+
 #include "commands.h"
+#include "monitormodel.h"
+#include "tagsession.h"
+#include "ui_mainwindow.h"
 
 class QAction;
 class QMenu;
+class QProgressDialog;
 class QTabBar;
-class QWidget;
 class QTextEdit;
-class QGroupBox;
 class ConfigTab;
+class FixtureSession;
 class TagStatusStrip;
-
-
 
 /// The Error Log tab's text box, defined in logwindow.cpp; null until created.
 extern QTextEdit *s_textEdit;
-class LogScreen;
 
 namespace Ui {
 class MainWindow;
@@ -39,11 +37,10 @@ class MainWindow;
 /**
  * @brief Startup options for live qtmonitor and fixture screenshot modes.
  *
- * @details The default options preserve normal live operation: qtmonitor probes
- *          USB, attaches to a real tag, and polls status. Documentation
- *          automation supplies a fake fixture path and capture flags so the
- *          same MainWindow widgets can be populated from captured protobuf JSON
- *          without a connected tag.
+ * @details The default options give normal live operation: qtmonitor probes
+ *          USB, attaches to a real tag, and polls its status. Documentation
+ *          automation supplies a fixture path and capture flags so the same
+ *          window is filled from captured protobuf JSON with no tag.
  */
 struct MainWindowOptions {
   /// Fixture JSON path for documentation replay. Empty means live tag mode.
@@ -69,34 +66,39 @@ struct MainWindowOptions {
  * @brief   qtmonitor's window: Tag State, Configuration and Error Log tabs
  *          for one attached tag.
  *
- * @details In live mode it attaches through tagcore's Tag, polls the tag's
- *          status every 400 ms, and passes each state to the Configuration tab
- *          (ConfigTab) through StateUpdate(). In fixture mode it fills the
- *          same widgets from a captured fixture and issues no tag commands.
+ * @details The window is the view and the place commands start. It never
+ *          touches a tag: it sends each command to a TagSession
+ *          (session/tagsession.h), whose reports it feeds to a
+ *          qtmon::MonitorModel (core/monitormodel.h), and then draws the
+ *          model in render(). Which commands are available is decided by
+ *          qtmon::availability() (core/commands.h); the configuration
+ *          document is the Configuration tab's (ConfigTab). In live mode the
+ *          session is a LiveTagSession, whose worker thread owns the tag, so
+ *          the window never waits on it; in fixture mode it is a
+ *          FixtureSession replaying a capture. See
+ *          host/applications/qtmon/design/architecture.md.
  */
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-
   /**
-   * @brief Creates the qtmonitor main window in live or fixture mode.
+   * @brief Creates the window, and its session: a FixtureSession when
+   *        @p options names a fixture, a LiveTagSession otherwise.
    *
-   * @details Default options preserve normal live operation. Fixture options
-   *          load captured protobuf JSON and suppress USB operations so
-   *          documentation screenshots can be generated without hardware.
+   * @details In live mode it then finds the tag bases and attaches, unless
+   *          @p options says not to.
    *
-   * @param[in] options   Startup and screenshot-capture behavior.
+   * @param[in] options   Startup and screenshot-capture behaviour.
    * @param[in] parent    Optional Qt parent widget.
    */
   explicit MainWindow(const MainWindowOptions &options = MainWindowOptions(),
                       QWidget *parent = nullptr);
   ~MainWindow();
+
   /**
    * @brief Reports whether startup was requested only to run a capture slot.
-   *
-   * @return true when a screenshot option should schedule capture and exit;
-   *         false for normal interactive qtmonitor operation.
+   * @return true when a screenshot option should schedule capture and exit.
    */
   bool shouldQuitAfterStartup() const;
 
@@ -104,111 +106,82 @@ public:
    * @brief Checks that the window applies the command rule to the right
    *        actions; for `qtmonitor --check-action-wiring`.
    *
-   * @details Drives every case of qtmon::actionStateCases() through the
-   *          window (attachment, tag state and type, the Configuration tab's
-   *          document, download and self-test flags), calls updateActions(),
-   *          and compares each action's visibility and enabled state with
+   * @details Applies every case of qtmon::actionStateCases() to the actions
+   *          (applyCommandInputs(), the same path updateActions() takes) and
+   *          compares each action's visibility and enabled state with
    *          qtmon::availability(). Each action is found by its menu text,
-   *          not through actionFor(), so a wrong entry there is caught. The rule itself is checked by
-   *          `--check-action-states`; this checks only the wiring. Leaves the
-   *          window detached with no document.
+   *          not through actionFor(), so a wrong entry there is caught. The
+   *          rule itself is checked by `--check-action-states`. Leaves the
+   *          actions as the model says.
    *
    * @return One line per disagreement; empty when every action agrees.
    */
   QStringList checkActionWiring();
 
 public slots:
-
-  /**
-   * @brief Capture the no-tag startup state for documentation.
-   */
+  /// Capture the no-tag startup state for documentation.
   void captureStartupScreenshot();
-
-  /**
-   * @brief Capture fake fixture Tag tab screenshots for idle/running/finished.
-   */
+  /// Capture fixture Tag tab screenshots for idle, running and finished.
   void captureMainScreenshots();
-
-  /**
-   * @brief Capture fake fixture Configuration screenshots in idle mode.
-   */
+  /// Capture the fixture's idle Configuration tab.
   void captureConfigScreenshots();
-
-  /**
-   * @brief Capture the Error Log tab for documentation.
-   */
+  /// Capture the Error Log tab for documentation.
   void captureErrorLogScreenshot();
- 
-
-signals:
-
-  /// Every status poll: the tag's current state. Connected to ConfigTab::StateUpdate().
-  void StateUpdate(TagState state);
-  /// During an erase: sectors erased so far.
-  void SectorsErased(int);
-  /// During an erase: sectors erased so far and the total to erase.
-  void EraseProgress(int value, int maximum);
-  /// A status poll found the tag IDLE; closes the erase progress dialog.
-  void IdleState(void);
 
 private slots:
-
-  // attach/detach to tag
+  // Commands, each behind an action (see createActions()).
 
   /**
-   * @brief Finds the USB bases (asking which when there are several),
-   *        attaches, reads the tag's identity, configuration and status, and
-   *        starts polling every 400 ms.
-   * @return true when attached; false, after telling the user, when already
-   *         attached, no base is found or chosen, or the tag does not answer.
+   * @brief Tag ▸ Attach: asks the session for the tag bases; attaching
+   *        continues in onBasesFound().
    * @warning Attaching resets the tag, ending a running deployment.
    */
-  bool Attach();
-
-  // timer tick
-
-  /// One status poll: voltage and Status into applyStatus().
-  void TriggerUpdate();
-
-  // Tag commands, each behind an action (see createActions()).
-
-  void attachTag();      ///< Tag ▸ Attach: probe USB bases and attach.
+  void attachTag();
   void detachTag();      ///< Tag ▸ Detach.
-  void syncClock();      ///< Tag ▸ Synchronize Clock: set the tag's RTC.
+  void readConfig();     ///< Tag ▸ Read Configuration: asks about unsaved changes, then reads.
+  void syncClock();      ///< Tag ▸ Synchronize Clock.
   void stopTag();        ///< Tag ▸ Stop, and the Stop button.
-  void testTag();        ///< Tag ▸ Self-Test: run every self-test.
-  void eraseTag();       ///< Tag ▸ Erase…: confirm, erase, show progress.
-  void downloadData();   ///< File ▸ Download Data…: save the log as SQLite.
-  void showUserGuide();  ///< Help ▸ Tag Monitor User Guide: open the manual page.
+  void testTag();        ///< Tag ▸ Self-Test.
+  void eraseTag();       ///< Tag ▸ Erase…: confirms, then erases.
+  void downloadData();   ///< File ▸ Download Data…: asks for a file, then downloads.
+  void showUserGuide();  ///< Help ▸ Tag Monitor User Guide.
   void showAbout();      ///< Help ▸ About Tag Monitor.
   /**
    * @brief Tag ▸ Start and the Start button: runs the start checks, warns
-   *        about any that fail, and starts the tag unless the user cancels.
+   *        about any that fail, and sends the configuration unless the user
+   *        cancels.
    */
   void startWithChecks();
 
-  
+  // Session reports, on the GUI thread.
+
+  /// Chooses a base (asking when there are several) and attaches to it.
+  void onBasesFound(std::vector<UsbDev> bases);
+  /// A tag is attached: records it and loads its configuration (attachConfig()).
+  void onAttached(TagInfo info, Config config);
+  /// Attaching failed: says so.
+  void onAttachFailed(QString message);
+  /// The tag is detached: forgets it.
+  void onDetached();
+  /// A status: feeds the model, reports what it settled, and redraws.
+  void onStatus(Status status, float voltage, qint64 host_ms);
+  /// The tag's configuration, read for Read Configuration, becomes the document.
+  void onConfigRead(Config config);
+  /// Start was sent; the model judges it from the statuses that follow.
+  void onStartSent(QString call_message);
+  /// Self-Test was accepted.
+  void onTestSent();
+  /// Erase was accepted: shows its progress until the tag is IDLE.
+  void onEraseSent();
+  /// The tag refused a command: says so.
+  void onCommandFailed(qtmon::Command command, QString message);
+  /// Download progress, for its dialog.
+  void onDownloadProgress(int value, int maximum);
+  /// The download ended: closes its dialog and reports a failure.
+  void onDownloadFinished(bool ok, QString error);
 
 private:
-  Tag tag;                    ///< Connection to the attached tag.
-  TagType tag_type = TAG_UNSPECIFIED;  ///< Attached tag's type, from TagInfo.
-  Ui::MainWindow ui;          ///< The Designer-built widgets (mainwindow.ui).
-  QTimer timer;               ///< Status poll (TriggerUpdate()), every 400 ms while attached.
-  TagState current_state = STATE_UNSPECIFIED;  ///< Tag state at the last poll.
-  /// Shown in the title and About. 2.1: menus, the status strip, Help.
-  const float version = 2.1f;
-  int external_flash_size = 0;  ///< Bytes, from TagInfo; sizes the erase progress bar.
-  int sector_size = 4096;       ///< External flash erase sector, bytes.
-  /// Firmware debug text received so far without its closing newline (see logTagDebugMessage()).
-  QString tag_debug_line_buffer;
-
-  /**
-   * @brief Builds every action and connects it to its command.
-   *
-   * @details Each command is one QAction, so the menus, the popup menus and
-   *          the status strip's Start and Stop buttons share one enabled
-   *          state, which updateActions() sets.
-   */
+  /// Builds every action and connects it to its command.
   void createActions();
   /// Builds the File, Tag, Log and Help menus and the popup menus.
   void createMenus();
@@ -220,26 +193,29 @@ private:
    *          in step with mainTabWidget in both directions.
    */
   void placeStatusStripBelowTabs();
+  /// Connects the session's reports to the on...() slots.
+  void connectSession();
+
   /**
-   * @brief Enables, disables and shows the actions for the current state.
-   *
-   * @details Applies qtmon::availability() (core/commands.h), the one rule
-   *          for every command, to the matching actions, from whether a tag
-   *          is attached, its state and type, whether a download or self-test
-   *          is in progress, and the Configuration tab's document. Called
-   *          after every change to those.
+   * @brief Draws the model: the Tag page, the status strip, the
+   *        Configuration tab's editability, the actions and the erase
+   *        progress. Called after every change to the model.
+   */
+  void render();
+  /**
+   * @brief Enables, disables and shows the actions from the model and the
+   *        document, through qtmon::availability().
    */
   void updateActions();
+  /// Applies qtmon::availability() for @p in to every action.
+  void applyCommandInputs(const qtmon::CommandInputs &in);
   /// The action that carries @p command.
   QAction *actionFor(qtmon::Command command) const;
   /**
-   * @brief The start checks that fail now, one line each, empty when all pass.
-   *
-   * @details The failing checks of qtmon::startCheckFailures()
-   *          (core/startchecks.h), each as the sentence Start shows: the
-   *          clock at the latest status more than qtmon::kClockToleranceS off,
-   *          a reported self-test result other than ALL_PASSED, or "Approved"
-   *          not ticked.
+   * @brief The start checks that fail now, one sentence each, empty when all
+   *        pass: qtmon::startCheckFailures() (core/startchecks.h) for the
+   *        latest clock offset and self-test result and the document's
+   *        approval.
    */
   QStringList startCheckFailures() const;
   /// Shows the configuration document's name and unsaved-changes mark in the title.
@@ -248,16 +224,42 @@ private:
   void fillRecentMenu();
   /// Asks about unsaved configuration changes before the window closes.
   void closeEvent(QCloseEvent *event) override;
+  /// Copies the tag's identity into the Tag Information group and the strip.
+  void populateTagInfo(const TagInfo &info);
+  /**
+   * @brief Loads an attached tag's configuration into the Configuration tab.
+   *
+   * @details A document the user opened or created (from a file or
+   *          defaults) is kept, since they may be about to start this tag
+   *          with it; a previous tag's configuration is replaced, asking
+   *          first if it has unsaved changes.
+   */
+  void attachConfig(const Config &config);
+  /// "<tag type> <uuid>", for log messages.
+  QString tagName() const;
+
+  // ---- Screenshot capture (mainwindow_fixture.cpp) ----
+
+  /// Saves a native-frame screenshot of the window.
+  bool saveCurrentScreenshot(const QString &path, const QSize &maximumWindowSize = QSize(),
+                             const QSize &maximumImageSize = QSize());
+  /// A screenshot file name under the capture directory.
+  QString screenshotPath(const QString &filename) const;
+  /// The directory screenshots are written to; see mainwindow_fixture.cpp.
+  static QString resolveScreenshotDir(const QString &path);
+
+  Ui::MainWindow ui;  ///< The Designer-built widgets (mainwindow.ui).
+  /// Shown in the title and About. 2.1: menus, the status strip, Help.
+  const float version = 2.1f;
+
+  std::unique_ptr<TagSession> session_;  ///< The tag: live or fixture.
+  FixtureSession *fixture_ = nullptr;    ///< session_, when it is a fixture; not owned.
+  qtmon::MonitorModel model_;            ///< What the window knows about the tag.
 
   QTabBar *tab_bar_ = nullptr;  ///< Stands in for mainTabWidget's hidden tab bar.
   TagStatusStrip *status_strip_ = nullptr;  ///< Tag, state, clock, voltage, self-test; Start and Stop.
-  bool attached_ui_ = false;   ///< A live or fixture tag is attached (setAttachedUiEnabled()).
-  bool downloading_ = false;   ///< A data download is running.
-  bool test_pending_ = false;  ///< Self-Test sent; result not yet seen (see applyStatus()).
-  QDateTime test_started_;     ///< When Self-Test was sent.
-  double clock_offset_s_ = 0.0;           ///< Tag clock minus host clock at the last status.
-  TestResult last_test_ = TEST_UNSPECIFIED;  ///< Self-test result the last status reported.
-  QString tag_uuid_;           ///< Attached tag's board UUID, for log messages.
+  QPointer<QProgressDialog> erase_progress_;     ///< Shown while the model is erasing.
+  QPointer<QProgressDialog> download_progress_;  ///< Shown while a download runs.
 
   // The commands, made by createActions() and enabled by updateActions().
   QAction *attach_action_ = nullptr;        ///< Tag ▸ Attach.
@@ -279,93 +281,8 @@ private:
   QAction *guide_action_ = nullptr;     ///< Help ▸ Tag Monitor User Guide.
   QAction *about_action_ = nullptr;     ///< Help ▸ About Tag Monitor.
 
-  /// A self-test result is accepted only from a poll this long after Self-Test.
-  static constexpr qint64 kTestMinimumMs = 1000;
-  /// Self-Test gives up waiting for a result after this long.
-  static constexpr qint64 kTestTimeoutMs = 60000;
-
-  /**
-   * @brief Number of external-flash sectors the tag's erase will report, for
-   *        the erase progress bar.
-   * @return The tag's own total when it reports one
-   *         (erase_sectors_total_plus_one); otherwise an estimate from the
-   *         IMUTag page count or the external flash size.
-   */
-  int eraseSectorMaximum(const Status &status) const;
-  /**
-   * @brief Logs firmware debug text one line at a time, as "Log: <line>".
-   * @details The firmware's text arrives in pieces across statuses; this
-   *          drops carriage returns and holds an unfinished line in
-   *          tag_debug_line_buffer until its newline arrives.
-   */
-  void logTagDebugMessage(const QString &message);
-  /**
-   * @brief Records whether a tag is attached, and updates the Tag page, the
-   *        status strip and the actions to match.
-   */
-  void setAttachedUiEnabled(bool enabled);
-  /**
-   * @brief Copies tag identity metadata into the Tag Information widgets.
-   */
-  void populateTagInfo(const TagInfo &info);
-  /**
-   * @brief Applies a configuration to the Configuration tab.
-   *
-   * @details Live mode attaches the tab to @c tag. A configuration document
-   *          the user opened or created (from a file or defaults) is kept;
-   *          otherwise the tag's configuration becomes the document, asking
-   *          first if a previous tag's has unsaved changes. Fixture mode
-   *          always shows @p config, in a display-only mode where Start and
-   *          Read are no-ops.
-   */
-  void attachConfig(const Config &config, bool fixtureMode);
-  /**
-   * @brief Applies status-dependent text, counts, and control availability.
-   */
-  void applyStatus(const Status &status, float voltage);
-  /**
-   * @brief Loads protobuf JSON fixture data for documentation replay mode.
-   */
-  bool loadFakeFixture(const QString &path);
-  /**
-   * @brief Populates qtmonitor from the loaded fixture without USB attachment.
-   */
-  bool setupFakeFixture();
-  /**
-   * @brief Returns a named fixture status, deriving display states if needed.
-   */
-  Status fakeStatusForName(const QString &name) const;
-  /**
-   * @brief Applies one named fixture status to the live widgets.
-   */
-  bool applyFakeState(const QString &name);
-  /**
-   * @brief Saves a native-frame screenshot of the current qtmonitor window.
-   */
-  bool saveCurrentScreenshot(const QString &path,
-                             const QSize &maximumWindowSize = QSize(),
-                             const QSize &maximumImageSize = QSize());
-  /**
-   * @brief Resolves a generated screenshot filename under the capture directory.
-   */
-  QString screenshotPath(const QString &filename) const;
-  /**
-   * @brief Resolves the directory screenshots are written to; see
-   *        mainwindow_fixture.cpp.
-   */
-  static QString resolveScreenshotDir(const QString &path);
-
-  // Documentation fixture mode (--fake-fixture) and screenshot capture; see
-  // mainwindow_fixture.cpp and README.md "Screenshots".
-  QString screenshotDir;        ///< Where captures are written (resolveScreenshotDir()).
-  QString fakeFixturePath;      ///< The fixture JSON, when running without a tag.
-  QString fakeFixtureId;        ///< Fixture name used in screenshot file names.
-  TagInfo fakeInfo;             ///< Tag identity from the fixture.
-  Config fakeConfig;            ///< Tag configuration from the fixture.
-  QMap<QString, Status> fakeStatuses;  ///< Fixture statuses by lower-case state name ("idle", "running", ...).
-  float fakeVoltage = 0.0f;     ///< Voltage shown in fixture mode, volts.
-  bool fakeMode = false;        ///< A fixture stands in for an attached tag; no tag is contacted.
-  bool fakeConfigLoaded = false; ///< fakeConfig was read from the fixture.
+  // Screenshot capture; see mainwindow_fixture.cpp and README.md "Screenshots".
+  QString screenshotDir;  ///< Where captures are written (resolveScreenshotDir()).
   bool captureStartupScreenshotOnStartup = false;   ///< --capture-startup-screenshot.
   bool captureMainScreenshotsOnStartup = false;     ///< --capture-main-screenshots.
   bool captureConfigScreenshotsOnStartup = false;   ///< --capture-config-screenshots.

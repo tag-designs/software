@@ -18,6 +18,7 @@
 
 #include <QMainWindow>
 #include <QTextEdit>
+#include <QThread>
 #include <QTimer>
 #include <string>
 #include "tag.pb.h"
@@ -57,6 +58,11 @@ int log_level = LOG_ERROR;
 /**
  * @brief Appends one message to the Error Log tab's text box.
  *
+ * @details Messages come from any thread: the tag session's worker logs
+ *          through qInfo() and tagcore's log.c as it talks to the tag. A
+ *          widget may only be touched from the GUI thread, so a message from
+ *          another thread is queued to it.
+ *
  * @param[in] ll       Level, LOG_TRACE..LOG_FATAL; below log_level is dropped.
  * @param[in] context  Source location; the function and line are shown when
  *                     the line is set.
@@ -67,19 +73,23 @@ int log_level = LOG_ERROR;
 static void logOutput(int ll, const QMessageLogContext &context,
                const QString &msg)
 {
-  const char *tag;
-
-  if ((ll < log_level) || (s_textEdit == nullptr))
+  QTextEdit *edit = s_textEdit;
+  if ((ll < log_level) || (edit == nullptr))
     return;
-  tag = log_level_string(ll); 
-  if (context.line)
-    s_textEdit->append(QString("%1 %2 %3:%4")
-                           .arg(tag)
-                           .arg(context.function)
-                           .arg(context.line)
-                           .arg(msg));
+  const char *tag = log_level_string(ll);
+  const QString line = context.line
+                           ? QString("%1 %2 %3:%4")
+                                 .arg(tag)
+                                 .arg(context.function)
+                                 .arg(context.line)
+                                 .arg(msg)
+                           : QString("%1 %4").arg(tag).arg(msg);
+  if (QThread::currentThread() == edit->thread())
+    edit->append(line);
   else
-    s_textEdit->append(QString("%1 %4").arg(tag).arg(msg));
+    // Runs on the GUI thread; dropped if the text box is gone by then.
+    QMetaObject::invokeMethod(edit, [edit, line]() { edit->append(line); },
+                              Qt::QueuedConnection);
 }
 
 /**

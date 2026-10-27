@@ -1,8 +1,8 @@
 /**
  * @file    configtab.cpp
  * @brief   ConfigTab: the panel table, building and showing panels, reading
- *          and writing Config, the document (new, open, save, reset), and
- *          Start.
+ *          and writing Config, and the document's commands (new, open, save,
+ *          reset).
  */
 
 //#include <QDate>
@@ -99,11 +99,6 @@ bool overlaps(std::string_view a, std::string_view b)
 ConfigTab::ConfigTab(QWidget *parent) : QWidget(parent)
 {
   ui.setupUi(this);
-
-  // initialize message box
-
-  msgBox.setWindowTitle("Error");
-  msgBox.setStandardButtons(QMessageBox::Ok);
 
   // Build every panel once, in page order, hidden until a tag selects it.
   panels_.resize(PanelCount);
@@ -240,20 +235,6 @@ void ConfigTab::updateEditable()
 }
 
 /**
- * @brief Enables or disables display-only fixture behavior.
- *
- * @details In fixture mode, StateUpdate() still enables controls according to
- *          tag state so screenshots look like live qtmonitor, but Start and
- *          Read return before using the live Tag pointer.
- *
- * @param[in] enabled   true when the tab is backed by fixture data.
- */
-void ConfigTab::SetFixtureMode(bool enabled)
-{
-  fixture_mode_ = enabled;
-}
-
-/**
  * @brief Checks the panel table against every tag type's ConfigShape.
  *
  * @details For each tag type the table lists, every field a selected panel
@@ -320,15 +301,8 @@ QStringList ConfigTab::CheckPanelsAgainstShapes() const
   return problems;
 }
 
-bool ConfigTab::Attach(Tag &t)
-{
-  tag = &t;
-  return true;
-}
-
 void ConfigTab::Detach()
 {
-  tag = nullptr;
   attached_ = false;
   updateEditable();
 }
@@ -646,111 +620,4 @@ bool ConfigTab::SaveAs()
   if (fileName.isEmpty())
     return false;
   return writeFile(fileName);
-}
-
-void ConfigTab::StartTag()
-{
-  if (fixture_mode_) {
-    qInfo() << "Ignoring Start in qtmonitor fixture display mode";
-    return;
-  }
-
-  Config config;
-  if (!GetConfig(config)) {
-    qDebug() << "StartTag failed to get config";
-    return;
-  }
-
-  if (tag == nullptr)
-    return;
-  qDebug().noquote() << "Starting tag with config:"
-                     << QString::fromStdString(config.DebugString());
-  std::string message;
-  if (!tag->Start(config))
-  {
-    message = tag->DebugMessage();
-  }
-  pollStartResult(message, 0);
-}
-
-namespace {
-/// Status reads pollStartResult() makes, including the first, before it
-/// reports Start as failed.
-constexpr int kStartPollAttempts = 8;
-/// Delay between those status reads, in ms; with kStartPollAttempts this
-/// gives the tag about seven seconds to reach RUNNING or CONFIGURED.
-constexpr int kStartPollIntervalMs = 1000;
-}  // namespace
-
-void ConfigTab::pollStartResult(std::string start_call_message, int attempt)
-{
-  Status status;
-  if (tag->GetStatus(status))
-  {
-    old_state_ = status.state();
-    if (old_state_ == RUNNING || old_state_ == CONFIGURED)
-    {
-      // The tag reached the expected post-Start state, even if the
-      // original Start() call itself reported a transient failure -- see
-      // pollStartResult()'s doc comment. Nothing to show the user; just
-      // note the swallowed error for anyone reading logs.
-      if (!start_call_message.empty())
-      {
-        qWarning().noquote()
-            << "Start() reported a transient failure but the tag reached"
-            << QString::fromStdString(TagState_Name(old_state_)) << ":"
-            << QString::fromStdString(start_call_message);
-      }
-      return;
-    }
-  }
-
-  if (attempt + 1 < kStartPollAttempts)
-  {
-    QTimer::singleShot(kStartPollIntervalMs, this,
-                       [this, start_call_message, attempt]() {
-                         pollStartResult(start_call_message, attempt + 1);
-                       });
-    return;
-  }
-
-  QMessageBox startFailedBox;
-  startFailedBox.setWindowTitle("Error");
-  startFailedBox.setIcon(QMessageBox::Warning);
-  startFailedBox.setText("Start Failed");
-  startFailedBox.setStandardButtons(QMessageBox::Ok);
-  if (!start_call_message.empty())
-  {
-    QString info = QString::fromStdString(start_call_message);
-    info += "\nLast known state: ";
-    info += QString::fromStdString(TagState_Name(old_state_));
-    startFailedBox.setInformativeText(info);
-    startFailedBox.setDetailedText(QString::fromStdString(start_call_message));
-  }
-  else
-  {
-    startFailedBox.setInformativeText(
-        "Last known state: " +
-        QString::fromStdString(TagState_Name(old_state_)));
-  }
-  startFailedBox.exec();
-}
-
-void ConfigTab::ReadFromTag()
-{
-  if (fixture_mode_) {
-    qInfo() << "Ignoring Read in qtmonitor fixture display mode";
-    return;
-  }
-
-  if (tag == nullptr || !confirmDiscard())
-    return;
-  Config configin;
-  if (tag->GetConfig(configin)) {
-    SetConfig(configin);
-  }
-  else {
-    msgBox.setText("Tag config read failed");
-    msgBox.exec();
-  }
 }

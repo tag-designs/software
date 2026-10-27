@@ -2,7 +2,7 @@
  * @file    configtab.h
  * @brief   qtmonitor's Configuration tab: a configuration editor holding one
  *          document (from a tag type's defaults, a file, or a tag), shown as a
- *          page of fixed panels, with new, open, save, read and start.
+ *          page of fixed panels, with new, open, save and reset.
  *
  * @see     tagconfiguration/README.md for the panels and how to add tags,
  *          fields and panels; docs/shared/design/configuration-model.md for
@@ -27,12 +27,12 @@
 #include "configdocument.h"
 #include "configpanel.h"
 #include "ui_configtab.h"
-#include "tagclass.h"
+#include "tag.pb.h"
 
 /**
  * @class   ConfigTab
  * @brief   The configuration editor: one configuration document, shown as a
- *          page of fixed panels, edited, saved, and started on a tag.
+ *          page of fixed panels, edited and saved.
  *
  * @details The tab holds at most one **document** (qtmon::ConfigDocument,
  *          core/configdocument.h): a Config, its tag type (which selects the
@@ -49,12 +49,14 @@
  *          write with what they wrote just after loading; any control's change
  *          re-checks, and documentChanged() reports a change of state.
  *
- *          The tab works with no tag attached. Editing is disabled only while
- *          the document is the attached tag's own configuration and the tag
- *          is not IDLE, so a running tag's configuration is shown, not edited.
- *          Live qtmonitor calls Attach() and StateUpdate() so Read and Start
- *          can reach the tag; fixture mode (SetFixtureMode()) and the
- *          configuration probe use the tab without a tag.
+ *          The tab never talks to a tag. The window reads a tag's
+ *          configuration into it (SetConfig()) and sends what GetConfig()
+ *          returns to Start, through the tag session. It tells the tab the
+ *          tag's state (StateUpdate(), Detach()) only so that editing can be
+ *          disabled while the document is the attached tag's own
+ *          configuration and the tag is not IDLE: a running tag's
+ *          configuration is shown, not edited. The configuration probe uses
+ *          the tab with no window at all.
  *
  *          Not thread-safe: use from the GUI thread only.
  */
@@ -140,16 +142,6 @@ public:
      */
     bool confirmDiscard();
 
-    /**
-     * @brief Puts the configuration tab in fixture display mode.
-     *
-     * @details Fixture mode is used by qtmonitor documentation screenshots.
-     *          It allows SetConfig() and StateUpdate() to populate and enable
-     *          the real tag-specific widgets while blocking actions that would
-     *          require a live Tag object, such as Read and Start.
-     */
-    void SetFixtureMode(bool enabled);
-
     /// Outcome of OpenFromJsonText().
     enum class OpenResult {
         Opened,      ///< The file is now the document.
@@ -213,15 +205,8 @@ signals:
 public slots:
 
     /**
-     * @brief Remembers the live tag that Read and Start talk to.
-     * @param[in] tag  Attached tag; must outlive its use by this tab.
-     * @return Always true.
-     */
-    bool Attach(Tag &tag);
-
-    /**
-     * @brief Forgets the tag when it is detached. The document stays, and
-     *        becomes editable if it was a running tag's configuration.
+     * @brief The tag was detached. The document stays, and becomes editable
+     *        if it was a running tag's configuration.
      */
     void Detach();
 
@@ -259,45 +244,7 @@ public slots:
     /// File ▸ Reset to Defaults: replaces the values with the tag type's defaults.
     void ResetToDefaults();
 
-    /**
-     * @brief Writes the configuration to the attached tag and starts it,
-     *        then polls until the tag leaves IDLE (see pollStartResult()).
-     *        A no-op in fixture mode.
-     */
-    void StartTag();
-
-    /**
-     * @brief Tag ▸ Read Configuration: makes the attached tag's configuration
-     *        the document, asking about unsaved changes first. A no-op in
-     *        fixture mode.
-     */
-    void ReadFromTag();
-
 private:
-
-    /**
-     * @brief Poll for the tag's post-Start state, retrying on a timer.
-     *
-     * @details Tag::Start() returning false does not mean the tag never
-     *          started: a transient monitor/USB error (LIBUSB timeout, a
-     *          failed debug-register access) can lose the acknowledgement
-     *          after the tag already accepted the command, the same
-     *          "acknowledgement is not a completion" gap tag-start/tag-stop
-     *          poll around on the command line. Polls GetStatus() a bounded
-     *          number of times, 1 s apart, via a non-blocking QTimer chain
-     *          (never a sleep loop -- that would freeze the GUI thread).
-     *          RUNNING or CONFIGURED at any poll is treated as success, even
-     *          if the initial Start() call itself reported failure; only
-     *          still-IDLE (or another unexpected state) after the last
-     *          attempt shows the failure dialog, using the freshest state
-     *          read rather than whatever was captured immediately after the
-     *          original failed call.
-     *
-     * @param[in] start_call_message DebugMessage() from a failed Start()
-     *                                call, or empty if Start() returned true.
-     * @param[in] attempt Zero-based retry count so far.
-     */
-    void pollStartResult(std::string start_call_message, int attempt);
 
     /// Sizes the scroll area to the shown panels; see the definition.
     void FitPanelPage();
@@ -329,8 +276,7 @@ private:
     static void addRecent(const QString &path);
 
     qtmon::ConfigDocument doc_;  ///< The document: values, source, file, baseline, approval.
-    TagState old_state_ = STATE_UNSPECIFIED;  ///< Last state from StateUpdate() or a Start poll.
-    bool fixture_mode_ = false;  ///< Read and Start are no-ops; see SetFixtureMode().
+    TagState old_state_ = STATE_UNSPECIFIED;  ///< Last state from StateUpdate().
     bool loading_ = false;       ///< Panels are being loaded; ignore their signals.
     bool was_modified_ = false;  ///< isModified() at the last documentChanged().
     bool attached_ = false;      ///< A tag is attached (StateUpdate() seen, no Detach()).
@@ -343,11 +289,7 @@ private:
     /// Shown on the page when there is no document.
     QLabel *placeholder_ = nullptr;
 
-    // for errors
-
-    QMessageBox msgBox;  ///< Reused for "Tag config read failed".
-    Tag *tag = nullptr;  ///< Live tag from Attach(); null when detached.
-    Ui::ConfigTab ui;    ///< Page, scroll area and file/tag buttons.
+    Ui::ConfigTab ui;    ///< Page and scroll area.
     
 };
 

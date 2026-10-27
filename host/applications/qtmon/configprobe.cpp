@@ -403,7 +403,6 @@ RunOutput runOnce(const CaseInput &in, DialogCatcher &dialogs)
 {
   RunOutput out;
   ConfigTab tab;
-  tab.SetFixtureMode(true);
   tab.resize(1000, 800);
   tab.show();
   QCoreApplication::processEvents();
