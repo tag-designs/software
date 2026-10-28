@@ -28,6 +28,11 @@ inline QQuaternion toQQuaternion(const sensormath::Quatf &q)
     return QQuaternion(q.w, q.x, q.y, q.z);
 }
 
+inline sensormath::Quatf toQuatf(const QQuaternion &q)
+{
+    return sensormath::Quatf{q.scalar(), q.x(), q.y(), q.z()};
+}
+
 /*
  * Compass data moves through three layers:
  *

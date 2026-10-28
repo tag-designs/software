@@ -101,11 +101,16 @@ flag.
 | random | 200,000 seeded sensor pairs under random hard and soft iron, covering both accelerometer branches and both magnetometer branches. |
 | edges | Zero vectors (refused by both), vectors exactly at, within and just beyond 1e-5 of unit length -- Qt's vector `normalize()` leaves the first two alone -- and vectors small enough that normalization is skipped. |
 | calibration JSON | 20,000 random calibrations written by protobuf as the download path writes them (zeros omitted, accelerometer sometimes absent), the fixture's stored row with its retired `b` field, and hand-written oddities, each read three ways: the Qt reader as it stood, the Qt reader on `calibrationFromLookup()`, and the Qt-free `calibrationFromJson()`. All three must agree to the bit. |
+| angles | 100,000 rounds of random, scaled, tiny and near-gimbal-lock quaternions, solved orientations and axis-angle rotations: `sensormath::toEulerAngles()` and `fromAxisAndAngle()` against Qt's own compiled `QQuaternion` methods, `compasscore::displayAngles()` against sensorui's `compassAnglesFromQuaternion()` as it stood, and qtcalibrate's tag-model composition `qz * qy * qx`. |
 
 On 2026-10-20 it was shown to bite: making vector `normalize()` always divide,
 as glm and Eigen do, failed 12 comparisons, all in the edge group; writing the
 quaternion product the textbook way failed 1.4 million; reading the
 calibration through float, as the typed protobuf message would, failed 17,451.
+The angles group was added on 2026-10-28, when the display conversion moved
+into the core; computing the yaw's `360 - z` in double rather than float failed
+133,605 of its comparisons.
+
 The negative-zero edge case is why `calibrationFromJson()` folds `-0` to `+0`:
 Qt's reader does, protobuf's does not.
 

@@ -18,6 +18,10 @@
  *          yaw. This is the convention every CompassTag display has used; it
  *          is not the aerospace Z-Y-X decomposition, and the two disagree when
  *          the tag is tilted about both horizontal axes.
+ *
+ *          The arithmetic is compasscore::displayAngles() in sensoranalysis's
+ *          Qt-free core, so a front end without Qt shows the same angles; this
+ *          function converts types.
  */
 #ifndef COMPASS_ANGLES_H
 #define COMPASS_ANGLES_H

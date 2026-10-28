@@ -36,7 +36,9 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   changes results in the last bits and is measured with
   `compass_core_parity_check --report` ([test/README.md](test/README.md)).
 - `compass_core.h`: `compasscore::CalibrationConstants`, magnetometer and
-  accelerometer correction, `solveOrientation()`, and
+  accelerometer correction, `solveOrientation()`, `displayAngles()` (heading,
+  pitch and roll in the convention every CompassTag display uses, behind
+  sensorui's `compassAnglesFromQuaternion()`), and
   `calibrationFromLookup()` -- the one mapping from the stored
   CalibrationConstants JSON keys and their defaults to constants, given a
   function that looks a number up.
