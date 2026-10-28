@@ -106,6 +106,18 @@ inline float length(Vec3f v)
     return std::hypot(v.x, v.y, v.z);
 }
 
+/// Dot product, as QVector3D::dotProduct(): x, y, z products summed left to right.
+inline float dot(Vec3f a, Vec3f b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/// True when all three parts are finite (neither infinite nor NaN).
+inline bool isFinite(Vec3f v)
+{
+    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+}
+
 /**
  * @brief   Normalizes in place with QVector3D::normalize()'s rules.
  *

@@ -37,8 +37,39 @@ To build all of them at once, name each target, or build everything:
 ```sh
 cmake --build $BUILD --target accelcalibration_check gravityfit_check \
                               magquality_check magretention_check \
-                              compass_core_parity_check capture_replay
+                              compass_core_parity_check capture_replay \
+                              calibration_dump
 ```
+
+## `calibration_dump`
+
+Not a check: it compares nothing itself. It drives `Directions`,
+`MagQuality`, `MagRetention`, `GravityFit` and `AccelCalibration` through
+their Qt API over both qtcalibrate capture fixtures and seeded synthetic
+spheres, and prints every result as a hexadecimal float (`%a`), so two runs
+agree as text exactly when they agree to the bit. Use it for a change that
+must not alter results: build it on the code before, save the output, build
+it on the code after, and diff.
+
+```sh
+$BUILD/Release/bin/calibration_dump > before.txt     # old code
+$BUILD/Release/bin/calibration_dump > after.txt      # new code
+diff before.txt after.txt                            # must be empty
+```
+
+The magnetometer samples are calibrated with each fixture's stored
+calibration and given CompassProcessor's dip, as qtcalibrate feeds
+`MagQuality`; `MagRetention` is asked about windows of the buffer with and
+without probation, the outlier test and the patch floor; `AccelCalibration`
+is read every tenth sample, which also tightens its gate as qtcalibrate's
+tick does. The synthetic data comes from a fixed `std::mt19937` stream through
+integer arithmetic only.
+
+On 2026-10-28 it showed the move of these classes onto the Qt-free core
+(`core/*_core.*`) changed nothing: 4,913 lines, identical before and after,
+on macOS arm64 in a Release build. qtcalibrate's own replay logs of both
+fixtures (`--replay-capture ... --replay-exit --log-file`), which also cover
+its retention decisions and seeded fallback, were byte-identical too.
 
 ## `compass_core_parity_check`
 

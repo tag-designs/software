@@ -18,6 +18,11 @@ Current contents:
   acceleration magnitude derived from raw samples.
 - `CompassProcessor`: eCompass orientation computation for raw log samples and
   already-calibrated live samples.
+- The calibration-sweep classes qtcalibrate uses: `Directions` (sphere
+  patches and evenness), `MagQuality` (coverage, fit residual, attitude
+  diversity and dip consistency), `MagRetention` (which sample a full
+  magnetometer buffer evicts), and `AccelCalibration` and `GravityFit` (the
+  accelerometer zero-g offset).
 
 The arithmetic behind `CompassCalibration` and `CompassProcessor` lives in a
 Qt-free core, the `sensoranalysis_core` target in `core/`:
@@ -40,6 +45,14 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   protobuf's generic `Struct`. It keeps every number as the double parsed from
   the text, as Qt's reader does; parsing into the typed message would round
   the soft-iron terms through float and change results.
+
+- `directions_core.h`, `magquality_core.h`, `magretention_core.h`,
+  `accelcalibration_core.h`, `gravityfit_core.h`: the calibration-sweep
+  classes, in namespace `calibcore`, on `sensormath::Vec3f` and `std::vector`.
+  Each header carries the class's reasoning; the Qt header of the same name
+  is an adapter. They were moved here unchanged in arithmetic, and
+  `test/calibration_dump.cc` showed every result bit-identical before and
+  after ([test/README.md](test/README.md)).
 
 The Qt classes convert types and call the core -- including
 `CompassCalibration::fromCalibrationJson()`, which is a `QJsonObject` lookup
