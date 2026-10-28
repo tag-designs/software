@@ -339,6 +339,7 @@ static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
 {
   uint32_t ack = 0;
   uint32_t waits = 0;
+  systime_t start = chVTGetSystemTimeX();
   // try transaction  (always at least once)
   do
   {
@@ -352,6 +353,12 @@ static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
   } while (retry);
   if (waits > swd_max_waits)
     swd_max_waits = waits;
+  // How long the target held the bus off, for a run longer than the default
+  // budget (25): the measurement a time-bounded retry would be sized from.
+  if (waits > 25)
+    EPRINTF("swd wait run x%u, %u ms, ack %u req %02x\r\n", (unsigned)waits,
+            (unsigned)TIME_I2MS(chVTTimeElapsedSinceX(start)), (unsigned)ack,
+            (unsigned)req);
   // A WAIT that outlasts every retry is the first suspect for 0x81 bursts
   // (embedded/bases/TODO.md); say how long the target held the bus off.
   if (ack == SW_ACK_WAIT && waits > 1)
