@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation.
+summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation; all phases are built, with the as-built differences and checks recorded per phase.
 ---
 
 # A Toolkit-Neutral Core for sensorviz
@@ -13,7 +13,7 @@ where it differs from the sketch below. Phase B is built: `openLog()` and
 `StreamCatalog` in the core, the Qt loader removed;
 [phase B as built](#phase-b-as-built) records its differences. Phase C is
 built: `PreferenceStore` reads and writes the preference file in the core
-([phase C as built](#phase-c-as-built)). Phases C2 and D+E are built ([phase D+E as built](#phase-de-as-built)). Phase F is not; see [Phases](#phases) for the revised order.
+([phase C as built](#phase-c-as-built)). Phases C2, D+E and F are built ([phase D+E as built](#phase-de-as-built), [phase F as built](#phase-f-as-built)): the core is complete.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -704,6 +704,49 @@ capture suites were pixel-identical. `transforms_check` (53 checks) is new;
 changing the battery-direction offset, the magnitude formula, or the
 declination remake to a full re-run each fail it.
 
+### Phase F as built
+
+`core/session.h`: `Session` owns the `StreamCatalog`, `ViewModel` and
+`TransformRegistry`, and holds what `MainWindow` computed -- the hover text and
+time text, the range dialog's starting range, the range links, Reset Zoom,
+the preference key -- with `open()` doing a whole File > Load for front ends
+without Qt. `core/state_dump.h` holds the state dump's script and text, which
+the Qt app drives through its own functions and `session_cli` through
+`Session` alone.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| `MainWindow` holds a `Session`; its `log_` and `view_` are references to the session's catalog and view model, and most setters still go to `view()` directly | Every change through a `Session` setter returning `Changes` | Kept: the `ViewModel` setters already return `Changes`, and the session adds rules only where there are any (ranges, parameters, Reset Zoom). Moving every call is churn without effect |
+| The Qt app loads through `adopt()`/`runTransforms()` step by step, redrawing between steps | `Session::open()` for everyone | The Qt plot's y axes depend on the redraw order, so the Qt app keeps its sequence; `open()` does the same steps for `session_cli` and the Rust app, and their dumps agree |
+| `session_cli` writes the state dump and the hover readout | `PlotSpec` as JSON, envelope sizes, hover rows | The dump holds the spec, every sample's hash and the hover rows, and compares with the Qt app's directly |
+| `formatValue2()` prints the exact decimal value and rounds by hand | `printf` | Qt rounds exact ties half away from zero (0.125 is `0.13`) and drops the sign of -0.0; `printf` rounds ties to even |
+| No `envelope()` on `Session` | `envelope(trace, t0, t1, columns)` | `catalog().data->view()` already is that; the C interface (step 3 of leaving Qt) can wrap it |
+
+**Checked:**
+
+- A one-off comparison of `formatValue2()` and `formatTime()` with Qt's own
+  formatting (`QString::arg(v, 0, 'f', 2)`, the elapsed format, `QDateTime`
+  at every UTC offset from -12 to +12) agreed on 1,000,233 values and times,
+  after 13,076 had differed with `printf` rounding.
+- `--dump-state` from the Qt app was identical before and after, for all 53
+  logs on hand (a baseline from `7ce2e6db`), once when `MainWindow` moved onto
+  `Session` and again when the dump itself moved into the core. The second
+  run takes the spec from `Session` rather than from `PlotView`, so the spec
+  the session builds is the one drawn at every step.
+- `session_cli`'s dump equalled the Qt app's up to the activity filter for all
+  53 logs, and with a preference file loaded; built without Qt, it gave the
+  same dump.
+- The capture suites were pixel-identical.
+
+**Done means**, against the list below:
+
+- No file in `sensorviz_core` includes a Qt header, and the core and its
+  checks build in a host build without `BUILD_QT_APPS`.
+- `MainWindow` computes on sample values only for the activity filter, which
+  leaves with the Qt app, and in finding the compass panel's nearest sample.
+- `session_cli` reproduces the `PlotSpec`, every sample and the hover readout
+  the Qt app shows, for every log on hand.
+
 ## The compass convention needs a decision
 
 Heading, pitch and roll are plotted streams, separate from the compass
@@ -741,7 +784,7 @@ backend phases were:
 | C | `PreferenceStore` with protobuf JSON, byte-compatible. *Built, `88830bd3`.* |
 | C2 | `sensorviz_core` built without Qt, in its own directory (`4d0ee4e8`); the state dump (`--dump-state`), the comparison oracle for D-F. *Built.* |
 | D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog. *Built.* |
-| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli`, which reproduces the Qt app's `--dump-state` output without Qt |
+| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli`, which reproduces the Qt app's `--dump-state` output without Qt. *Built.* |
 
 **Revised 2026-10-28**, after phases B and C:
 

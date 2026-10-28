@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state.
+summary: How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state, and session_cli, sensorViz without Qt.
 ---
 
 # sensorViz Offline Checks
@@ -111,6 +111,31 @@ for sensorViz's `--dump-state`
 ([State dump](../README.md#state-dump)); this check holds the contracts.
 When the transforms moved, the dumps of 51 logs and two `dataprocessing`
 outputs were identical before and after.
+
+## `session_cli`
+
+Not a check but a third client of the core, beside the Qt app and the future
+Rust one: it opens a log with `Session` and writes the state dump, or prints
+the hover readout at a time. Everything it prints comes from `Session`, so it
+shows the core's boundary is real.
+
+```sh
+cmake --build <build-dir> --target session_cli
+<build-dir>/Release/bin/session_cli <log.db3> [--load-preferences <file>] --dump-state <out>
+<build-dir>/Release/bin/session_cli <log.db3> [--load-preferences <file>] --hover <seconds>
+```
+
+Its dump of a log must equal the Qt app's `--dump-state` up to the activity
+filter step, which only the Qt app has:
+
+```sh
+sensorviz --load-log <log> --dump-state /tmp/qt.txt --no-user-prompts
+session_cli <log> --dump-state /tmp/cli.txt
+sed '/^== activity filter/,$d' /tmp/qt.txt | diff - /tmp/cli.txt
+```
+
+When it was added, that held for all 53 logs on hand (51, and two
+`dataprocessing` outputs), and with a preference file loaded.
 
 ## `viewmodel_check`
 

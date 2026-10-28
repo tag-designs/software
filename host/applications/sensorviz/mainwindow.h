@@ -161,10 +161,10 @@ private:
     void applyDeclination(double declination_degrees);
     void applyUtcOffset(int hours);
     void applyStreamRange(const QString &id, double lower, double upper);
-    // The --dump-state check (state_dump.cpp): the loaded log through a fixed
-    // script of setting changes, everything shown written after each step.
+    // The --dump-state check (state_dump.cpp): the core's script of setting
+    // changes (core/state_dump.h), made through the functions above.
+    class StateDumpDriver;
     bool writeStateDump(const QString &path, QString &error);
-    QString stateDumpStep(const QString &step) const;
     QString preferenceKey() const;
     void rememberCurrentPreferences();
     void applyPreferencesForCurrentTag();

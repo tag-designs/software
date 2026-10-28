@@ -138,11 +138,21 @@ The Qt front end is split by responsibility:
   plot backend, prints, and reports the mouse through signals (`hoverTime`,
   `cursorsChanged`, `xRangeChanged`, `contextMenuRequested`). A different
   renderer could draw the same spec.
+- `core/session.*` (in `sensorviz_core`, Qt-free): `Session`, which owns the
+  catalog, `ViewModel` and transforms and is what a front end talks to: the
+  hover readout and time text (`hover()`, `formatTime()`, matching Qt's
+  formatting), the range dialog's starting range and the linked ranges,
+  Reset Zoom, the preference key, and `open()`, a whole File > Load for front
+  ends without Qt. `MainWindow` holds one; its `log_` and `view_` are the
+  session's.
+- `core/state_dump.*` (Qt-free): the state dump's script and text, shared by
+  `--dump-state` and `session_cli` ([State dump](#state-dump)).
 - `plotting.cpp`: MainWindow's side of the plot: hands `PlotView` the spec
-  the ViewModel builds, describes the log to the core (`plotLogInfo()`), and
-  reads transform inputs from and registers outputs in the plot backend.
+  the session builds, and reads the activity filter's input from the plot
+  backend.
 - `interaction.cpp`: context menu, print preview, cursor commands, UTC offset,
-  and the hover readout built from `PlotView::hoverTime`.
+  and the hover tooltip, whose rows are the session's, shown at
+  `PlotView::hoverTime`.
 - `controls.cpp`: general actions and small shared helpers, including graph
   title editing and calibration-constant display.
 - `documentation_capture.cpp`: maintainer-only screenshot automation (see
@@ -205,7 +215,8 @@ Most SensorViz changes should start in one of four places:
   spec is right but the drawing is not, check `plot_view.cpp`.
 - Cursor, pan/zoom, print, or metadata-box dragging is wrong:
   check `plot_view.cpp`.
-- UTC, mouse readout, or context-menu behavior is wrong:
+- Hover text, time text, or the ranges a range change links are wrong:
+  check `core/session.cpp`. UTC dialog, tooltip or context-menu behavior:
   check `interaction.cpp`.
 - Graph title editing or visibility is wrong:
   check `controls.cpp` for the dialog/state update.
@@ -547,11 +558,18 @@ the transforms into the core. After loading it takes the log through a fixed
 script -- sea-level pressure 1000 mbar, a pressure range of 950-1010 mbar
 (which links the altitude range), declination 12.5 degrees, battery forward
 toggled, gaps joined, UTC -5 for epoch-time logs, Reset Zoom, and last the
-activity filter at 600 s, which only the Qt app has -- calling the same functions the dialogs and menu actions
-call. After each step it writes the `PlotSpec` (numbers as hex floats), every
-stream's metadata and visibility with a hash of every sample the plot backend
-holds, the custom ranges, hover rows at 25 times, and a hash of the compass
-panel's samples; then it exits. `state_dump.cpp` implements it.
+activity filter at 600 s, which only the Qt app has -- making each change
+through the same functions the dialogs and menu actions call. After each step
+it writes the `PlotSpec` (numbers as hex floats), every stream's metadata and
+visibility with a hash of every sample the plot backend holds, the custom
+ranges, hover rows at 25 times, and a hash of the compass samples; then it
+exits.
+
+The script and the text are the core's (`core/state_dump.h`); the Qt app
+supplies a driver that makes the changes its own way (`state_dump.cpp`).
+`session_cli`, the Qt-free client in `test/`, runs the same script through
+`Session` alone, so its dump of a log is identical to the Qt app's up to the
+activity filter step ([test/README.md](test/README.md#session_cli)).
 
 The dump is deterministic, so a change that should alter nothing is checked
 with `diff`:

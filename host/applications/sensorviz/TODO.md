@@ -41,14 +41,11 @@ Current behavior and its known limitations are in [README.md](README.md).
 
 ## Larger refactors
 
-- Move what is still Qt-bound out of the front end, so a non-Qt UI needs
-  only `sensorviz_core`. View state, plot policy, the log reader, preference files and
-  the transforms are already in the core (`ViewModel`, `buildPlotSpec()`,
-  `openLog()`, `PreferenceStore`, `TransformRegistry`); still in the Qt layer
-  are:
-  - the hover readout's formatting (`streamValueAt()`, `formatPlotTime()`)
-    and the compass panel;
-  - menus and the PlotView renderer, which are the front end by design.
+- What a non-Qt UI needs is in `sensorviz_core`, behind `Session`
+  (toolkit-neutral core, phases A-F). Still in the Qt layer, by design or
+  until the Qt app retires: menus and dialogs, the `PlotView` renderer, the
+  QML compass panel (and its nearest-sample lookup), and the activity filter,
+  which is not ported.
 - Generalize record-set transforms before adding more multi-column sensor
   families.
 - Add optional session/project files if users need to persist graph title,

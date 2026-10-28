@@ -32,6 +32,7 @@ add_library(sensorviz_core STATIC
   plot_spec.cpp
   preference_store.cpp
   session.cpp
+  state_dump.cpp
   stream_catalog.cpp
   stream_meta.cpp
   transforms.cpp
@@ -63,6 +64,12 @@ if(BUILD_SENSORVIZ_CHECKS)
     set_target_properties(${check} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
   endforeach()
+  # session_cli: sensorViz without Qt, writing the same state dump as the Qt
+  # app's --dump-state; see ../test/README.md.
+  add_executable(session_cli ../test/session_cli.cc)
+  target_link_libraries(session_cli PRIVATE sensorviz_core)
+  set_target_properties(session_cli PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
   # catalog_check edits a copy of a fixture to reach paths no fixture does.
   target_link_libraries(catalog_check PRIVATE ${SENSORVIZ_SQLITE_TARGET})
   target_include_directories(catalog_check PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
