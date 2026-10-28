@@ -10,8 +10,8 @@
  *          the capture suites show only default settings, so this drives the
  *          changes they never make -- sea-level pressure, a pressure range
  *          and the altitude range linked to it, declination, battery
- *          forward, the activity filter, gaps, the UTC offset and Reset
- *          Zoom -- through the same functions the dialogs and menu actions
+ *          forward, gaps, the UTC offset, Reset Zoom and, last, the activity
+ *          filter -- through the same functions the dialogs and menu actions
  *          call, and records the result exactly:
  *
  *          - the PlotSpec, every field, numbers as hex floats;
@@ -235,16 +235,6 @@ bool MainWindow::writeStateDump(const QString &path, QString &error)
     battery_forward_action_->setChecked(!battery_forward_action_->isChecked());
     dump += stateDumpStep(QStringLiteral("battery forward toggled"));
 
-    if (hasStream("activity")) {
-        {
-            // The action's own toggle would open the time-constant dialog.
-            const QSignalBlocker blocker(activity_filter_action_);
-            activity_filter_action_->setChecked(true);
-        }
-        enableActivityFilter(600.0);
-        dump += stateDumpStep(QStringLiteral("activity filter 600"));
-    }
-
     break_gaps_action_->setChecked(false);
     dump += stateDumpStep(QStringLiteral("gaps joined"));
 
@@ -255,6 +245,18 @@ bool MainWindow::writeStateDump(const QString &path, QString &error)
 
     resetZoom();
     dump += stateDumpStep(QStringLiteral("reset zoom"));
+
+    // Last, because only the Qt app has the activity filter: a dump made
+    // without Qt matches this one up to here.
+    if (hasStream("activity")) {
+        {
+            // The action's own toggle would open the time-constant dialog.
+            const QSignalBlocker blocker(activity_filter_action_);
+            activity_filter_action_->setChecked(true);
+        }
+        enableActivityFilter(600.0);
+        dump += stateDumpStep(QStringLiteral("activity filter 600"));
+    }
 
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {

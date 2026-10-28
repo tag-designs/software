@@ -546,8 +546,8 @@ behaviour without changing what the default screenshots show, such as moving
 the transforms into the core. After loading it takes the log through a fixed
 script -- sea-level pressure 1000 mbar, a pressure range of 950-1010 mbar
 (which links the altitude range), declination 12.5 degrees, battery forward
-toggled, the activity filter at 600 s, gaps joined, UTC -5 for epoch-time
-logs, Reset Zoom -- calling the same functions the dialogs and menu actions
+toggled, gaps joined, UTC -5 for epoch-time logs, Reset Zoom, and last the
+activity filter at 600 s, which only the Qt app has -- calling the same functions the dialogs and menu actions
 call. After each step it writes the `PlotSpec` (numbers as hex floats), every
 stream's metadata and visibility with a hash of every sample the plot backend
 holds, the custom ranges, hover rows at 25 times, and a hash of the compass
