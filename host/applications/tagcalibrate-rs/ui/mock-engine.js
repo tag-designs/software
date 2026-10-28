@@ -8,7 +8,8 @@
  * declination and battery settings, the prompts. Not used in the app, where
  * Kit.createEngine finds Tauri first.
  *
- * The view state, a draft of the UI/engine contract:
+ * The view state, as design/ui-engine-contract.md describes it (keep the
+ * two, and the engine's engine/view.rs, in step):
  *
  *     title         window title
  *     link          {attached, text}: the attached tag, for the bottom bar

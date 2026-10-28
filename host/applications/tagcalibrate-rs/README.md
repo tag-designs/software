@@ -32,6 +32,15 @@ runs, reached through [`calibsession-rs`](../../libraries/calibsession-rs/README
 | `ui/screenshots.sh` | Pictures of the mock scenarios, for the user manual |
 | `tools/make_mock_capture.py` | Rebuilds `mock-capture.js` |
 
+## Documents
+
+- [UI/engine contract](design/ui-engine-contract.md): the threads, the view
+  state, the prompts, the commands and queries, the capture file, and where
+  this differs from qtcalibrate.
+- [Decision 0039](../../../docs/decisions/0039-host-tagcalibrate-rs.md): why
+  the calibration was moved into the C++ core rather than ported, and the
+  evidence that nothing changed.
+
 ## Running it
 
 ```sh
@@ -67,6 +76,4 @@ the scenario live. `mock-engine.js` lists them all.
 
 ## Next
 
-The UI/engine contract as a design document (it is described in
-`ui/mock-engine.js` for now), CMake and packaging as for Tag Monitor, a user
-manual page, and a decision record.
+CMake and packaging as for Tag Monitor, and a user manual page.

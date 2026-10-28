@@ -4,7 +4,7 @@
  * actions into commands. It holds no rules: the menus come from the
  * engine's `menus` query, which commands are enabled from the state's
  * `actions`, every figure and text from the engine. The view state and the
- * commands are described in mock-engine.js until the engine exists.
+ * commands are design/ui-engine-contract.md.
  *
  * In a plain browser the engine is MockEngine (mock-engine.js). Preview
  * parameters: ?scenario=<name> picks a canned state (see mock-engine.js),
