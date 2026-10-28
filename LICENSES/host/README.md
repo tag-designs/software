@@ -43,6 +43,8 @@ programs.
 | [Preact](third-party/preact.txt) | 10.29.8 | MIT | tagprogram, tagmonitor (their windows) |
 | [htm](third-party/htm.txt) | 3.1.1 | [Apache-2.0](texts/Apache-2.0.txt) | tagprogram, tagmonitor (their windows) |
 | [three.js](third-party/three.txt) | r159 | MIT | tagcalibrate (its 3D views; not yet shipped) |
+| [uPlot](third-party/uplot.txt) | 1.6.32 | MIT | sensorviz-rs (its plot; not yet shipped) |
+| [jsPDF](third-party/jspdf.txt) | 2.5.2 | MIT | sensorviz-rs (Export PDF; not yet shipped) |
 | [QCustomPlot](third-party/qcustomplot.txt) | 2.1.1 | [GPL-3.0-or-later](texts/GPL-3.0-only.txt) | sensorviz, btviz |
 | [libusb](third-party/libusb.txt) | 1.0.29 | [LGPL-2.1-or-later](texts/LGPL-2.1-or-later.txt) | programs that talk to a tag |
 | [Protocol Buffers](third-party/protobuf.txt) | 6.33.4 | BSD-3-Clause | all programs |

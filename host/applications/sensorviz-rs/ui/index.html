@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+  sensorViz plot spike: the sensorviz window's plot drawn in the page with
+  uPlot from M4 envelopes, against mock-engine.js (no engine yet). See
+  ../README.md and host/applications/sensorviz/design/proposals/leaving-qt.md.
+  The fixture data is generated: run ../tools/export_mock_data.py first.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sensorViz</title>
+  <link rel="stylesheet" href="../../../ui-kit/kit.css">
+  <link rel="stylesheet" href="uPlot.min.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="kit-window">
+    <div class="kit-titlebar">
+      <div class="kit-traffic"><span></span><span></span><span></span></div>
+      <span class="kit-title">sensorViz</span>
+    </div>
+    <div class="kit-content">
+      <div id="menubar"></div>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-plot" aria-selected="true">Plot</button>
+        <button type="button" role="tab" id="tab-info" aria-selected="false">File Info</button>
+      </div>
+      <div class="pages">
+        <section id="page-plot" class="page kit-panel"><div id="plot"></div></section>
+        <section id="page-info" class="page kit-panel" hidden><pre id="info" class="kit-selectable"></pre></section>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <script src="../../../ui-kit/preact-htm.js"></script>
+  <script src="../../../ui-kit/kit.js"></script>
+  <script src="../../../ui-kit/kit-components.js"></script>
+  <script src="uPlot.iife.min.js"></script>
+  <script src="jspdf.umd.min.js"></script>
+  <script src="plot.js"></script>
+  <script src="mock/data-imutag.js"></script>
+  <script src="mock/data-compasstag.js"></script>
+  <script src="mock-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

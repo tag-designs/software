@@ -1,0 +1,14 @@
+# Spike only (not shipped): whether plotters can draw sensorviz's plot for
+# printing -- the IMUTag fixture's four traces on four stacked y axes, from M4
+# envelopes at print resolution -- as SVG and PNG. See ../../README.md.
+[package]
+name = "print-spike"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+plotters = { version = "0.3", default-features = false, features = ["svg_backend", "bitmap_backend", "bitmap_encoder", "line_series", "ttf"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
+
+[workspace]
