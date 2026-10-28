@@ -571,7 +571,7 @@ design document.
 
 ### User Guide Tooling / fixtures / qtcalibrate
 
-- [QtCalibrate Documentation Fixtures](../host/docs/fixtures/qtcalibrate/README.md) — qtcalibrate replay fixture naming and the commands that generate its documentation screenshots.
+- [QtCalibrate Documentation Fixtures](../host/docs/fixtures/qtcalibrate/README.md) — The qtcalibrate replay fixtures (a CompassTagAT25 and an IMUTagNandBmp581 capture), the axis check each must pass, and the commands that replay them and generate the documentation screenshots.
 
 ### User Guide Tooling / fixtures / qtmonitor
 

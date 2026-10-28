@@ -112,12 +112,12 @@ Check each target separately. The two current targets share no sensor part and
 reach the tag frame by different routes, so a capture from one says nothing
 about the other.
 
-As of 2026-10-11:
+As of 2026-10-28:
 
 | Target | Checked | Result |
 | --- | --- | --- |
 | `CompassTagAT25` | scored, [the replay fixture](../../host/docs/fixtures/qtcalibrate/) | agrees: inclination 63.65 degrees, spread 4.11 degrees |
-| `IMUTagNandBmp581` | scored, two qtcalibrate captures of 2026-10-11 remapped through the board's `IMUTAG_MAG_TAG_*` macros | agrees: inclination 63.8 and 63.5 degrees, spread 3.5 and 3.1 degrees; a capture from firmware carrying the macros is still to be scored |
+| `IMUTagNandBmp581` | scored, a capture of 2026-10-28 from firmware carrying the board's `IMUTAG_MAG_TAG_*` macros (`7cef2ba9`, 578 samples, 519 within the gate); before that, two captures of 2026-10-11 remapped through the macros by hand | agrees: inclination 63.71 degrees, spread 2.86 degrees (by hand: 63.8 and 63.5 degrees, spread 3.5 and 3.1). A capture from firmware built before the macros (`56e5e6a0`, 2026-10-06) disagrees by 33 degrees of spread and agrees once remapped. |
 | `IMUTagNand` | not scored | -- |
 
 Score a capture rather than judging by eye. qtcalibrate's orientation view

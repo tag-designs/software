@@ -158,8 +158,9 @@
    * @param {Object} props
    * @param {Object} props.sphere The state's `sphere`: `radius` (µT; the
    *     fitted field, or the engine's default before a fit), `points`
-   *     (calibrated samples, flat x, y, z in µT), `latest` (index of the
-   *     newest point, or -1 when there are none).
+   *     (the buffered samples, calibrated, flat x, y, z in µT), `newest`
+   *     ([x, y, z] of the sample last collected, as plotted, or null when
+   *     there is none).
    * @returns {Object} A Preact element.
    */
   function SphereView({ sphere }) {
@@ -282,10 +283,10 @@
       v.geometry.setAttribute("position", new THREE.Float32BufferAttribute(sphere.points, 3));
       v.geometry.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(sphere.points.length), 3));
       v.geometry.computeBoundingSphere();
-      const i = sphere.latest;
-      v.latest.visible = i >= 0;
-      if (i >= 0) {
-        v.latest.position.fromArray(sphere.points, 3 * i);
+      const newest = sphere.newest;
+      v.latest.visible = !!newest;
+      if (newest) {
+        v.latest.position.fromArray(newest);
         const p = v.latest.position.clone().normalize();
         if (p.lengthSq() > 0) v.focus.setFromUnitVectors(p, new THREE.Vector3(0, 0, -1));
       } else {

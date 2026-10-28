@@ -20,8 +20,9 @@
  *     quality       {spread, worst5, hardIron, fitError, coverage,
  *                   evenness, attitude, dip}: texts; "--" before a fit
  *     sphere        {radius: µT (the fit's, or the 50 µT default before one),
- *                   points: flat [x, y, z, ...] calibrated µT,
- *                   latest: index of the newest point or -1}
+ *                   points: flat [x, y, z, ...] the buffer, calibrated, µT,
+ *                   newest: [x, y, z] of the sample last collected, as
+ *                   plotted (calibrated once a fit exists), or null}
  *     orientation   {valid, heading: degrees as shown (declination and
  *                   battery applied), quaternion: [w, x, y, z] of the tag
  *                   model, readouts: {heading, roll, pitch, dip, field,
@@ -188,7 +189,7 @@
             accelOffset: { text: none, warn: false } },
           quality: { spread: none, worst5: none, hardIron: none, fitError: none, coverage: none, evenness: none,
             attitude: none, dip: none },
-          sphere: { radius: 50, points: [], latest: -1 },
+          sphere: { radius: 50, points: [], newest: null },
         };
       }
       const q = QUALITY[n < N * 0.75 ? 0 : 1];
@@ -204,7 +205,7 @@
           accelOffset: { text: q.accel, warn: false } },
         quality: { spread: q.spread, worst5: q.worst5, hardIron: q.hardIron, fitError: q.fitError,
           coverage: `${cells.size}/100`, evenness: q.evenness, attitude: q.attitude, dip: q.dip },
-        sphere: { radius: B, points, latest: n - 1 },
+        sphere: { radius: B, points, newest: points.slice(-3) },
       };
     }
 
