@@ -437,7 +437,7 @@ html, body {
 }
 .kit-dialog {
   min-width: 320px;
-  max-width: min(640px, calc(100vw - 40px));
+  max-width: min(760px, calc(100vw - 40px));
   background: var(--dialog-bg);
   border-radius: 10px;
   box-shadow: var(--dialog-shadow);
@@ -472,7 +472,8 @@ html, body {
   max-height: 220px;
   overflow: auto;
 }
-.kit-list-item { padding: 4px 8px; }
+/* pre-wrap keeps the runs of spaces engines use to line up columns. */
+.kit-list-item { padding: 4px 8px; white-space: pre-wrap; }
 .kit-list-item.selected { background: var(--accent); color: var(--accent-text); }
 
 /* ---- Log drawer ------------------------------------------------------- */

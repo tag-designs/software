@@ -168,7 +168,7 @@
         <span id="target-note">${t.note}</span>
       </div>
 
-      <div class="panels">
+      <div class=${"panels" + (ui.logOpen ? " compact" : "")}>
         <${Group} class="station" title="Station"><${StatusGrid} id="checks" rows=${checkRows(s.checks, s.rowButtons)}/><//>
         <${Group} class="tag" title="Tag"><${TagPanel} t=${s.tag}/><//>
       </div>

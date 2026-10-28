@@ -24,6 +24,15 @@
   min-height: 389px;
 }
 .panels .station { flex: 3; }
+
+/* With the log open the panels shrink to their contents and the log takes
+   the height they give up, so it fits the window (qtprogram grew the window
+   instead). */
+.panels.compact { flex: none; min-height: 0; }
+.panels.compact #checks { grid-auto-rows: auto; row-gap: 6px; }
+.panels.compact .kit-status-text { min-height: 0; }
+.panels.compact ~ .kit-log { min-height: 120px; }
+.panels.compact ~ .kit-log textarea { min-height: 80px; }
 .panels .tag { flex: 2; }
 
 /* The eight check rows share the panel's height, as Qt's grid does. */

@@ -444,7 +444,8 @@
    *
    * A click selects a row and a double-click chooses it at once. `current`
    * preselects a row; with none (or an invalid one) the first row is
-   * selected, so OK always yields an index.
+   * selected, so OK always yields an index. The box widens, up to 760 px,
+   * for long rows such as a base's description, so they need not wrap.
    *
    * @param {string} title
    * @param {string} label Text above the list.
@@ -462,8 +463,13 @@
     }, text));
     list.append(...rows);
     const body = el("div", {}, el("div", {}, label), list);
+    // The widest row in the page's font, plus the dialog's and the row's
+    // padding (about 90 px).
+    const ctx = document.createElement("canvas").getContext("2d");
+    ctx.font = getComputedStyle(document.body).font;
+    const widest = Math.max(0, ...items.map((t) => ctx.measureText(String(t)).width));
     const p = dialog({
-      title, body, width: 460,
+      title, body, width: Math.min(760, Math.max(460, Math.ceil(widest) + 90)),
       buttons: [
         { label: "Cancel", value: null, cancel: true },
         { label: "OK", value: "ok", default: true, enter: true },
