@@ -26,7 +26,6 @@ else()
   set(SENSORVIZ_SQLITE_INCLUDE_DIRS ${SQLite3_INCLUDE_DIRS})
   set(SENSORVIZ_SQLITE_TARGET SQLite::SQLite3)
 endif()
-set(SENSORVIZ_SQLITE_LINK_TARGET ${SENSORVIZ_SQLITE_TARGET})
 
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 
@@ -51,27 +50,29 @@ set(sensorviz_SRCS
   plot_view.cpp
   plotting.cpp
   sensor_preferences.cpp
-  sqlite_loader.cpp
   stream_actions.cpp
   transforms.cpp)
 
 #[[
   sensorviz_core: the Qt-free half of sensorViz. View state (ViewModel),
-  plot policy (buildPlotSpec) and the stream model, in standard C++ over the
-  sensordata library, so a non-Qt front end can reuse them. It deliberately
+  plot policy (buildPlotSpec), the stream model and the log catalog
+  (openLog), in standard C++ over sensordata, sqlite3 and sensoranalysis's
+  calibration reader, so a non-Qt front end can reuse them. It deliberately
   links no Qt: a Qt include here fails to compile.
 #]]
 add_library(sensorviz_core STATIC
   core/plot_spec.cpp
+  core/stream_catalog.cpp
   core/stream_meta.cpp
   core/view_model.cpp)
 target_include_directories(sensorviz_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/core")
 target_compile_features(sensorviz_core PUBLIC cxx_std_17)
-target_link_libraries(sensorviz_core PUBLIC sensordata)
+target_link_libraries(sensorviz_core PUBLIC sensordata sensoranalysis_core_json)
+target_link_libraries(sensorviz_core PRIVATE ${SENSORVIZ_SQLITE_TARGET})
+target_include_directories(sensorviz_core PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
 set_target_properties(sensorviz_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 qt_add_executable(sensorviz MACOSX_BUNDLE WIN32 ${sensorviz_SRCS})
-target_include_directories(sensorviz PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
 set_target_properties(sensorviz
     PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin
@@ -82,9 +83,10 @@ if (APPLE)
   set_target_properties(sensorviz PROPERTIES MACOSX_BUNDLE TRUE)
 endif()
 
-target_link_libraries(sensorviz PRIVATE ${SENSORVIZ_SQLITE_LINK_TARGET} host_common qcustomplot sensorviz_core sensordata sensorui Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)
+target_link_libraries(sensorviz PRIVATE host_common qcustomplot sensorviz_core sensordata sensorui Qt6::Widgets Qt6::Concurrent Qt6::PrintSupport)
 
-# Offline checks of the Qt-free core: the plot policy, buildPlotSpec(),
+# Offline checks of the Qt-free core: the log catalog, openLog(), and the
+# plot policy, buildPlotSpec(),
 # against the committed fixtures, and the ViewModel's state and preference
 # handling. They link only sensorviz_core, so they also prove it builds
 # without Qt. Plain main() programs with their own CHECK() macro, like the
@@ -95,7 +97,7 @@ option(BUILD_SENSORVIZ_CHECKS
        OFF)
 
 if(BUILD_SENSORVIZ_CHECKS)
-  foreach(check plotspec_check viewmodel_check)
+  foreach(check catalog_check plotspec_check viewmodel_check)
     add_executable(${check} test/${check}.cc)
     target_link_libraries(${check} PRIVATE sensorviz_core)
     set_target_properties(${check} PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
@@ -104,4 +106,7 @@ if(BUILD_SENSORVIZ_CHECKS)
     set_target_properties(${check} PROPERTIES
       RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
   endforeach()
+  # catalog_check edits a copy of a fixture to reach paths no fixture does.
+  target_link_libraries(catalog_check PRIVATE ${SENSORVIZ_SQLITE_TARGET})
+  target_include_directories(catalog_check PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIRS})
 endif()

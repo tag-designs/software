@@ -1,13 +1,14 @@
 ---
 type: readme
 status: current
-summary: How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
+summary: How to build and run catalog_check, plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy and view state against the committed fixtures.
 ---
 
 # sensorViz Offline Checks
 
-Two checks of `sensorviz_core`, the Qt-free half of sensorViz. Both link only
-the core (and through it `sensordata`), so they also prove the core builds
+Three checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
+only the core (and through it `sensordata` and sensoranalysis's Qt-free
+core; `catalog_check` also sqlite3), so they also prove the core builds
 without Qt. They open no window.
 
 Like the other checks in this tree they are plain `main()` programs with their
@@ -15,13 +16,34 @@ own `CHECK()` macro, built behind an option and run by hand:
 
 ```sh
 cmake -DBUILD_SENSORVIZ_CHECKS=ON <build-dir>
-cmake --build <build-dir> --target plotspec_check viewmodel_check
+cmake --build <build-dir> --target catalog_check plotspec_check viewmodel_check
+<build-dir>/Release/bin/catalog_check
 <build-dir>/Release/bin/plotspec_check
 <build-dir>/Release/bin/viewmodel_check
 ```
 
 Each prints every failing check with its line, then a count, and exits
 non-zero if any failed.
+
+## `catalog_check`
+
+Checks `openLog()` ([`stream_catalog.h`](../core/stream_catalog.h)), which
+reads a log into a `StreamCatalog`. It opens the committed fixtures, then
+edits a temporary copy of the IMUTag fixture (in the system temporary
+directory, removed afterwards) to reach what no fixture holds.
+
+| Area | Cases |
+| --- | --- |
+| Description | Tag type and profile name, `info` rows, time domain, collection start (IMUTag header; earliest epoch sample), the `compass_raw` record set's table, columns and time source |
+| Calibration | The newest row read, its epoch and constants; an empty table, text that is not JSON, and JSON with no magnetometer each leaving no calibration and the expected warning |
+| IMU corrections | Every magnetometer sample calibrated with `compasscore::applyMagnetometer()`, and every acceleration sample less the zero-g offset, compared bit for bit with the stored rows corrected independently; uncorrected when there is no calibration |
+| Events | `RESYNC*` and `RESTART_RECOVERY`, in any case, becoming the `imu_resync` marker in time order; other events ignored |
+| Failure | A missing file refused with the open error, the caller's catalog untouched |
+
+When `openLog()` replaced the Qt loader, a one-off comparison of the two over
+every log on hand (54, five tag types) found every field and every envelope
+point identical; see the [toolkit-neutral core](../design/proposals/toolkit-neutral-core.md)
+proposal.
 
 ## `plotspec_check`
 

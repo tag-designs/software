@@ -42,14 +42,11 @@ Current behavior and its known limitations are in [README.md](README.md).
 ## Larger refactors
 
 - Move what is still Qt-bound out of the front end, so a non-Qt UI needs
-  only `sensorviz_core`. View state and plot policy are already in the core
-  (`ViewModel`, `buildPlotSpec()`); still in the Qt layer are:
+  only `sensorviz_core`. View state, plot policy and the log reader are already in
+  the core (`ViewModel`, `buildPlotSpec()`, `openLog()`); still in the Qt layer are:
   - the transforms (`transforms.cpp`, `compass_transforms.cpp`): the
     magnitudes, altitude, activity filter and compass orientation, and their
     parameter dialogs; this is the transform registry below;
-  - loading (`sqlite_loader.cpp`): `SensorLog`, record sets, event markers,
-    collection start and calibration constants, still `QString`/`QMap`/
-    `QVector` types, and the calibration correction of the IMU axes;
   - the hover readout's formatting (`streamValueAt()`, `formatPlotTime()`)
     and the compass panel;
   - preference file I/O (`QJsonDocument`), which converts to and from the

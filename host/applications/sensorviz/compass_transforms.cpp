@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
 #include <optional>
@@ -56,7 +57,8 @@ bool recordSetHasColumns(const SensorRecordSet &record_set, std::initializer_lis
     // Validate the record set before reading it. Missing columns usually mean
     // a schema drift in tagcore's streams metadata.
     for (const char *column : columns) {
-        if (!record_set.columns.contains(QString::fromLatin1(column))) {
+        if (std::find(record_set.columns.begin(), record_set.columns.end(), column)
+            == record_set.columns.end()) {
             return false;
         }
     }
@@ -146,11 +148,11 @@ bool MainWindow::loadCompassSamples(QString &error)
         if (!recordSetHasColumns(
                 *stored, {"qw", "qx", "qy", "qz", "dip", "field", "acceleration"})) {
             error = tr("The %1 record set is missing one or more expected columns.")
-                        .arg(stored->label);
+                        .arg(toQString(stored->label));
             return false;
         }
         const bool read = log_.data->forEachRow(
-            stored->table.toStdString(),
+            stored->table,
             {"qw", "qx", "qy", "qz", "dip", "field", "acceleration"},
             [this](double time, const double *v) {
                 CompassDerivedSample sample;
@@ -168,7 +170,7 @@ bool MainWindow::loadCompassSamples(QString &error)
             return false;
         }
         compass_time_source_ = stored->timeSource;
-        compass_source_ = tr("stored quaternions (%1)").arg(stored->label);
+        compass_source_ = tr("stored quaternions (%1)").arg(toQString(stored->label));
         return true;
     }
 
@@ -187,9 +189,9 @@ bool MainWindow::loadCompassSamples(QString &error)
         return false;
     }
 
-    CompassProcessor processor(log_.compassCalibration);
+    CompassProcessor processor(toCompassCalibration(log_.compassCalibration));
     const bool read = log_.data->forEachRow(
-        compass->table.toStdString(),
+        compass->table,
         {"ax", "ay", "az", "mx", "my", "mz"},
         [this, &processor](double time, const double *v) {
             CompassRawSample raw;

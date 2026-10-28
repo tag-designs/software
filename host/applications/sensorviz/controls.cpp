@@ -87,7 +87,7 @@ void MainWindow::showUserGuide()
 
 void MainWindow::editGraphTitle()
 {
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         return;
     }
 
@@ -122,7 +122,7 @@ void MainWindow::editGraphTitle()
 
 void MainWindow::setGraphTitleVisible(bool visible)
 {
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         return;
     }
 
@@ -132,7 +132,7 @@ void MainWindow::setGraphTitleVisible(bool visible)
 
 void MainWindow::showCalibrationConstants()
 {
-    // Compass calibration is loaded in sqlite_loader.cpp and stored as typed
+    // Compass calibration is loaded by sensorviz::openLog() and stored as typed
     // SensorLog metadata. This dialog is read-only and shared through sensorui.
     if (!log_.hasCompassCalibration) {
         QMessageBox::information(
@@ -143,6 +143,6 @@ void MainWindow::showCalibrationConstants()
     }
 
     CompassCalibrationDialog dialog(this);
-    dialog.setConstants(log_.compassCalibration);
+    dialog.setConstants(toCompassCalibration(log_.compassCalibration));
     dialog.exec();
 }

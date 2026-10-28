@@ -402,7 +402,7 @@ design document.
 
 ### Applications / sensorviz / test
 
-- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
+- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run catalog_check, plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy and view state against the committed fixtures.
 
 ### Applications / sensorviz-rs
 

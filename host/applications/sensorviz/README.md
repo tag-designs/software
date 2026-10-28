@@ -42,7 +42,7 @@ hooks as built are described under
   loaded file name and can be hidden from the Configuration menu or the plot
   context menu's Configuration submenu.
 - Applies stored magnetometer calibration to IMUTag magnetometer axes on load
-  (`applyCalibrationToImuMagnetometer()` in `sqlite_loader.cpp`), so the axis
+  (`applyCalibrationToImuMagnetometer()` in `core/stream_catalog.cpp`), so the axis
   streams and the derived magnitude use the same corrected data.
 - Subtracts the stored accelerometer zero-g offset (mg) from IMUTag
   acceleration axes on load (`applyCalibrationToImuAccelerometer()`), and
@@ -93,19 +93,21 @@ The Qt front end is split by responsibility:
 - `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
   default graph title, stream-action creation, File Info updates, and initial
   plot refresh.
-- `sqlite_loader.*`: read-only SQLite adapter. It opens the
+- `core/stream_catalog.*` (in `sensorviz_core`, Qt-free): `openLog()`, the
+  read-only log reader, and the `StreamCatalog` it fills. It opens the
   [`sensordata`](../../libraries/sensordata/README.md) plot backend, which
   reads tagcore's mandatory `streams` metadata and every sample once; turns
   its scalar streams into `SensorStream`s and groups its `record_column`
-  streams into `SensorRecordSet`s; loads CompassTag calibration metadata and
-  applies it to the IMUTag magnetometer and acceleration axes; and records
-  collection-start metadata and events for elapsed-time IMUTag logs (see
-  [Data Model](#data-model)).
+  streams into record sets; reads the `info` table; loads the compass
+  calibration through sensoranalysis's Qt-free JSON reader and applies it to
+  the IMUTag magnetometer and acceleration axes; and records collection-start
+  metadata and events for elapsed-time IMUTag logs (see
+  [Data Model](#data-model)). `dataloading.cpp` calls it off the UI thread.
 - `sensor_preferences.*`: the per-tag preference map and its JSON load/store,
   converting to and from the core's `TagPreferences`; applying and capturing
   them is the ViewModel's.
-- `sensorstream.h`: the loaded-log model (`SensorLog`, record sets, event
-  markers) and the Qt-side names for the core stream types, with
+- `sensorstream.h`: the Qt-side names for the core types (`SensorLog` is
+  `sensorviz::StreamCatalog`, `SensorStream` is `sensorviz::StreamMeta`), with
   conversions between core and Qt strings and colors (see
   [Data Model](#data-model)).
 - `stream_actions.cpp`: the stream actions (views of the ViewModel's
@@ -170,7 +172,7 @@ Most SensorViz changes should start in one of four places:
   metadata for one-value time series, or grouped `record_column` metadata for
   multi-column data that will later feed transforms.
 - Table exists but does not load:
-  check `sqlite_loader.cpp`. The loader applies the database `streams` metadata
+  check `core/stream_catalog.cpp`. The loader applies the database `streams` metadata
   to the actual SQLite schema; missing referenced tables are schema errors.
 - File loads but menu state, default visibility, or metadata is wrong:
   check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
@@ -238,11 +240,18 @@ Transforms read their inputs from the backend in one of two ways:
   IMUTag magnitudes and the acceleration calibration offset. Nothing is read
   back from SQLite and no `double` copy is held. The magnetometer calibration
   also works from the `float`s, which is exact, because the calibration takes
-  a float `QVector3D` anyway.
+  float vectors anyway.
 - **SQLite `double`s**, through `sensordata::Log::forEachRow()`, where results
   must match the database: altitude (pressure and the pressure-sensor
   temperature), the activity filter, and the compass orientation, whose
   inputs go to sensoranalysis's `CompassProcessor` bit for bit.
+
+`SensorLog` is the core's `sensorviz::StreamCatalog`
+(`core/stream_catalog.h`), filled by `sensorviz::openLog()`: the `info` rows,
+tag type and profile name, the stored streams, record sets, event markers,
+collection start and compass calibration, all in standard types with UTF-8
+strings, and the `sensordata::Log`. The Qt front end converts strings with
+`toQString()` where it shows them.
 
 `SensorRecordSet` is a multi-column table that is loaded but not plotted
 directly: its table, time domain, column names and a stream on its time axis.
@@ -251,7 +260,9 @@ only from CompassTag's `compass_raw` record set. IMUTag orientation comes only
 from a processed log's stored `imu_compass_orientation` quaternions; sensorViz
 never pairs IMUTag `ImuAccel` with `ImuMag` itself.
 
-Compass calibration constants are stored as typed metadata on `SensorLog`.
+Compass calibration constants are stored as typed metadata on `SensorLog`, as
+the core's `compasscore::CalibrationConstants`; `toCompassCalibration()`
+wraps them, exactly, for the Qt `CompassProcessor` and calibration dialog.
 Keeping calibration beside the raw compass record set lets the compass
 transforms derive heading, pitch, roll, and related streams without reparsing
 the SQLite JSON.

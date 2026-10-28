@@ -55,9 +55,9 @@ const SensorStream *MainWindow::streamById(const QString &id) const
 
 const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
 {
-    // Look up a raw multi-column record set loaded by sqlite_loader.cpp.
+    // Look up a raw multi-column record set loaded by sensorviz::openLog().
     for (const SensorRecordSet &record_set : log_.recordSets) {
-        if (record_set.id == id) {
+        if (record_set.id == id.toStdString()) {
             return &record_set;
         }
     }
@@ -147,7 +147,7 @@ void MainWindow::syncStreamActions()
         action->setText(toQString(stream->label) + unitsSuffix(*stream));
         action->setChecked(view_.isVisible(stream->id));
     }
-    if (!log_.path.isEmpty()) {
+    if (!log_.path.empty()) {
         // Before any log the command stays visible but disabled, like the
         // rest of the startup menus.
         const bool any = !stream_actions_.isEmpty();

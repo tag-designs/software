@@ -58,14 +58,15 @@ struct MainWindowOptions
 //   pane, status bar, and cursor items. If a widget is missing, a signal is not
 //   connected, or a menu action needs to exist at startup, start there.
 //
-// - dataloading.cpp handles the "File -> Load" workflow. It asks the SQLite
-//   loader for a SensorLog, resets the ViewModel for its streams, updates the
+// - dataloading.cpp handles the "File -> Load" workflow. It asks
+//   sensorviz::openLog() for a SensorLog, resets the ViewModel for its streams, updates the
 //   File Info tab, and refreshes the plot. If a file opens but the app state is wrong after loading, start there.
 //
-// - sqlite_loader.cpp reads tagcore's streams metadata table from the on-disk
-//   SQLite schema. It maps scalar stream rows into SensorStream objects and
-//   grouped record-column rows into SensorRecordSet objects. If a table exists
-//   but does not load correctly, start there.
+// - core/stream_catalog.cpp (sensorviz::openLog(), Qt-free) reads tagcore's
+//   streams metadata table from the on-disk SQLite schema. It maps scalar
+//   stream rows into SensorStream objects and grouped record-column rows into
+//   SensorRecordSet objects. If a table exists but does not load correctly,
+//   start there.
 //
 // - sensor_preferences.cpp owns the per-tag preference map and its JSON
 //   load/store; the ViewModel applies and captures them.

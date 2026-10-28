@@ -131,7 +131,7 @@ void MainWindow::updateTransformActions()
     // Centralize all data-dependent action visibility. loadLog(),
     // addOrReplaceStream(), and removeStream() call this so menus never expose
     // transforms whose inputs are missing.
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         sea_level_pressure_action_->setVisible(false);
         sea_level_pressure_action_->setEnabled(false);
         updateSeaLevelPressureActionText(sea_level_pressure_action_, view_.seaLevelPressure());

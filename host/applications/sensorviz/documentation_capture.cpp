@@ -171,7 +171,7 @@ void MainWindow::runDocumentationStartup()
                 tr("Could not load preferences %1: %2")
                     .arg(options_.loadPreferencesPath, error));
             ok = false;
-        } else if (!log_.path.isEmpty()) {
+        } else if (!log_.path.empty()) {
             applyPreferencesForCurrentTag();
             qInfo().noquote() << "Loaded sensorViz preferences from"
                               << options_.loadPreferencesPath;
@@ -330,7 +330,7 @@ bool MainWindow::captureDocumentationScreenshot(const QString &name)
         return ok;
     }
 
-    if (normalized != QStringLiteral("startup") && log_.path.isEmpty()) {
+    if (normalized != QStringLiteral("startup") && log_.path.empty()) {
         reportDocumentationError(
             tr("Screenshot %1 requires --load-log unless it is the startup view.").arg(name));
         return false;

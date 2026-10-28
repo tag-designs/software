@@ -8,7 +8,8 @@ summary: The path for sensorviz, the last Qt-only host application, to a Rust/Ta
 
 **Status:** accepted 2026-10-28. Step 2, the plot spike, is done
 ([results](../../../sensorviz-rs/README.md#what-it-showed-2026-10-28)): uPlot
-for the plot, jsPDF for printing. Step 1 is next.
+for the plot, jsPDF for printing. Step 1 is under way: phase B of the
+toolkit-neutral core, the log reader, is built.
 
 sensorviz is the last host application with no non-Qt version: Tag
 Programmer, Tag Monitor and Tag Calibrator each have a Rust/Tauri port on the

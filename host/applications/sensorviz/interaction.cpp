@@ -114,7 +114,7 @@ void MainWindow::updateTimeAxisForLog()
     // PlotView switches between the elapsed and epoch time axes from the
     // spec; only the UTC offset command depends on it here.
     utc_offset_action_->setEnabled(
-        log_.timeDomain != SensorTimeDomain::ElapsedSeconds && !log_.path.isEmpty());
+        log_.timeDomain != SensorTimeDomain::ElapsedSeconds && !log_.path.empty());
 }
 
 QMenu *MainWindow::createPlotContextMenu(QWidget *parent)

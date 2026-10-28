@@ -9,7 +9,10 @@ summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel,
 **Status:** phase A is built (`13516ce2`): `sensorviz_core` with a Qt-free
 `ViewModel`, `PlotSpec`/`buildPlotSpec()` and `StreamMeta`, and menus that show
 the state instead of holding it. [Phase A as built](#phase-a-as-built) records
-where it differs from the sketch below. Phases B-F are not built.
+where it differs from the sketch below. Phase B is built: `openLog()` and
+`StreamCatalog` in the core, the Qt loader removed;
+[phase B as built](#phase-b-as-built) records its differences. Phases C-F are
+not built.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -597,6 +600,51 @@ or folded into a later phase as follows.
 `TagPreferences` is in the core, but the preference file I/O is still
 Qt's `QJsonDocument` in `sensor_preferences.cpp`, which is phase C. The
 sensorviz TODO lists everything still Qt-bound.
+
+### Phase B as built
+
+`sensorviz::openLog()` and `StreamCatalog` (`core/stream_catalog.h`) replaced
+`sqlite_loader.cpp`; `SensorLog`, `SensorRecordSet` and `SensorEventMarker`
+are now aliases of the core's `StreamCatalog`, `RecordSet` and `EventMarker`,
+and the Qt app converts strings where it shows them. Calibration is read by
+`compasscore::calibrationFromJson()` (`sensoranalysis_core_json`) and the
+IMUTag magnetometer corrected by `compasscore::applyMagnetometer()`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| A plain struct with the old `SensorLog` field names, holding the `std::shared_ptr<sensordata::Log>` | A class with accessors; `openLog()` returns `{unique_ptr<Log>, StreamCatalog}` | Kept for now: the Qt app copies the result between the loader thread and the window, and the field names kept the change to the call sites mechanical. Phase F's `Session` owns both and can hide the fields |
+| `openLog(path, catalog, error)` returning `bool` | `optional<OpenedLog>` with a progress callback | Progress is not wired in the Qt app today; add it with `Session` |
+| `ViewModel` still holds the stream list, stored and derived | The catalog owns streams | Moves with phase D: the list changes only when transforms add or remove derived streams, which the registry will own |
+| No `Origin`/`producer` on streams | `StreamEntry::origin`, `producer` | Phase D, with the registry |
+
+**Checked:**
+
+- **Old and new loaders on every log.** A one-off program ran the old Qt
+  loader and `openLog()` side by side over every log on hand: 54 files, five
+  tag types (BitTag LE, CompassTag, IMUTag, PresTag and UIUCTag), 31 of them
+  with calibration tables, and three that both refused. It compared every
+  catalog field, every stream's metadata, every stream's envelope at 1,000
+  columns and at one column per sample (2,605,928 points, bit for bit), and
+  exact read-back at 201 times per stream. Everything was identical.
+- **Capture suites.** The startup, `imutag`, `compasstag` and `menus` suites
+  (13 images, including both File Info tabs) were pixel-identical before and
+  after.
+- **Core checks.** `plotspec_check` and `viewmodel_check` were unchanged.
+  `catalog_check` is new; mutating the accelerometer correction or the resync
+  match makes it fail.
+
+**Behaviour differences, none reachable from a log tagcore writes:**
+
+- Text that is not JSON now gives the warning "Compass calibration constants
+  are not a valid JSON object: ...", with protobuf's message, instead of Qt's
+  wording.
+- A calibration whose `magnetometer` value is an empty object `{}` loads as
+  the identity calibration; Qt rejected it as missing.
+- Tag-type, table and event names are matched ignoring ASCII case, not
+  Unicode case.
+- `info` rows are ordered by UTF-8 bytes, not UTF-16 code units. The two
+  orders differ only between characters above U+FFFF and those from U+E000
+  to U+FFFF.
 
 ## The compass convention needs a decision
 

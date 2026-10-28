@@ -199,10 +199,10 @@ QString MainWindow::preferenceKey() const
 {
     // Prefer the concrete tag type recorded in the log. profileName is a
     // fallback for older or hand-built logs that omit the raw tag type.
-    if (!log_.tagType.isEmpty()) {
-        return log_.tagType;
+    if (!log_.tagType.empty()) {
+        return toQString(log_.tagType);
     }
-    return log_.profileName;
+    return toQString(log_.profileName);
 }
 
 void MainWindow::rememberCurrentPreferences()
