@@ -178,5 +178,6 @@ a menu opens.
   (always :00) in the browser's own format, marked UTC.
 - Download Data... needs the `sqlitelog` feature (the C++ SQLite writer
   through `taglogwriter`); without it the download refuses with a message.
-- There is no fixture mode or screenshot capture; the browser mock serves
-  for designing the page.
+- There is no fixture mode. The browser mock serves for designing the
+  page, and `ui/screenshots.sh` captures the user manual's pictures from
+  it.

@@ -1,7 +1,7 @@
 ---
 type: decision
 status: accepted
-summary: The host web front ends render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined.
+summary: The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
 ---
 
 # 0038. Host: the UI kit renders with Preact
@@ -36,7 +36,12 @@ with Pico CSS.
   rows and the log drawer. `Kit.dialog` also accepts a Preact body.
 - **Keep the kit's look.** `kit.css` stays the style of every host web page,
   matching the Qt applications on macOS, which ship alongside them.
-- **Port one app at a time, held to the old page.** Tag Programmer first.
+- **Port both pages, each held to the old one.** Tag Programmer, then Tag
+  Monitor, each checked against its own page before the change.
+- **The manual's pictures of the new apps come from their mocks.** Each
+  app's `ui/screenshots.sh` puts the page in a mock scenario or preview
+  dialog and captures it with headless Chrome (`host/ui-kit/screenshot.sh`),
+  so the pictures can be retaken after any change without a tag.
 
 ## Alternatives considered
 
@@ -60,12 +65,16 @@ with Pico CSS.
   scenarios in light and dark, the log drawer and the Program dialog) are
   identical before and after the port. The one region that differed, the
   indeterminate progress animation, also differs between repeated captures
-  of one build.
+  of one build. All 34 of Tag Monitor's (8 scenarios on two tabs, and the
+  Error Log, in light and dark) are identical.
 - **Same behaviour.** A scripted run through Program (with the label
   conflict), Retest, Sync, Erase, Stop, both popups, the firmware file
   picker, the log and the Station menu gives the same commands and dialogs
   against the old page and the new; only the log level popup's element id
-  changed.
+  changed. Tag Monitor's run (every kind of form control, a number field
+  keeping its typed text and focus across a new state, approve, start and
+  stop, the download and erase sheets, the popup menu, Cmd+S, every menu and
+  every prompt) gives an identical transcript.
 - **Size.** `preact-htm.js` is about 17 KB. Tag Programmer's `index.html`
   shrank to the window chrome, and `app.js` reads as the window's layout.
 - **In the app.** The user ran the rebuilt Tag Programmer and found it
@@ -73,8 +82,12 @@ with Pico CSS.
 
 ## Consequences
 
-- Tag Monitor's page is ported next; its configuration form is expected to
-  gain most.
+- Tag Monitor's form no longer needs its own rebuild-or-update logic:
+  controls are keyed by id, and a number or date field is written only
+  while it does not have focus.
+- A mock's samples now appear in the user manual, so they are kept close to
+  what the engine sends (Tag Monitor's mock is a BitTag, with the engine's
+  BITTAG form and base descriptions).
 - Preact and htm are third-party code in the shipped apps, listed in
   `LICENSES/host/`. Updating them is a documented manual step
   ([kit README](../../host/ui-kit/README.md#updating-preact-and-htm)).

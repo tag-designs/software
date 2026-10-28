@@ -118,10 +118,11 @@ qtmonitor's oracles.
 
 | File | Holds |
 | --- | --- |
-| `index.html` | The window: menu bar, tabs (Configuration, Tag Info, Error Log), status strip, pages |
-| `app.js` | Draws the state; builds the menus and popup menu from the `menus` query; the generic form renderer; shows prompts and sends answers; the progress sheets; keyboard shortcuts |
-| `app.css` | Layout only; the look is the [UI kit](../../../ui-kit/README.md)'s |
+| `index.html` | The window frame: the menu bar and the root `app.js` renders into |
+| `app.js` | Renders the state with Preact and the [UI kit](../../../ui-kit/README.md)'s components: tabs (Configuration, Tag Info, Error Log), status strip, pages, and the generic form (`Panel`, `Controls`, `Radios`, `Field`); builds the menus and popup menu from the `menus` query; shows prompts and sends answers; the progress sheets; keyboard shortcuts |
+| `app.css` | Layout only; the look is the UI kit's |
 | `mock-engine.js` | A stand-in engine for designing in a browser, with scenarios (`?scenario=`) |
+| `screenshots.sh` | The user manual's `tagmonitor` pictures, from the page and the mock |
 
 ### The rest
 

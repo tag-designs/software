@@ -95,11 +95,13 @@
    * holding the children.
    * @param {Object} props
    * @param {string} props.title The group's title.
+   * @param {string} [props.tooltip] The whole group's tooltip (`title`
+   *     names the group, so it cannot be passed through).
    * @param {string} [props.titleTooltip] The title's own tooltip.
    * @returns {Object} A Preact element.
    */
-  function Group({ title, titleTooltip, class: cls, children, ...rest }) {
-    return html`<div class=${cx("kit-group", cls)} ...${rest}>
+  function Group({ title, tooltip, titleTooltip, class: cls, children, ...rest }) {
+    return html`<div class=${cx("kit-group", cls)} title=${tooltip} ...${rest}>
       <div class="kit-group-title" title=${titleTooltip}>${title}</div>
       <div class="kit-panel">${children}</div>
     </div>`;

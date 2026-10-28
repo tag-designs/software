@@ -125,8 +125,8 @@ directory's `README.md`.
    `ConfigForm::new`, at the same index as qtmonitor's `PanelId`.
 
 The page needs no change unless the panel needs a kind of control the
-renderer does not draw (radio, check, number, datetime); then add it to
-`fieldNode`/`updateControl` in `ui/app.js` and to the form section of the
+renderer does not draw (radio, check, number, datetime); then add it to the
+`Field` component in `ui/app.js` and to the form section of the
 [contract](ui-engine-contract.md).
 
 ## 5. Probe cases and goldens

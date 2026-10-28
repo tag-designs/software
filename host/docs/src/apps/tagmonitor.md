@@ -24,19 +24,32 @@ a base answers only one program.
 ## What Is Different
 
 - **The Configuration tab comes first**, and the window opens on it. The
-  status strip under the tabs shows the attached tag's type, state, clock,
-  voltage and self-test result whichever tab is open; the **Tag Info** tab
-  (called Tag in Tag Monitor) has the rest: board, firmware, UUID and log
-  counts.
+    status strip under the tabs shows the attached tag's type, state, clock,
+    voltage and self-test result whichever tab is open; the **Tag Info** tab
+    (called Tag in Tag Monitor) has the rest: board, firmware, UUID and log
+    counts.
+
+    ![tagmonitor on the Configuration tab, with a BitTag attached](../images/tagmonitor-configuration.png)
+
+    ![The Tag Info tab of a finished BitTag](../images/tagmonitor-tag-info.png)
+
 - **Choosing a base.** With several bases plugged in, the list names each
-  base the way it identifies itself (its board and firmware) with its
-  ST-LINK serial, not only its USB address, so the base with your tag is
-  easy to pick. A base with no tag on it cannot be attached to; the Error Log
-  then asks whether a tag is connected to that base.
+    base the way it identifies itself (its board and firmware) with its
+    ST-LINK serial, not only its USB address, so the base with your tag is
+    easy to pick. A base with no tag on it cannot be attached to; the Error Log
+    then asks whether a tag is connected to that base.
+
+    ![Choosing between a current base and an older one](../images/tagmonitor-choose-base.png)
+
+    A base with older firmware does not identify itself, so only its USB
+    address and ST-LINK serial are listed.
+
 - **Dates and times** on the Configuration tab are shown in your computer's
-  own date format, marked **UTC**. As in Tag Monitor they are whole hours in
-  UTC; the minutes always read `:00`.
-- **No fake-tag or screenshot modes.** The documentation screenshots come
-  from Tag Monitor.
+    own date format, marked **UTC**. As in Tag Monitor they are whole hours in
+    UTC; the minutes always read `:00`.
+
+- **No fake-tag mode.** The pictures on this page are of `tagmonitor`'s own
+    window, drawn against a stand-in for a tag; the other Tag Monitor pages
+    show Tag Monitor's.
 
 Report anything else that behaves differently: the two are meant to agree.

@@ -25,6 +25,7 @@ CSS or a classic script, vendored or written by hand
 | `preact-htm.js` | Preact 10.29.8, its hooks and htm 3.1.1, vendored (see [Updating Preact and htm](#updating-preact-and-htm)) |
 | `kit.js` | Defines the global `Kit`: the engine connection, the menu bar, dialogs, file pickers, URL and folder opening |
 | `kit-components.js` | Adds `Kit.html`, `Kit.render`, `Kit.hooks`, the components in `Kit.ui` and `Kit.logModel` |
+| `screenshot.sh` | Captures a page, against its mock, as a PNG (see [Checking a page without the app](#checking-a-page-without-the-app)) |
 
 ## Using it in a page
 
@@ -77,7 +78,7 @@ changes.
 | `Button({kind, small, onClick})` | `kit-button`; `kind` is `"default"` or `"destructive"` |
 | `Disclosure({pressed, onClick})` | `kit-toolbutton` with its arrow, such as "Log" |
 | `Select({options, value, onChange})` | `kit-select`; `options` are strings or `{value, text, disabled}`. It shows `value` after every render, even when the user picked an entry the page refused; `null` shows none |
-| `Group({title, titleTooltip})` | `kit-group`: the title above a `kit-panel` holding the children |
+| `Group({title, tooltip, titleTooltip})` | `kit-group`: the title above a `kit-panel` holding the children; `tooltip` is the whole group's |
 | `Row({label, value, single})` | One `kit-form` row: the label cell and a selectable value cell; children replace `value` |
 | `Progress({fraction})` | `kit-progress`, `fraction` 0 to 1, or null for busy |
 | `StatusGrid({rows})` | `kit-status-grid`; each row `{level, name, text, buttons}` |
@@ -90,9 +91,11 @@ registered before the first render; `LogPane` writes the text area directly,
 so a long log costs nothing per render.
 
 `Kit.dialog` takes a Preact element as its `body` as well as a Node. It is
-rendered into the dialog and unmounted when the dialog closes. Tag
-Programmer's Program dialog is an example: a component with the label field
-and the notes that follow it.
+rendered into the dialog and unmounted when the dialog closes, and
+`.update(body)` on the returned promise renders a new one into the open
+dialog. Tag Programmer's Program dialog is a component with the label field
+and the notes that follow it; Tag Monitor's erase and download sheets are
+updated from each state.
 
 ## The engine connection
 
@@ -161,16 +164,20 @@ comes for free.
 
 ## Checking a page without the app
 
-Open the page as a file, with headless Chrome for a screenshot:
+Open the page as a file in a browser; it runs against its mock engine. The
+mock's scenarios and the page's preview parameters put it in any state
+without the app or a tag, and `screenshot.sh` captures one as a PNG with
+headless Chrome:
 
 ```sh
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
-  --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=1500 \
-  --window-size=900,697 --screenshot=out.png "file://$PWD/index.html?theme=dark"
+host/ui-kit/screenshot.sh host/applications/tagmonitor-rs/ui/index.html out.png \
+  "scenario=finished&page=tag" 1100 640
 ```
 
-`--virtual-time-budget` lets the page's start-up promises run before the
-capture.
+Each app's `ui/screenshots.sh` lists the user manual's pictures this way
+and writes them to `host/docs/src/images`. Rerun it after changing the page
+or the mock, and look at the pictures before committing them: the mock's
+samples are hand-written and can drift from what the engine sends.
 
 ## Shipping the kit with an app
 

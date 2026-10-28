@@ -6,7 +6,7 @@
  * in the app, where Kit.createEngine finds Tauri first.
  *
  * ?scenario= station (default; the qtprogram screenshot), pending, fail,
- * running, session, progress, powercycle, finished, prompt-auto,
+ * running, session, programming, progress, powercycle, finished, prompt-auto,
  * prompt-record, prompt-base, alert. A switcher in the corner changes it
  * live unless ?nopanel is given.
  *
@@ -154,6 +154,12 @@
         s.actions = busyActions("Programming is in progress");
         s.firmware.enabled = false; s.tagType.enabled = false; s.tag.syncEnabled = false;
         break;
+      case "programming":
+        s.session = { stepText: "Programming BitTag-017: Writing flash", progress: { done: 16, total: 40 },
+          retryVisible: false, cancelVisible: false, cancelText: "Cancel" };
+        s.actions = busyActions("Programming is in progress");
+        s.firmware.enabled = false; s.tagType.enabled = false; s.tag.syncEnabled = false;
+        break;
       case "progress":
         check("Tag state").text = "FINISHED";
         s.session = { stepText: "Erasing the tag's log", progress: { done: 17, total: 40 },
@@ -186,7 +192,7 @@
   }
 
   /** The scenario names, in the switcher's order. */
-  const SCENARIOS = ["station", "pending", "fail", "running", "finished", "session", "progress", "powercycle",
+  const SCENARIOS = ["station", "pending", "fail", "running", "finished", "session", "programming", "progress", "powercycle",
     "prompt-auto", "prompt-record", "prompt-base", "alert"];
 
   /**

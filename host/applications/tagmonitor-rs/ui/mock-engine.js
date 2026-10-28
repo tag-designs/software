@@ -65,10 +65,11 @@
     newConfigurationTypes: ["BITTAG", "PRESTAG", "COMPASSTAG", "IMUTAG", "UIUCTAG"],
   };
 
+  /** The attached tag's identity: a BitTag, as its firmware reports it. */
   const INFO = {
-    tagType: "COMPASSTAG", board: "CompassTagv1", firmware: "CompassTagv1, Firmware version 1",
-    gitHash: "acd3167", gitUrl: "git@github.com:tag-designs/software.git", uuid: "203633324B425006003E005D",
-    flash: "256KB", flashExt: "4MB", buildDate: "Aug 26 2026 : 13:43:36", sourcePath: "/embedded/tags/CompassTag",
+    tagType: "BITTAG", board: "BitTag V6", firmware: "BitTag V6, Firmware version 2",
+    gitHash: "169cda2", gitUrl: "git@github.com:tag-designs/software.git", uuid: "2035374D303150190059002F",
+    flash: "256KB", flashExt: "0MB", buildDate: "2026-10-15T14:02:11Z", sourcePath: "/embedded/tags/BitTag",
   };
 
   /**
@@ -118,17 +119,17 @@
         modified: sim.modified,
         attaching: false,
         strip: {
-          attached: a, type: a ? "COMPASSTAG" : "", typeTooltip: "Attached tag type; board UUID " + INFO.uuid,
+          attached: a, type: a ? "BITTAG" : "", typeTooltip: "Attached tag type; board UUID " + INFO.uuid,
           state: a ? item(sim.state) : item(""), clock: a ? item("+0.00 s") : item(""),
-          voltage: a ? "2.84 V" : "", test: a ? item(sim.test, sim.test !== "ALL_PASSED" && sim.test !== "Running") : item(""),
+          voltage: a ? "2.51 V" : "", test: a ? item(sim.test, sim.test !== "ALL_PASSED" && sim.test !== "Running") : item(""),
           approved: sim.approved, approvalEnabled: sim.document,
         },
-        tag: { enabled: a, info: INFO, internalCount: a ? "128" : "", externalCount: a ? "512" : null,
+        tag: { enabled: a, info: INFO, internalCount: a ? "128" : "", externalCount: null,
           downloadEnabled: actions().download.enabled },
         config: { document: sim.document, name, tagType: "BITTAG", modified: sim.modified,
           panels: sim.document ? sim.form : [] },
         actions: actions(),
-        recent: [{ path: "/Users/me/configs/compass-1min.json", name: "compass-1min.json" }],
+        recent: [{ path: "/Users/me/configs/bittag-1min.json", name: "bittag-1min.json" }],
         erase: sim.erase, download: sim.download, prompt: sim.prompt,
       };
     }
@@ -166,7 +167,8 @@
       if (name === "prompt-base") {
         sim.attached = false;
         ask({ kind: "chooseBase", title: "Available Bases", label: "Please select a base",
-          items: ["020:004    0x483:0x3748", "020:007    0x483:0x374b"] });
+          items: ["020:004    0x483:0x3748    BITTAG_BASE_V7 fw a473918  (ST-LINK 8009001A5556431520303537)",
+            "020:007    0x483:0x374b  (ST-LINK 066DFF545150898367194021)"] });
       }
       if (name === "alert") ask({ kind: "alert", title: "Warning", text: "No Tag Bases Found", informative: "", detail: "", style: "warning" });
       publish();
@@ -183,11 +185,11 @@
           else sim.state = "RUNNING";
           break;
         case "stop": sim.state = "FINISHED"; break;
-        case "test": sim.test = "Running"; setTimeout(() => { sim.test = "ALL_PASSED"; log("INFO", "Self-test on COMPASSTAG finished: ALL_PASSED"); publish(); }, 1200); break;
+        case "test": sim.test = "Running"; setTimeout(() => { sim.test = "ALL_PASSED"; log("INFO", "Self-test on BITTAG finished: ALL_PASSED"); publish(); }, 1200); break;
         case "erase": ask({ kind: "confirmErase", title: "Reset Tag", text: "Erase tag state and data ?" }); break;
         case "download": ask({ kind: "saveFile", title: "Save File", suggested: "/Users/me/untitled.db3", filters: [{ name: "SQLite database", extensions: ["db3"] }] }); break;
         case "open": ask({ kind: "openFile", title: "Open Configuration", start: "/Users/me", filters: [{ name: "Configuration", extensions: ["json"] }] }); break;
-        case "save": ask({ kind: "saveFile", title: "Save Configuration", suggested: "/Users/me/compasstag-config.json", filters: [{ name: "Configuration", extensions: ["json"] }] }); break;
+        case "save": ask({ kind: "saveFile", title: "Save Configuration", suggested: "/Users/me/bittag-config.json", filters: [{ name: "Configuration", extensions: ["json"] }] }); break;
         case "reset": sim.modified = true; sim.approved = false; break;
         case "new_config": Object.assign(sim, { document: true, modified: false, approved: false }); break;
         case "set_approved": sim.approved = !!args.on; break;

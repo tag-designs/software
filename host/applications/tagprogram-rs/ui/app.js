@@ -8,7 +8,9 @@
  * In a plain browser the engine is MockEngine (mock-engine.js). Preview
  * parameters: ?scenario=<name> picks a canned state (see mock-engine.js),
  * ?nopanel hides the scenario switcher, ?theme=dark|light forces a theme,
- * ?dialog=program[&label=...] opens the Program dialog, ?log opens the log.
+ * ?dialog=program[&label=...] opens the Program dialog, ?dialog=conflict
+ * [&label=...] the question about a label already recorded, ?log opens the
+ * log. ui/screenshots.sh uses them for the user manual's pictures.
  *
  * Flow: the engine sends its whole view state (event `state`) after every
  * change, and draw() renders the window from it with Preact and the kit's
@@ -442,5 +444,6 @@
     await send("set_log_level", { level: ui.level });
     await send("start");
     if (params.get("dialog") === "program") programDialog(params.get("label") || "");
+    if (params.get("dialog") === "conflict") labelAccepted("Program Tag", params.get("label") || "BitTag-017");
   });
 })();

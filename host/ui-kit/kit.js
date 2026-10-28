@@ -284,6 +284,9 @@
    * Escape. `body` is a Node, or a Preact element (from `Kit.html`), which
    * is rendered into the dialog and unmounted when it closes, so its
    * effects' clean-ups run. `title` is the dialog's window title.
+   * `.update(body)` on the returned promise renders a new Preact body into
+   * the open dialog (a progress sheet following the state); it does nothing
+   * for a Node body.
    * Resolves with the chosen button's `value`. The returned promise has
    * `.dialog` (the element) and `.close(value)`.
    *
@@ -302,7 +305,8 @@
    * @param {number} [options.width] Width in CSS pixels.
    * @param {Function} [options.onOpen] Called with the dialog element once
    *     it is in the document.
-   * @returns {Promise<*>} With `.dialog`, `.close(value)` and `.buttons`.
+   * @returns {Promise<*>} With `.dialog`, `.close(value)`, `.update(body)`
+   *     and `.buttons`.
    */
   function dialog({ title, body, buttons, width, onOpen }) {
     let finish;
@@ -353,6 +357,7 @@
     if (focus) setTimeout(() => focus.focus(), 0);
     promise.dialog = box;
     promise.close = done;
+    promise.update = (next) => { if (vnode) window.preact.render(next, content); };
     promise.buttons = buttons;
     return promise;
   }
