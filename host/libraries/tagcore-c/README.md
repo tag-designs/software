@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+summary: tagcore_c, a C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
 ---
 
 # tagcore_c (C interface)
@@ -17,8 +17,13 @@ how the libraries are built and what to keep in step are in
 what else could go behind it, is in the
 [proposal](../tagcore/design/proposals/rust-over-cpp-libraries.md).
 
-**Experimental:** it is built only with `-DBUILD_TAGCORE_C=ON`, and it is not
-installed or packaged.
+It is built with `-DBUILD_TAGCORE_C=ON`, and whenever the Rust applications
+are (`BUILD_RUST_APPS`): Tag Monitor in Rust
+([`tagmonitor-rs`](../../applications/tagmonitor-rs/README.md)) writes its downloads
+through it. The packages carry it inside the Tag Monitor executable on macOS
+(the static archive) and as a shared library beside the program on Linux
+(`tag_tools/lib`) and Windows (`tag_tools/lib`, with the program). It is
+installed for no other program.
 
 ## Builds
 

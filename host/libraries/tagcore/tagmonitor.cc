@@ -61,6 +61,10 @@ extern "C"
 #define SCB_AFSR 0xE000ED3CU
 
 #define STM32L4_DBGMCU_IDCODE 0xE0042000U
+// DBGMCU_CR (RM0394) and its DBG_SLEEP bit, which keeps HCLK running in Sleep
+// mode so debug accesses are not held off while the core idles.
+#define STM32L4_DBGMCU_CR 0xE0042004U
+#define STM32L4_DBGMCU_CR_DBG_SLEEP (1U << 0)
 #define STM32L4_RCC_CSR 0x40021094U
 
 #define STM32U3_DBGMCU_IDCODE 0xE0044000U
@@ -888,8 +892,14 @@ bool TagMonitor::AttachL4()
 
     maxpacket = tmp;
 
+    // A real monitor's buffer is a few KB, so a size past the host's buffer
+    // means the reads are not coming from a tag: most often there is no tag
+    // on this base.
     if (maxpacket > sizeof(rpcbuf)) {
-      log_error("RPC buffer is too small");
+      log_error("RPC buffer is too small: the tag reports a %u-byte monitor buffer, more "
+                "than the host's %zu; implausible, so the reads are likely junk. Is a tag "
+                "connected to this base?",
+                static_cast<unsigned>(maxpacket), sizeof(rpcbuf));
       LinkAdapt::Detach();
       break;
     }
@@ -900,6 +910,22 @@ bool TagMonitor::AttachL4()
       log_error("Monitor Start failed");
       LinkAdapt::Detach();
       break;
+    }
+
+    // Keep debug accesses served while the tag idles. With DBGMCU_CR.DBG_SLEEP
+    // clear, Sleep mode (the tag's RTOS idle WFI) stops HCLK, so each wait in
+    // the tag (an I2C transfer, a test delay, a flash poll) holds every debug
+    // access off past the base's SWD WAIT retries, which return 0x81 in bursts
+    // (embedded/bases/TODO.md, 2026-10-27). Set only now: until the session is
+    // open the tag's Stop path clears the register, and it clears it again
+    // when the session ends, so resting current is unaffected. A failure only
+    // makes the session slower to answer while the tag waits.
+    uint32_t dbgmcu = 0;
+    const bool read_ok = ReadDebug32(STM32L4_DBGMCU_CR, &dbgmcu);
+    if (!read_ok || !(dbgmcu & STM32L4_DBGMCU_CR_DBG_SLEEP))
+    {
+      if (!WriteDebug32(STM32L4_DBGMCU_CR, dbgmcu | STM32L4_DBGMCU_CR_DBG_SLEEP))
+        log_warn("could not set DBGMCU_CR.DBG_SLEEP; debug accesses wait while the tag idles");
     }
 
     return true;

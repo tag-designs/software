@@ -24,6 +24,9 @@
 #include "board.h"
 #include "dp_swd.h"
 
+extern SerialUSBDriver SDU1;
+extern const SerialUSBConfig serusbcfg;
+
 #define RCC_APB1ENR_CRSN ((uint32_t)0x08000000U)
 
 #define ADC_SMPR_SMP_1P5 0U   /**< @brief 14 cycles conversion time   */
@@ -174,6 +177,9 @@ int main(void)
   // Initialize system
 
   chSysInit();
+
+  sduObjectInit(&SDU1);
+  sduStart(&SDU1, &serusbcfg);
 
   // Activate USB driver
 

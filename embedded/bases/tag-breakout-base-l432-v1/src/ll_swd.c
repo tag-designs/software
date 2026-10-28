@@ -18,7 +18,8 @@
 // Rewrite to use bitwidths compatible with SPI
 // specifically, arrays of bytes, 5-bit words, and 9-bit words
 
-#define UNDEF USEEPRINTF
+// EPRINTF follows the build: a base defines USEEPRINTF (and where to send it)
+// in its project.mk; others compile it out.
 #include <stdint.h>
 #include <dp_swd.h>
 #include <debug_cm.h>
@@ -329,18 +330,39 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   return ack;
 }
 
+// The longest run of WAITs one access saw since the session opened: how close
+// the target came to outlasting MAX_SWD_RETRY. Reported when the session
+// closes.
+static uint32_t swd_max_waits = 0;
+
 static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
 {
   uint32_t ack = 0;
+  uint32_t waits = 0;
+  systime_t start = chVTGetSystemTimeX();
   // try transaction  (always at least once)
   do
   {
     ack = SWD_TransactionBB(req, data);
+    if (ack == SW_ACK_WAIT)
+      waits++;
     if ((ack == SW_ACK_WAIT) && retry--)
       continue;
     else
       break;
   } while (retry);
+  if (waits > swd_max_waits)
+    swd_max_waits = waits;
+  // How long the target held the bus off, for a run longer than the default
+  // budget (25): the measurement a time-bounded retry would be sized from.
+  if (waits > 25)
+    EPRINTF("swd wait run x%u, %u ms, ack %u req %02x\r\n", (unsigned)waits,
+            (unsigned)TIME_I2MS(chVTTimeElapsedSinceX(start)), (unsigned)ack,
+            (unsigned)req);
+  // A WAIT that outlasts every retry is the first suspect for 0x81 bursts
+  // (embedded/bases/TODO.md); say how long the target held the bus off.
+  if (ack == SW_ACK_WAIT && waits > 1)
+    EPRINTF("swd wait x%u req %02x\r\n", (unsigned)waits, (unsigned)req);
   return ack; // errors handled up call chain
 }
 
@@ -402,7 +424,7 @@ static void SWD_Disconnect(void)
     int ack = errorClear(SWD_Transaction(reg, op, MAX_SWD_RETRY),__LINE__); \
     if (ack)                                                       \
     {                                                              \
-      EPRINTF("trans fail %d reg %x op %x line %d\r\n", ack, reg, op,__LINE__);     \
+      EPRINTF("trans fail %d req %x line %d\r\n", ack, reg, __LINE__);         \
       return ack;                                                  \
     }                                                              \
   } while (0)
@@ -423,15 +445,21 @@ static uint32_t errorClear(uint32_t ack, int line)
 
   if (ack == 7)
   { // nothing came back !
+    EPRINTF("no ack, line reset (line %d)\r\n", line);
     SWD_LineReset(&tmp);
     return ack;
   }
 
-  EPRINTF("Error clear %d line %d\r\n", ack,line);
   if (SW_ACK_OK != SWD_Transaction(SW_CTRLSTAT_RD, &tmp, 0))
   {
-    EPRINTF("Error clear line reset line %d\r\n",line);
+    EPRINTF("Error clear %d line %d: ctrl/stat unreadable, line reset\r\n", ack, line);
     SWD_LineReset(&tmp);
+  }
+  else
+  {
+    // CTRL/STAT's sticky bits say what the access port saw: STICKYERR (bit 5,
+    // a bus fault), WDATAERR (7), STICKYORUN (1), READOK (6).
+    EPRINTF("Error clear %d line %d: ctrl/stat %08x\r\n", ack, line, tmp);
   }
 
   // clear error/sticky bits in abort reg
@@ -674,6 +702,9 @@ uint32_t SWD_readMem8(uint32_t address, uint8_t *data, uint32_t size)
 int32_t SWD_Close()
 {
   uint32_t tmp;
+  EPRINTF("swd close: longest WAIT run %u of %u\r\n", (unsigned)swd_max_waits,
+          (unsigned)MAX_SWD_RETRY);
+  swd_max_waits = 0;
   CoreID = 0;
   // release debug mode
   SWD_writeWord(DBG_HCSR, DBGKEY);
@@ -773,6 +804,8 @@ uint32_t SWD_readReg(uint32_t idx, uint32_t *value)
     if (*value & S_REGRDY)
       return SWD_readWord(DBG_CRDR, value);
   }
+  EPRINTF("readReg %u: not ready after %d polls, dhcsr %08x\r\n",
+          (unsigned)idx, REGRETRIES, *value);
   return 1;
 }
 
@@ -795,6 +828,8 @@ uint32_t SWD_writeReg(uint32_t idx, uint32_t value)
       return 0;
     }
   }
+  EPRINTF("writeReg %u: not ready after %d polls, dhcsr %08x\r\n",
+          (unsigned)idx, REGRETRIES, value);
   return 1;
 }
 

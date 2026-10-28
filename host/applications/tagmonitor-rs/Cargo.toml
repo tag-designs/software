@@ -1,0 +1,5 @@
+# Tag Monitor in Rust, the port of qtmonitor: a toolkit-free core (model and
+# engine) and a thin Tauri shell over a web front end in ui/.
+[workspace]
+resolver = "3"
+members = ["core", "app"]

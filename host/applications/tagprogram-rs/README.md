@@ -18,7 +18,7 @@ STM32CubeProgrammer, and its UI is a web page drawn by Tauri.
 | Directory | What it is |
 | --- | --- |
 | `core/` | `tagprogram-core`: the model (`model/`: ELF, flash plan, identity record, image, release catalog, record CSV, settings) and the engine (`engine/`: station, session, view state). No UI toolkit; unit tests run without hardware. |
-| `ui/` | The page: `index.html`, `app.css`, `app.js` draw the view state; `mock-engine.js` stands in for the engine in a plain browser. |
+| `ui/` | The page: `app.js` renders the view state with Preact and the [UI kit](../../ui-kit/README.md)'s components into `index.html`, laid out by `app.css`; `mock-engine.js` stands in for the engine in a plain browser; `screenshots.sh` captures the user manual's pictures from the two. |
 | `app/` | The Tauri shell: starts the engine, forwards commands and queries, emits its events, and finds the user guide. `build.rs` stages the page from `ui/` and [`host/ui-kit`](../../ui-kit/README.md) under cargo's `OUT_DIR`. |
 | `design/` | [The engine](design/engine.md) (threads, loop, station, session, hazards), [building and packaging](design/build-and-packaging.md), [the UI/engine contract](design/ui-engine-contract.md), and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. Why it was built this way: [decision 0035](../../../docs/decisions/0035-host-tagprogram-rs.md). |
 

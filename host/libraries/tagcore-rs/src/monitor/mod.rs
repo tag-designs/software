@@ -91,6 +91,11 @@ const INSTRUMENTED: bool = cfg!(feature = "instrumentation");
 /// path to identify the family; on a U3 the read fails or gives an
 /// implausible value, so detection moves on to the U3 address.
 const STM32L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
+/// STM32L4 DBGMCU_CR (RM0394): debug behaviour in low-power modes.
+const STM32L4_DBGMCU_CR: u32 = 0xE004_2004;
+/// DBGMCU_CR.DBG_SLEEP: keep HCLK running in Sleep mode, so debug accesses
+/// are not held off while the core idles in WFI.
+const STM32L4_DBGMCU_CR_DBG_SLEEP: u32 = 1 << 0;
 /// STM32L4 RCC_CSR: reset-cause flags, logged in L4 timeout reports so a
 /// reset during a session can be told apart from a hung handler.
 const STM32L4_RCC_CSR: u32 = 0x4002_1094;

@@ -6,7 +6,7 @@
  * in the app, where Kit.createEngine finds Tauri first.
  *
  * ?scenario= station (default; the qtprogram screenshot), pending, fail,
- * running, session, progress, powercycle, finished, prompt-auto,
+ * running, session, programming, progress, powercycle, finished, prompt-auto,
  * prompt-record, prompt-base, alert. A switcher in the corner changes it
  * live unless ?nopanel is given.
  *
@@ -47,7 +47,7 @@
       note: "detected from the tag" },
     checks: [
       { name: "Programmer", level: "ok", text: "probe-rs 0.32.0" },
-      { name: "Base", level: "ok", text: "ST-LINK 0037001A5556431520303537" },
+      { name: "Base", level: "ok", text: "ST-LINK 0037001A5556431520303537: bittag-base-v7 a473918f" },
       { name: "SWD", level: "ok", text: "0x435 STM32L43xxx/STM32L44xxx" },
       { name: "Supply", level: "ok", text: "3.23 V" },
       { name: "Tag", level: "ok", text: "BitTag V6, 169cda2c" },
@@ -154,6 +154,12 @@
         s.actions = busyActions("Programming is in progress");
         s.firmware.enabled = false; s.tagType.enabled = false; s.tag.syncEnabled = false;
         break;
+      case "programming":
+        s.session = { stepText: "Programming BitTag-017: Writing flash", progress: { done: 16, total: 40 },
+          retryVisible: false, cancelVisible: false, cancelText: "Cancel" };
+        s.actions = busyActions("Programming is in progress");
+        s.firmware.enabled = false; s.tagType.enabled = false; s.tag.syncEnabled = false;
+        break;
       case "progress":
         check("Tag state").text = "FINISHED";
         s.session = { stepText: "Erasing the tag's log", progress: { done: 17, total: 40 },
@@ -186,7 +192,7 @@
   }
 
   /** The scenario names, in the switcher's order. */
-  const SCENARIOS = ["station", "pending", "fail", "running", "finished", "session", "progress", "powercycle",
+  const SCENARIOS = ["station", "pending", "fail", "running", "finished", "session", "programming", "progress", "powercycle",
     "prompt-auto", "prompt-record", "prompt-base", "alert"];
 
   /**
@@ -231,6 +237,7 @@
           s = base;
           s.tag.label = label + " (recorded)";
           s.tag.result = { text: "OK", ok: true };
+          s.checks.find((c) => c.name === "Record").text = "programmed-tags.csv (2 rows)";
           s.session.stepText = `Programmed ${label}: OK`;
           s.batch = "Batch: 1 programmed this session, 0 not OK";
           log("INFO", `Programmed ${label}: OK`);

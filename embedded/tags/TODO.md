@@ -113,11 +113,13 @@ not been reproduced on a tag.
     at the SWD level (base 0x81) for most of the time the main thread spends
     on those operations: 172 failed reads inside one call's wait, about 330 in
     the run. The handler race does not explain an access failing outright.
-    Ruled out: stop mode (`stopMilliseconds()` and the idle thread stay awake
-    while a session is open) and interrupt masking (an SWD access does not
-    need the CPU). Still open: the bus or clocks disturbed during the RTC,
-    I2C and test work, against the base's 25 immediate WAIT retries. See
-    `embedded/bases/TODO.md`; the base debug connector should settle it.
+    **Explained and fixed (2026-10-27):** `DBGMCU_CR.DBG_SLEEP` was clear,
+    so the idle thread's Sleep-mode WFI stopped HCLK and held off every SWD
+    access while the main thread waited on I2C or a test delay, past the
+    base's 25 WAIT retries. The host now sets `DBG_SLEEP` after
+    `MONITORSTART` (tagcore, both libraries); see
+    `embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md`. The
+    handler race above is separate and still open.
   - **An empty reply during a self-test.** With the host change below in
     place, the Rust `tag-test` (ALL_PASSED) still logged one `GetStatus
     failed: Tag returned an empty or invalid acknowledgement`: a call that

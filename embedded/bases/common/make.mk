@@ -200,6 +200,9 @@ UDEFS = -DUSE_FULL_LL_DRIVER=1
 # The base target's name (CMake passes PROJECT=<target>), reported by the
 # identify command in stlink.c.
 UDEFS += -DBASE_TARGET=\"$(PROJECT)\"
+# Defines a base adds in its project.mk (read before this section), such as
+# the error log on its virtual serial port.
+UDEFS += $(PROJECT_UDEFS)
 
 # Define ASM defines here
 UADEFS = 

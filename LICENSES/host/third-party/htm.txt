@@ -1,0 +1,9 @@
+htm 3.1.1
+=========
+
+License:    Apache-2.0 (texts/Apache-2.0.txt)
+Copyright:  2018 Google Inc.
+Used in:    tagprogram, tagmonitor (the window, in host/ui-kit/preact-htm.js)
+Source:     https://github.com/developit/htm
+
+htm distributes no NOTICE file.

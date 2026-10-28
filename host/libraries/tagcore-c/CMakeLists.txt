@@ -9,11 +9,20 @@
   archive, so the writer's reference to Tag (SqliteTagLogWriter::writeHeader
   (Tag &)) also brings in the link layer and libusb; they are never called.
 
-  Experimental: off by default (BUILD_TAGCORE_C), not installed or packaged.
+  Built when BUILD_TAGCORE_C or BUILD_RUST_APPS is ON. Tag Monitor in Rust
+  (host/applications/tagmonitor-rs) writes its downloads through it and installs
+  it on Linux and Windows; macOS links tagcore_c_static into the program.
   See host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md.
 #]]
 
 add_library(tagcore_c SHARED taglogwriter_c.cc taglogwriter_c.h)
+
+# A shared library can only take in position-independent code, and on Linux
+# our own archives are not built that way by default (macOS always is, and
+# Windows has no such rule). vcpkg's static libraries are built PIC already,
+# so only these two need it. The release workflow's Linux build failed here
+# ("relocation R_X86_64_PC32 ... recompile with -fPIC") until they were.
+set_target_properties(tagcore proto PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_compile_features(tagcore_c PRIVATE cxx_std_20)
 target_compile_definitions(tagcore_c PRIVATE TAGCORE_C_BUILDING)
 target_include_directories(tagcore_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

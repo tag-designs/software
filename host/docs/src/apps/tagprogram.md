@@ -32,6 +32,8 @@ a BitTag takes about 10 seconds from start to finish.
 
 ## The Window
 
+![Tag Programmer ready to program a BitTag](../images/tagprogram-station.png)
+
 The window is laid out as Qt Program's; see [The Window](qtprogram.md#the-window)
 for the firmware list, tag type, Station lights and Tag panel. Two lines read
 differently:
@@ -50,13 +52,19 @@ differently:
 2. Put a tag in the base. With automatic attach on, it connects by itself;
    otherwise press **Attach**.
 3. Press **Program**, type the **label** written on the board, check the rest
-   of the dialog, and choose **Erase and Program**.
+    of the dialog, and choose **Erase and Program**. The dialog says what will
+    be erased, what is lost and what is kept, and notes in orange anything to
+    check, such as a tag already recorded under another label.
 
-   If the record already has that label for a different tag, Tag Programmer
-   asks before going on: two tags with one label cannot be told apart
-   afterwards, so check the label on the board. A blank board's UUID is not
-   known until it is programmed, so for one of those it asks whenever the
-   label is in the record at all.
+    ![The Program dialog](../images/tagprogram-program.png)
+
+    If the record already has that label for a different tag, Tag Programmer
+    asks before going on: two tags with one label cannot be told apart
+    afterwards, so check the label on the board. A blank board's UUID is not
+    known until it is programmed, so for one of those it asks whenever the
+    label is in the record at all. **Cancel** is the default.
+
+    ![Asking about a label already in the record](../images/tagprogram-label-conflict.png)
 
 4. Wait for the result. Tag Programmer:
     1. stops the tag if it is running, and has its own firmware erase its log;
@@ -64,6 +72,12 @@ differently:
        checks it;
     3. reconnects, sets the clock and runs the self-tests;
     4. adds a line to the record, and leaves the tag IDLE.
+
+    The line under the buttons names the step, with a progress bar, and the
+    buttons are disabled until it finishes.
+
+    ![Programming in progress](../images/tagprogram-programming.png)
+
 5. Press **Next Tag**, put the next tag in, and press **Attach** (or wait for
    it to attach automatically). Go back to step 3.
 

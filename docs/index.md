@@ -80,6 +80,8 @@ design document.
 - [0034. Host: qtprogram as a batch programming station](decisions/0034-host-qtprogram-batch-station.md) *(decision)* — qtprogram became a batch programming station -- automatic discovery of the CLI, base (by ST-LINK serial) and tag after a one-time consent to resets, GitHub releases verified against their manifests, targets matched through the image identity record rather than a table, a typed label per tag, a power-cycle prompt rather than PEMPTY writes, and an append-only CSV with a row for every attempt.
 - [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
 - [0036. Host: qtmonitor as a core, a tag session and a window](decisions/0036-host-qtmonitor-engine-model-view.md) *(decision)* — qtmonitor was restructured into a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands; the Calibrate command was dropped. Behaviour was held fixed by the existing goldens, pixel-identical screenshots, a new core check and a full tag cycle on hardware.
+- [0037. Host: Tag Monitor in Rust (tagmonitor-rs)](decisions/0037-host-tagmonitor-rs.md) *(decision)* — Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
+- [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
 
 ### Investigations
 
@@ -118,11 +120,12 @@ design document.
 ### Bases
 
 - [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
-- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: the 0x81 (STLINK_DEBUG_ERR_FAULT) errors while a tag is busy, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
+- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
 
 ### Bases / Investigations
 
+- [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
 - [SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)](../embedded/bases/design/investigations/2026-06-swd-bitbang-optimization.md) *(investigation, closed)* — The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1: about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
 
 ### Boards
@@ -147,7 +150,7 @@ design document.
 
 ### Loaders
 
-- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
 - [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders: the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
 
@@ -399,6 +402,14 @@ design document.
 
 - [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
+### Applications / tagmonitor-rs
+
+- [Tag Monitor (Rust)](../host/applications/tagmonitor-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
+- [Adding a tag type to Tag Monitor](../host/applications/tagmonitor-rs/design/adding-a-tag-type.md) *(procedure)* — How to make Tag Monitor (Rust, and qtmonitor with it) support a new tag type - the TagType value, the default configuration, the panel table, a new panel when the tag has new fields, the probe cases and goldens, downloads, and the checks that say it is done.
+- [Building and packaging Tag Monitor (Rust)](../host/applications/tagmonitor-rs/design/build-and-packaging.md) — How Tag Monitor in Rust is built and shipped - the cargo workspace, the CMake target that wraps cargo and links the C++ log writer (tagcore_c), the per-platform install layout, the CI build, the third-party notices, and what it shares with Tag Programmer's packaging.
+- [Tag Monitor (Rust): architecture and source map](../host/applications/tagmonitor-rs/design/architecture.md) — How Tag Monitor in Rust is put together - the three layers and two threads, a roadmap of every file and the qtmonitor code it ports, how a command and a form edit travel through the code, where to make common changes, and what keeps it in step with qtmonitor.
+- [Tag Monitor (Rust): UI/engine contract](../host/applications/tagmonitor-rs/design/ui-engine-contract.md) — The contract between Tag Monitor's Rust engine and its web UI - the threads, the view state the engine publishes, the prompts that replace qtmonitor's dialogs, and the commands and queries the UI sends.
+
 ### Applications / tagprogram-rs
 
 - [Tag Programmer (Rust)](../host/applications/tagprogram-rs/README.md) — Tag Programmer in Rust - qtprogram's station and programming session ported to a toolkit-free engine, programming through probe-rs instead of STM32CubeProgrammer, with a Tauri shell over a web front end.
@@ -488,7 +499,7 @@ design document.
 
 ### Libraries / tagcore-c
 
-- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, an experimental C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
 - [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
 ### Libraries / tagcore-rs
@@ -544,7 +555,7 @@ design document.
 
 ### ui-kit
 
-- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
+- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS, Preact components that draw it, and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
 
 ### User Guide Tooling
 
