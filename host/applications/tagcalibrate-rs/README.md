@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, run against a mock engine; the engine and Tauri shell are still to come.
+summary: Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, and how it is checked against qtcalibrate; CMake and packaging are still to come.
 ---
 
 # Tag Calibrator (Rust)
@@ -12,9 +12,15 @@ A port of [qtcalibrate](../qtcalibrate/README.md), to be shipped as
 [`host/ui-kit`](../../ui-kit/README.md), an engine that holds every rule, and
 a thin Tauri shell.
 
-**Status: the window only.** `ui/` draws the whole window from a view state
-and runs in a browser against a mock engine that replays a recorded capture.
-There is no engine, no Tauri shell and no build yet.
+**Status: runs against a tag; not yet built by CMake or packaged.** The
+calibration is the C++ `CalibrationSession` that qtcalibrate's `CompassData`
+runs, reached through [`calibsession-rs`](../../libraries/calibsession-rs/README.md).
+
+| Path | What |
+| --- | --- |
+| `core/src/engine/` | The engine: `calibrator.rs` (qtcalibrate's `MainWindow` rules), `tagthread.rs` (attach, Stream, the 100 ms calibration-log poll, Tag Write and Read), `view.rs` (the view state and menus), `capture.rs` (qtcalibrate's capture file) |
+| `core/tests/` | `replay_log.rs`: the engine's quality log for the CompassTag fixture against qtcalibrate's, line for line; `imutag_axes.rs`: the IMUTag fixture keeps the site's dip |
+| `app/` | The Tauri shell |
 
 | Path | What |
 | --- | --- |
@@ -26,9 +32,22 @@ There is no engine, no Tauri shell and no build yet.
 | `ui/screenshots.sh` | Pictures of the mock scenarios, for the user manual |
 | `tools/make_mock_capture.py` | Rebuilds `mock-capture.js` |
 
-## Running the window
+## Running it
 
-Open `ui/index.html` in a browser. It needs no server, no network and no
+```sh
+export TAGCORE_C_LIB_DIR=<build>/Release/lib   # cmake --build <build> --target tagcore_c_static tagcore_c
+cargo run -p tagcalibrate                      # attaches on opening, as qtcalibrate does
+TAGCALIBRATE_NO_ATTACH=1 cargo run -p tagcalibrate
+TAGCALIBRATE_REPLAY=$PWD/../../docs/fixtures/qtcalibrate/qtcalibrate-samples-20261010-145438.json \
+  cargo run -p tagcalibrate                    # replay a capture, no tag
+cargo test -p tagcalibrate-core
+```
+
+Attaching resets the tag, and only an IDLE tag is calibrated; one left in
+CALIBRATE by a program that exited mid-stream is stopped first. Tag Write is
+the one action that changes the tag: it appends a calibration record.
+
+The window alone also opens in a browser: open `ui/index.html`. It needs no server, no network and no
 build. `?scenario=` picks a canned state (startup, idle, streaming,
 collecting, collected with `&percent=`, orientation with `&pose=`,
 prompt-base, alert), `?page=` a tab, and a switcher in the corner changes
@@ -48,6 +67,6 @@ the scenario live. `mock-engine.js` lists them all.
 
 ## Next
 
-The engine (on tagcore-rs, with the magcal solver and `sensoranalysis`'s
-eCompass reused through FFI rather than ported), the UI/engine contract as
-a design document, and the Tauri shell and packaging, as for Tag Monitor.
+The UI/engine contract as a design document (it is described in
+`ui/mock-engine.js` for now), CMake and packaging as for Tag Monitor, a user
+manual page, and a decision record.
