@@ -1,0 +1,156 @@
+/*
+ * Tag Calibrator's layout. The look comes from the UI kit; this file only
+ * places the widgets as qtcalibrate's window does (compare
+ * host/docs/src/images/qtcalibrate-collection-050.png and
+ * qtcalibrate-orientation-forward.png).
+ */
+
+/* The 3D views' backdrop: white, as qtcalibrate's, or dark with the window. */
+:root { --view-bg: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --view-bg: #161618; }
+}
+:root[data-theme="dark"] { --view-bg: #161618; }
+
+/* The tab bar, centred at the top. */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+.tabs button {
+  font: inherit;
+  color: var(--text);
+  background: var(--control-bg, var(--panel-bg));
+  border: 0.5px solid var(--separator);
+  padding: 2px 11px;
+  cursor: default;
+}
+.tabs button:first-child { border-radius: 5px 0 0 5px; }
+.tabs button:last-child { border-radius: 0 5px 5px 0; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.pages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 10px;
+}
+.page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.page[hidden] { display: none; }
+
+.view {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  background: var(--view-bg);
+  border-radius: 6px;
+  touch-action: none;
+}
+
+/* ---- Calibrate page: the sphere on the left, constants and controls on the right. */
+.cal-page {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 8px;
+  min-height: 0;
+}
+.magnetometer .kit-panel { display: flex; flex-direction: column; min-height: 0; padding: 12px; }
+.quality {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 110px));
+  justify-content: center;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+.figure { display: flex; flex-direction: column; align-items: flex-end; }
+.figure-label { font-size: var(--font-size-small); color: var(--text-secondary); }
+.figure-value { font-family: var(--font-mono); white-space: nowrap; }
+
+.cal-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.constants { flex: none; }
+.constants .kit-panel { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.constant-title { font-size: var(--font-size-small); margin-bottom: 3px; }
+.constant-box {
+  font-family: var(--font-mono);
+  line-height: 20px;
+  white-space: pre;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--control-bg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.constant-box.warn { color: var(--fail); font-weight: 600; }
+.controls { flex: 1; }
+.controls .kit-panel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; }
+.controls .kit-spacer { flex: 1; min-height: 12px; }
+
+/* ---- Orientation page: compass and readouts left, the tag's attitude right. */
+.ori-page {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+.compass .kit-panel { display: flex; flex-direction: column; align-items: center; overflow: auto; }
+.dial { width: 210px; height: 210px; flex: none; }
+.ori-forms { display: flex; flex-direction: column; margin-top: 12px; }
+.ori-title { font-size: var(--font-size-small); margin: 8px 0 4px; }
+.ori-forms .kit-form { padding: 8px 12px; border-radius: 6px; background: var(--control-bg); }
+.readout {
+  display: inline-block;
+  width: 110px;
+  min-height: 18px;
+  padding: 0 6px;
+  text-align: right;
+  background: var(--field-bg);
+  border: 0.5px solid var(--separator);
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.kit-field.number { width: 90px; text-align: right; }
+.unit { margin-left: 4px; color: var(--text-secondary); }
+.ori-forms .kit-select { width: 124px; }
+
+.attitude .kit-panel { display: flex; flex-direction: column; min-height: 0; padding: 12px; }
+.tag-view { aspect-ratio: 1; flex: 1 1 auto; max-width: 100%; align-self: center; }
+.direction { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; }
+
+/* ---- Log page: the kit's log pane, filling the page. */
+.log-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.log-page textarea { flex: 1; min-height: 0; }
+
+/* ---- Tag Connection bar. */
+.connection { flex: none; margin-top: 8px; }
+.connection .kit-panel { padding: 8px 12px; }
+.connection-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.connection-row .kit-button { min-width: 72px; }
+.connection .link { margin-left: 8px; overflow: hidden; text-overflow: ellipsis; }
+.connection .link .dot-on { color: #2e9d4a; }
+.connection .link .dot-off { color: #c62828; }
+.connection .kit-spacer { flex: 1; }
+.stream { display: flex; align-items: center; gap: 4px; }
+.stream.disabled { color: var(--text-disabled); }
+
+/* Browser preview only: the scenario switcher. */
+.mock-panel {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 200;
+  font-size: 11px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--menu-bg);
+  border: 0.5px solid var(--menu-border);
+  box-shadow: var(--menu-shadow);
+}
+.mock-panel .kit-select { height: 20px; font-size: 11px; }

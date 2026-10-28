@@ -9,6 +9,7 @@ with the host tools.
 - [Documentation Guide](reference/docs/documentation-guide.md): the document
   types, where each lives, and the front matter that drives this site.
 - [API Reference](api.md): Doxygen output for project-owned C and C++ source.
+- [Rust Reference](rust.md): rustdoc output for the Rust crates.
 
 The sidebar under **Source Tree** mirrors the repository and is generated from
 each document's front matter. The pages are staged from their source locations

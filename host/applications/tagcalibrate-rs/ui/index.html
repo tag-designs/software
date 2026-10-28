@@ -1,0 +1,39 @@
+<!doctype html>
+<!--
+  Tag Calibrator's window. A generic renderer of the engine's view state
+  (see mock-engine.js for its shape); every rule lives in the engine. app.js
+  draws everything below the menu bar into #app with Preact, and the two 3D
+  views with three.js. Opened as a file in a browser it runs against
+  mock-engine.js; see app.js for the preview query parameters.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tag Calibrator</title>
+  <link rel="stylesheet" href="../../../ui-kit/kit.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="kit-window">
+    <div class="kit-titlebar">
+      <div class="kit-traffic"><span></span><span></span><span></span></div>
+      <span class="kit-title">Tag Calibrator</span>
+    </div>
+    <div class="kit-content">
+      <div id="menubar"></div>
+
+      <div id="app" class="kit-root"></div>
+    </div>
+  </div>
+
+  <script src="../../../ui-kit/preact-htm.js"></script>
+  <script src="../../../ui-kit/kit.js"></script>
+  <script src="../../../ui-kit/kit-components.js"></script>
+  <script src="three.min.js"></script>
+  <script src="views.js"></script>
+  <script src="mock-capture.js"></script>
+  <script src="mock-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

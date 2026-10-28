@@ -72,4 +72,5 @@ nav:
       - Tag Calibrator (qtcalibrate): api/qtcalibrate/index.md
       - SensorViz (sensorviz): api/sensorviz/index.md
       - Command-line tools: api/commandline/index.md
+  - Rust Reference: rust.md
   - Documentation Guide: reference/docs/documentation-guide.md

@@ -82,6 +82,7 @@ design document.
 - [0036. Host: qtmonitor as a core, a tag session and a window](decisions/0036-host-qtmonitor-engine-model-view.md) *(decision)* — qtmonitor was restructured into a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands; the Calibrate command was dropped. Behaviour was held fixed by the existing goldens, pixel-identical screenshots, a new core check and a full tag cycle on hardware.
 - [0037. Host: Tag Monitor in Rust (tagmonitor-rs)](decisions/0037-host-tagmonitor-rs.md) *(decision)* — Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
 - [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
+- [0039. Host: Tag Calibrator in Rust (tagcalibrate-rs)](decisions/0039-host-tagcalibrate-rs.md) *(decision)* — qtcalibrate was ported to Rust as tagcalibrate-rs on Tag Monitor's pattern, with its calibration not ported but moved into sensoranalysis's Qt-free C++ core - shown bit-identical to the Qt code at each step - and reached from Rust through tagcore_c and calibsession-rs; the engine reproduces qtcalibrate's replay log line for line.
 
 ### Investigations
 
@@ -402,6 +403,11 @@ design document.
 
 - [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
+### Applications / tagcalibrate-rs
+
+- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, and how it is checked against qtcalibrate; CMake and packaging are still to come.
+- [Tag Calibrator (Rust): UI/engine contract](../host/applications/tagcalibrate-rs/design/ui-engine-contract.md) — The contract between Tag Calibrator's Rust engine and its web UI - the threads, where the calibration runs, the view state the engine publishes, the prompts that replace qtcalibrate's dialogs, and the commands and queries the UI sends.
+
 ### Applications / tagmonitor-rs
 
 - [Tag Monitor (Rust)](../host/applications/tagmonitor-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
@@ -567,7 +573,7 @@ design document.
 
 ### User Guide Tooling / fixtures / qtcalibrate
 
-- [QtCalibrate Documentation Fixtures](../host/docs/fixtures/qtcalibrate/README.md) — qtcalibrate replay fixture naming and the commands that generate its documentation screenshots.
+- [QtCalibrate Documentation Fixtures](../host/docs/fixtures/qtcalibrate/README.md) — The qtcalibrate replay fixtures (a CompassTagAT25 and an IMUTagNandBmp581 capture), the axis check each must pass, and the commands that replay them and generate the documentation screenshots.
 
 ### User Guide Tooling / fixtures / qtmonitor
 
