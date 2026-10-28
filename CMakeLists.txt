@@ -174,6 +174,7 @@ set(DEVELOPER_RUST_DOCS
   "host/libraries/tagcore-c-sys|tagcore-c-sys"
   "host/libraries/taglogwriter-rs|taglogwriter tagcore tagcore-c-sys"
   "host/libraries/calibsession-rs|calibsession tagcore-c-sys"
+  "host/libraries/sensorviz-session-rs|sensorviz-session tagcore-c-sys"
   "host/libraries/tagprobe-rs|tagprobe tagcore"
   "host/commandline-rs|tag-tools tagcore taglogwriter tagcore-c-sys"
   "host/applications/tagprogram-rs|tagprogram-core tagcore tagprobe"

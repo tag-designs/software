@@ -178,20 +178,33 @@ bool Session::open(const std::string &path, const PreferenceStore *preferences, 
     ViewSink sink(view_, catalog_);
     runTransforms(sink);
 
+    applyPreferences(preferences ? *preferences : PreferenceStore());
+    return true;
+}
+
+ViewModel::Changes Session::applyPreferences(const PreferenceStore &preferences)
+{
     // As the Qt app applies them: nothing without a key or streams; else the
     // overrides with the gap mode kept, then the gap mode.
     if (preferenceKey().empty() || view_.streams().empty()) {
-        return true;
+        return ViewModel::None;
     }
-    const TagPreferences tagPreferences =
-        preferences ? preferences->get(preferenceKey()) : TagPreferences();
+    const TagPreferences tagPreferences = preferences.get(preferenceKey());
     TagPreferences firstPhase = tagPreferences;
     firstPhase.hasBreakLinesAtGapsOverride = true;
     firstPhase.breakLinesAtGaps = view_.breakAtGaps();
-    view_.applyPreferences(firstPhase);
-    view_.setBreakAtGaps(
+    ViewModel::Changes changes = view_.applyPreferences(firstPhase);
+    changes |= view_.setBreakAtGaps(
         tagPreferences.hasBreakLinesAtGapsOverride ? tagPreferences.breakLinesAtGaps : true);
-    return true;
+    return changes;
+}
+
+void Session::rememberPreferences(PreferenceStore &preferences) const
+{
+    if (preferenceKey().empty() || view_.streams().empty()) {
+        return;
+    }
+    preferences.remember(view_.capturePreferences(preferenceKey()));
 }
 
 std::string Session::preferenceKey() const

@@ -270,6 +270,12 @@ public:
     const ParameterSpec *parameter(const std::string &id) const;
 
     /**
+     * @brief   The parameters of the applicable transforms, in run order:
+     *          what a front end offers for the open log.
+     */
+    std::vector<ParameterSpec> parameters(const StreamCatalog &catalog, const ViewModel &view) const;
+
+    /**
      * @brief   Runs every applicable transform for a newly opened log, in order.
      * @param[in,out] context  The log, view and sink.
      * @return  (transform id, error) for each transform that failed; the

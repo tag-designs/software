@@ -118,6 +118,22 @@ public:
     std::string preferenceKey() const;
 
     /**
+     * @brief   Applies @p preferences' entry for this log's tag, or the
+     *          defaults when it has none, as File > Load and Preferences >
+     *          Load do: the overrides with the gap mode kept, then the gap
+     *          mode. Nothing without a key or streams.
+     * @return  Changes made.
+     */
+    ViewModel::Changes applyPreferences(const PreferenceStore &preferences);
+
+    /**
+     * @brief   Stores this log's display choices in @p preferences under its
+     *          tag, or removes the entry when they are the defaults. Nothing
+     *          without a key or streams.
+     */
+    void rememberPreferences(PreferenceStore &preferences) const;
+
+    /**
      * @brief   Whether stream @p id is shown, as a transform remaking it
      *          keeps it: shown when absent or derived, else its visibility.
      */

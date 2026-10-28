@@ -28,56 +28,6 @@
 namespace
 {
 
-/**
- * @class   SessionDriver
- * @brief   Makes the state dump's changes through the Session alone.
- */
-class SessionDriver : public sensorviz::StateDumpDriver
-{
-public:
-    /// A driver over @p session.
-    explicit SessionDriver(sensorviz::Session &session) : session_(session) {}
-
-    /// Sets the sea-level pressure; altitude is remade.
-    void setSeaLevelPressure(double mbar) override
-    {
-        setParameter(sensorviz::ViewModel::kSeaLevelPressure, mbar);
-    }
-    /// Sets a range and the ranges linked to it.
-    void setStreamRange(const std::string &id, double lower, double upper) override
-    {
-        session_.setStreamRange(id, lower, upper);
-    }
-    /// Sets the declination; the heading is remade.
-    void setDeclination(double degrees) override
-    {
-        setParameter(sensorviz::ViewModel::kDeclination, degrees);
-    }
-    /// Flips the battery direction; the heading is remade.
-    void toggleBatteryForward() override
-    {
-        setParameter(sensorviz::ViewModel::kBatteryForward, session_.view().batteryForward() ? 0.0 : 1.0);
-    }
-    /// Joins lines across gaps.
-    void joinGaps() override { session_.view().setBreakAtGaps(false); }
-    /// Sets the UTC offset.
-    void setUtcOffset(int hours) override { session_.view().setUtcOffsetHours(hours); }
-    /// Clears the custom ranges.
-    void resetZoom() override { session_.resetZoom(); }
-
-private:
-    /// Sets a transform parameter, reporting a failed remake.
-    void setParameter(const char *id, double value)
-    {
-        std::string error;
-        if (!session_.setParameter(id, value, error)) {
-            std::fprintf(stderr, "%s: %s\n", id, error.c_str());
-        }
-    }
-
-    sensorviz::Session &session_; ///< The session the changes are made in.
-};
-
 /// The whole of the file @p path, or false.
 bool readFile(const std::string &path, std::string &text)
 {
@@ -154,7 +104,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    SessionDriver driver(session);
+    sensorviz::SessionDumpDriver driver(session);
     const std::string dump = sensorviz::runStateDump(session, driver);
     std::ofstream out(dumpPath, std::ios::binary);
     out << dump;

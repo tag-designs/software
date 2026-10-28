@@ -602,6 +602,20 @@ const ParameterSpec *TransformRegistry::parameter(const std::string &id) const
     return nullptr;
 }
 
+std::vector<ParameterSpec> TransformRegistry::parameters(const StreamCatalog &catalog,
+                                                         const ViewModel &view) const
+{
+    std::vector<ParameterSpec> specs;
+    for (const auto &transform : transforms_) {
+        if (transform->applicable(catalog, view)) {
+            for (const ParameterSpec &spec : transform->parameters()) {
+                specs.push_back(spec);
+            }
+        }
+    }
+    return specs;
+}
+
 std::vector<std::pair<std::string, std::string>> TransformRegistry::runAll(TransformContext &context)
 {
     std::vector<std::pair<std::string, std::string>> failures;

@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: How Rust tools write tag SQLite logs through the C++ writer, and calibrate through the C++ calibration session - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, tagcore_c, SqliteTagLogWriter, CalibrationSession), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+summary: How Rust tools write tag SQLite logs through the C++ writer, calibrate through the C++ calibration session, and view logs through sensorViz's core - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, sensorviz-session-rs, tagcore-c-sys, tagcore_c, SqliteTagLogWriter, CalibrationSession, sensorviz::Session), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 ---
 
 # tagcore_c and taglogwriter: architecture
@@ -57,7 +57,26 @@ tagcalibrate (host/applications/tagcalibrate-rs)
 ```
 
 Nothing is encoded there: samples cross as float arrays and results as plain
-C structs, since every value is a number the session computes. The session is
+C structs, since every value is a number the session computes.
+
+A third, `svz_*` ([`sensorviz_c.h`](../sensorviz_c.h)), is over sensorViz's
+Qt-free `Session`, for the Rust sensorViz through
+[`sensorviz-session-rs`](../../sensorviz-session-rs/README.md):
+
+```
+sensorviz-rs (host/applications/sensorviz-rs)
+ └─ sensorviz-session-rs ── Session: safe Rust over svz_*
+     └─ tagcore-c-sys ── links the library; declares svz_* (src/svz.rs)
+         └─ tagcore_c (C ABI: svz_*) ── JSON out, arrays out, C arrays in
+             └─ sensorviz::Session (host/applications/sensorviz/core)
+```
+
+Descriptions -- catalog, view, plot spec, parameters, hover rows -- come out
+as JSON text owned by the handle until its next call; envelopes and compass
+samples are copied into the caller's arrays (asked for their size first); the
+setters take plain C arrays, so the C++ side parses nothing, and return the
+change bits, collected through the view model's listener so that a transform
+remaking its outputs reports them too. The session is
 the code qtcalibrate's `CompassData` runs, and `calibsession-rs`'s replay test
 reproduces qtcalibrate's logged figures for the reference capture. Both
 interfaces are exported from both builds; the export lists name `tlw_*` and

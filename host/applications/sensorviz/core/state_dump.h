@@ -70,6 +70,32 @@ public:
 };
 
 /**
+ * @class   SessionDumpDriver
+ * @brief   Makes the state dump's changes through a Session alone, as a front
+ *          end without Qt does; it has no activity filter.
+ */
+class SessionDumpDriver : public StateDumpDriver
+{
+public:
+    /// A driver over @p session.
+    explicit SessionDumpDriver(Session &session) : session_(session) {}
+
+    void setSeaLevelPressure(double mbar) override;
+    void setStreamRange(const std::string &id, double lower, double upper) override;
+    void setDeclination(double degrees) override;
+    void toggleBatteryForward() override;
+    void joinGaps() override;
+    void setUtcOffset(int hours) override;
+    void resetZoom() override;
+
+private:
+    /// Sets a transform parameter, reporting a failed remake on stderr.
+    void setParameter(const char *id, double value);
+
+    Session &session_; ///< The session the changes are made in.
+};
+
+/**
  * @brief   One step of the dump: everything @p session shows now.
  * @param[in] session  The session.
  * @param[in] step     The step's name, written as its heading.

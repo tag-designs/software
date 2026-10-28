@@ -44,11 +44,7 @@ unsafe extern "C" {
     /// Writes the gathered header; 1 on success.
     pub fn tlw_write_header(w: *mut TlwWriter) -> c_int;
     /// Adds an info row; 1 on success.
-    pub fn tlw_write_info(
-        w: *mut TlwWriter,
-        field: *const c_char,
-        value: *const c_char,
-    ) -> c_int;
+    pub fn tlw_write_info(w: *mut TlwWriter, field: *const c_char, value: *const c_char) -> c_int;
     /// Starts the log transaction; 1 on success.
     pub fn tlw_begin_log(w: *mut TlwWriter) -> c_int;
     /// Writes one page; records consumed, 0 at end, negative on error.

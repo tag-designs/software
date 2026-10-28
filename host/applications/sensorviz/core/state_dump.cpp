@@ -199,6 +199,49 @@ std::string stateDumpStep(const Session &session, const std::string &step)
     return text;
 }
 
+void SessionDumpDriver::setSeaLevelPressure(double mbar)
+{
+    setParameter(ViewModel::kSeaLevelPressure, mbar);
+}
+
+void SessionDumpDriver::setStreamRange(const std::string &id, double lower, double upper)
+{
+    session_.setStreamRange(id, lower, upper);
+}
+
+void SessionDumpDriver::setDeclination(double degrees)
+{
+    setParameter(ViewModel::kDeclination, degrees);
+}
+
+void SessionDumpDriver::toggleBatteryForward()
+{
+    setParameter(ViewModel::kBatteryForward, session_.view().batteryForward() ? 0.0 : 1.0);
+}
+
+void SessionDumpDriver::joinGaps()
+{
+    session_.view().setBreakAtGaps(false);
+}
+
+void SessionDumpDriver::setUtcOffset(int hours)
+{
+    session_.view().setUtcOffsetHours(hours);
+}
+
+void SessionDumpDriver::resetZoom()
+{
+    session_.resetZoom();
+}
+
+void SessionDumpDriver::setParameter(const char *id, double value)
+{
+    std::string error;
+    if (!session_.setParameter(id, value, error)) {
+        std::fprintf(stderr, "%s: %s\n", id, error.c_str());
+    }
+}
+
 std::string runStateDump(const Session &session, StateDumpDriver &driver)
 {
     std::string dump = stateDumpStep(session, "loaded");
