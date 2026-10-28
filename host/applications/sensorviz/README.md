@@ -46,7 +46,7 @@ hooks as built are described under
   streams and the derived magnitude use the same corrected data.
 - Subtracts the stored accelerometer zero-g offset (mg) from IMUTag
   acceleration axes on load (`applyCalibrationToImuAccelerometer()`), and
-  from CompassTag acceleration inside `CompassProcessor`, so acceleration,
+  from CompassTag acceleration inside the compass transform, so acceleration,
   heading, pitch, roll and dip all use the corrected vector. Logs written
   before the offset existed carry none and are shown uncorrected.
 - Stores per-tag display preferences as sparse, formatted JSON overrides.
@@ -119,12 +119,18 @@ The Qt front end is split by responsibility:
   visibility), visible-stream, axis-side, color and range dialogs, and range
   coupling between related streams. The visible-stream and axis-side dialogs
   list a group of streams that share an axis together.
-- `transforms.cpp`: scalar display transforms such as altitude, activity
-  low-pass, and IMUTag vector magnitudes.
-- `compass_transforms.cpp`: compass orientation samples, built from a processed
-  log's stored quaternions or derived from the raw CompassTag record set; the
-  heading, pitch and roll streams computed from them; heading declination,
-  battery-forward convention, and compass-panel sample updates.
+- `core/transforms.*` (in `sensorviz_core`, Qt-free): the display transforms
+  -- altitude, the IMUTag vector magnitudes and compass orientation -- with
+  their parameters as data (`ParameterSpec`) and the `TransformRegistry` that
+  runs them after a load and remakes outputs when a parameter changes. Outputs
+  go to a `TransformSink` the front end implements, one at a time.
+- `transforms.cpp`: the Qt side of the transforms: runs the registry, the one
+  numeric parameter dialog built from a `ParameterSpec`, the Configuration
+  actions, and the activity low-pass filter, which stays in the Qt app and
+  is not ported to the core.
+- `compass_transforms.cpp`: the compass panel's samples (from the core's
+  compass transform), and declination and battery direction applied to the
+  panel and, through the registry, to the heading.
 - `plot_view.*`: `PlotView`, the only code that touches QCustomPlot. It draws
   a `PlotSpec` (converting its strings and colors to Qt's), owns the graphs, dynamic axes, elapsed/date time axis, cursors,
   event markers, title, draggable metadata box and draggable legend (one
@@ -190,10 +196,10 @@ Most SensorViz changes should start in one of four places:
   the sensorViz defaults.
 - Stream visibility or range behavior is wrong:
   check `stream_actions.cpp`.
-- Scalar transform behavior is wrong:
-  check `transforms.cpp`.
-- CompassTag derived streams, declination, or battery direction are wrong:
-  check `compass_transforms.cpp`.
+- Altitude, magnitude or compass stream values are wrong:
+  check `core/transforms.cpp` (and `transforms_check`).
+- A Configuration action, the parameter dialog or the activity filter is
+  wrong: check `transforms.cpp`; the compass panel, `compass_transforms.cpp`.
 - Plot axis layout, scaling, metadata rows or title are wrong:
   check `buildPlotSpec()` in `plot_spec.cpp` (and `plotspec_check`); if the
   spec is right but the drawing is not, check `plot_view.cpp`.
@@ -250,7 +256,8 @@ Transforms read their inputs from the backend in one of two ways:
 - **SQLite `double`s**, through `sensordata::Log::forEachRow()`, where results
   must match the database: altitude (pressure and the pressure-sensor
   temperature), the activity filter, and the compass orientation, whose
-  inputs go to sensoranalysis's `CompassProcessor` bit for bit.
+  inputs go to sensoranalysis's core (`compasscore::solveOrientation()`) bit
+  for bit.
 
 `SensorLog` is the core's `sensorviz::StreamCatalog`
 (`core/stream_catalog.h`), filled by `sensorviz::openLog()`: the `info` rows,
@@ -392,9 +399,12 @@ Every compass view works from orientation quaternions. When the log carries a
 `compass_orientation` or `imu_compass_orientation` record set, written by
 `dataprocessing`, its stored quaternions are used; otherwise a CompassTag's raw
 `compass_raw` record set and calibration constants go through
-`CompassProcessor`. Either way the result is one list of quaternion samples:
-the plotted heading, pitch and roll come from `compassAnglesFromQuaternion()`,
-and the QML compass panel is handed the quaternion and computes its own angles.
+`compasscore::solveOrientation()`. Either way the result is one list of
+quaternion samples, the core compass transform's: the plotted heading, pitch
+and roll come from `compasscore::displayAngles()`
+([0040](../../../docs/decisions/0040-host-compass-display-angles-in-core.md)),
+and the QML compass panel is handed the quaternion and computes its own angles
+with Qt's same conversion.
 File Info names the source. Configuration > Declination adjusts only the
 displayed heading; Configuration > Battery Forward applies the matching 180
 degree display convention. The samples themselves remain magnetic-frame data.
@@ -423,19 +433,25 @@ kept equal until the user gives one of them an explicit range of its own.
 
 ## Adding A Display Transform
 
-Transforms are still hardcoded in `transforms.cpp` and
-`compass_transforms.cpp`, but they follow a consistent pattern:
+A transform is a class in `core/transforms.cpp`, registered in
+`TransformRegistry::makeDefault()` in the order it should run after a load:
 
-1. Check that required input streams or record sets exist.
-2. Prompt for transform-specific parameters.
-3. Read the inputs from `log_.data`: `addComputed()` over the stored floats
-   for a display transform, or `readStreamDoubles()` / `forEachRow()` when the
-   result must match the database.
-4. Build a derived `SensorStream` (metadata only), register its values with
-   `addComputed()` or `addDerived()` on an input's time axis, set its
-   `dataId`, and call `addOrReplaceStream()` so plotting, ranges, and context
-   menus update. A replaced stream's plot data is released there.
-5. Remove the derived stream when the transform action is unchecked.
+1. `applicable()`: whether its input streams or record sets exist.
+2. `parameters()`: a `ParameterSpec` for each parameter, whose value lives in
+   the `ViewModel` under the spec's id (`ViewModel::parameter()`); add the id
+   there. The Qt app's dialog and a web form are built from the spec.
+3. `run()`: read the inputs from the catalog's `sensordata::Log` --
+   `addComputed()` over the stored floats for a display transform, or
+   `TransformContext::readDoubles()` / `forEachRow()` when the result must
+   match the database -- build each output's `StreamMeta`, register its values
+   with `addComputed()` or `addDerived()` on an input's time axis, set its
+   `dataId`, and hand it to the sink with `publish()`.
+4. `update()`, optionally: remake only what one parameter affects (the
+   compass remakes only the heading).
+
+The Qt app then needs only a Configuration action that calls
+`askParameter()` and `setTransformParameter()`. Check new transforms in
+`transforms_check`, and changes to existing ones with `--dump-state`.
 
 Future transforms should keep computation separate from file loading. The
 SQLite loader should only normalize on-disk data into streams, record sets, and
@@ -549,9 +565,8 @@ diff /tmp/before.txt /tmp/after.txt
 
 ## Known Limitations
 
-- Transform definitions are hardcoded in `transforms.cpp` and
-  `compass_transforms.cpp`, and transform parameter dialogs are simple
-  action-specific dialogs, not a common transform configuration framework.
+- The activity filter is the one transform not in the core's registry; it
+  stays in the Qt app with its own time-constant prompt.
 - Display preferences are loaded and stored manually from JSON files; there is
   no automatic recent or default preference file.
 - Current-view session parameters (graph title, ranges, sea-level pressure,

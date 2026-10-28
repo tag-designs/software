@@ -156,20 +156,11 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
 
-    // Altitude is a generated stream controlled from Visible Streams; mean
-    // sea-level pressure is the Configuration value that changes its samples.
-    if (hasStream("pressure") || hasStream("imu_pressure")) {
-        createAltitudeStream();
-    }
-
-    // Compass logs are mostly useful once orientation is converted into scalar
-    // streams. Generate that family automatically, from stored quaternions or
-    // from raw CompassTag rows; the resulting streams are ordinary entries in
-    // the Visible Streams dialog.
-    if (hasCompassOrientationSource()) {
-        createCompassPlotStreams();
-    }
-    createImuMagnitudeStreams();
+    // The display transforms make their streams: altitude (sea-level pressure
+    // is the Configuration value that changes it), compass orientation from
+    // stored quaternions or raw CompassTag rows, and the IMU magnitudes. Their
+    // outputs are ordinary entries in the Visible Streams dialog.
+    runTransforms();
 
     applyPreferencesForCurrentTag();
 

@@ -83,6 +83,7 @@ design document.
 - [0037. Host: Tag Monitor in Rust (tagmonitor-rs)](decisions/0037-host-tagmonitor-rs.md) *(decision)* — Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
 - [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
 - [0039. Host: Tag Calibrator in Rust (tagcalibrate-rs)](decisions/0039-host-tagcalibrate-rs.md) *(decision)* — qtcalibrate was ported to Rust as tagcalibrate-rs on Tag Monitor's pattern, with its calibration not ported but moved into sensoranalysis's Qt-free C++ core - shown bit-identical to the Qt code at each step - and reached from Rust through tagcore_c and calibsession-rs; the engine reproduces qtcalibrate's replay log line for line.
+- [0040. Host: compass display angles are computed in the Qt-free core](decisions/0040-host-compass-display-angles-in-core.md) *(decision)* — Compass heading, pitch and roll are computed by compasscore::displayAngles() in sensoranalysis's Qt-free core - a bit-identical copy of Qt's toEulerAngles() and the historical relabelling - instead of by Qt at each display, so the sensorViz compass transform and non-Qt front ends show the same angles; this replaces only that part of 0030, whose quaternion-only storage stands.
 
 ### Investigations
 
@@ -402,7 +403,7 @@ design document.
 
 ### Applications / sensorviz / test
 
-- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run catalog_check, plotspec_check, preference_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files and view state.
+- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state.
 
 ### Applications / sensorviz-rs
 

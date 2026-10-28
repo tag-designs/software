@@ -42,20 +42,13 @@ Current behavior and its known limitations are in [README.md](README.md).
 ## Larger refactors
 
 - Move what is still Qt-bound out of the front end, so a non-Qt UI needs
-  only `sensorviz_core`. View state, plot policy, the log reader and preference files
-  are already in the core (`ViewModel`, `buildPlotSpec()`, `openLog()`,
-  `PreferenceStore`); still in the Qt layer are:
-  - the transforms (`transforms.cpp`, `compass_transforms.cpp`): the
-    magnitudes, altitude, activity filter and compass orientation, and their
-    parameter dialogs; this is the transform registry below;
+  only `sensorviz_core`. View state, plot policy, the log reader, preference files and
+  the transforms are already in the core (`ViewModel`, `buildPlotSpec()`,
+  `openLog()`, `PreferenceStore`, `TransformRegistry`); still in the Qt layer
+  are:
   - the hover readout's formatting (`streamValueAt()`, `formatPlotTime()`)
     and the compass panel;
   - menus and the PlotView renderer, which are the front end by design.
-- Introduce a transform registry that declares:
-  - required input stream ids or record-set ids;
-  - generated stream ids;
-  - default display policy;
-  - configuration UI factory.
 - Generalize record-set transforms before adding more multi-column sensor
   families.
 - Add optional session/project files if users need to persist graph title,

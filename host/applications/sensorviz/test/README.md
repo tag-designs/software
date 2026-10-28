@@ -1,12 +1,12 @@
 ---
 type: readme
 status: current
-summary: How to build and run catalog_check, plotspec_check, preference_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files and view state.
+summary: How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state.
 ---
 
 # sensorViz Offline Checks
 
-Four checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
+Five checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
 only the core (and through it `sensordata` and sensoranalysis's Qt-free
 core; `catalog_check` also sqlite3), and are defined in
 [`core/CMakeLists.txt`](../core/CMakeLists.txt), so they build in a host build
@@ -17,10 +17,12 @@ own `CHECK()` macro, built behind an option and run by hand:
 
 ```sh
 cmake -DBUILD_SENSORVIZ_CHECKS=ON <build-dir>
-cmake --build <build-dir> --target catalog_check plotspec_check preference_check viewmodel_check
+cmake --build <build-dir> --target catalog_check plotspec_check preference_check \
+    transforms_check viewmodel_check
 <build-dir>/Release/bin/catalog_check
 <build-dir>/Release/bin/plotspec_check
 <build-dir>/Release/bin/preference_check
+<build-dir>/Release/bin/transforms_check
 <build-dir>/Release/bin/viewmodel_check
 ```
 
@@ -87,6 +89,28 @@ for 63,000 loads of valid and mutated files, apart from the malformed-JSON
 differences listed in the
 [toolkit-neutral core](../design/proposals/toolkit-neutral-core.md#phase-c-as-built)
 proposal, and identical colors for about 300,000 strings.
+
+## `transforms_check`
+
+Checks the display transforms and `TransformRegistry`
+([`transforms.h`](../core/transforms.h)). It opens the fixtures with
+`openLog()`, sets up a `ViewModel` as sensorViz does after a load, and runs
+the registry through a sink that adds each output to the `ViewModel` and
+records it.
+
+| Area | Cases |
+| --- | --- |
+| Applicability | IMUTag: altitude and magnitudes, never the compass; CompassTag: the compass, no altitude |
+| Outputs | Which streams each fixture gets, in publishing order, shown or hidden |
+| Values | Every acceleration-magnitude sample against its three stored axes; every compass sample against `compasscore::solveOrientation()` of its raw row; heading and pitch against `compasscore::displayAngles()` |
+| Parameters | Sea-level pressure remaking only altitude and carrying a pressure range over; declination and battery direction remaking only the heading, keeping its visibility, by the right amount; compass parameters changing nothing on IMUTag; a new run starting again |
+| Specs | The parameter specs the dialog and a web form are built from, and the `ViewModel`'s parameters by id |
+
+Whether the outputs equal those of the Qt code they replaced is a question
+for sensorViz's `--dump-state`
+([State dump](../README.md#state-dump)); this check holds the contracts.
+When the transforms moved, the dumps of 51 logs and two `dataprocessing`
+outputs were identical before and after.
 
 ## `viewmodel_check`
 

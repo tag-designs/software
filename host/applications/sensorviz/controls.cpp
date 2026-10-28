@@ -56,19 +56,7 @@ double MainWindow::pressureToAltitude(double pressure_mbar) const
 {
     // Display transform for pressure-derived altitude. The sea-level pressure is
     // configured from the Altitude action in transforms.cpp.
-    return 44330.0 * (1.0 - std::pow(pressure_mbar / view_.seaLevelPressure(), 1.0 / 5.257));
-}
-
-double MainWindow::pressureToAltitude(double pressure_mbar, double temperature_c) const
-{
-    // Temperature-aware hypsometric display transform. Pressure tags report
-    // ambient pressure-sensor temperature as "sensor_temperature"; core
-    // temperature is intentionally not used for altitude. The pressure-only
-    // overload remains the fallback when no ambient temperature stream exists.
-    const double temperature_k = temperature_c + 273.15;
-    return (std::pow(view_.seaLevelPressure() / pressure_mbar, 1.0 / 5.257) - 1.0)
-        * temperature_k
-        / 0.0065;
+    return sensorviz::altitudeFromPressure(pressure_mbar, view_.seaLevelPressure());
 }
 
 void MainWindow::showAbout()

@@ -62,19 +62,6 @@ const sensordata::StreamInfo *MainWindow::plotDataInfo(const SensorStream &strea
     return log_.data ? log_.data->info(stream.dataId) : nullptr;
 }
 
-sensordata::StreamInfo MainWindow::derivedPlotInfo(const SensorStream &stream) const
-{
-    // Description of a transform output for addDerived()/addComputed(); the
-    // backend fills in the time axis and summaries.
-    sensordata::StreamInfo info;
-    info.id = stream.id;
-    info.label = stream.label;
-    info.units = stream.units;
-    info.kind = "derived";
-    info.domain = stream.timeDomain;
-    return info;
-}
-
 bool MainWindow::readStreamDoubles(
     const SensorStream &stream,
     std::vector<double> &time,

@@ -1,9 +1,9 @@
 #[[
   sensorviz_core: the Qt-free half of sensorViz. View state (ViewModel),
-  plot policy (buildPlotSpec), the stream model, the log catalog (openLog)
-  and the preference file (PreferenceStore), in standard C++ over sensordata,
-  sqlite3 and sensoranalysis's calibration reader, so a non-Qt front end can
-  reuse them.
+  plot policy (buildPlotSpec), the stream model, the log catalog (openLog),
+  the preference file (PreferenceStore) and the display transforms
+  (TransformRegistry), in standard C++ over sensordata, sqlite3 and
+  sensoranalysis's core, so a non-Qt front end can reuse them.
 
   It is added by host/CMakeLists.txt with the other Qt-free libraries, not by
   the sensorviz application, so it builds with BUILD_HOST alone; the Qt
@@ -33,6 +33,7 @@ add_library(sensorviz_core STATIC
   preference_store.cpp
   stream_catalog.cpp
   stream_meta.cpp
+  transforms.cpp
   view_model.cpp)
 target_include_directories(sensorviz_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_features(sensorviz_core PUBLIC cxx_std_17)
@@ -42,18 +43,18 @@ target_include_directories(sensorviz_core PRIVATE ${SENSORVIZ_SQLITE_INCLUDE_DIR
 
 #[[
   Offline checks of the core: the log catalog (openLog), the plot policy
-  (buildPlotSpec) against the committed fixtures, the preference file, and
-  the ViewModel's state and preference handling. Plain main() programs with
-  their own CHECK() macro, like the sensordata and tagcore checks, because
-  this repository has no test harness. Their sources are in ../test; see
-  ../test/README.md.
+  (buildPlotSpec) against the committed fixtures, the preference file, the
+  display transforms, and the ViewModel's state and preference handling.
+  Plain main() programs with their own CHECK() macro, like the sensordata
+  and tagcore checks, because this repository has no test harness. Their
+  sources are in ../test; see ../test/README.md.
 #]]
 option(BUILD_SENSORVIZ_CHECKS
        "Build the offline sensorviz core checks (developer tool, run manually)"
        OFF)
 
 if(BUILD_SENSORVIZ_CHECKS)
-  foreach(check catalog_check plotspec_check preference_check viewmodel_check)
+  foreach(check catalog_check plotspec_check preference_check transforms_check viewmodel_check)
     add_executable(${check} ../test/${check}.cc)
     target_link_libraries(${check} PRIVATE sensorviz_core)
     target_compile_definitions(${check} PRIVATE

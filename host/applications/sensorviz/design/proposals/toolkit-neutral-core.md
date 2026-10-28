@@ -13,7 +13,7 @@ where it differs from the sketch below. Phase B is built: `openLog()` and
 `StreamCatalog` in the core, the Qt loader removed;
 [phase B as built](#phase-b-as-built) records its differences. Phase C is
 built: `PreferenceStore` reads and writes the preference file in the core
-([phase C as built](#phase-c-as-built)). Phase C2 is built. Phases D+E and F are not; see [Phases](#phases) for the revised order.
+([phase C as built](#phase-c-as-built)). Phases C2 and D+E are built ([phase D+E as built](#phase-de-as-built)). Phase F is not; see [Phases](#phases) for the revised order.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -676,6 +676,34 @@ commas, which Qt refused, and refuses duplicate keys, unknown escapes such as
 sensorViz writes; matching them would mean writing a JSON parser that copies
 Qt's.
 
+### Phase D+E as built
+
+`core/transforms.h` holds `ParameterSpec`, `Transform`, `TransformContext`,
+`TransformRegistry` and the three transforms: altitude, the IMU magnitudes and
+the compass, the last on `compasscore::solveOrientation()` and
+`compasscore::displayAngles()`
+([0040](../../../../../docs/decisions/0040-host-compass-display-angles-in-core.md)).
+The Qt app runs the registry after a load, implements the sink, and asks for
+numeric parameters with one dialog built from each `ParameterSpec`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| Outputs go to a `TransformSink` the front end implements, one `publish()` per output | The registry adds outputs to the catalog | The Qt app redraws after each output and its y axes take their range partly from the previous drawing, so the order of redraws shows; the sink keeps it. `Session` (F) implements the sink for non-Qt front ends |
+| `applicable(catalog, view)` | `applicable(catalog)` | Altitude and the magnitudes depend on streams, which `ViewModel` keeps (see the revision above) |
+| Parameter values live in `ViewModel` (`parameter(id)`, `setParameter(id, value)`) over its typed fields | `ParameterValues` passed to `run()` | The typed setters stay for the plot policy and `viewmodel_check` |
+| `update(context, parameter)` remakes what one parameter affects | Re-run the affected transform | Declination and battery direction remake only the heading, as before |
+| The compass keeps its `OrientationSample`s for the panel | -- | The QML panel stays Qt; the Rust app will draw its own from the same samples |
+| No `outputs()` or `Origin`/`producer` | Declared outputs, owned derived entries | Nothing needed them yet; a transform's outputs are what it publishes |
+
+**Checked:** sensorViz's `--dump-state` output was identical before and after
+for every log on hand -- 51 that load (18 CompassTag logs on the raw-sample
+path, 30 with altitude from pressure and temperature, 13 with the IMU
+magnitudes, 24 with the activity filter) -- and for a CompassTag and an IMUTag
+log processed by `dataprocessing`, which take the stored-quaternion path. The
+capture suites were pixel-identical. `transforms_check` (53 checks) is new;
+changing the battery-direction offset, the magnitude formula, or the
+declination remake to a full re-run each fail it.
+
 ## The compass convention needs a decision
 
 Heading, pitch and roll are plotted streams, separate from the compass
@@ -712,7 +740,7 @@ backend phases were:
 | B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired. *Built, `cc3ca1c3`.* |
 | C | `PreferenceStore` with protobuf JSON, byte-compatible. *Built, `88830bd3`.* |
 | C2 | `sensorviz_core` built without Qt, in its own directory (`4d0ee4e8`); the state dump (`--dump-state`), the comparison oracle for D-F. *Built.* |
-| D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog |
+| D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog. *Built.* |
 | F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli`, which reproduces the Qt app's `--dump-state` output without Qt |
 
 **Revised 2026-10-28**, after phases B and C:

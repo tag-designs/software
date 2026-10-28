@@ -24,6 +24,7 @@
 #include "plot_view.h"
 #include "sensor_preferences.h"
 #include "sensorstream.h"
+#include "transforms.h"
 
 class QQuickWidget;
 class QSplitter;
@@ -131,7 +132,6 @@ private:
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
     double pressureToAltitude(double pressure_mbar) const;
-    double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
     // Log metadata and tag-dependent menu state. updateLoadedStateActions()
     // keeps startup discoverable but disabled except for Load/About.
@@ -143,7 +143,16 @@ private:
     void updateTransformActions();
     void setLogLoadInProgress(bool loading, const QString &path = {});
     void applyLoadedLog(const QString &path, const SensorLog &log);
-    void createAltitudeStream();
+    // The display transforms are the core's (core/transforms.h): run after a
+    // load, remade when a parameter changes, outputs published through
+    // TransformSink (transforms.cpp). askParameter() is the one dialog for a
+    // numeric parameter, built from its ParameterSpec.
+    class TransformSink;
+    void runTransforms();
+    void setTransformParameter(const char *id, double value);
+    bool askParameter(const char *id, double &value);
+    // The compass panel's samples, from the core's compass transform.
+    void loadCompassPanelSamples();
     // The value half of the Configuration and range dialogs: each sets the
     // value and does exactly what accepting its dialog does. The state dump
     // (state_dump.cpp) drives them.
@@ -156,15 +165,6 @@ private:
     // script of setting changes, everything shown written after each step.
     bool writeStateDump(const QString &path, QString &error);
     QString stateDumpStep(const QString &step) const;
-    void createImuMagnitudeStreams();
-    // Compass views are built from orientation quaternions: stored ones from a
-    // processed log's orientation record set when present, otherwise derived
-    // from compass_raw and the calibration constants.
-    const SensorRecordSet *storedOrientationRecordSet() const;
-    bool hasCompassOrientationSource() const;
-    bool loadCompassSamples(QString &error);
-    void addCompassStream(SensorStream stream, const QVector<double> &values, bool checked);
-    void createCompassPlotStreams();
     QString preferenceKey() const;
     void rememberCurrentPreferences();
     void applyPreferencesForCurrentTag();
@@ -279,7 +279,6 @@ private:
     // Plot data in log_.data: the hover readout and value ranges read it,
     // transforms read their inputs from it and register their outputs in it.
     const sensordata::StreamInfo *plotDataInfo(const SensorStream &stream) const;
-    sensordata::StreamInfo derivedPlotInfo(const SensorStream &stream) const;
     bool readStreamDoubles(
         const SensorStream &stream,
         std::vector<double> &time,
@@ -288,15 +287,15 @@ private:
 
     SensorLog log_;
     sensorviz::ViewModel view_;
+    sensorviz::TransformRegistry transforms_ = sensorviz::TransformRegistry::makeDefault();
     QString current_path_;
     bool log_load_in_progress_ = false;
     MainWindowOptions options_;
 
+    // The compass transform's orientation samples, for the QML panel, and
+    // where they came from, for the File Info pane.
     QVector<CompassDerivedSample> compass_samples_;
-    // Where compass_samples_ came from, for the File Info pane, and a stored
-    // stream on that record set's time axis, which the compass streams share.
     QString compass_source_;
-    sensordata::StreamId compass_time_source_ = sensordata::kNoStream;
 
     // Preferences are keyed by tag type/profile and store only differences from
     // sensorViz display defaults. The currently loaded tag's are applied to
