@@ -162,6 +162,22 @@ set(DEVELOPER_DOXYGEN_APPS
   "qtcalibrate|host/applications/qtcalibrate|Tag Calibrator (qtcalibrate)|Magnetometer calibration"
   "sensorviz|host/applications/sensorviz|SensorViz (sensorviz)|View downloaded tag logs"
   "commandline|host/commandline|Command-line tools|tag-info, tag-start, dataprocessing and the other command-line tools")
+# The Rust crates documented under rust/ in the portal, as manifest dir|the
+# packages to document there, the crate itself first. Each line is one
+# `cargo doc` run; the path dependencies named after it are documented in the
+# same run so that its links to them resolve. All runs share one target
+# directory, so rust/ is one tree with one search index. The Tauri shells
+# (the three app/ crates) are left out: they are a page each, documenting them
+# compiles Tauri and WebKitGTK, and their behaviour is in the core crates.
+set(DEVELOPER_RUST_DOCS
+  "host/libraries/tagcore-rs|tagcore"
+  "host/libraries/taglogwriter-rs|taglogwriter tagcore"
+  "host/libraries/calibsession-rs|calibsession"
+  "host/libraries/tagprobe-rs|tagprobe tagcore"
+  "host/commandline-rs|tag-tools tagcore taglogwriter"
+  "host/applications/tagprogram-rs|tagprogram-core tagcore tagprobe"
+  "host/applications/tagmonitor-rs|tagmonitor-core tagcore taglogwriter"
+  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession")
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
 # The developer documents staged into the portal are not listed here.
 # docs/tools/docs.py finds every Markdown file carrying developer-doc front
@@ -310,6 +326,68 @@ foreach(app IN LISTS DEVELOPER_DOXYGEN_APPS)
   list(APPEND developer_doxygen_runs COMMAND "${DOXYGEN_EXECUTABLE}" "${app_doxyfile}")
 endforeach()
 
+#[[
+  @brief  The Rust reference: rustdoc for every crate in DEVELOPER_RUST_DOCS,
+          into the portal's rust/ directory.
+
+  @details One `cargo doc --no-deps --document-private-items --all-features`
+           per entry, all sharing one target directory under the build's
+           docs/, then that target's doc/ copied to rust/ in the site. Nothing
+           is linked, so the crates that link libtagcore_c are pointed at an
+           empty directory and the shared form (TAGCORE_C_LINK=dylib), which
+           their build scripts accept without the library. --locked documents
+           exactly the committed Cargo.lock of each workspace.
+
+           Optional, like Doxygen: without cargo the portal is built without
+           it, and rust_docs reports that cargo is missing.
+#]]
+find_program(DEVELOPER_CARGO_EXECUTABLE cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
+set(DEVELOPER_RUST_TARGET_DIR "${CMAKE_BINARY_DIR}/docs/rust-target")
+set(DEVELOPER_RUST_NOLIB_DIR "${CMAKE_BINARY_DIR}/docs/rust-no-tagcore-c")
+set(developer_rust_runs)
+if(DEVELOPER_CARGO_EXECUTABLE)
+  list(APPEND developer_rust_runs
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_RUST_NOLIB_DIR}")
+  foreach(entry IN LISTS DEVELOPER_RUST_DOCS)
+    string(REPLACE "|" ";" entry_fields "${entry}")
+    list(GET entry_fields 0 RUST_DOC_DIR)
+    list(GET entry_fields 1 RUST_DOC_PACKAGES)
+    separate_arguments(RUST_DOC_PACKAGES)
+    set(rust_doc_package_args)
+    foreach(package IN LISTS RUST_DOC_PACKAGES)
+      list(APPEND rust_doc_package_args -p ${package})
+    endforeach()
+    list(APPEND developer_rust_runs
+      COMMAND ${CMAKE_COMMAND} -E env
+              "CARGO_TARGET_DIR=${DEVELOPER_RUST_TARGET_DIR}"
+              "TAGCORE_C_LIB_DIR=${DEVELOPER_RUST_NOLIB_DIR}"
+              TAGCORE_C_LINK=dylib
+              "${DEVELOPER_CARGO_EXECUTABLE}" doc --locked --all-features --no-deps
+              --document-private-items
+              --manifest-path "${PROJECT_SOURCE_DIR}/${RUST_DOC_DIR}/Cargo.toml"
+              ${rust_doc_package_args})
+  endforeach()
+  list(APPEND developer_rust_runs
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${DEVELOPER_DOCS_SITE_DIR}/rust"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${DEVELOPER_RUST_TARGET_DIR}/doc" "${DEVELOPER_DOCS_SITE_DIR}/rust")
+  add_custom_target(
+    rust_docs
+    ${developer_rust_runs}
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "Building developer Rust reference (rustdoc)"
+    VERBATIM)
+else()
+  add_custom_target(
+    rust_docs
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "cargo is required to build the Rust reference. Install Rust (rustup.rs) and rerun CMake."
+    COMMAND ${CMAKE_COMMAND} -E false
+    COMMENT "cargo is not available for the developer Rust reference"
+    VERBATIM)
+endif()
+
 set(developer_docs_all)
 if(BUILD_DEVELOPER_DOCS)
   set(developer_docs_all ALL)
@@ -360,6 +438,7 @@ if(HOST_MKDOCS_COMMAND)
       --site-dir "${DEVELOPER_DOCS_SITE_DIR}"
       --clean
     ${developer_docs_doxygen_commands}
+    ${developer_rust_runs}
     DEPENDS ${developer_docs_sources}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building developer documentation portal"

@@ -38,7 +38,29 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r host/docs/requirements.txt
           sudo apt-get update
-          sudo apt-get install -y doxygen graphviz protobuf-compiler libprotobuf-dev
+          sudo apt-get install -y doxygen graphviz protobuf-compiler libprotobuf-dev \
+            libudev-dev pkg-config
+
+      # The portal's Rust reference (rustdoc, the rust_docs target) is built
+      # by cargo, as in the release workflow: current stable (the crates need
+      # 1.85 or newer, for edition 2024). libudev-dev above is for the
+      # libusb that rusb builds from source. Every cargo doc run shares one
+      # target directory in the CMake build tree, which is what is cached.
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            host/libraries/tagcore-rs -> ../../../build-docs/docs/rust-target
+            host/libraries/taglogwriter-rs -> ../../../build-docs/docs/rust-target
+            host/libraries/calibsession-rs -> ../../../build-docs/docs/rust-target
+            host/libraries/tagprobe-rs -> ../../../build-docs/docs/rust-target
+            host/commandline-rs -> ../../build-docs/docs/rust-target
+            host/applications/tagprogram-rs -> ../../../build-docs/docs/rust-target
+            host/applications/tagmonitor-rs -> ../../../build-docs/docs/rust-target
+            host/applications/tagcalibrate-rs -> ../../../build-docs/docs/rust-target
 
       - name: Configure documentation targets
         run: >

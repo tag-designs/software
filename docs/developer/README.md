@@ -21,6 +21,7 @@ Useful related targets:
 ```sh
 cmake --build build-host --target developer_docs_stage
 cmake --build build-host --target api_docs
+cmake --build build-host --target rust_docs
 cmake --build build-host --target all_docs
 ```
 
@@ -40,6 +41,14 @@ links resolve, which Doxygen overwrites. To add an application, add an entry,
 a placeholder, and a line in `src/api.md` and the `nav:` of `mkdocs.yml`.
 Warnings go to `developer-doxygen-warnings.log` and
 `developer-doxygen-<name>-warnings.log` in the build's `docs/` directory.
+
+The Rust reference is rustdoc, under `rust/`, listed on the portal's
+[Rust Reference](src/rust.md) page. `rust_docs` runs `cargo doc` once per
+entry in `DEVELOPER_RUST_DOCS` (top-level `CMakeLists.txt`), all into one
+target directory, so the crates share one search and link to one another, and
+`developer_docs` runs it after MkDocs when `cargo` is found. To add a crate,
+add an entry -- with the path dependencies its links should reach -- and a row
+in `src/rust.md`. The Tauri shells are deliberately not documented there.
 
 ## Published GitHub Pages
 

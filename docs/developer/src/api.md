@@ -1,6 +1,7 @@
 # API Reference
 
-Doxygen reference for the project-owned, non-generated C and C++ source. Use it
+Doxygen reference for the project-owned, non-generated C and C++ source. The
+Rust crates have their own, the [Rust Reference](rust.md). Use it
 for symbol contracts; use the Markdown design documents for architecture,
 rationale and workflows.
 
