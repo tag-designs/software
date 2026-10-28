@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: The host UI kit - a macOS-native look in plain CSS and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
+summary: The host UI kit - a macOS-native look in plain CSS, Preact components that draw it, and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
 ---
 
 # Host UI kit
@@ -10,16 +10,21 @@ A web front end for a host application is a page that draws a view state sent
 by a Rust engine and turns clicks into commands. This kit is the part every
 such page shares: a look that matches the Qt applications on macOS, and the
 plumbing to talk to the engine, show dialogs and pick files. Tag Programmer
-(`host/applications/tagprogram-rs/ui`) is the first user. qtmonitor and
-qtcalibrate are meant to be next.
+(`host/applications/tagprogram-rs/ui`) and Tag Monitor
+(`host/applications/tagmonitor-rs/ui`) use it.
 
-There is no npm and no build step. The kit is plain CSS and one classic
-script.
+Pages render with [Preact](https://preactjs.com) through
+[htm](https://github.com/developit/htm), which writes templates as tagged
+strings, so there is still no npm and no build step: every file here is plain
+CSS or a classic script, vendored or written by hand
+([decision 0038](../../docs/decisions/0038-host-ui-kit-preact.md)).
 
 | File | What it is |
 | --- | --- |
 | `kit.css` | Colour tokens (light and dark), window chrome, controls, group panels, status rows, key/value forms, dialogs and the log drawer |
+| `preact-htm.js` | Preact 10.29.8, its hooks and htm 3.1.1, vendored (see [Updating Preact and htm](#updating-preact-and-htm)) |
 | `kit.js` | Defines the global `Kit`: the engine connection, the menu bar, dialogs, file pickers, URL and folder opening |
+| `kit-components.js` | Adds `Kit.html`, `Kit.render`, `Kit.hooks`, the components in `Kit.ui` and `Kit.logModel` |
 
 ## Using it in a page
 
@@ -29,24 +34,65 @@ script.
   <div class="kit-window">
     <div class="kit-titlebar"><div class="kit-traffic"><span></span><span></span><span></span></div>
       <span class="kit-title"></span></div>
-    <div class="kit-content"> <div id="menubar"></div> … </div>
+    <div class="kit-content"> <div id="menubar"></div> <div id="app" class="kit-root"></div> </div>
   </div>
+  <script src="…/ui-kit/preact-htm.js"></script>
   <script src="…/ui-kit/kit.js"></script>
+  <script src="…/ui-kit/kit-components.js"></script>
   <script src="mock-engine.js"></script>   <!-- defines MockEngine; unused in the app -->
   <script src="app.js"></script>
 </body>
 ```
 
 ```js
+const { html, render } = Kit;
+const { Group, Row, Button } = Kit.ui;
 const params = Kit.setupPage("My App");          // ?theme=, preview title bar
 const engine = Kit.createEngine(window.MockEngine ? MockEngine.create(params) : null);
-engine.on("state", render);                       // the engine's whole view state
+const Window = ({ s }) => html`
+  <${Group} title="Tag"><div class="kit-form"><${Row} single label="UUID" value=${s.uuid}/></div><//>
+  <${Button} kind="default" onClick=${() => engine.command("start")}>Start<//>`;
+engine.on("state", (s) => render(html`<${Window} s=${s}/>`, document.getElementById("app")));
 engine.command("start");
 ```
 
-`kit.js` is a classic script rather than an ES module on purpose. Browsers
+The scripts load in that order. `kit-root` (`display: contents`) lets the
+rendered children lay out as children of `kit-content`.
+
+The kit's scripts are classic scripts rather than ES modules on purpose. Browsers
 refuse module imports from `file://`, and a page you can open straight from
 disk, with no server, is what makes designing against a mock quick.
+
+## Rendering with Preact
+
+A page renders its whole window from each view state:
+``render(html`<${Window} s=${state}/>`, root)``. Preact compares the new
+tree with the old one and touches only what changed, so a field being typed
+into keeps its focus and text. The page keeps only what is its own (an open
+drawer, a selected tab) in plain variables and renders again when it
+changes.
+
+| Component | Draws |
+| --- | --- |
+| `Button({kind, small, onClick})` | `kit-button`; `kind` is `"default"` or `"destructive"` |
+| `Disclosure({pressed, onClick})` | `kit-toolbutton` with its arrow, such as "Log" |
+| `Select({options, value, onChange})` | `kit-select`; `options` are strings or `{value, text, disabled}`. It shows `value` after every render, even when the user picked an entry the page refused; `null` shows none |
+| `Group({title, titleTooltip})` | `kit-group`: the title above a `kit-panel` holding the children |
+| `Row({label, value, single})` | One `kit-form` row: the label cell and a selectable value cell; children replace `value` |
+| `Progress({fraction})` | `kit-progress`, `fraction` 0 to 1, or null for busy |
+| `StatusGrid({rows})` | `kit-status-grid`; each row `{level, name, text, buttons}` |
+| `LogPane({log, level, onLevel, onSave, onClear})` | The `kit-log` drawer; Clear only with `onClear` |
+
+Every component passes the attributes it does not use (`id`, `title`,
+`hidden`, `class`) to its outer element. `Kit.logModel()` holds a log's text
+outside the page's components, so the engine's `log` listener can be
+registered before the first render; `LogPane` writes the text area directly,
+so a long log costs nothing per render.
+
+`Kit.dialog` takes a Preact element as its `body` as well as a Node. It is
+rendered into the dialog and unmounted when the dialog closes. Tag
+Programmer's Program dialog is an example: a component with the label field
+and the notes that follow it.
 
 ## The engine connection
 
@@ -133,3 +179,13 @@ A page refers to the kit by a relative path (`../../../ui-kit/` from
 the shell must make the kit reachable from there. It can copy `host/ui-kit/`
 into the bundled directory at build time, or point `frontendDist` at a
 directory that holds both the kit and the page.
+
+## Updating Preact and htm
+
+`preact-htm.js` is the three published UMD builds, joined, with their
+source-map comments removed. Its header names the files and versions. To
+update, `npm pack preact@<version> htm@<version>` in an empty scratch
+directory, unpack both, and rebuild the file from `preact/dist/preact.umd.js`,
+`preact/hooks/dist/hooks.umd.js` and `htm/dist/htm.umd.js`, in that order.
+Then update the versions in its header, in this README and in
+`LICENSES/host/` (`README.md`, `third-party/preact.txt` and `htm.txt`).

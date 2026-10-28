@@ -81,6 +81,7 @@ design document.
 - [0035. Host: Tag Programmer in Rust (tagprogram-rs)](decisions/0035-host-tagprogram-rs.md) *(decision)* — Tag Programmer was ported to Rust as tagprogram-rs - a toolkit-free engine publishing whole view states to a Tauri web UI built on a shared kit, programming through probe-rs (with a field-safe driver for old bases) instead of STM32CubeProgrammer, shipped inside the existing CMake host packages; neither programmer starts the tag any more.
 - [0036. Host: qtmonitor as a core, a tag session and a window](decisions/0036-host-qtmonitor-engine-model-view.md) *(decision)* — qtmonitor was restructured into a Qt-free core (command rule, start checks, monitor model, configuration document, download loop), a tag session whose worker thread owns the tag, and a window that only draws the model and sends commands; the Calibrate command was dropped. Behaviour was held fixed by the existing goldens, pixel-identical screenshots, a new core check and a full tag cycle on hardware.
 - [0037. Host: Tag Monitor in Rust (tagmonitor-rs)](decisions/0037-host-tagmonitor-rs.md) *(decision)* — Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
+- [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined.
 
 ### Investigations
 
@@ -149,7 +150,7 @@ design document.
 
 ### Loaders
 
-- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+- [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
 - [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders: the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
 
@@ -554,7 +555,7 @@ design document.
 
 ### ui-kit
 
-- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
+- [Host UI kit](../host/ui-kit/README.md) — The host UI kit - a macOS-native look in plain CSS, Preact components that draw it, and a small script for the engine connection, menus, dialogs and file pickers, shared by the host applications' web front ends.
 
 ### User Guide Tooling
 

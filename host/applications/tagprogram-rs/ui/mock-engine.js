@@ -47,7 +47,7 @@
       note: "detected from the tag" },
     checks: [
       { name: "Programmer", level: "ok", text: "probe-rs 0.32.0" },
-      { name: "Base", level: "ok", text: "ST-LINK 0037001A5556431520303537" },
+      { name: "Base", level: "ok", text: "ST-LINK 0037001A5556431520303537: bittag-base-v7 a473918f" },
       { name: "SWD", level: "ok", text: "0x435 STM32L43xxx/STM32L44xxx" },
       { name: "Supply", level: "ok", text: "3.23 V" },
       { name: "Tag", level: "ok", text: "BitTag V6, 169cda2c" },
@@ -231,6 +231,7 @@
           s = base;
           s.tag.label = label + " (recorded)";
           s.tag.result = { text: "OK", ok: true };
+          s.checks.find((c) => c.name === "Record").text = "programmed-tags.csv (2 rows)";
           s.session.stepText = `Programmed ${label}: OK`;
           s.batch = "Batch: 1 programmed this session, 0 not OK";
           log("INFO", `Programmed ${label}: OK`);

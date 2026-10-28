@@ -11,29 +11,29 @@
  * ?dialog=program[&label=...] opens the Program dialog, ?log opens the log.
  *
  * Flow: the engine sends its whole view state (event `state`) after every
- * change and render() redraws from it; nothing is kept between states
- * except which prompt has been shown. User actions become `command`s, which
- * the engine answers with a new state, and the dialogs that need data first
- * ask `query`s (program_preview, label_notes, label_conflict, ...). Prompts
- * the engine raises (state.prompt) are answered with a command. The element
- * ids used here are those of index.html.
+ * change, and draw() renders the window from it with Preact and the kit's
+ * components (host/ui-kit/kit-components.js) into #app. The page keeps only
+ * what is its own: whether the log is open, the log level, the log text,
+ * and which prompt has been shown. User actions become `command`s, which
+ * the engine answers with a new state, and the dialogs that need data
+ * first ask `query`s (program_preview, label_notes, label_conflict, ...).
+ * Prompts the engine raises (state.prompt) are answered with a command.
  */
 (function () {
   "use strict";
 
-  const { el } = Kit;
+  const { html, render } = Kit;
+  const { useEffect, useRef, useState } = Kit.hooks;
+  const { Button, Disclosure, Select, Group, Row, Progress, StatusGrid, LogPane } = Kit.ui;
   const params = Kit.setupPage("Tag Programmer");
   const engine = Kit.createEngine(!Kit.inApp() && window.MockEngine ? MockEngine.create(params) : null);
-  /**
-   * The element with `id` in index.html.
-   * @param {string} id
-   * @returns {?HTMLElement}
-   */
-  const $ = (id) => document.getElementById(id);
 
   let state = null;
   let shownPrompt = null;     // the id of the prompt on screen or answered
   let busy = false;           // a dialog of ours is open; ignore re-entry
+  /** What the page keeps itself: the log drawer and the log level. */
+  const ui = { logOpen: params.has("log"), level: "INFO" };
+  const log = Kit.logModel();
 
   /**
    * Sends a command to the engine; an error string in the answer, or a
@@ -50,145 +50,149 @@
 
   // ---- Rendering --------------------------------------------------------
 
-  /**
-   * Redraws the whole window from a view state and shows its prompt, if it
-   * is new. The state is kept for the menus and buttons that read it later.
-   * @param {Object} s The engine's view state (see the contract).
-   */
-  function render(s) {
-    state = s;
-    Kit.setTitle(s.title);
-    renderFirmware(s.firmware);
-    renderTarget(s.tagType);
-    renderChecks(s.checks, s.rowButtons);
-    renderTag(s.tag);
-    renderActions(s.actions);
-    renderSession(s.session);
-    $("batch").textContent = s.batch;
-    showPrompt(s.prompt);
+  /** Renders the window from the last state; nothing before the first. */
+  function draw() {
+    if (state) render(html`<${Window} s=${state}/>`, document.getElementById("app"));
   }
 
   /** A closed <select> collapses runs of spaces; qtprogram's texts use two. */
-  const keepSpaces = (text) => text.replace(/  /g, "\u00a0 ");
+  const keepSpaces = (text) => text.replace(/  /g, "  ");
 
   /**
-   * Fills the firmware combo from `fw.items`, with a "Choose firmware"
-   * placeholder while nothing is selected, and enables Release Notes when
-   * the selection has a notes URL.
+   * The firmware combo's entries from `fw.items`, with a "Choose firmware"
+   * placeholder while nothing is selected.
    * @param {Object} fw The state's `firmware` section.
+   * @returns {Array<Object>} Entries for Select.
    */
-  function renderFirmware(fw) {
-    const box = $("firmware");
-    const options = [];
-    if (fw.selected === "") options.push(el("option", { value: "" }, "Choose firmware"));
+  function firmwareOptions(fw) {
+    const options = fw.selected === "" ? [{ value: "", text: "Choose firmware" }] : [];
     for (const item of fw.items) {
-      if (item.separator) options.push(el("option", { disabled: true, value: "-" }, "──────────"));
-      else options.push(el("option", { value: item.id }, keepSpaces(item.text)));
+      options.push(item.separator ? { value: "-", text: "──────────", disabled: true }
+        : { value: item.id, text: keepSpaces(item.text) });
     }
-    box.replaceChildren(...options);
-    box.value = fw.selected;
-    box.disabled = !fw.enabled;
-    $("release-notes").disabled = !fw.releaseNotesUrl;
+    return options;
   }
 
   /**
-   * Fills the tag-type combo; a null selection shows none selected.
-   * @param {Object} t The state's `tagType` section.
-   */
-  function renderTarget(t) {
-    const box = $("target");
-    box.replaceChildren(...t.items.map((name) => el("option", { value: name }, name)));
-    box.selectedIndex = t.selected === null ? -1 : t.items.indexOf(t.selected);
-    box.disabled = !t.enabled;
-    $("target-note").textContent = t.note;
-  }
-
-  /**
-   * Draws the status rows (dot, name, text, buttons). The Record row gets
-   * Choose... and the Tag state row Stop and Erase, as `rb` says.
+   * The status rows, with Choose... on the Record row and Stop and Erase on
+   * the Tag state row, as `rb` says.
    * @param {Array<Object>} checks The state's `checks` rows, in order.
    * @param {Object} rb The state's `rowButtons`.
+   * @returns {Array<Object>} Rows for StatusGrid.
    */
-  function renderChecks(checks, rb) {
-    const grid = $("checks");
-    grid.replaceChildren();
-    for (const c of checks) {
-      const text = c.text || "—";
-      const buttons = el("div", { class: "kit-status-buttons" });
+  function checkRows(checks, rb) {
+    return checks.map((c) => {
+      let buttons = null;
       if (c.name === "Record" && rb.recordChoose) {
-        buttons.append(el("button", { class: "kit-button small", type: "button",
-          onclick: () => send("choose_record") }, "Choose..."));
+        buttons = html`<${Button} small onClick=${() => send("choose_record")}>Choose...<//>`;
       }
       if (c.name === "Tag state") {
-        if (rb.stop.visible) {
-          buttons.append(el("button", { class: "kit-button small", type: "button", disabled: !rb.stop.enabled,
-            onclick: () => send("stop_tag") }, "Stop"));
-        }
-        if (rb.erase.visible) {
-          buttons.append(el("button", { class: "kit-button small", type: "button", disabled: !rb.erase.enabled,
-            onclick: confirmErase }, "Erase"));
-        }
+        buttons = html`
+          ${rb.stop.visible && html`<${Button} small disabled=${!rb.stop.enabled} onClick=${() => send("stop_tag")}>Stop<//>`}
+          ${rb.erase.visible && html`<${Button} small disabled=${!rb.erase.enabled} onClick=${confirmErase}>Erase<//>`}`;
       }
-      grid.append(
-        el("span", { class: "kit-dot " + c.level }, "●"),
-        el("span", { class: "kit-status-name" }, c.name),
-        el("span", { class: "kit-status-text kit-selectable", title: c.text }, text),
-        buttons);
-    }
+      return { level: c.level, name: c.name, text: c.text, buttons };
+    });
   }
 
   /**
-   * Fills the tag panel: identity, state, firmware, tests, clock (flagged
-   * when off) and the result, coloured when it is a pass or a failure.
-   * @param {Object} t The state's `tag` section.
+   * The Tag panel: identity, state, firmware, tests, clock (flagged when
+   * off) and the result, coloured when it is a pass or a failure.
+   * @param {{t: Object}} props The state's `tag` section.
+   * @returns {Object} A Preact element.
    */
-  function renderTag(t) {
-    $("tag-label").textContent = t.label;
-    $("tag-uuid").textContent = t.uuid;
-    $("tag-state").textContent = t.state;
-    $("tag-firmware").textContent = t.firmware;
-    $("tag-tests").textContent = t.tests;
-    $("tag-clock").textContent = t.clock.text;
-    $("tag-clock").classList.toggle("kit-text-warn", !!t.clock.warn);
-    $("sync").disabled = !t.syncEnabled;
-    const result = $("tag-result");
-    result.textContent = t.result.text;
-    result.classList.toggle("kit-text-ok", t.result.ok === true);
-    result.classList.toggle("kit-text-fail", t.result.ok === false);
+  function TagPanel({ t }) {
+    const result = t.result.ok === true ? "kit-text-ok" : t.result.ok === false ? "kit-text-fail" : "";
+    return html`<div class="kit-form">
+      <${Row} single label="Label" value=${t.label}/>
+      <${Row} single label="UUID" value=${t.uuid}/>
+      <${Row} single label="State" value=${t.state}/>
+      <${Row} single label="Firmware" value=${t.firmware}/>
+      <${Row} single label="Tests" value=${t.tests}/>
+      <span class="kit-form-label">Clock</span>
+      <span class="kit-form-value clock-row">
+        <span id="tag-clock" class=${"kit-selectable" + (t.clock.warn ? " kit-text-warn" : "")}
+          title="The tag's clock minus this computer's, in seconds">${t.clock.text}</span>
+        <${Button} small disabled=${!t.syncEnabled} title="Set the tag's clock to this computer's"
+          onClick=${() => send("sync_clock")}>Sync<//>
+      </span>
+      <${Row} single label="Result" class=${result} value=${t.result.text}/>
+    </div>`;
+  }
+
+  /** The action buttons: state key, label, the Kit button kind, handler. */
+  const ACTIONS = [
+    ["program", "Program", "default", () => programDialog()],
+    ["retest", "Retest", null, () => retestDialog()],
+    ["nextTag", "Next Tag", null, () => send("next_tag")],
+    ["attach", "Attach", null, () => send("attach")],
+  ];
+
+  /**
+   * The step line, the progress bar (hidden for null, indeterminate for
+   * "busy", else `done`/`total`) and the Retry and Cancel buttons.
+   * @param {{s: Object}} props The state's `session` section.
+   * @returns {Object} A Preact element.
+   */
+  function Session({ s }) {
+    const p = s.progress;
+    const fraction = p && typeof p === "object" ? (p.total > 0 ? p.done / p.total : 0) : null;
+    return html`<div class="session">
+      <span id="step" class="kit-selectable">${s.stepText}</span>
+      <${Progress} hidden=${p === null} fraction=${fraction}/>
+      <${Button} hidden=${!s.retryVisible} onClick=${() => send("retry_connect")}>Retry<//>
+      <${Button} hidden=${!s.cancelVisible} onClick=${() => send("cancel_session")}>${s.cancelText}<//>
+    </div>`;
   }
 
   /**
-   * Enables the action buttons; a disabled one shows the engine's reason as
-   * its tooltip.
-   * @param {Object} a The state's `actions` section.
+   * The whole window below the menu bar.
+   * @param {{s: Object}} props The engine's view state (see the contract).
+   * @returns {Object} A Preact element.
    */
-  function renderActions(a) {
-    for (const [key, id] of [["program", "program"], ["retest", "retest"], ["nextTag", "next-tag"], ["attach", "attach"]]) {
-      const b = $(id);
-      b.disabled = !a[key].enabled;
-      b.title = a[key].enabled ? "" : a[key].tooltip;
-    }
+  function Window({ s }) {
+    const fw = s.firmware;
+    const t = s.tagType;
+    return html`
+      <div class="choice">
+        <label for="firmware">Firmware</label>
+        <${Select} id="firmware" options=${firmwareOptions(fw)} value=${fw.selected} disabled=${!fw.enabled}
+          onChange=${firmwareChosen}/>
+        <${Button} id="release-notes" disabled=${!fw.releaseNotesUrl}
+          onClick=${() => fw.releaseNotesUrl && Kit.openUrl(fw.releaseNotesUrl)}>Release Notes<//>
+        <label for="target">Tag type</label>
+        <${Select} id="target" options=${t.items} value=${t.selected} disabled=${!t.enabled}
+          onChange=${(name) => send("choose_target", { name })}/>
+        <span id="target-note">${t.note}</span>
+      </div>
+
+      <div class="panels">
+        <${Group} class="station" title="Station"><${StatusGrid} id="checks" rows=${checkRows(s.checks, s.rowButtons)}/><//>
+        <${Group} class="tag" title="Tag"><${TagPanel} t=${s.tag}/><//>
+      </div>
+
+      <div class="actions">
+        ${ACTIONS.map(([key, label, kind, action]) => html`<${Button} kind=${kind} disabled=${!s.actions[key].enabled}
+          title=${s.actions[key].enabled ? "" : s.actions[key].tooltip} onClick=${action}>${label}<//>`)}
+        <span class="kit-spacer"></span>
+        <${Button} onClick=${() => s.recordPath && Kit.revealPath(s.recordPath, "Show CSV")}>Show CSV<//>
+      </div>
+
+      <${Session} s=${s.session}/>
+
+      <div class="bottom">
+        <span id="batch">${s.batch}</span>
+        <${Disclosure} pressed=${ui.logOpen} onClick=${() => { ui.logOpen = !ui.logOpen; draw(); }}>Log<//>
+      </div>
+
+      <${LogPane} hidden=${!ui.logOpen} log=${log} level=${ui.level} onSave=${saveLog}
+        onLevel=${(level) => { ui.level = level; draw(); send("set_log_level", { level }); }}/>`;
   }
 
-  /**
-   * Draws the step line, the progress bar (hidden for null, indeterminate
-   * for "busy", else `done`/`total`) and the Retry and Cancel buttons.
-   * @param {Object} s The state's `session` section.
-   */
-  function renderSession(s) {
-    $("step").textContent = s.stepText;
-    const bar = $("progress");
-    bar.hidden = s.progress === null;
-    bar.classList.toggle("busy", s.progress === "busy");
-    const fill = bar.firstElementChild;
-    if (s.progress && typeof s.progress === "object") {
-      fill.style.width = s.progress.total > 0 ? (100 * s.progress.done / s.progress.total) + "%" : "0";
-    } else {
-      fill.style.width = "";
-    }
-    $("retry").hidden = !s.retryVisible;
-    $("cancel").hidden = !s.cancelVisible;
-    $("cancel").textContent = s.cancelText;
+  /** Save Error Log: asks for a file and has the engine write the log. */
+  async function saveLog() {
+    const path = await Kit.saveFile({ title: "Save Log" });
+    if (path) send("save_text", { path, text: log.text() });
   }
 
   // ---- Prompts ----------------------------------------------------------
@@ -290,13 +294,53 @@
   }
 
   /**
+   * The Program dialog's body: the label field, what programming will
+   * erase, lose and keep, and the notes for the label as it is typed (a
+   * stale answer is dropped if a newer one was asked for).
+   * @param {Object} props
+   * @param {Object} props.pv The program_preview answer.
+   * @param {string} props.initialLabel Label to start with.
+   * @param {Function} props.onLabel Called with the trimmed label after
+   *     each change, and once at the start.
+   * @returns {Object} A Preact element.
+   */
+  function ProgramBody({ pv, initialLabel, onLabel }) {
+    const [label, setLabel] = useState(initialLabel);
+    const [notes, setNotes] = useState("");
+    const seq = useRef(0);
+    const input = useRef(null);
+    useEffect(() => { setTimeout(() => input.current.select(), 0); }, []);
+    useEffect(() => {
+      const trimmed = label.trim();
+      onLabel(trimmed);
+      const mine = ++seq.current;
+      Promise.resolve(trimmed ? engine.query("label_notes", { label: trimmed }) : []).then((extra) => {
+        if (mine === seq.current) setNotes(pv.notes.concat(extra || []).join("\n"));
+      });
+    }, [label]);
+    const bullets = (items) => html`<ul>${items.map((t) => html`<li>${t}</li>`)}</ul>`;
+    return html`<div>
+      <div class="kit-form program-form">
+        <span class="kit-form-label">Label</span>
+        <div class="kit-form-value"><input ref=${input} class="kit-field" type="text" value=${label}
+          placeholder="The label on the board, e.g. BitTag-017"
+          onInput=${(ev) => setLabel(ev.currentTarget.value)}/></div>
+        <${Row} label="Tag" value=${pv.tag}/>
+        <${Row} label="Image" value=${pv.image}/>
+        <${Row} label="Erase" value=${pv.erase}/>
+        <${Row} label="Lost">${bullets(pv.lost)}<//>
+        <${Row} label="Kept">${bullets(pv.kept)}<//>
+      </div>
+      <div class="program-notes">${notes || null}</div>
+    </div>`;
+  }
+
+  /**
    * qtprogram's Program dialog, built from program_preview and label_notes.
    *
-   * Shows what programming will erase, lose and keep, and the notes for the
-   * label as it is typed (a stale answer is dropped if a newer one was
-   * asked for). Erase and Program stays disabled while the label is empty;
-   * Return presses Cancel, so the destructive step always takes a click.
-   * Re-entry while open is ignored.
+   * Erase and Program stays disabled while the label is empty; Return
+   * presses Cancel, so the destructive step always takes a click. Re-entry
+   * while open is ignored.
    * @param {string} [initialLabel] Label to start with.
    */
   async function programDialog(initialLabel) {
@@ -308,40 +352,17 @@
         await Kit.alert("Program Tag", pv.reason, null, "warning");
         return;
       }
-      const input = el("input", { class: "kit-field", type: "text",
-        placeholder: "The label on the board, e.g. BitTag-017", value: initialLabel || "" });
-      const notes = el("div", { class: "program-notes" });
-      const bullets = (items) => el("ul", {}, items.map((t) => el("li", {}, t)));
-      const row = (label, value) => [el("span", { class: "kit-form-label" }, label),
-        el("div", { class: "kit-form-value kit-selectable" }, value)];
-      const body = el("div", {},
-        el("div", { class: "kit-form program-form" },
-          el("span", { class: "kit-form-label" }, "Label"), el("div", { class: "kit-form-value" }, input),
-          row("Tag", pv.tag),
-          row("Image", pv.image),
-          row("Erase", pv.erase),
-          row("Lost", bullets(pv.lost)),
-          row("Kept", bullets(pv.kept))),
-        notes);
-
       const buttons = [
         { label: "Cancel", value: null, default: false, cancel: true, enter: true },
         { label: "Erase and Program", value: "program", default: true, enabled: false },
       ];
-      let seq = 0;
-      const update = async () => {
-        const label = input.value.trim();
-        buttons[1].node.disabled = label === "";
-        const mine = ++seq;
-        const extra = label ? await engine.query("label_notes", { label }) : [];
-        if (mine === seq) notes.textContent = pv.notes.concat(extra || []).join("\n");
+      let label = "";
+      const onLabel = (l) => {
+        label = l;
+        if (buttons[1].node) buttons[1].node.disabled = l === "";
       };
-      input.addEventListener("input", update);
-      const answer = Kit.dialog({ title: "Program Tag", body, buttons });
-      update();
-      setTimeout(() => input.select(), 0);
-      if ((await answer) !== "program") return;
-      const label = input.value.trim();
+      const body = html`<${ProgramBody} pv=${pv} initialLabel=${initialLabel || ""} onLabel=${onLabel}/>`;
+      if ((await Kit.dialog({ title: "Program Tag", body, buttons })) !== "program") return;
       if (await labelAccepted("Program Tag", label)) send("program", { label });
     } finally {
       busy = false;
@@ -362,14 +383,14 @@
   /**
    * Handles a firmware combo change: "Other ELF file..." opens a file
    * picker, anything else is sent as `choose_firmware`.
+   * @param {string} id The chosen entry's value.
    */
-  async function firmwareChosen() {
-    const id = $("firmware").value;
+  async function firmwareChosen(id) {
     if (id === "other") {
       const path = await Kit.openFile({ title: "Firmware image",
         filters: [{ name: "ELF images", extensions: ["elf"] }] });
       if (path) send("choose_file", { path });
-      else render(state);         // refill the combo, as qtprogram does
+      else draw();                // show the selection again, as qtprogram does
     } else if (id !== "") {
       send("choose_firmware", { id });
     }
@@ -393,7 +414,7 @@
 
   // ---- Wiring -----------------------------------------------------------
 
-  Kit.menuBar($("menubar"), [
+  Kit.menuBar(document.getElementById("menubar"), [
     { title: "Help", items: [
       { label: "Tag Programmer User Guide", tooltip: "Open the Tag Programmer page of the user manual", action: userGuide },
       { label: "About Tag Programmer", action: about },
@@ -407,43 +428,19 @@
     ] },
   ]);
 
-  $("firmware").addEventListener("change", firmwareChosen);
-  $("target").addEventListener("change", () => send("choose_target", { name: $("target").value }));
-  $("release-notes").addEventListener("click", () => state.firmware.releaseNotesUrl && Kit.openUrl(state.firmware.releaseNotesUrl));
-  $("sync").addEventListener("click", () => send("sync_clock"));
-  $("program").addEventListener("click", () => programDialog());
-  $("retest").addEventListener("click", retestDialog);
-  $("next-tag").addEventListener("click", () => send("next_tag"));
-  $("attach").addEventListener("click", () => send("attach"));
-  $("show-csv").addEventListener("click", () => state.recordPath && Kit.revealPath(state.recordPath, "Show CSV"));
-  $("retry").addEventListener("click", () => send("retry_connect"));
-  $("cancel").addEventListener("click", () => send("cancel_session"));
-
-  const logText = $("log-text");
-  $("log-toggle").addEventListener("click", () => {
-    const on = $("log").hidden;
-    $("log").hidden = !on;
-    $("log-toggle").setAttribute("aria-pressed", String(on));
-  });
-  $("log-level").addEventListener("change", () => send("set_log_level", { level: $("log-level").value }));
-  $("save-log").addEventListener("click", async () => {
-    const path = await Kit.saveFile({ title: "Save Log" });
-    if (path) send("save_text", { path, text: logText.value });
-  });
-
   // Listen before `start`, so the first state is not missed (Tauri's listen
   // resolves asynchronously).
   Promise.all([
-    engine.on("log", (e) => {
-      const atEnd = logText.scrollTop + logText.clientHeight >= logText.scrollHeight - 4;
-      logText.value += `${e.level} ${e.text}\n`;
-      if (atEnd) logText.scrollTop = logText.scrollHeight;
+    engine.on("log", (e) => log.append(`${e.level} ${e.text}`)),
+    engine.on("state", (s) => {
+      state = s;
+      Kit.setTitle(s.title);
+      draw();
+      showPrompt(s.prompt);
     }),
-    engine.on("state", render),
   ]).then(async () => {
-    await send("set_log_level", { level: $("log-level").value });
+    await send("set_log_level", { level: ui.level });
     await send("start");
-    if (params.has("log")) $("log-toggle").click();
     if (params.get("dialog") === "program") programDialog(params.get("label") || "");
   });
 })();

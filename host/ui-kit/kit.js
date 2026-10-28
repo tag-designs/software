@@ -281,7 +281,9 @@
    *
    * `buttons` are [{label, value, default, destructive, enabled}], left to
    * right; a button with `cancel: true` (or the value null) also answers
-   * Escape. `body` is a Node. `title` is the dialog's window title.
+   * Escape. `body` is a Node, or a Preact element (from `Kit.html`), which
+   * is rendered into the dialog and unmounted when it closes, so its
+   * effects' clean-ups run. `title` is the dialog's window title.
    * Resolves with the chosen button's `value`. The returned promise has
    * `.dialog` (the element) and `.close(value)`.
    *
@@ -295,7 +297,7 @@
    *
    * @param {Object} options
    * @param {string} [options.title] Title line.
-   * @param {Node} options.body Content.
+   * @param {Node|Object} options.body Content: a Node or a Preact element.
    * @param {Array<Object|string>} options.buttons Buttons, left to right.
    * @param {number} [options.width] Width in CSS pixels.
    * @param {Function} [options.onOpen] Called with the dialog element once
@@ -310,7 +312,11 @@
       style: width ? { width: width + "px" } : undefined });
     const backdrop = el("div", { class: "kit-backdrop" }, box);
     if (title) box.append(el("div", { class: "kit-dialog-title" }, title));
-    box.append(el("div", { class: "kit-dialog-body" }, body));
+    const content = el("div", { class: "kit-dialog-body" });
+    const vnode = !(body instanceof Node);
+    if (vnode) window.preact.render(body, content);
+    else content.append(body);
+    box.append(content);
     const bar = el("div", { class: "kit-dialog-buttons" });
     for (const b of buttons) {
       if (b === "spacer") { bar.append(el("div", { class: "kit-spacer" })); continue; }
@@ -327,6 +333,7 @@
     function done(value) {
       document.removeEventListener("keydown", onKey, true);
       backdrop.remove();
+      if (vnode) window.preact.render(null, content);
       finish(value);
     }
     function onKey(ev) {

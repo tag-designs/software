@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags: layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
+summary: SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 ---
 
 # External Flash Loaders
