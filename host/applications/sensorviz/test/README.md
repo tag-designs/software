@@ -1,12 +1,12 @@
 ---
 type: readme
 status: current
-summary: How to build and run catalog_check, plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy and view state against the committed fixtures.
+summary: How to build and run catalog_check, plotspec_check, preference_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files and view state.
 ---
 
 # sensorViz Offline Checks
 
-Three checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
+Four checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
 only the core (and through it `sensordata` and sensoranalysis's Qt-free
 core; `catalog_check` also sqlite3), so they also prove the core builds
 without Qt. They open no window.
@@ -16,9 +16,10 @@ own `CHECK()` macro, built behind an option and run by hand:
 
 ```sh
 cmake -DBUILD_SENSORVIZ_CHECKS=ON <build-dir>
-cmake --build <build-dir> --target catalog_check plotspec_check viewmodel_check
+cmake --build <build-dir> --target catalog_check plotspec_check preference_check viewmodel_check
 <build-dir>/Release/bin/catalog_check
 <build-dir>/Release/bin/plotspec_check
+<build-dir>/Release/bin/preference_check
 <build-dir>/Release/bin/viewmodel_check
 ```
 
@@ -63,6 +64,28 @@ not taken from the code under test.
 | Time and markers | The time extent over all traces; event markers only with traces visible |
 | Metadata box and title | The start row on elapsed-time logs only, sea level with altitude, declination with heading, a hidden title, the gap mode |
 | Formatting | The collection-start text (UTC, rounded to the second) and range padding |
+
+## `preference_check`
+
+Checks `PreferenceStore` and `colorFromString()`
+([`preference_store.h`](../core/preference_store.h)). The expected file text
+and colors are what Qt's `QJsonDocument` and `QColor` produced for the same
+input, taken when the store replaced the Qt code.
+
+| Area | Cases |
+| --- | --- |
+| Writing | A two-tag file with every kind of override byte for byte, an empty store, escaped strings, and keys above U+FFFF ordered before U+E000 as UTF-16 orders them |
+| Reading | The written file read back and rewritten identically; no version; sides trimmed in any case; color names; entries without overrides dropped |
+| Entries | `remember()` storing and removing, `forget()` |
+| Refusals | Each error and its message, the first fault in key order, and the store left unchanged |
+| Colors | Hex forms including 12- and 16-bit channels rounded as Qt rounds them, names ignoring case, spaces and tabs, and the strings Qt refused |
+
+When the store replaced the Qt code, a one-off comparison against that code
+found identical output for 3,000 random preference sets and identical results
+for 63,000 loads of valid and mutated files, apart from the malformed-JSON
+differences listed in the
+[toolkit-neutral core](../design/proposals/toolkit-neutral-core.md#phase-c-as-built)
+proposal, and identical colors for about 300,000 strings.
 
 ## `viewmodel_check`
 

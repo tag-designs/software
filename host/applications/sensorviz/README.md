@@ -103,9 +103,12 @@ The Qt front end is split by responsibility:
   the IMUTag magnetometer and acceleration axes; and records collection-start
   metadata and events for elapsed-time IMUTag logs (see
   [Data Model](#data-model)). `dataloading.cpp` calls it off the UI thread.
-- `sensor_preferences.*`: the per-tag preference map and its JSON load/store,
-  converting to and from the core's `TagPreferences`; applying and capturing
-  them is the ViewModel's.
+- `core/preference_store.*` (in `sensorviz_core`, Qt-free): the per-tag
+  preference map (`PreferenceStore`) and its JSON file, byte-compatible with
+  what the Qt code wrote, and the color names and hex forms `QColor`
+  accepts (`colorFromString()`).
+- `sensor_preferences.*`: the Preferences menu's files and dialogs around the
+  store; applying and capturing preferences is the ViewModel's.
 - `sensorstream.h`: the Qt-side names for the core types (`SensorLog` is
   `sensorviz::StreamCatalog`, `SensorStream` is `sensorviz::StreamMeta`), with
   conversions between core and Qt strings and colors (see
@@ -178,10 +181,11 @@ Most SensorViz changes should start in one of four places:
   check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
   actions, clears old custom ranges, and updates File Info.
 - Default stream color, initial visibility, axis side, or fixed range is wrong:
-  check `sensor_preferences.cpp`, especially `defaultDisplayForStream()`.
+  check `defaultDisplayForStream()` in `core/stream_meta.cpp`.
 - Preference files load/store incorrectly:
-  check `sensor_preferences.cpp`. Preference files are formatted JSON and store
-  only overrides from the sensorViz defaults.
+  check `core/preference_store.cpp` (format) and `sensor_preferences.cpp`
+  (files). Preference files are formatted JSON and store only overrides from
+  the sensorViz defaults.
 - Stream visibility or range behavior is wrong:
   check `stream_actions.cpp`.
 - Scalar transform behavior is wrong:
@@ -344,6 +348,12 @@ Saved preference files may contain:
 - `axis_sides`: stream id to `left` or `right` for user-chosen axis placement.
 - `break_lines_at_gaps`: `false` when the user turned off View > Break Lines
   at Gaps; absent when it is on, the default.
+
+The file is written and read by the core's `PreferenceStore`
+(`core/preference_store.h`), which keeps Qt's layout byte for byte: four-space
+indents, keys in UTF-16 order, colors as `#rrggbb`. Colors may be edited by
+hand as any form `QColor` accepts: `#rgb`, `#rrggbb`, `#aarrggbb` (alpha
+ignored), 12- and 16-bit hex, or an SVG color name.
 
 Saved preference files intentionally do not contain y-axis ranges, sea-level
 pressure, declination, UTC offset, or battery-forward. Those are session or

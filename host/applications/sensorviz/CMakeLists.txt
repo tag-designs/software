@@ -62,6 +62,7 @@ set(sensorviz_SRCS
 #]]
 add_library(sensorviz_core STATIC
   core/plot_spec.cpp
+  core/preference_store.cpp
   core/stream_catalog.cpp
   core/stream_meta.cpp
   core/view_model.cpp)
@@ -97,7 +98,7 @@ option(BUILD_SENSORVIZ_CHECKS
        OFF)
 
 if(BUILD_SENSORVIZ_CHECKS)
-  foreach(check catalog_check plotspec_check viewmodel_check)
+  foreach(check catalog_check plotspec_check preference_check viewmodel_check)
     add_executable(${check} test/${check}.cc)
     target_link_libraries(${check} PRIVATE sensorviz_core)
     set_target_properties(${check} PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)

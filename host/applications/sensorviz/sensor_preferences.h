@@ -7,12 +7,14 @@
 #include <QString>
 
 #include "sensorstream.h"
+#include "preference_store.h"
 #include "view_model.h"
 
 // Built-in display defaults per stream id are sensorviz::defaultDisplayForStream()
 // (core/stream_meta.h). User overrides that follow a tag type are
 // sensorviz::TagPreferences (core/view_model.h), applied to and captured from
-// the ViewModel; this front end reads and writes them as JSON files:
+// the ViewModel and kept in sensorviz::PreferenceStore (core/preference_store.h),
+// which reads and writes them as JSON files:
 //
 // - visible_streams, only when visibility differs from the defaults;
 // - colors and axis_sides, only for user choices;

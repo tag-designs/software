@@ -288,7 +288,7 @@ private:
     // Preferences are keyed by tag type/profile and store only differences from
     // sensorViz display defaults. The currently loaded tag's are applied to
     // and captured from view_.
-    QMap<QString, SensorVizPreferences> preferences_by_tag_type_;
+    sensorviz::PreferenceStore preferences_;
     bool suppress_preference_updates_ = false;
 
     QWidget *central_ = nullptr;

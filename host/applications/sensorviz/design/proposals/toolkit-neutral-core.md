@@ -11,8 +11,9 @@ summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel,
 the state instead of holding it. [Phase A as built](#phase-a-as-built) records
 where it differs from the sketch below. Phase B is built: `openLog()` and
 `StreamCatalog` in the core, the Qt loader removed;
-[phase B as built](#phase-b-as-built) records its differences. Phases C-F are
-not built.
+[phase B as built](#phase-b-as-built) records its differences. Phase C is
+built: `PreferenceStore` reads and writes the preference file in the core
+([phase C as built](#phase-c-as-built)). Phases D-F are not built.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -597,8 +598,7 @@ or folded into a later phase as follows.
 | Setters return their changes *and* notify an optional listener | Returned changes only | Keep both; the listener suits Qt, the return value suits commands |
 | Typed parameter setters (`setSeaLevelPressure()`, `setDeclinationDegrees()`, `setBatteryForward()`, `setActivityTimeConstant()`) | `setParameter(key, value)` over `ParameterValues` | Phase D replaces them when transforms declare their parameters |
 
-`TagPreferences` is in the core, but the preference file I/O is still
-Qt's `QJsonDocument` in `sensor_preferences.cpp`, which is phase C. The
+`TagPreferences` is in the core; its file I/O followed in phase C. The
 sensorviz TODO lists everything still Qt-bound.
 
 ### Phase B as built
@@ -645,6 +645,36 @@ IMUTag magnetometer corrected by `compasscore::applyMagnetometer()`.
 - `info` rows are ordered by UTF-8 bytes, not UTF-16 code units. The two
   orders differ only between characters above U+FFFF and those from U+E000
   to U+FFFF.
+
+### Phase C as built
+
+`sensorviz::PreferenceStore` (`core/preference_store.h`) holds the per-tag
+`TagPreferences` and reads and writes the preference file;
+`sensor_preferences.cpp` keeps only the menu, the file dialogs and the file
+I/O. Colors are parsed by the core's `colorFromString()`, which follows
+`QColor(QString)`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| Reading through protobuf's `google.protobuf.Value`; writing by hand | `MessageToJsonString` for writing too | protobuf's printer cannot produce Qt's layout (four-space indents, `"key": value`, one array element per line), so the writer is about sixty lines |
+| Keys ordered by UTF-16 code unit | -- | Qt orders object keys so, which puts characters above U+FFFF before U+E000-U+FFFF; the writer sorts the same way, and the reader reports the first fault in that order |
+| The SVG color table copied from `QColor::colorNames()` | -- | Needed to read hand-edited names without Qt; 12- and 16-bit hex channels are rounded through 16 bits as Qt rounds them |
+
+**Checked:** a one-off program ran the Qt code, copied verbatim, against the
+store. Over 3,000 random preference sets (with quotes, backslashes, control
+characters, U+2028, U+E000 and characters above U+FFFF in tags and ids) the
+saved bytes were identical; over 63,000 loads of those files and random
+mutations of them, the result and error message were identical whenever both
+readers parsed the JSON; and `colorFromString()` agreed with `QColor` on
+about 300,000 strings, including every color name in four spellings. The
+capture suites were pixel-identical, and a preference file loaded through
+`--load-preferences` drew as expected. `preference_check` is new.
+
+**Malformed JSON** is the one difference: protobuf's reader accepts trailing
+commas, which Qt refused, and refuses duplicate keys, unknown escapes such as
+`\,` and numbers such as `1.`, which Qt accepted. None comes from a file
+sensorViz writes; matching them would mean writing a JSON parser that copies
+Qt's.
 
 ## The compass convention needs a decision
 
