@@ -402,6 +402,10 @@ design document.
 
 - [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
 
+### Applications / tagcalibrate-rs
+
+- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, run against a mock engine; the engine and Tauri shell are still to come.
+
 ### Applications / tagmonitor-rs
 
 - [Tag Monitor (Rust)](../host/applications/tagmonitor-rs/README.md) — Tag Monitor in Rust, the port of qtmonitor shipped as tagmonitor - what is ported, how it is checked against the C++ app's oracles, and how to build, run and test it.
