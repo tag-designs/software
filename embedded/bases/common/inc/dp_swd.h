@@ -101,7 +101,11 @@ Protocol error -- target does not respond/drive line
 #define DBG_Addr     (0xe000edf0)
 
 #define REGWnR        (1 << 16)
+// WAIT acknowledgements retried, immediately, before an access fails. A base
+// may set it in its project.mk (PROJECT_UDEFS) to test the budget.
+#ifndef MAX_SWD_RETRY
 #define MAX_SWD_RETRY 25
+#endif
 
 // Interface
 

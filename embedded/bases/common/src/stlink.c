@@ -124,7 +124,8 @@ int stlink_eval(uint8_t *buf)
   uint8_t cmd;
 
   cmd = *buf++;
-  EPRINTF("stlink cmd %02x\r\n", cmd);
+  // One line per command floods the error log; enable when tracing.
+  // EPRINTF("stlink cmd %02x\r\n", cmd);
 
   switch (cmd)
   {

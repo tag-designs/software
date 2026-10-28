@@ -46,6 +46,26 @@ Delete an item when it is done.
     To separate them, run each tag on the other base where the I/O voltages
     allow it (the U375 base is 1.8 V), or build the L432-v1 base with its
     `ll_swd_spi.c` (see the item below) and repeat with the UIUCTag.
+  - **Not reproduced on `bittag-base-v7` with a BitTag LE (2026-10-27).**
+    The base was built with fault logging on its USB serial port (branch
+    `base-0x81`): every SWD fault with its CTRL/STAT sticky bits, WAITs that
+    outlast `MAX_SWD_RETRY`, and the longest WAIT run per session. Tag:
+    BITTAG_LE `2039354D30315012005E0068`, firmware `ceca92e6` (2026-09-28),
+    3.22 V. Synchronize Clock and Self-Test, polled through the busy period
+    every 50, 100 and 400 ms: 0 of about 1900 status reads failed, with the
+    current host code, with tagcore-rs from before the idle-wait fix
+    (`71ab1df4^`), and with the v3.2 and current C++ `tag-test`. The longest
+    WAIT run in any session was 3 of 25, so the retry budget is not what runs
+    out on this tag. Left: the tag. Its firmware predates `5060aa03` (RV3028
+    offset stored with the configuration), which changed what setting the
+    clock does; retry with current firmware, or with the tag type the bursts
+    were seen on.
+  - **SWD_Close is not acknowledged.** On every detach, the first write of
+    `SWD_Close()` (CSW, before clearing DHCSR.C_DEBUGEN) gets no
+    acknowledgement (`trans fail 7`), and the CTRL/STAT power-down that
+    follows is not retried, so the tag is probably left with debug enabled and
+    its debug power requested; it has likely gone back to stop mode by then.
+    Check with a current trace after a detach before changing the order.
   - **Debug connector:** a separate SWD connector to the base MCU is planned,
     to break on the fault path and see the acknowledgement the target
     returned.

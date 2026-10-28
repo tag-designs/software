@@ -298,6 +298,11 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
   return ack;
 }
 
+// The longest run of WAITs one access saw since the session opened: how close
+// the target came to outlasting MAX_SWD_RETRY. Reported when the session
+// closes.
+static uint32_t swd_max_waits = 0;
+
 static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
 {
   uint32_t ack = 0;
@@ -313,6 +318,8 @@ static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
     else
       break;
   } while (retry);
+  if (waits > swd_max_waits)
+    swd_max_waits = waits;
   // A WAIT that outlasts every retry is the first suspect for 0x81 bursts
   // (embedded/bases/TODO.md); say how long the target held the bus off.
   if (ack == SW_ACK_WAIT && waits > 1)
@@ -648,6 +655,9 @@ uint32_t SWD_readMem8(uint32_t address, uint8_t *data, uint32_t size)
 int32_t SWD_Close()
 {
   uint32_t tmp;
+  EPRINTF("swd close: longest WAIT run %u of %u\r\n", (unsigned)swd_max_waits,
+          (unsigned)MAX_SWD_RETRY);
+  swd_max_waits = 0;
   CoreID = 0;
   // release debug mode
   SWD_writeWord(DBG_HCSR, DBGKEY);
