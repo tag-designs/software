@@ -518,6 +518,10 @@ design document.
 - [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer and the calibration session for Rust and other languages - the tlw_* and tcs_* functions, the shared and static builds, symbol hiding, and how it was checked.
 - [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer, and calibrate through the C++ calibration session - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, tagcore_c, SqliteTagLogWriter, CalibrationSession), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
+### Libraries / tagcore-c-sys
+
+- [tagcore-c-sys (Rust)](../host/libraries/tagcore-c-sys/README.md) — tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*), so the safe wrappers over it - taglogwriter, calibsession - can be used together in one program.
+
 ### Libraries / tagcore-rs
 
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.

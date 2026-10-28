@@ -33,13 +33,16 @@
 //! # Linking
 //!
 //! The crate links `libtagcore_c`, which CMake builds with
-//! `-DBUILD_TAGCORE_C=ON`; `build.rs` finds it through `TAGCORE_C_LIB_DIR`.
+//! `-DBUILD_TAGCORE_C=ON`, through `tagcore-c-sys`, whose build script finds it
+//! through `TAGCORE_C_LIB_DIR` and which the other wrappers over the library
+//! share, so a program may use them together.
 //! On macOS it links the static archive (`tagcore_c_static`), since each
 //! application is its own bundle, and the executable needs nothing at run
 //! time. On Linux and Windows it links the shared library, one copy of which
 //! serves every tool in the install directory, and a binary must find it at
 //! run time: on Linux its package's build script sets an rpath from
-//! `DEP_TAGCORE_C_LIB_DIR` (see `commandline-rs/build.rs`); on Windows the
+//! `DEP_TAGCORE_C_LIB_DIR`, which a direct dependent of `tagcore-c-sys` reads
+//! (see `commandline-rs/build.rs`); on Windows the
 //! DLL must sit beside the executable or on `PATH`. `TAGCORE_C_LINK=dylib`
 //! forces the shared library on macOS too.
 //!
@@ -65,11 +68,12 @@
 //!
 //! # Maintaining
 //!
-//! The declarations in the private `ffi` module are written by hand from
+//! The declarations, imported here as `ffi`, are `tagcore_c_sys::tlw`
+//! (`host/libraries/tagcore-c-sys/src/tlw.rs`), written by hand from
 //! `host/libraries/tagcore-c/taglogwriter_c.h`; with a dozen functions,
 //! `bindgen` would cost more than it saves. When the header changes:
 //!
-//! 1. Change the matching declaration in `ffi`, and the safe method over it.
+//! 1. Change the matching declaration in `tlw.rs`, and the safe method over it.
 //! 2. If a function's signature or meaning changed, the header raises
 //!    `TLW_ABI_VERSION`; raise `ffi::TLW_ABI_VERSION` to match.
 //!    [`LogWriter::create`] refuses a library whose version differs, so a
@@ -93,68 +97,9 @@ use std::ptr::NonNull;
 use prost::Message;
 use tagcore::proto::{Ack, CalibrationConstants, Config, State, TagInfo};
 
-/// The raw C interface, as declared in `taglogwriter_c.h`.
-///
-/// Hand-written; see the crate's "Maintaining" section. Each item's comment
-/// is a summary: the header's Doxygen is the contract.
-mod ffi {
-    use std::ffi::{c_char, c_int};
+/// The raw C interface, in `tagcore-c-sys`, which links the library.
+use tagcore_c_sys::tlw as ffi;
 
-    /// The opaque C handle, `struct tlw_writer`.
-    #[repr(C)]
-    pub struct TlwWriter {
-        /// Makes the type unconstructible and unsized-like in Rust.
-        _private: [u8; 0],
-    }
-
-    /// `TLW_ABI_VERSION` from the header this crate was written against.
-    pub const TLW_ABI_VERSION: u32 = 1;
-    /// `TLW_CONFIG`: a Config header part.
-    pub const TLW_CONFIG: c_int = 1;
-    /// `TLW_INFO`: the TagInfo header part.
-    pub const TLW_INFO: c_int = 2;
-    /// `TLW_CALIBRATION`: one CalibrationConstants header part.
-    pub const TLW_CALIBRATION: c_int = 3;
-    /// `TLW_STATE`: one State header part.
-    pub const TLW_STATE: c_int = 4;
-
-    unsafe extern "C" {
-        /// The interface version the library was built with.
-        pub fn tlw_abi_version() -> u32;
-        /// Logs at DEBUG when nonzero, errors only otherwise.
-        pub fn tlw_set_debug(enabled: c_int);
-        /// Creates a log; returns a handle (closed on failure) or null on
-        /// out-of-memory.
-        pub fn tlw_open(
-            path: *const c_char,
-            config: *const u8,
-            config_len: usize,
-            replace_existing: c_int,
-        ) -> *mut TlwWriter;
-        /// 1 if the database is open.
-        pub fn tlw_is_open(w: *const TlwWriter) -> c_int;
-        /// Adds one header part; 1 on success.
-        pub fn tlw_header_add(w: *mut TlwWriter, kind: c_int, msg: *const u8, len: usize) -> c_int;
-        /// Writes the gathered header; 1 on success.
-        pub fn tlw_write_header(w: *mut TlwWriter) -> c_int;
-        /// Adds an info row; 1 on success.
-        pub fn tlw_write_info(
-            w: *mut TlwWriter,
-            field: *const c_char,
-            value: *const c_char,
-        ) -> c_int;
-        /// Starts the log transaction; 1 on success.
-        pub fn tlw_begin_log(w: *mut TlwWriter) -> c_int;
-        /// Writes one page; records consumed, 0 at end, negative on error.
-        pub fn tlw_write_log(w: *mut TlwWriter, ack: *const u8, len: usize) -> c_int;
-        /// Commits the log transaction; 1 on success.
-        pub fn tlw_end_log(w: *mut TlwWriter) -> c_int;
-        /// The last error on `w`, valid until the next call on it.
-        pub fn tlw_last_error(w: *const TlwWriter) -> *const c_char;
-        /// Closes and frees `w`.
-        pub fn tlw_close(w: *mut TlwWriter);
-    }
-}
 
 /// Why a writer call failed: the C++ writer's own message, or the
 /// interface's (a message that did not parse, a version mismatch).

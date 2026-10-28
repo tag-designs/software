@@ -590,6 +590,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagcore-c-sys"
+version = "0.1.0"
+
+[[package]]
 name = "taglogwriter"
 version = "0.1.0"
 dependencies = [
@@ -597,6 +601,7 @@ dependencies = [
  "prost-reflect",
  "serde_json",
  "tagcore",
+ "tagcore-c-sys",
 ]
 
 [[package]]

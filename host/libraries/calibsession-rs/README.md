@@ -41,13 +41,9 @@ export TAGCORE_C_LIB_DIR=<build-dir>/Release/lib
 cargo test
 ```
 
-macOS links the static archive, Linux and Windows the shared library. One
-difference from `taglogwriter`'s `build.rs`: the archive is linked from a copy
-in Cargo's `OUT_DIR`, because the macOS linker, asked for `-ltagcore_c` in a
-directory that also holds `libtagcore_c.dylib`, takes the dylib -- which this
-crate's own test binary did. Only one crate in a build may declare
-`links = "tagcore_c"`, so a program cannot depend on both crates; one that
-needs both should merge them first.
+macOS links the static archive, Linux and Windows the shared library;
+[`tagcore-c-sys`](../tagcore-c-sys/README.md) does the linking for this crate
+and the other wrappers, so a program may use them together.
 
 ## Checking
 

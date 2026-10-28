@@ -25,14 +25,16 @@ behind this interface, is in the
 tag-dwnld (host/commandline-rs/src/bin/tag-dwnld.rs)
  ├─ tagcore-rs ── Tag: attach, status, header reads, data pages (prost messages)
  └─ taglogwriter-rs ── LogWriter: safe Rust; encodes each message (prost)
-     └─ tagcore_c (C ABI: tlw_*) ── parses the bytes (C++ protobuf)
-         └─ SqliteTagLogWriter (host/libraries/tagcore) ── schema, decoders, SQLite
+     └─ tagcore-c-sys ── links the library; declares tlw_* (src/tlw.rs)
+         └─ tagcore_c (C ABI: tlw_*) ── parses the bytes (C++ protobuf)
+             └─ SqliteTagLogWriter (host/libraries/tagcore) ── schema, decoders, SQLite
 ```
 
 | Layer | Files | Owns |
 | --- | --- | --- |
 | Tool | `host/commandline-rs/src/bin/tag-dwnld.rs` | Options, the tag state checks, the header reads, the page loop, progress |
-| Rust wrapper | `host/libraries/taglogwriter-rs/src/lib.rs`, `build.rs` | `LogWriter`, `LogHeader`, `WriterError`; all of the `unsafe`; choosing and linking the library |
+| Rust wrapper | `host/libraries/taglogwriter-rs/src/lib.rs` | `LogWriter`, `LogHeader`, `WriterError`; all of the `unsafe` |
+| Link and declarations | `host/libraries/tagcore-c-sys/build.rs`, `src/tlw.rs` | Choosing and linking the library, for every wrapper; the `tlw_*` declarations |
 | C interface | `host/libraries/tagcore-c/taglogwriter_c.h`, `taglogwriter_c.cc` | The `tlw_*` functions and their contract; exception and error handling at the boundary |
 | Library builds | `host/libraries/tagcore-c/CMakeLists.txt`, `static/CMakeLists.txt`, `exports.*` | The shared and static libraries, and which symbols they expose |
 | Writer | `host/libraries/tagcore/sqlitelog*` | Everything about the log format |
@@ -49,8 +51,9 @@ calibration session, for the Rust Tag Calibrator through
 tagcalibrate (host/applications/tagcalibrate-rs)
  ├─ tagcore-rs ── Tag: attach, calibrate, calibration log, constants
  └─ calibsession-rs ── Session: safe Rust over tcs_*
-     └─ tagcore_c (C ABI: tcs_*) ── copies values in and out
-         └─ calibcore::CalibrationSession (host/libraries/sensoranalysis/core)
+     └─ tagcore-c-sys ── links the library; declares tcs_* (src/tcs.rs)
+         └─ tagcore_c (C ABI: tcs_*) ── copies values in and out
+             └─ calibcore::CalibrationSession (host/libraries/sensoranalysis/core)
 ```
 
 Nothing is encoded there: samples cross as float arrays and results as plain
@@ -151,20 +154,28 @@ remove them.
 
 ## The Rust side
 
-**Linking (`taglogwriter-rs/build.rs`).**
+**Linking (`tagcore-c-sys/build.rs`).** One crate, `tagcore-c-sys`, links
+the library and declares its functions, one module per header, and every
+wrapper depends on it. Cargo allows only one crate in a build to declare
+`links = "tagcore_c"`; while each wrapper declared it, a program could not
+use two of them.
 - `TAGCORE_C_LIB_DIR` names the directory CMake built into
   (`<build>/<Config>/lib`).
 - `TAGCORE_C_LINK` overrides the platform default: `static` on macOS,
   `dylib` elsewhere.
-- For the shared library, the crate's `links = "tagcore_c"` key passes the
-  directory to dependents as `DEP_TAGCORE_C_LIB_DIR`. That is needed because
-  only the final binary's package can give that binary an rpath;
-  `commandline-rs/build.rs` does it for `tag-dwnld`.
+- For the shared library, the `links = "tagcore_c"` key passes the directory
+  to direct dependents of `tagcore-c-sys` as `DEP_TAGCORE_C_LIB_DIR`. That is
+  needed because only the final binary's package can give that binary an
+  rpath; `commandline-rs/build.rs` does it for `tag-dwnld`, naming
+  `tagcore-c-sys` as a dependency for that reason.
+- The static archive is linked from a copy in `OUT_DIR`: given `-ltagcore_c`
+  in a directory that also holds the shared library, the macOS linker takes
+  the shared one.
 - A static build reruns when `libtagcore_c.a` changes.
 
-**The wrapper (`src/lib.rs`).** The `ffi` module declares the C functions
-by hand from the header; with a dozen of them, `bindgen` would cost more
-than it saves. `LogWriter` owns one handle:
+**The wrapper (`src/lib.rs`).** `tagcore_c_sys::tlw`, imported as `ffi`,
+declares the C functions by hand from the header; with a dozen of them,
+`bindgen` would cost more than it saves. `LogWriter` owns one handle:
 - **Never null.** It is created by `create()`, which checks the interface
   version and `tlw_is_open`.
 - **Closed exactly once,** in `Drop`. Pages since `begin_log` without an

@@ -1,9 +1,10 @@
 //! Links the `tagcore_c` library that CMake builds, shared or static.
 //!
-//! The same script as `taglogwriter-rs/build.rs`, which links the same
-//! library, but for one fix: the static archive is linked from a copy in
-//! `OUT_DIR`, since the macOS linker otherwise takes the shared library from
-//! the same directory for this crate's own test binary.
+//! The only build script that links it: `taglogwriter`, `calibsession` and
+//! `sensorviz-session` depend on this crate for the link. The static archive
+//! is linked from a copy in `OUT_DIR`, since given `-ltagcore_c` in a
+//! directory that also holds the shared library, the macOS linker takes the
+//! shared one.
 //!
 //! `TAGCORE_C_LIB_DIR` names the directory holding the library; in a CMake
 //! build tree that is `<build>/<Config>/lib`. `TAGCORE_C_LINK` chooses how:
@@ -15,7 +16,7 @@
 //!
 //! - `static` (the macOS default): `libtagcore_c.a`, the
 //!   shim pre-linked with the C++ writer, libprotobuf, abseil and SQLite into
-//!   one object with only the `tlw_*` and `tcs_*` functions global (target
+//!   one object with only the `tlw_*`, `tcs_*` and `svz_*` functions global (target
 //!   `tagcore_c_static`). The executable needs nothing at run time, but links
 //!   the C++ runtime and, on macOS, the frameworks libusb uses (it comes in
 //!   with tagcore's `Tag`).
