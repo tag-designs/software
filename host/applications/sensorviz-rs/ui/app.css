@@ -1,0 +1,52 @@
+/* The sensorViz spike's layout; the look comes from the UI kit. */
+.tabs { display: flex; justify-content: center; margin-top: 10px; }
+.tabs button {
+  font: inherit; color: var(--text); background: var(--control-bg, var(--panel-bg));
+  border: 0.5px solid var(--separator); padding: 2px 11px; cursor: default;
+}
+.tabs button:first-child { border-radius: 5px 0 0 5px; }
+.tabs button:last-child { border-radius: 0 5px 5px 0; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.pages { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-top: 8px; }
+.page { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 10px; }
+.page[hidden] { display: none; }
+#plot { flex: 1; min-height: 0; }
+#info { margin: 0; font-family: var(--font-mono); font-size: 12px; overflow: auto; }
+.status { font-size: var(--font-size-small); color: var(--text-secondary); padding: 4px 2px 0; min-height: 16px; }
+
+/* The plot (plot.js). */
+.svz-plot { position: relative; display: flex; flex-direction: column; height: 100%; background: var(--field-bg); border-radius: 6px; }
+.svz-title { text-align: center; font-weight: 600; padding: 6px 0 2px; }
+.svz-chart { flex: 1; min-height: 0; }
+.svz-chart .u-over { cursor: grab; }
+.svz-chart .u-over:active { cursor: grabbing; }
+.svz-box {
+  position: absolute; z-index: 5; padding: 4px 8px; font-family: var(--font-mono); font-size: 11px;
+  background: var(--field-bg); border: 1px solid var(--field-border); cursor: move; user-select: none;
+}
+.svz-meta-row { display: grid; grid-template-columns: 5em auto; }
+.svz-legend { font-family: var(--font); }
+.svz-legend-row { display: flex; align-items: center; gap: 6px; }
+.svz-swatch { display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.svz-tip {
+  position: absolute; z-index: 10; pointer-events: none; padding: 4px 8px; font-size: 11px; white-space: nowrap;
+  background: var(--menu-bg); border: 0.5px solid var(--menu-border); box-shadow: var(--menu-shadow); border-radius: 4px;
+}
+.svz-tip-time { font-weight: 600; margin-bottom: 2px; }
+
+/* Browser preview only: the log switcher. */
+.mock-panel {
+  position: fixed; right: 8px; bottom: 8px; z-index: 200; font-size: 11px; display: flex; gap: 4px;
+  align-items: center; padding: 4px 6px; border-radius: 6px; background: var(--menu-bg);
+  border: 0.5px solid var(--menu-border); box-shadow: var(--menu-shadow);
+}
+.mock-panel .kit-select { height: 20px; font-size: 11px; }
+
+/* Printing (the browser's): the plot alone, on a landscape page. */
+@media print {
+  @page { size: landscape; margin: 12mm; }
+  .kit-titlebar, #menubar, .tabs, .status, .mock-panel, .svz-tip { display: none !important; }
+  html, body, .kit-window, .kit-content { height: 100%; background: #fff; }
+  .page { padding: 0; background: none; }
+  .svz-plot { background: #fff; }
+}

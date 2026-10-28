@@ -1,13 +1,14 @@
 ---
 type: proposal
 status: accepted
-summary: The path for sensorviz, the last Qt-only host application, to a Rust/Tauri front end on the shared UI kit - finish the Qt-free C++ core first (toolkit-neutral-core phases B-F) with the Qt app shipping throughout, settle the plot renderer with a spike (uPlot in the page, plotters for printing), then a C interface, the Tauri app, and retiring Qt from the packages.
+summary: The path for sensorviz, the last Qt-only host application, to a Rust/Tauri front end on the shared UI kit - finish the Qt-free C++ core first (toolkit-neutral-core phases B-F) with the Qt app shipping throughout, a plot spike that chose uPlot in the page and jsPDF for printing, then a C interface, the Tauri app, and retiring Qt from the packages.
 ---
 
 # sensorviz: Leaving Qt
 
-**Status:** accepted 2026-10-28. Step 2 (the plot spike) is under way on the
-`sensorviz-tauri` branch.
+**Status:** accepted 2026-10-28. Step 2, the plot spike, is done
+([results](../../../sensorviz-rs/README.md#what-it-showed-2026-10-28)): uPlot
+for the plot, jsPDF for printing. Step 1 is next.
 
 sensorviz is the last host application with no non-Qt version: Tag
 Programmer, Tag Monitor and Tag Calibrator each have a Rust/Tauri port on the
@@ -50,10 +51,15 @@ cursors, zoom, dragging the metadata box and legend), which belongs where the
 mouse is. uPlot is the candidate, to be confirmed by the spike; a small
 hand-written canvas renderer is the fallback.
 
-**Printing and export are drawn in the engine with plotters**, from the same
-`PlotSpec`, at the printer's resolution -- as `PlotView` refills for Qt
-printing today -- so they are reproducible and testable without a window,
-instead of depending on the browser's print engine.
+**Printing and export are a PDF made in the page with jsPDF** (decided after
+the spike, 2026-10-28): the view drawn again offscreen by uPlot at the page's
+size and 300 dpi, from envelopes fetched for that width -- as `PlotView`
+refills for Qt printing today -- placed as one image, with the title,
+metadata box and legend as PDF text. The plot itself is a bitmap. The spike
+also drew the plot with plotters, which works but is a second renderer, and
+showed the browser's own print to be unusable for a canvas plot. Vector
+printing is to be investigated later: jsPDF's vector `context2d` under uPlot
+first, plotters in the engine for print alone if that fails.
 
 ## Steps
 
@@ -92,7 +98,6 @@ Each step leaves the Qt app shipping.
 
 ## Open
 
-- Whether the browser's print-to-PDF or the plotters rendering replaces Qt's
-  print preview -- the spike shows both.
+- Vector printing (see above).
 - Whether to retire all four Qt applications, or keep them available for a
   time after their Rust versions ship.
