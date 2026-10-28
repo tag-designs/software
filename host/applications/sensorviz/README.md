@@ -460,6 +460,7 @@ sensorviz \
   --capture-screenshot <name> \
   --capture-suite <startup|menus|imutag|compasstag|bitprestag|all> \
   --screenshot-dir <dir> \
+  --dump-state <path> \
   --no-user-prompts
 ```
 
@@ -521,6 +522,30 @@ sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
 Only `imutag.db3` and `compasstag.db3` are committed under
 `host/docs/fixtures/sensorviz/`; there is no BitPresTag fixture, so the
 `bitprestag` suite needs a BitPresTag log supplied with `--load-log`.
+
+### State dump
+
+`--dump-state <path>`, with `--load-log`, is the check for changes that move
+behaviour without changing what the default screenshots show, such as moving
+the transforms into the core. After loading it takes the log through a fixed
+script -- sea-level pressure 1000 mbar, a pressure range of 950-1010 mbar
+(which links the altitude range), declination 12.5 degrees, battery forward
+toggled, the activity filter at 600 s, gaps joined, UTC -5 for epoch-time
+logs, Reset Zoom -- calling the same functions the dialogs and menu actions
+call. After each step it writes the `PlotSpec` (numbers as hex floats), every
+stream's metadata and visibility with a hash of every sample the plot backend
+holds, the custom ranges, hover rows at 25 times, and a hash of the compass
+panel's samples; then it exits. `state_dump.cpp` implements it.
+
+The dump is deterministic, so a change that should alter nothing is checked
+with `diff`:
+
+```sh
+sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
+  --dump-state /tmp/before.txt --no-user-prompts
+# change, rebuild, dump to /tmp/after.txt
+diff /tmp/before.txt /tmp/after.txt
+```
 
 ## Known Limitations
 

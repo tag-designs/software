@@ -40,6 +40,7 @@ set(sensorviz_SRCS
   plot_view.cpp
   plotting.cpp
   sensor_preferences.cpp
+  state_dump.cpp
   stream_actions.cpp
   transforms.cpp)
 

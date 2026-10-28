@@ -13,7 +13,7 @@ where it differs from the sketch below. Phase B is built: `openLog()` and
 `StreamCatalog` in the core, the Qt loader removed;
 [phase B as built](#phase-b-as-built) records its differences. Phase C is
 built: `PreferenceStore` reads and writes the preference file in the core
-([phase C as built](#phase-c-as-built)). Phases C2, D+E and F are not built; see [Phases](#phases) for the revised order.
+([phase C as built](#phase-c-as-built)). Phase C2 is built. Phases D+E and F are not; see [Phases](#phases) for the revised order.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -711,9 +711,9 @@ backend phases were:
 | A | `sensorviz_core` target; Qt-free `PlotSpec`/`buildPlotSpec()`; `ViewModel`; menus sync from it. *Built, `13516ce2`.* |
 | B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired. *Built, `cc3ca1c3`.* |
 | C | `PreferenceStore` with protobuf JSON, byte-compatible. *Built, `88830bd3`.* |
-| C2 | `sensorviz_core` built without Qt, in its own directory; the dumping half of `session_cli`, the comparison oracle for D-F |
+| C2 | `sensorviz_core` built without Qt, in its own directory (`4d0ee4e8`); the state dump (`--dump-state`), the comparison oracle for D-F. *Built.* |
 | D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog |
-| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; the rest of `session_cli` |
+| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli`, which reproduces the Qt app's `--dump-state` output without Qt |
 
 **Revised 2026-10-28**, after phases B and C:
 

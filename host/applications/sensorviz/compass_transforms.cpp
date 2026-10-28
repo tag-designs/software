@@ -312,8 +312,12 @@ void MainWindow::setDeclination()
     if (!ok) {
         return;
     }
+    applyDeclination(declination);
+}
 
-    view_.setDeclinationDegrees(declination);
+void MainWindow::applyDeclination(double declination_degrees)
+{
+    view_.setDeclinationDegrees(declination_degrees);
     updateDeclinationActionText(declination_action_, view_.declinationDegrees());
     compass_display_.setDeclination(view_.declinationDegrees());
 

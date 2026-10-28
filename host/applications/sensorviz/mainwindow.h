@@ -45,6 +45,7 @@ struct MainWindowOptions
     QString captureSuite;         ///< Capture suite name such as @c startup, @c menus, or @c all.
     QString screenshotDir;        ///< Destination directory for generated PNG files.
     bool noUserPrompts = false;   ///< Report fixture/capture errors to stderr instead of dialogs.
+    QString dumpStatePath;        ///< Where --dump-state writes the scripted state dump; empty for none.
 };
 
 // MainWindow is the Qt adapter over sensorViz's Qt-free core. It owns the
@@ -143,6 +144,18 @@ private:
     void setLogLoadInProgress(bool loading, const QString &path = {});
     void applyLoadedLog(const QString &path, const SensorLog &log);
     void createAltitudeStream();
+    // The value half of the Configuration and range dialogs: each sets the
+    // value and does exactly what accepting its dialog does. The state dump
+    // (state_dump.cpp) drives them.
+    void applySeaLevelPressure(double sea_level_mbar);
+    void enableActivityFilter(double time_constant_seconds);
+    void applyDeclination(double declination_degrees);
+    void applyUtcOffset(int hours);
+    void applyStreamRange(const QString &id, double lower, double upper);
+    // The --dump-state check (state_dump.cpp): the loaded log through a fixed
+    // script of setting changes, everything shown written after each step.
+    bool writeStateDump(const QString &path, QString &error);
+    QString stateDumpStep(const QString &step) const;
     void createImuMagnitudeStreams();
     // Compass views are built from orientation quaternions: stored ones from a
     // processed log's orientation record set when present, otherwise derived

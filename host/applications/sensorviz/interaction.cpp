@@ -73,7 +73,11 @@ void MainWindow::setUtcOffset()
     if (!ok) {
         return;
     }
+    applyUtcOffset(hours);
+}
 
+void MainWindow::applyUtcOffset(int hours)
+{
     view_.setUtcOffsetHours(hours);
     // Only the tick labels change; PlotView applies that without a rebuild.
     refreshPlot();

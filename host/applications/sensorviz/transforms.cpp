@@ -326,8 +326,12 @@ void MainWindow::setSeaLevelPressure()
     if (!ok) {
         return;
     }
+    applySeaLevelPressure(sea_level);
+}
 
-    view_.setSeaLevelPressure(sea_level);
+void MainWindow::applySeaLevelPressure(double sea_level_mbar)
+{
+    view_.setSeaLevelPressure(sea_level_mbar);
     createAltitudeStream();
 }
 
@@ -360,7 +364,17 @@ void MainWindow::activityFilterToggled(bool checked)
         setActionCheckedSilently(activity_filter_action_, hasStream("activity_lowpass"));
         return;
     }
-    view_.setActivityTimeConstant(seconds);
+    enableActivityFilter(seconds);
+}
+
+void MainWindow::enableActivityFilter(double time_constant_seconds)
+{
+    const SensorStream *activity = streamById("activity");
+    if (!activity) {
+        setActionCheckedSilently(activity_filter_action_, false);
+        return;
+    }
+    view_.setActivityTimeConstant(time_constant_seconds);
 
     // The filter is intentionally simple and display-only. Raw activity remains
     // available as its own stream so users can compare filtered/unfiltered data.

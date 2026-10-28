@@ -590,6 +590,17 @@ void MainWindow::setStreamRange(const QString &id)
         return;
     }
 
+    applyStreamRange(id, lower, upper);
+}
+
+void MainWindow::applyStreamRange(const QString &id, double lower, double upper)
+{
+    // Sets a range the user chose, and the ranges linked to it.
+    const SensorStream *stream = streamById(id);
+    if (!stream) {
+        return;
+    }
+    const std::string key = id.toStdString();
     view_.setCustomRange(key, sensorviz::PlotRange{lower, upper}, true);
 
     // Streams in one axis group share one axis, which takes the first

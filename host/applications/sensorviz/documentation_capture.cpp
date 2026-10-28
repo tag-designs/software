@@ -138,8 +138,8 @@ void MainWindow::runDocumentationStartup()
     processGuiEventsFor(150);
 
     bool ok = true;
-    const bool capture_requested =
-        !options_.captureScreenshot.isEmpty() || !options_.captureSuite.isEmpty();
+    const bool capture_requested = !options_.captureScreenshot.isEmpty()
+        || !options_.captureSuite.isEmpty() || !options_.dumpStatePath.isEmpty();
 
     const QString requested_single = options_.captureScreenshot.trimmed().toLower();
     const QString requested_suite = options_.captureSuite.trimmed().toLower();
@@ -186,6 +186,13 @@ void MainWindow::runDocumentationStartup()
     if (ok && !options_.captureSuite.isEmpty()
         && requested_suite != QStringLiteral("startup")) {
         ok = captureDocumentationSuite(options_.captureSuite) && ok;
+    }
+    if (ok && !options_.dumpStatePath.isEmpty()) {
+        QString error;
+        if (!writeStateDump(options_.dumpStatePath, error)) {
+            reportDocumentationError(error);
+            ok = false;
+        }
     }
 
     if (capture_requested) {
