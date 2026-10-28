@@ -4,7 +4,7 @@
 
   The shim, tagcore, libprotobuf with abseil and SQLite are pre-linked into a
   single relocatable object with the export list applied, so only the tlw_*
-  functions stay global, exactly as in the shared library; then the object is
+  and tcs_* functions stay global, exactly as in the shared library; then the object is
   wrapped as an archive. The caller links that one archive plus the C++
   runtime and the system libraries the pre-linked code calls.
 
@@ -26,11 +26,11 @@ endif()
 set(CMAKE_CXX_CREATE_SHARED_MODULE
     "<CMAKE_CXX_COMPILER> <LANGUAGE_COMPILE_FLAGS> -r -nostdlib <LINK_FLAGS> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
 
-add_library(tagcore_c_prelink MODULE ../taglogwriter_c.cc)
+add_library(tagcore_c_prelink MODULE ../calibsession_c.cc ../taglogwriter_c.cc)
 target_compile_features(tagcore_c_prelink PRIVATE cxx_std_20)
 target_compile_definitions(tagcore_c_prelink PRIVATE TAGCORE_C_BUILDING)
 target_include_directories(tagcore_c_prelink PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
-target_link_libraries(tagcore_c_prelink PRIVATE tagcore)
+target_link_libraries(tagcore_c_prelink PRIVATE tagcore sensoranalysis_core)
 target_link_options(tagcore_c_prelink PRIVATE
   "LINKER:-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/../exports.macos")
 set_target_properties(tagcore_c_prelink PROPERTIES
