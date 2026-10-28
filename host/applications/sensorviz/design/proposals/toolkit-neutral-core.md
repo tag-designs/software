@@ -13,7 +13,7 @@ where it differs from the sketch below. Phase B is built: `openLog()` and
 `StreamCatalog` in the core, the Qt loader removed;
 [phase B as built](#phase-b-as-built) records its differences. Phase C is
 built: `PreferenceStore` reads and writes the preference file in the core
-([phase C as built](#phase-c-as-built)). Phases D-F are not built.
+([phase C as built](#phase-c-as-built)). Phases C2, D+E and F are not built; see [Phases](#phases) for the revised order.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -709,20 +709,40 @@ backend phases were:
 | Phase | Work |
 | --- | --- |
 | A | `sensorviz_core` target; Qt-free `PlotSpec`/`buildPlotSpec()`; `ViewModel`; menus sync from it. *Built, `13516ce2`.* |
-| B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired |
-| C | `PreferenceStore` with protobuf JSON, byte-compatible |
-| D | `Transform`/`TransformRegistry`; port magnitudes, altitude, activity filter; one generic Qt parameter dialog |
-| E | Compass transform on `sensoranalysis_core` plus the copied Euler conversion and its decision record |
-| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli` |
+| B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired. *Built, `cc3ca1c3`.* |
+| C | `PreferenceStore` with protobuf JSON, byte-compatible. *Built, `88830bd3`.* |
+| C2 | `sensorviz_core` built without Qt, in its own directory; the dumping half of `session_cli`, the comparison oracle for D-F |
+| D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog |
+| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; the rest of `session_cli` |
 
-B and C are independent of each other. D needs B. E needs D. F needs all of
-them. A webview prototype, if wanted, comes after F and changes nothing in
-the core.
+**Revised 2026-10-28**, after phases B and C:
+
+- **C2 comes first.** `sensorviz_core` was defined after `find_package(Qt6
+  REQUIRED)` in sensorviz's CMakeLists, so it could not be built without Qt,
+  and the C interface (step 3 of [leaving Qt](leaving-qt.md)) needs it in a
+  Qt-free build. The capture suites show only default settings, so before D
+  touches declination, battery forward and sea-level pressure, a dump of every
+  stream, hover row and plot spec under scripted setting changes is the
+  before-and-after check.
+- **D and E are one phase.** The Euler conversion E was to copy
+  (`compasscore::displayAngles()`, parity-checked against Qt) was built for
+  Tag Calibrator, so the compass transform goes onto the core directly
+  instead of being ported twice.
+- **The activity filter is not ported.** It stays in the Qt sensorViz as it
+  is, outside the registry, and goes when that app retires; the Rust app will
+  not have it. Its prompt-on-enable dialog is the one parameter UI that does
+  not fit a generic form, and it is little used.
+- **`ViewModel` keeps the stream list.** Transforms add and remove derived
+  streams through it; the catalog stays what `openLog()` read. Moving the
+  list, as the sketch has it, changes nothing visible.
+
+C2 needs C. D+E needs C2. F needs all of them.
 
 **Done means:**
 
 - No file in `sensorviz_core` includes a Qt header.
-- `MainWindow` contains no computation on sample values.
+- `MainWindow` contains no computation on sample values, except the activity
+  filter, which leaves with the Qt app.
 - `session_cli` reproduces the `PlotSpec` the Qt app draws for every fixture.
 
 ## Risks

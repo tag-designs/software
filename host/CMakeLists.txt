@@ -34,6 +34,12 @@ add_subdirectory(libraries/tagcore)
 add_subdirectory(libraries/sensoranalysis)
 # Qt-free, needs only sqlite3; sensorviz plots through it.
 add_subdirectory(libraries/sensordata)
+# sensorViz's Qt-free core, beside its Qt front end but built without Qt: the
+# Qt application and the C interface both link it. It reads calibration
+# through sensoranalysis_core_json, which exists when protobuf was found.
+if(TARGET sensoranalysis_core_json)
+  add_subdirectory(applications/sensorviz/core)
+endif()
 # The C interface for Rust and other languages: one shared library exporting
 # only C functions. Tag Monitor in Rust writes its downloads through it, so it
 # is built whenever the Rust applications are; otherwise only when asked for.

@@ -55,11 +55,13 @@ hooks as built are described under
 
 sensorViz is two layers:
 
-- **`sensorviz_core`** (`core/`, a static library with no Qt): the view state
-  and plot policy, in standard C++ over
-  [`sensordata`](../../libraries/sensordata/README.md). CMake links no Qt to
-  it, so a Qt include there fails to build. A non-Qt front end, such as a
-  webview, could reuse it unchanged.
+- **`sensorviz_core`** (`core/`, a static library with no Qt): the log
+  reader, view state, plot policy and preference file, in standard C++ over
+  [`sensordata`](../../libraries/sensordata/README.md). It has its own
+  `core/CMakeLists.txt`, which `host/CMakeLists.txt` adds with the other
+  Qt-free libraries, so it and its checks build in a host build without
+  `BUILD_QT_APPS`; a Qt include there fails to build. A non-Qt front end,
+  such as a webview, could reuse it unchanged.
   - `stream_meta.*`: `StreamMeta`, one plottable stream (metadata only; the
     samples are its `dataId` in the backend), and the built-in per-stream
     display defaults, `defaultDisplayForStream()`.
@@ -551,6 +553,7 @@ git diff --check
 When changing SQLite loading or stream metadata, also test with representative
 BitTag, BitPresTag, PresTag, CompassTag, and IMUTag logs.
 
-When changing plot policy or view state, run `plotspec_check` and
-`viewmodel_check` ([test/README.md](test/README.md)). Both link only
-`sensorviz_core`.
+When changing the core, run its four checks, `catalog_check`,
+`plotspec_check`, `preference_check` and `viewmodel_check`
+([test/README.md](test/README.md)). They link only `sensorviz_core` and
+build without Qt.
