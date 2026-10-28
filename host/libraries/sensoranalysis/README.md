@@ -46,6 +46,19 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   the text, as Qt's reader does; parsing into the typed message would round
   the soft-iron terms through float and change results.
 
+- `magcal/`: Freescale's magnetometer calibration solver, in C
+  (BSD-3-Clause, [notice](../../../LICENSES/host/third-party/freescale-magcal.txt)).
+  `MagCal_Run()` fits a 4-, 7- or 10-element ellipsoid to the 650-sample
+  buffer in a `MagCalibration_t`; which samples that buffer holds is the
+  caller's choice (`MagRetention`).
+- `calibration_session.h`: `calibcore::CalibrationSession`, one live
+  calibration -- the 650-sample buffer and the solver it feeds, eviction by
+  `MagRetention` with a seeded fallback, the accelerometer's own fit, the
+  quality figures, and the low-pass filtered live compass. qtcalibrate's
+  `CompassData` is a Qt adapter over it, and the Rust Tag Calibrator uses it
+  directly, so both calibrate identically. qtcalibrate's replay logs and
+  `test/calibration_session_check.cc` showed the move from `CompassData`
+  changed nothing.
 - `directions_core.h`, `magquality_core.h`, `magretention_core.h`,
   `accelcalibration_core.h`, `gravityfit_core.h`: the calibration-sweep
   classes, in namespace `calibcore`, on `sensormath::Vec3f` and `std::vector`.

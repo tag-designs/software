@@ -14,7 +14,7 @@ btviz (`host/third-party/nrel-solpos.txt`).
 The MotionCal gap in qtcalibrate closed on 2026-10-10. `quality.c` went first,
 replaced by owned arithmetic in `host/libraries/sensoranalysis`; then
 `magcal.h`, rewritten from the Freescale solver it declares. `magcal.c` and
-`matrix.c` stay, and those are BSD-3-Clause with a notice of their own
+`matrix.c` stay, now in `host/libraries/sensoranalysis/core/magcal`, and those are BSD-3-Clause with a notice of their own
 (`host/third-party/freescale-magcal.txt`).
 
 ## Worth reducing

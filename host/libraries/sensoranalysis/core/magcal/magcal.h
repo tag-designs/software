@@ -72,7 +72,9 @@ typedef struct {
     int16_t MagBufferCount;     ///< Readings held.
 } MagCalibration_t;
 
-/// The one instance, defined in magcal.c and shared with qtcalibrate.
+/// A global instance, defined in magcal.c as PJRC's copy defines it. Unused
+/// by this project: each calibcore::CalibrationSession owns its own and passes
+/// it to MagCal_Run().
 extern MagCalibration_t magcal;
 
 /**

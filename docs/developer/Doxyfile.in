@@ -27,6 +27,7 @@ EXCLUDE_PATTERNS       = */archive/* \
                          */CMakeFiles/* \
                          */cfg/* \
                          */qcustomplot/* \
+                         */sensoranalysis/core/magcal/* \
                          */proto-c/* \
                          */host/libraries/tagcore/cxxopts.hpp \
                          */embedded/tags/common/sensors/accel/inc/adxl362-original.h \

@@ -15,9 +15,8 @@ tag, and previewing the resulting compass orientation.
 | Path | Purpose |
 | --- | --- |
 | `mainwindow.*` and `mainwindow.ui` | Qt Widgets application shell: tag attach/detach, calibration controls, log window, menus, timers, and the embedded QML orientation views. |
-| `compassdata.*` | Application-owned live calibration state. It feeds raw magnetometer samples into the inherited magcal solver, exposes calibration constants to the UI/tag, applies calibration to displayed points, and delegates eCompass orientation solving to `sensoranalysis::CompassProcessor`. |
+| `compassdata.*` | The live calibration on Qt types: an adapter over `calibcore::CalibrationSession` ([`sensoranalysis/core/calibration_session.h`](../../libraries/sensoranalysis/core/calibration_session.h)), which owns the sample buffer, Freescale's magcal solver, retention, the accelerometer fit, the quality figures and the filtered live compass. The Rust Tag Calibrator uses the same session. |
 | `magplot.*` | Interactive 2D widget that draws calibrated magnetometer samples as a rotatable sphere projection during calibration. |
-| `magcal/` | Inherited C calibration code: solver, matrix helpers, and quality metrics. Keep algorithm changes isolated and well documented. |
 | `sinbin.*` | Small trigonometric lookup/helper code used by the inherited calibration routines. |
 | `Magnetic Calibration.pdf` | Reference notes for the calibration approach. |
 
@@ -158,7 +157,7 @@ decided, a `gravity:` line with the fitted accelerometer offset, and the
 
 Calibration constants move between three representations:
 
-- inherited solver state in the global `magcal` struct,
+- the solver state (`MagCalibration_t`) inside the calibration session,
 - protobuf `CalibrationConstants` on the tag: `MagConstants` (hard-iron V,
   soft-iron A) and `AccelConstants` (zero-g offset, mg),
 - UI labels in the calibration tab.

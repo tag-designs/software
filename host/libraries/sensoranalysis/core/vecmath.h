@@ -85,6 +85,25 @@ inline Vec3f operator-(Vec3f a, Vec3f b)
     return Vec3f{a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
+/// Component-wise sum, as QVector3D operator+.
+inline Vec3f operator+(Vec3f a, Vec3f b)
+{
+    return Vec3f{a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+/**
+ * @brief   Scales by a float, as QVector3D operator*(float, QVector3D):
+ *          each part times the factor.
+ *
+ * @details A function of its own, as Qt's is, so that a weighted sum such as
+ *          `a * u + b * v` rounds each product before adding: written as one
+ *          expression the compiler may fuse the multiply into the add.
+ */
+inline Vec3f operator*(float factor, Vec3f v)
+{
+    return Vec3f{v.x * factor, v.y * factor, v.z * factor};
+}
+
 /// Component-wise accumulation, as QVector3D operator+=.
 inline Vec3f &operator+=(Vec3f &a, Vec3f b)
 {

@@ -23,9 +23,6 @@ endif()
 
 set(qtcalibrate_SRCS
     compassdata.cpp
-    # Inherited C magnetometer calibration solver and support routines.
-    magcal/magcal.c
-    magcal/matrix.c
     magplot.cpp
     main.cpp
     mainwindow.cpp

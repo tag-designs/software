@@ -38,8 +38,21 @@ To build all of them at once, name each target, or build everything:
 cmake --build $BUILD --target accelcalibration_check gravityfit_check \
                               magquality_check magretention_check \
                               compass_core_parity_check capture_replay \
-                              calibration_dump
+                              calibration_dump calibration_session_check
 ```
+
+## `calibration_session_check`
+
+Requires `calibcore::CalibrationSession` to match a verbatim copy of the
+qtcalibrate `CompassData` code it replaced, bit for bit, on the two paths
+qtcalibrate's replay logs do not record: the low-pass filtered live compass
+(every sample of both fixtures, with and without an accelerometer offset in
+force) and constants loaded from a tag (the recomputed field and every
+calibrated point of a buffer each fixture filled). 48,702 values; the
+reference must not be edited to match the session.
+
+On 2026-10-28 it was shown to bite: moving the filter's new-sample weight one
+float ulp from 0.6 failed 25,022 of them.
 
 ## `calibration_dump`
 
@@ -69,7 +82,9 @@ On 2026-10-28 it showed the move of these classes onto the Qt-free core
 (`core/*_core.*`) changed nothing: 4,913 lines, identical before and after,
 on macOS arm64 in a Release build. qtcalibrate's own replay logs of both
 fixtures (`--replay-capture ... --replay-exit --log-file`), which also cover
-its retention decisions and seeded fallback, were byte-identical too.
+its retention decisions and seeded fallback, were byte-identical too. The same
+replay logs, before and after, showed moving the magcal solver into the core
+and `CompassData` onto `CalibrationSession` changed nothing either.
 
 ## `compass_core_parity_check`
 

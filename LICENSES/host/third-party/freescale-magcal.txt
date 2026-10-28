@@ -2,7 +2,7 @@ Freescale magnetic calibration (magcal.c, matrix.c), via PJRC MotionCal
 =======================================================================
 
 License:    BSD-3-Clause
-Used in:    qtcalibrate
+Used in:    qtcalibrate (host/libraries/sensoranalysis/core/magcal)
 Source:     https://github.com/PaulStoffregen/MotionCal
 Upstream:   Freescale Sensor Fusion Library, magnetic.c and matrix.c,
             copyright 2014, 2015; succeeded by the NXP ISSDK sensor fusion
