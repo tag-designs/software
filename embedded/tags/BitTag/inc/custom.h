@@ -1,7 +1,11 @@
 #ifndef CUSTOM_H
 #define CUSTOM_H
 
+#if defined(BITTAG_EDGE_LOG) && BITTAG_EDGE_LOG
+#define FIRMWARE_STRING "BitTag V6, Firmware version 2, edge log"
+#else
 #define FIRMWARE_STRING "BitTag V6, Firmware version 2"
+#endif
 #define BITTAG_V6 1
 #undef  BOARD_NAME
 #define BOARD_NAME "BitTag V6"

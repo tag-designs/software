@@ -66,7 +66,12 @@ static void tagPowerEnterTerminalSleep(enum Sleep sleepmode)
    */
   DBGMCU->CR = 0;
 #if defined(PWR_CR3_RRS)
+#if defined(TAG_RETAIN_SRAM2) && TAG_RETAIN_SRAM2
+  /* Test builds that keep a log in SRAM2 (BitTag's edge log); costs current. */
+  SET_BIT(PWR->CR3, PWR_CR3_RRS);
+#else
   CLEAR_BIT(PWR->CR3, PWR_CR3_RRS);
+#endif
 #endif
 
 #if BOARD_STANDBY_HAS_CONFIG

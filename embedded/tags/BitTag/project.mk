@@ -11,6 +11,14 @@ TAG_MODULES += \
 
 include ../common/modules/modules.mk
 
+# Activity-test-stand build: logs the RTC time and ADXL362 AWAKE level of every
+# RUNNING wake into SRAM2 (inc/edge_log.h), and retains SRAM2 through Standby to
+# keep it. Raises Standby current, so never use it for power measurements.
+#   make BITTAG_EDGE_LOG=1 BUILDDIR=build-edgelog
+ifeq ($(BITTAG_EDGE_LOG),1)
+UDEFS += -DBITTAG_EDGE_LOG=1 -DTAG_RETAIN_SRAM2=1
+endif
+
 # BitTag keeps only its activity-log application code locally. Core runtime,
 # monitor, persistence, power, RTC, and ADXL362 driver sources come from the
 # common modules above.

@@ -6,6 +6,7 @@
 #include "tag.pb.h"
 #include "config.h"
 #include "devices.h"
+#include "edge_log.h"
 #include "persistent.h"
 extern const Config defaultConfig;
 
@@ -98,6 +99,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->temp10 = temp10;
 
     adxl362_init();
+    edgeLogStart(timestamp, timestamp_millis, palReadLine(LINE_ACCEL_INT));
 
     pState->state = TagState_RUNNING;
     recordState(reason);
@@ -115,6 +117,9 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // sample once ! -- also used in pwr to decide wakeup edge
 
     isActive = palReadLine(LINE_ACCEL_INT);
+
+    // stand build only: before the catch-up below can move timestamp
+    edgeLogWake(timestamp, timestamp_millis, isActive);
 
     
     // flush out current data
