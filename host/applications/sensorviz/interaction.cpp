@@ -85,32 +85,8 @@ void MainWindow::applyUtcOffset(int hours)
 
 QString MainWindow::formatPlotTime(double time_seconds) const
 {
-    if (log_.timeDomain == SensorTimeDomain::ElapsedSeconds) {
-        const bool negative = time_seconds < 0.0;
-        double remaining = std::abs(time_seconds);
-        const int hours = static_cast<int>(remaining / 3600.0);
-        remaining -= hours * 3600.0;
-        const int minutes = static_cast<int>(remaining / 60.0);
-        remaining -= minutes * 60.0;
-        const double seconds = remaining;
-
-        QString prefix = negative ? QStringLiteral("-") : QString();
-        if (hours > 0) {
-            return QString("%1Elapsed %2:%3:%4 s")
-                .arg(prefix)
-                .arg(hours)
-                .arg(minutes, 2, 10, QLatin1Char('0'))
-                .arg(seconds, 6, 'f', 3, QLatin1Char('0'));
-        }
-        return QString("%1Elapsed %2:%3 s")
-            .arg(prefix)
-            .arg(minutes)
-            .arg(seconds, 6, 'f', 3, QLatin1Char('0'));
-    }
-
-    const QDateTime dt =
-        QDateTime::fromSecsSinceEpoch(qint64(time_seconds), QTimeZone(3600 * view_.utcOffsetHours()));
-    return dt.toString("MM/dd hh:mm:ss");
+    // Elapsed or epoch time with the UTC offset, as the session formats it.
+    return toQString(session_.formatTime(time_seconds));
 }
 
 void MainWindow::updateTimeAxisForLog()
@@ -215,27 +191,11 @@ void MainWindow::showPlotContextMenu(const QPoint &global_pos)
 
 QString MainWindow::streamValueAt(const SensorStream &stream, double epoch) const
 {
-    // Return a tooltip-ready value near the requested epoch. This is intentionally
-    // nearest-at-or-after rather than interpolated, matching QCustomPlot's
-    // sample-oriented interaction style. The graph holds only an envelope, so
-    // the sample comes from the plot backend, which reads a stored stream's
-    // value back from SQLite exactly.
-    if (!log_.data) {
-        return QString();
-    }
-    // Inside a gap in the data there is no value to show, unless lines are
-    // being joined across gaps.
-    const std::optional<sensordata::Sample> sample = log_.data->valueAt(
-        stream.dataId, epoch, sensordata::Pick::AtOrAfter,
-        break_gaps_action_->isChecked() ? sensordata::GapMode::Break : sensordata::GapMode::Join);
-    if (!sample) {
-        return QString();
-    }
-
-    return QString("%1: %2%3")
-        .arg(toQString(stream.label))
-        .arg(sample->value, 0, 'f', 2)
-        .arg(unitsSuffix(stream));
+    // A tooltip-ready value at or after the time, as the session formats it:
+    // nearest-at-or-after rather than interpolated, matching the plot's
+    // sample-oriented interaction, read back from the plot backend (exactly,
+    // for a stored stream). Empty inside a gap while lines break at gaps.
+    return toQString(session_.hoverValue(stream, epoch));
 }
 
 void MainWindow::updateCompassDisplay(double epoch)
@@ -269,12 +229,8 @@ void MainWindow::showMousePosition(double time)
     // logs, the orientation panel. PlotView reports only positions over the
     // data area, and none while the metadata box is being dragged.
     QStringList parts;
-    parts << formatPlotTime(time);
-    for (const SensorStream &stream : visibleStreams()) {
-        const QString value = streamValueAt(stream, time);
-        if (!value.isEmpty()) {
-            parts << value;
-        }
+    for (const std::string &row : session_.hover(time)) {
+        parts << toQString(row);
     }
     updateCompassDisplay(time);
     QToolTip::showText(QCursor::pos(), parts.join("\n"), this, QRect(), 3000);

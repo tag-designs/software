@@ -31,6 +31,7 @@ endif()
 add_library(sensorviz_core STATIC
   plot_spec.cpp
   preference_store.cpp
+  session.cpp
   stream_catalog.cpp
   stream_meta.cpp
   transforms.cpp

@@ -1,26 +1,8 @@
 #include "mainwindow.h"
 
-// MainWindow's side of the plot: the spec is built in the Qt-free core from
-// the ViewModel (view_.plotSpec(), policy in core/plot_spec.cpp) and handed to
-// PlotView, which draws it.
-
-sensorviz::PlotLogInfo MainWindow::plotLogInfo() const
-{
-    // What the plot policy needs from the loaded log, in core types. Event
-    // markers in another time domain than the plot's are left out.
-    sensorviz::PlotLogInfo info;
-    info.timeDomain = log_.timeDomain;
-    info.hasCollectionStart = log_.hasCollectionStart;
-    info.collectionStartEpochMs = log_.collectionStartEpochMs;
-    for (const SensorEventMarker &marker : log_.eventMarkers) {
-        if (marker.timeDomain == log_.timeDomain) {
-            info.eventMarkerTimes.insert(
-                info.eventMarkerTimes.end(), marker.time.cbegin(), marker.time.cend());
-        }
-    }
-    info.data = log_.data.get();
-    return info;
-}
+// MainWindow's side of the plot: the spec is built in the Qt-free core
+// (session_.plotSpec(), policy in core/plot_spec.cpp) and handed to PlotView,
+// which draws it.
 
 void MainWindow::refreshPlot()
 {
@@ -36,7 +18,7 @@ void MainWindow::refreshPlotFullRange()
 
 void MainWindow::rebuildPlot(bool reset_x_range)
 {
-    plot_view_->setSpec(view_.plotSpec(plotLogInfo()));
+    plot_view_->setSpec(session_.plotSpec());
     if (reset_x_range) {
         plot_view_->resetZoom();
     }
@@ -53,7 +35,7 @@ void MainWindow::resetZoom()
     // Reset Zoom means "return to the metadata/data defaults", not merely
     // "show the full time window". Clear both manual ranges and linked ranges
     // such as the altitude range derived from pressure.
-    view_.clearCustomRanges();
+    session_.resetZoom();
     refreshPlotFullRange();
 }
 

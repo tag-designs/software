@@ -52,13 +52,6 @@ QString MainWindow::unitsSuffix(const SensorStream &stream) const
     return stream.units.empty() ? QString() : " " + toQString(stream.units);
 }
 
-double MainWindow::pressureToAltitude(double pressure_mbar) const
-{
-    // Display transform for pressure-derived altitude. The sea-level pressure is
-    // configured from the Altitude action in transforms.cpp.
-    return sensorviz::altitudeFromPressure(pressure_mbar, view_.seaLevelPressure());
-}
-
 void MainWindow::showAbout()
 {
     // Keep the About action here with other small general-purpose actions.

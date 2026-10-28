@@ -24,6 +24,7 @@
 #include "plot_view.h"
 #include "sensor_preferences.h"
 #include "sensorstream.h"
+#include "session.h"
 #include "transforms.h"
 
 class QQuickWidget;
@@ -131,7 +132,6 @@ private:
     void createUi();
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
-    double pressureToAltitude(double pressure_mbar) const;
 
     // Log metadata and tag-dependent menu state. updateLoadedStateActions()
     // keeps startup discoverable but disabled except for Load/About.
@@ -249,7 +249,6 @@ private:
     void rebuildRangeActions();
     void addRangeAction(const SensorStream &stream);
     void setStreamRange(const QString &id);
-    QCPRange defaultRangeForStream(const SensorStream &stream) const;
 
     // Axis side choices are viewer preferences layered over stream defaults,
     // chosen per axis and stored per member stream. The default remains in
@@ -266,14 +265,13 @@ private:
     QString formatPlotTime(double time_seconds) const;
     void updateTimeAxisForLog();
 
-    // The plot. view_.plotSpec() builds the PlotSpec (core/plot_spec.h) from
-    // the view state and plotLogInfo(), and PlotView draws it. refreshPlot()
+    // The plot. session_.plotSpec() builds the PlotSpec (core/plot_spec.h)
+    // from the view state and the log, and PlotView draws it. refreshPlot()
     // keeps the visible time window; refreshPlotFullRange() is used after a
     // new file is loaded or after Reset Zoom clears custom y-axis ranges.
     void refreshPlot();
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
-    sensorviz::PlotLogInfo plotLogInfo() const;
     QString streamValueAt(const SensorStream &stream, double epoch) const;
 
     // Plot data in log_.data: the hover readout and value ranges read it,
@@ -285,9 +283,12 @@ private:
         std::vector<double> &value) const;
     void releasePlotData(const SensorStream &stream);
 
-    SensorLog log_;
-    sensorviz::ViewModel view_;
-    sensorviz::TransformRegistry transforms_ = sensorviz::TransformRegistry::makeDefault();
+    // The opened log, its view state and transforms, and the rules over them
+    // (core/session.h). log_ and view_ name the session's catalog and view
+    // model, which most of this class reads.
+    sensorviz::Session session_;
+    SensorLog &log_ = session_.catalog();
+    sensorviz::ViewModel &view_ = session_.view();
     QString current_path_;
     bool log_load_in_progress_ = false;
     MainWindowOptions options_;

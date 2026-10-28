@@ -30,7 +30,7 @@ void MainWindow::loadCompassPanelSamples()
     // it reads only the quaternion, dip, field and acceleration.
     compass_samples_.clear();
     compass_source_.clear();
-    const sensorviz::CompassTransform *compass = transforms_.compass();
+    const sensorviz::CompassTransform *compass = session_.transforms().compass();
     if (!compass) {
         return;
     }

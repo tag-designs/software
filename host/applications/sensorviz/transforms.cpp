@@ -124,7 +124,7 @@ void MainWindow::updateTransformActions()
 
     const bool has_pressure = hasStream("pressure") || hasStream("imu_pressure");
     const bool has_activity = hasStream("activity");
-    const bool has_compass = transforms_.applicable("compass", log_, view_);
+    const bool has_compass = session_.transforms().applicable("compass", log_, view_);
 
     // Menus are driven by available streams instead of tag type names so logs
     // from future tags automatically expose only the relevant transforms.
@@ -174,8 +174,7 @@ void MainWindow::runTransforms()
     // Altitude, compass orientation and the IMU magnitudes, in that order,
     // for the log just loaded.
     TransformSink sink(*this);
-    sensorviz::TransformContext context(log_, view_, sink);
-    const auto failures = transforms_.runAll(context);
+    const auto failures = session_.runTransforms(sink);
     loadCompassPanelSamples();
     for (const auto &[id, error] : failures) {
         if (id == "compass") {
@@ -191,9 +190,8 @@ void MainWindow::setTransformParameter(const char *id, double value)
     // The ViewModel takes the value and the owning transform remakes what it
     // affects.
     TransformSink sink(*this);
-    sensorviz::TransformContext context(log_, view_, sink);
     std::string error;
-    if (!transforms_.setParameter(context, id, value, error)) {
+    if (!session_.setParameter(sink, id, value, error)) {
         qWarning().noquote() << toQString(id) << ":" << toQString(error);
     }
 }
@@ -202,7 +200,7 @@ bool MainWindow::askParameter(const char *id, double &value)
 {
     // The one dialog for every numeric transform parameter, built from the
     // parameter's spec.
-    const sensorviz::ParameterSpec *spec = transforms_.parameter(id);
+    const sensorviz::ParameterSpec *spec = session_.transforms().parameter(id);
     if (!spec || spec->kind != sensorviz::ParameterSpec::Kind::Number) {
         return false;
     }
