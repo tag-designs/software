@@ -23,11 +23,15 @@ Delete an item when it is done.
   longest WAIT run 3, and the `SWD_Close` no-ack below disappeared too. The
   tag's own Stop path clears `DBGMCU_CR` again after the session. Nothing in
   the tree sets DBG_SLEEP; `pwr-l432.c` and `time.c` only clear it.
-  **Fix to choose:** set DBG_SLEEP while a session is open -- from the host
-  at attach (tagcore, both languages; works with every field base and tag),
-  from the base in `SWD_Open`, or from the tag when a session opens. Measure
-  the resting current after a detach either way
-  (`families/CompassTag/design/investigations/2026-09-compasstag-standby-after-attach.md`).
+  **Fixed on the host (2026-10-27):** both tagcore libraries set DBG_SLEEP
+  right after MONITORSTART on an L4 tag (the tag's Stop path would clear it
+  any earlier, and clears it again after the session). On the same UIUCTag
+  and base: 0 of 72 status reads failed over three rounds, the C++
+  `tag-test` passed three times with no 0x81, the base logged no faults and
+  a longest WAIT run of 4. **Still to do:** measure the resting current after
+  a detach with the Joulescope
+  (`families/CompassTag/design/investigations/2026-09-compasstag-standby-after-attach.md`),
+  then delete this item and the next one.
 - **0x81 errors while the tag is busy.** Host tools see the base answer
   `STLINK_DEBUG_ERR_FAULT` (0x81) in bursts while a tag is erasing flash,
   setting its RTC or running self-tests: `read debug register 0xe000edfc failed

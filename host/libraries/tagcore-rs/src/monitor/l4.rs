@@ -23,7 +23,10 @@ use log::{debug, error, warn};
 
 use super::abi::{command_word, info, op, operation_name};
 use super::cortex_m::*;
-use super::{STM32L4_DBGMCU_IDCODE, TagMonitor, TargetFamily, ms};
+use super::{
+    STM32L4_DBGMCU_CR, STM32L4_DBGMCU_CR_DBG_SLEEP, STM32L4_DBGMCU_IDCODE, TagMonitor,
+    TargetFamily, ms,
+};
 
 // The flash empty check is an STM32L4 feature. On the STM32U3 FLASH_SR is at
 // offset 0x20, so this address is FLASH_OPTKEYR there; gate on the device ID.
@@ -492,6 +495,29 @@ impl TagMonitor {
             error!("Monitor Start failed");
             return false;
         }
+        self.keep_debug_in_sleep();
         true
+    }
+
+    /// Sets DBGMCU_CR.DBG_SLEEP for the session.
+    ///
+    /// With it clear, Sleep mode (the tag's RTOS idle WFI) stops HCLK, and
+    /// every debug access waits until the tag wakes: each wait in the tag
+    /// (an I2C transfer, a test delay, a flash poll) then outlasts the base's
+    /// SWD WAIT retries and comes back as STLINK_DEBUG_ERR_FAULT (0x81) in
+    /// bursts (`embedded/bases/TODO.md`, 2026-10-27). Set only after
+    /// MONITORSTART: until the session is open, the tag's own Stop path
+    /// clears the register, and it clears it again when the session ends, so
+    /// resting current is unaffected. A failure is logged and the attach
+    /// goes on, slower to answer while the tag waits.
+    fn keep_debug_in_sleep(&mut self) {
+        let cr = self.link.read_debug32(STM32L4_DBGMCU_CR);
+        if cr.is_some_and(|v| v & STM32L4_DBGMCU_CR_DBG_SLEEP != 0) {
+            return;
+        }
+        let value = cr.unwrap_or(0) | STM32L4_DBGMCU_CR_DBG_SLEEP;
+        if !self.link.write_debug32(STM32L4_DBGMCU_CR, value) {
+            warn!("could not set DBGMCU_CR.DBG_SLEEP; debug accesses wait while the tag idles");
+        }
     }
 }
