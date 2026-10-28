@@ -155,6 +155,44 @@ bool solveOrientation(
     const CalibrationConstants *constants,
     Orientation &result);
 
+/**
+ * @struct  DisplayAngles
+ * @brief   Heading, pitch and roll of one compass orientation, in degrees.
+ *
+ * @details Magnetic-frame values. Declination and the battery direction are
+ *          display choices applied afterwards.
+ */
+struct DisplayAngles
+{
+    double yaw = 0.0;   ///< Magnetic yaw, degrees clockwise from magnetic north, [0, 360).
+    double pitch = 0.0; ///< Rotation about the tag x axis, degrees, [-90, 90].
+    double roll = 0.0;  ///< Rotation about the tag y axis, degrees, (-180, 180].
+};
+
+/**
+ * @brief   Converts an orientation quaternion to display angles.
+ *
+ * @details The convention every CompassTag display has used: Qt's
+ *          QQuaternion::toEulerAngles() (sensormath::toEulerAngles()), whose
+ *          angles are about x, y and z for q = Ry * Rx * Rz, relabelled to the
+ *          tag -- the x angle is pitch, the y angle roll, and the z angle,
+ *          reversed to increase clockwise, yaw. It is not the aerospace Z-Y-X
+ *          decomposition, and the two disagree when the tag is tilted about
+ *          both horizontal axes.
+ *
+ *          The arithmetic is sensorui's compassAnglesFromQuaternion(), now an
+ *          adapter over this, step for step: the z angle is wrapped into
+ *          [0, 360) in double and stored as float, and the yaw is fmod in
+ *          double of a float difference. Bit-identical to it
+ *          (compass_core_parity_check).
+ *
+ * @param[in] q  Orientation quaternion as solveOrientation() returns it; need
+ *               not be unit. The identity yields all-zero angles.
+ *
+ * @return  The angles, degrees.
+ */
+DisplayAngles displayAngles(const sensormath::Quatf &q);
+
 } // namespace compasscore
 
 #endif // SENSORANALYSIS_CORE_COMPASS_CORE_H

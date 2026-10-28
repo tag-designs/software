@@ -85,6 +85,25 @@ inline Vec3f operator-(Vec3f a, Vec3f b)
     return Vec3f{a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
+/// Component-wise sum, as QVector3D operator+.
+inline Vec3f operator+(Vec3f a, Vec3f b)
+{
+    return Vec3f{a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+/**
+ * @brief   Scales by a float, as QVector3D operator*(float, QVector3D):
+ *          each part times the factor.
+ *
+ * @details A function of its own, as Qt's is, so that a weighted sum such as
+ *          `a * u + b * v` rounds each product before adding: written as one
+ *          expression the compiler may fuse the multiply into the add.
+ */
+inline Vec3f operator*(float factor, Vec3f v)
+{
+    return Vec3f{v.x * factor, v.y * factor, v.z * factor};
+}
+
 /// Component-wise accumulation, as QVector3D operator+=.
 inline Vec3f &operator+=(Vec3f &a, Vec3f b)
 {
@@ -104,6 +123,18 @@ inline Vec3f operator/(Vec3f v, float divisor)
 inline float length(Vec3f v)
 {
     return std::hypot(v.x, v.y, v.z);
+}
+
+/// Dot product, as QVector3D::dotProduct(): x, y, z products summed left to right.
+inline float dot(Vec3f a, Vec3f b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/// True when all three parts are finite (neither infinite nor NaN).
+inline bool isFinite(Vec3f v)
+{
+    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
 }
 
 /**
@@ -223,6 +254,127 @@ inline Vec3f rotate(const Quatf &q, Vec3f v)
 {
     const Quatf r = q * Quatf{0.0f, v.x, v.y, v.z} * conjugate(q);
     return Vec3f{r.x, r.y, r.z};
+}
+
+/// Degrees to radians in float, as qDegreesToRadians(float).
+inline float degreesToRadians(float degrees)
+{
+    return degrees * float(3.14159265358979323846 / 180);
+}
+
+/// Radians to degrees in float, as qRadiansToDegrees(float).
+inline float radiansToDegrees(float radians)
+{
+    return radians * float(180 / 3.14159265358979323846);
+}
+
+/**
+ * @brief   Unit copy of a vector with QVector3D::normalized()'s rules.
+ *
+ * @details Returns the vector unchanged when its length is within 1e-5 of 1,
+ *          a zero vector when within 1e-5 of 0, and otherwise each part
+ *          divided by the length.
+ */
+inline Vec3f normalized(Vec3f v)
+{
+    const float len = length(v);
+    return fuzzyIsNull(len - 1.0f) ? v : fuzzyIsNull(len) ? Vec3f{}
+        : Vec3f{v.x / len, v.y / len, v.z / len};
+}
+
+/**
+ * @brief   Unit copy of a quaternion with QQuaternion::normalized()'s rules.
+ *
+ * @details A zero quaternion when the length is within 1e-5 of 0, otherwise
+ *          each part divided by the length -- even when already near unit,
+ *          unlike the vector rule.
+ */
+inline Quatf normalized(Quatf q)
+{
+    const float scale = length(q);
+    if (fuzzyIsNull(scale)) {
+        return Quatf{0.0f, 0.0f, 0.0f, 0.0f};
+    }
+    return Quatf{q.w / scale, q.x / scale, q.y / scale, q.z / scale};
+}
+
+/**
+ * @brief   Rotation of @p angle degrees about @p axis, as
+ *          QQuaternion::fromAxisAndAngle(const QVector3D &, float).
+ *
+ * @param[in] axis   Any non-zero axis; normalized with QVector3D's rules.
+ * @param[in] angle  Degrees, counter-clockwise looking down the axis.
+ *
+ * @return  The unit quaternion (normalized again, as Qt does).
+ */
+inline Quatf fromAxisAndAngle(Vec3f axis, float angle)
+{
+    float a = degreesToRadians(angle / 2.0f);
+    float s = std::sin(a);
+    float c = std::cos(a);
+    Vec3f ax = normalized(axis);
+    return normalized(Quatf{c, ax.x * s, ax.y * s, ax.z * s});
+}
+
+/**
+ * @brief   Euler angles of a quaternion, as QQuaternion::getEulerAngles():
+ *          pitch about x, yaw about y and roll about z, in degrees, for the
+ *          composition q = Ry(yaw) * Rx(pitch) * Rz(roll).
+ *
+ * @details Qt's algorithm, from Blanco, "A tutorial on SE(3) transformation
+ *          parameterizations and on-manifold optimization". The quaternion is
+ *          normalized first unless its length is within 1e-5 of zero. Near
+ *          gimbal lock (|sin pitch| within 1e-5 of 1) pitch is +/-90, roll 0
+ *          and the rotation is carried by yaw.
+ *
+ * @param[in]  q      The quaternion; need not be unit.
+ * @param[out] pitch  Degrees, [-90, 90].
+ * @param[out] yaw    Degrees, (-180, 180].
+ * @param[out] roll   Degrees, (-180, 180].
+ */
+inline void eulerAngles(const Quatf &q, float *pitch, float *yaw, float *roll)
+{
+    const float len = length(q);
+    const bool rescale = !fuzzyIsNull(len);
+    const float xps = rescale ? q.x / len : q.x;
+    const float yps = rescale ? q.y / len : q.y;
+    const float zps = rescale ? q.z / len : q.z;
+    const float wps = rescale ? q.w / len : q.w;
+
+    const float xx = xps * xps;
+    const float xy = xps * yps;
+    const float xz = xps * zps;
+    const float xw = xps * wps;
+    const float yy = yps * yps;
+    const float yz = yps * zps;
+    const float yw = yps * wps;
+    const float zz = zps * zps;
+    const float zw = zps * wps;
+
+    constexpr float epsilon = 0.00001f;
+
+    const float sinp = -2.0f * (yz - xw);
+    if (std::abs(sinp) < 1.0f - epsilon) {
+        *pitch = std::asin(sinp);
+        *yaw = std::atan2(2.0f * (xz + yw), 1.0f - 2.0f * (xx + yy));
+        *roll = std::atan2(2.0f * (xy + zw), 1.0f - 2.0f * (xx + zz));
+    } else {
+        *pitch = std::copysign(static_cast<float>(3.14159265358979323846 / 2), sinp);
+        *yaw = 2.0f * std::atan2(yps, wps);
+        *roll = 0.0f;
+    }
+
+    *pitch = radiansToDegrees(*pitch);
+    *yaw = radiansToDegrees(*yaw);
+    *roll = radiansToDegrees(*roll);
+}
+
+/// Euler angles as a vector (pitch, yaw, roll), as QQuaternion::toEulerAngles().
+inline Vec3f toEulerAngles(const Quatf &q)
+{
+    float pitch, yaw, roll;
+    eulerAngles(q, &pitch, &yaw, &roll);
+    return Vec3f{pitch, yaw, roll};
 }
 
 } // namespace sensormath

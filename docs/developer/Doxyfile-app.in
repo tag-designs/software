@@ -26,8 +26,7 @@ FILE_PATTERNS          = *.c *.cc *.cpp *.h *.hpp
 EXCLUDE_PATTERNS       = */archive/* \
                          */build-*/* \
                          */CMakeFiles/* \
-                         */qcustomplot/* \
-                         */qtcalibrate/magcal/*
+                         */qcustomplot/*
 
 EXTRACT_ALL            = NO
 # An application has no public API; its maintainers need its private slots

@@ -28,6 +28,14 @@
  *          omitted, accelerometer sometimes absent -- plus the fixture's
  *          stored row and hand-written oddities.
  *
+ *          It also requires the display angles (compasscore::displayAngles(),
+ *          on sensormath::toEulerAngles()) and sensormath::fromAxisAndAngle()
+ *          to be bit-identical to Qt's own QQuaternion::toEulerAngles() and
+ *          fromAxisAndAngle() and to sensorui's compassAnglesFromQuaternion()
+ *          as it stood, over random, scaled, tiny and near-gimbal-lock
+ *          quaternions, solved orientations, and qtcalibrate's tag-model
+ *          composition.
+ *
  *          When vecmath.h is moved onto glm or Eigen, this check is how the
  *          change is measured: run it with --report to print the largest
  *          difference per output instead of failing on the first: how many
@@ -568,6 +576,147 @@ void checkCalibrationEdges()
     }
 }
 
+// ---------------------------------------------------------------------------
+// Display angles and axis-angle rotations
+// ---------------------------------------------------------------------------
+
+int angleCases = 0;
+long angleDiffering = 0; ///< With --report: angle comparisons that differ.
+
+/// Records a difference unless two doubles have the same bits.
+void compareAngle(const char *what, int index, const char *output, double qt, double core)
+{
+    comparisons++;
+    if (report) {
+        if (!sameBits(qt, core)) {
+            angleDiffering++;
+        }
+        return;
+    }
+    if (!sameBits(qt, core)) {
+        failures++;
+        if (failures <= 10) {
+            std::printf("FAIL: %s case %d %s: Qt %.17g core %.17g\n", what, index, output, qt, core);
+        }
+    }
+}
+
+/// sensorui's compassAnglesFromQuaternion() as it stood, on Qt's own
+/// toEulerAngles(). Verbatim; do not edit to match the core.
+void qtCompassAngles(const QQuaternion &q, double &yaw, double &pitch, double &roll)
+{
+    QVector3D angles = q.toEulerAngles();
+    if (angles[2] < 0.0) {
+        angles[2] += 360.0;
+    }
+
+    pitch = angles[0];
+    roll = angles[1];
+    yaw = std::fmod(360 - angles[2], 360.0);
+}
+
+/// One quaternion through Qt and the core: toEulerAngles and the display angles.
+void checkAngles(const char *what, int index, const QQuaternion &q)
+{
+    angleCases++;
+    const QVector3D e = q.toEulerAngles();
+    const sensormath::Vec3f c = sensormath::toEulerAngles(toQuatf(q));
+    compareAngle(what, index, "euler.x", e.x(), c.x);
+    compareAngle(what, index, "euler.y", e.y(), c.y);
+    compareAngle(what, index, "euler.z", e.z(), c.z);
+
+    double yaw, pitch, roll;
+    qtCompassAngles(q, yaw, pitch, roll);
+    const compasscore::DisplayAngles d = compasscore::displayAngles(toQuatf(q));
+    compareAngle(what, index, "yaw", yaw, d.yaw);
+    compareAngle(what, index, "pitch", pitch, d.pitch);
+    compareAngle(what, index, "roll", roll, d.roll);
+}
+
+/// One axis and angle through QQuaternion::fromAxisAndAngle and the core.
+void checkAxisAngle(const char *what, int index, const QVector3D &axis, float angle)
+{
+    angleCases++;
+    const QQuaternion q = QQuaternion::fromAxisAndAngle(axis, angle);
+    const sensormath::Quatf c = sensormath::fromAxisAndAngle(toVec3f(axis), angle);
+    compareAngle(what, index, "w", q.scalar(), c.w);
+    compareAngle(what, index, "x", q.x(), c.x);
+    compareAngle(what, index, "y", q.y(), c.y);
+    compareAngle(what, index, "z", q.z(), c.z);
+}
+
+/**
+ * Random quaternions (unit, scaled, tiny, near gimbal lock), the orientations
+ * the solve produces for random sensor pairs, axis-angle rotations about the
+ * three axes and random axes at random and whole-degree angles, and qtcalibrate's
+ * tag-model composition qz * qy * qx from display angles.
+ */
+void checkAngleCases(int count)
+{
+    std::mt19937 rng(20261028);
+    std::uniform_real_distribution<float> unit(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> degrees(-720.0f, 720.0f);
+    std::uniform_real_distribution<float> scale(0.5f, 3.0f);
+
+    for (int i = 0; i < count; i++) {
+        QQuaternion q(unit(rng), unit(rng), unit(rng), unit(rng));
+        checkAngles("angles random", i, q);
+        checkAngles("angles scaled", i, q * scale(rng));
+        checkAngles("angles tiny", i, q * 1e-7f);
+
+        // Near gimbal lock: pitch within a whisker of +/-90 degrees.
+        const float tilt = 90.0f - std::fabs(unit(rng)) * 0.01f;
+        const QQuaternion lock = QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0), unit(rng) > 0 ? tilt : -tilt)
+            * QQuaternion::fromAxisAndAngle(QVector3D(0, 0, 1), degrees(rng));
+        checkAngles("angles gimbal", i, lock);
+
+        // What the live compass hands the display.
+        QVector3D accel, mag;
+        do {
+            accel = QVector3D(unit(rng), unit(rng), unit(rng));
+            mag = QVector3D(unit(rng), unit(rng), unit(rng));
+        } while (accel.length() < 0.1f || mag.length() < 0.1f);
+        compasscore::Orientation o;
+        if (compasscore::solveOrientation(toVec3f(mag * 45.0f), toVec3f(accel * 1000.0f), nullptr, o)) {
+            const QQuaternion solved = toQQuaternion(o.q);
+            checkAngles("angles solved", i, solved);
+
+            // qtcalibrate's tag model: rotate by pitch, roll and the
+            // counter-clockwise yaw, composed as qz * qy * qx.
+            double yaw, pitch, roll;
+            qtCompassAngles(solved, yaw, pitch, roll);
+            const float p = pitch, r = roll, y = 360.0 - yaw;
+            const QQuaternion qtModel = QQuaternion::fromAxisAndAngle(QVector3D(0, 0, 1), y)
+                * QQuaternion::fromAxisAndAngle(QVector3D(0, 1, 0), r)
+                * QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0), p);
+            const sensormath::Quatf model = sensormath::fromAxisAndAngle({0, 0, 1}, y)
+                * sensormath::fromAxisAndAngle({0, 1, 0}, r)
+                * sensormath::fromAxisAndAngle({1, 0, 0}, p);
+            compareAngle("model", i, "w", qtModel.scalar(), model.w);
+            compareAngle("model", i, "x", qtModel.x(), model.x);
+            compareAngle("model", i, "y", qtModel.y(), model.y);
+            compareAngle("model", i, "z", qtModel.z(), model.z);
+        }
+
+        const QVector3D axis(unit(rng), unit(rng), unit(rng));
+        checkAxisAngle("axis random", i, axis, degrees(rng));
+        checkAxisAngle("axis whole", i, axis, std::round(degrees(rng)));
+        checkAxisAngle("axis x", i, QVector3D(1, 0, 0), degrees(rng));
+        checkAxisAngle("axis y", i, QVector3D(0, 1, 0), degrees(rng));
+        checkAxisAngle("axis z", i, QVector3D(0, 0, 1), degrees(rng));
+    }
+
+    // Edges: identity, zero, exact gimbal lock both ways, a zero axis.
+    checkAngles("angles edge", 0, QQuaternion());
+    checkAngles("angles edge", 1, QQuaternion(0, 0, 0, 0));
+    checkAngles("angles edge", 2, QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0), 90.0f));
+    checkAngles("angles edge", 3, QQuaternion::fromAxisAndAngle(QVector3D(1, 0, 0), -90.0f));
+    checkAngles("angles edge", 4, QQuaternion(0, 0, 0, 1));
+    checkAxisAngle("axis edge", 0, QVector3D(0, 0, 0), 30.0f);
+    checkAxisAngle("axis edge", 1, QVector3D(0, 0, 2), 180.0f);
+    checkAxisAngle("axis edge", 2, QVector3D(0, 0, 1.000001f), 45.0f);
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -581,14 +730,16 @@ int main(int argc, char **argv)
     checkEdges();
     checkCalibrationRandom(20000);
     checkCalibrationEdges();
+    checkAngleCases(100000);
 
-    std::printf("%d capture samples, %ld comparisons, %d calibration documents\n",
-                captured, comparisons, calibrationCases);
+    std::printf("%d capture samples, %ld comparisons, %d calibration documents, %d angle cases\n",
+                captured, comparisons, calibrationCases, angleCases);
     if (report) {
         for (int i = 0; i < 7; i++) {
             std::printf("%-5s differ in %8ld, NaN on one side in %6ld, max finite |Qt - core| %.9g\n",
                         kOutputNames[i], differing[i], nanMismatch[i], worst[i]);
         }
+        std::printf("angles differ in %ld\n", angleDiffering);
         return 0;
     }
     if (failures) {

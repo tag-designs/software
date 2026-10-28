@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+summary: How Rust tools write tag SQLite logs through the C++ writer, and calibrate through the C++ calibration session - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, tagcore_c, SqliteTagLogWriter, CalibrationSession), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 ---
 
 # tagcore_c and taglogwriter: architecture
@@ -39,6 +39,27 @@ tag-dwnld (host/commandline-rs/src/bin/tag-dwnld.rs)
 
 The tag side never crosses the C boundary: tagcore-rs reads the tag in Rust.
 Only the writer is C++.
+
+The same library carries a second interface, `tcs_*`
+([`calibsession_c.h`](../calibsession_c.h)), over sensoranalysis's Qt-free
+calibration session, for the Rust Tag Calibrator through
+[`calibsession-rs`](../../calibsession-rs/README.md):
+
+```
+tagcalibrate (host/applications/tagcalibrate-rs)
+ ├─ tagcore-rs ── Tag: attach, calibrate, calibration log, constants
+ └─ calibsession-rs ── Session: safe Rust over tcs_*
+     └─ tagcore_c (C ABI: tcs_*) ── copies values in and out
+         └─ calibcore::CalibrationSession (host/libraries/sensoranalysis/core)
+```
+
+Nothing is encoded there: samples cross as float arrays and results as plain
+C structs, since every value is a number the session computes. The session is
+the code qtcalibrate's `CompassData` runs, and `calibsession-rs`'s replay test
+reproduces qtcalibrate's logged figures for the reference capture. Both
+interfaces are exported from both builds; the export lists name `tlw_*` and
+`tcs_*`, and `sensoranalysis_core` is compiled position-independent with
+`tagcore` and `proto`.
 
 ## The contract
 

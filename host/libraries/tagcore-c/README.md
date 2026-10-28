@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore_c, a C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
+summary: tagcore_c, a C interface to the C++ SQLite log writer and the calibration session for Rust and other languages - the tlw_* and tcs_* functions, the shared and static builds, symbol hiding, and how it was checked.
 ---
 
 # tagcore_c (C interface)
@@ -16,6 +16,12 @@ how the libraries are built and what to keep in step are in
 [design/architecture.md](design/architecture.md). Why it exists, and
 what else could go behind it, is in the
 [proposal](../tagcore/design/proposals/rust-over-cpp-libraries.md).
+
+It also carries the `tcs_*` functions of
+[`calibsession_c.h`](calibsession_c.h): the live magnetometer and
+accelerometer calibration (sensoranalysis's `CalibrationSession`) and the
+compass display angles, for the Rust Tag Calibrator through
+[`calibsession-rs`](../calibsession-rs/README.md).
 
 It is built with `-DBUILD_TAGCORE_C=ON`, and whenever the Rust applications
 are (`BUILD_RUST_APPS`): Tag Monitor in Rust
@@ -33,13 +39,15 @@ installed for no other program.
 | `tagcore_c` | `libtagcore_c.so`, or a DLL and its import library: **the link on Linux and Windows**, where one copy in the install directory serves every tool (also builds as a `.dylib`) | all (checked on macOS) |
 
 Both contain the shim, `tagcore`, the generated protobuf code, libprotobuf
-with abseil, and SQLite, and both expose only the `tlw_*` functions:
+with abseil, SQLite and `sensoranalysis_core`, and both expose only the
+`tlw_*` and `tcs_*` functions:
 
 - **Shared:** an export list (`exports.macos`, `exports.linux`) hides
-  everything else; a Windows DLL exports only what `TLW_API` marks.
+  everything else; a Windows DLL exports only what `TLW_API` marks, which
+  both headers use.
 - **Static:** [`static/CMakeLists.txt`](static/CMakeLists.txt) pre-links the
   same inputs with `c++ -r` and the export list, so the archive holds one
-  object in which everything but `tlw_*` is local. A caller links it plus
+  object in which everything but `tlw_*` and `tcs_*` is local. A caller links it plus
   the C++ runtime and the system libraries it calls (`c++`, `objc`,
   CoreFoundation, IOKit and Security on macOS).
 

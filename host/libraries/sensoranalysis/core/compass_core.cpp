@@ -161,4 +161,20 @@ bool solveOrientation(
     return true;
 }
 
+DisplayAngles displayAngles(const Quatf &q)
+{
+    // Qt's angles are (about x, about y, about z) for q = Ry * Rx * Rz. The z
+    // angle is counter-clockwise in the NWU solve; a compass reads clockwise.
+    Vec3f angles = sensormath::toEulerAngles(q);
+    if (angles.z < 0.0) {
+        angles.z += 360.0;
+    }
+
+    DisplayAngles result;
+    result.pitch = angles.x;
+    result.roll = angles.y;
+    result.yaw = std::fmod(360 - angles.z, 360.0);
+    return result;
+}
+
 } // namespace compasscore

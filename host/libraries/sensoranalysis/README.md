@@ -18,6 +18,11 @@ Current contents:
   acceleration magnitude derived from raw samples.
 - `CompassProcessor`: eCompass orientation computation for raw log samples and
   already-calibrated live samples.
+- The calibration-sweep classes qtcalibrate uses: `Directions` (sphere
+  patches and evenness), `MagQuality` (coverage, fit residual, attitude
+  diversity and dip consistency), `MagRetention` (which sample a full
+  magnetometer buffer evicts), and `AccelCalibration` and `GravityFit` (the
+  accelerometer zero-g offset).
 
 The arithmetic behind `CompassCalibration` and `CompassProcessor` lives in a
 Qt-free core, the `sensoranalysis_core` target in `core/`:
@@ -31,7 +36,9 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   changes results in the last bits and is measured with
   `compass_core_parity_check --report` ([test/README.md](test/README.md)).
 - `compass_core.h`: `compasscore::CalibrationConstants`, magnetometer and
-  accelerometer correction, `solveOrientation()`, and
+  accelerometer correction, `solveOrientation()`, `displayAngles()` (heading,
+  pitch and roll in the convention every CompassTag display uses, behind
+  sensorui's `compassAnglesFromQuaternion()`), and
   `calibrationFromLookup()` -- the one mapping from the stored
   CalibrationConstants JSON keys and their defaults to constants, given a
   function that looks a number up.
@@ -40,6 +47,27 @@ Qt-free core, the `sensoranalysis_core` target in `core/`:
   protobuf's generic `Struct`. It keeps every number as the double parsed from
   the text, as Qt's reader does; parsing into the typed message would round
   the soft-iron terms through float and change results.
+
+- `magcal/`: Freescale's magnetometer calibration solver, in C
+  (BSD-3-Clause, [notice](../../../LICENSES/host/third-party/freescale-magcal.txt)).
+  `MagCal_Run()` fits a 4-, 7- or 10-element ellipsoid to the 650-sample
+  buffer in a `MagCalibration_t`; which samples that buffer holds is the
+  caller's choice (`MagRetention`).
+- `calibration_session.h`: `calibcore::CalibrationSession`, one live
+  calibration -- the 650-sample buffer and the solver it feeds, eviction by
+  `MagRetention` with a seeded fallback, the accelerometer's own fit, the
+  quality figures, and the low-pass filtered live compass. qtcalibrate's
+  `CompassData` is a Qt adapter over it, and the Rust Tag Calibrator uses it
+  directly, so both calibrate identically. qtcalibrate's replay logs and
+  `test/calibration_session_check.cc` showed the move from `CompassData`
+  changed nothing.
+- `directions_core.h`, `magquality_core.h`, `magretention_core.h`,
+  `accelcalibration_core.h`, `gravityfit_core.h`: the calibration-sweep
+  classes, in namespace `calibcore`, on `sensormath::Vec3f` and `std::vector`.
+  Each header carries the class's reasoning; the Qt header of the same name
+  is an adapter. They were moved here unchanged in arithmetic, and
+  `test/calibration_dump.cc` showed every result bit-identical before and
+  after ([test/README.md](test/README.md)).
 
 The Qt classes convert types and call the core -- including
 `CompassCalibration::fromCalibrationJson()`, which is a `QJsonObject` lookup

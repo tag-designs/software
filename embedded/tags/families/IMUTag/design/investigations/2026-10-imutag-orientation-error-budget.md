@@ -30,7 +30,7 @@ that would replace them are listed at the end.
 | ST LSM6DSV datasheet, DS13476 Rev 5, Table 3 (page 11) | Accelerometer offset, temperature and noise |
 | [`bmm350_tag.c`](../../../../common/sensors/mag/src/bmm350_tag.c) | What factory compensation the firmware applies |
 | [`sensors.c`](../../src/sensors.c), [`lsm6dsv16x.c`](../../../../common/sensors/imu/lsm6dsv16x.c) | Sensor modes, rates and filtering in use |
-| [`magcal.c`](../../../../../../host/applications/qtcalibrate/magcal/magcal.c), [qtcalibrate README](../../../../../../host/applications/qtcalibrate/README.md) | What our calibration fits |
+| [`magcal.c`](../../../../../../host/libraries/sensoranalysis/core/magcal/magcal.c), [qtcalibrate README](../../../../../../host/applications/qtcalibrate/README.md) | What our calibration fits |
 
 Both datasheets quote typical values as roughly mean ±1σ and give no maximum
 for most of the terms used here; ST notes its typical values are not

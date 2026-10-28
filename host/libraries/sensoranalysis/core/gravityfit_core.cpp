@@ -1,0 +1,204 @@
+/**
+ * @file    gravityfit_core.cpp
+ * @brief   Streaming accelerometer sphere fit, Qt-free.
+ *
+ * @details Moved from gravityfit.cpp, expression for expression, onto
+ *          sensormath types; see gravityfit_core.h.
+ */
+#include "gravityfit_core.h"
+
+#include <algorithm>
+#include <cmath>
+
+using sensormath::Vec3f;
+
+namespace {
+
+/**
+ * @brief   Solves a small dense system by Gauss-Jordan with partial pivoting.
+ * @param[in]  a    The 4x4 matrix.
+ * @param[in]  b    The right-hand side.
+ * @param[out] out  The solution, when it exists.
+ * @return  false when a pivot is below 1e-12: the system is singular.
+ */
+bool solve4(double a[4][4], const double b[4], double out[4])
+{
+    double m[4][5];
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            m[i][j] = a[i][j];
+        }
+        m[i][4] = b[i];
+    }
+
+    for (int i = 0; i < 4; i++) {
+        int pivot = i;
+        for (int r = i + 1; r < 4; r++) {
+            if (std::fabs(m[r][i]) > std::fabs(m[pivot][i])) {
+                pivot = r;
+            }
+        }
+        if (std::fabs(m[pivot][i]) < 1e-12) {
+            // Singular: the samples do not span enough orientations to place a
+            // sphere. Refusing is the honest answer; a regularised one would
+            // invent an offset from a sweep that never happened.
+            return false;
+        }
+        if (pivot != i) {
+            for (int c = 0; c < 5; c++) {
+                std::swap(m[i][c], m[pivot][c]);
+            }
+        }
+        for (int r = 0; r < 4; r++) {
+            if (r == i) {
+                continue;
+            }
+            const double f = m[r][i] / m[i][i];
+            for (int c = i; c < 5; c++) {
+                m[r][c] -= f * m[i][c];
+            }
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        out[i] = m[i][4] / m[i][i];
+    }
+    return true;
+}
+
+} // namespace
+
+namespace calibcore {
+
+GravityFit::GravityFit()
+    : GravityFit(Config())
+{
+}
+
+GravityFit::GravityFit(const Config &config)
+    : config_(config)
+{
+    reset();
+}
+
+void GravityFit::reset()
+{
+    for (int i = 0; i < 4; i++) {
+        atb_[i] = 0.0;
+        for (int j = 0; j < 4; j++) {
+            ata_[i][j] = 0.0;
+        }
+    }
+    residualSum_ = 0.0;
+    count_ = 0;
+    pass2Offset_ = Vec3f{};
+    refining_ = false;
+}
+
+void GravityFit::refit(Vec3f offset)
+{
+    const Config kept = config_;
+    reset();
+    config_ = kept;
+    pass2Offset_ = offset;
+    refining_ = true;
+}
+
+bool GravityFit::add(Vec3f accel, float oneG)
+{
+    if (oneG <= 0.0f || !std::isfinite(accel.x) || !std::isfinite(accel.y)
+        || !std::isfinite(accel.z)) {
+        return false;
+    }
+
+    // On the second pass the magnitude is judged after correction, which is
+    // what lets the gate tighten without rejecting honest orientations.
+    const Vec3f probe = refining_ ? accel - pass2Offset_ : accel;
+    const float ratio = sensormath::length(probe) / oneG;
+    const float gate = refining_ ? config_.refinedGate : config_.gate;
+    if (std::fabs(ratio - 1.0f) > gate) {
+        return false;
+    }
+
+    // Row of the linear system for |p|^2 = 2 c.p + k, with k = r^2 - |c|^2.
+    const double p[3] = { accel.x, accel.y, accel.z };
+    const double row[4] = { 2.0 * p[0], 2.0 * p[1], 2.0 * p[2], 1.0 };
+    const double rhs = p[0] * p[0] + p[1] * p[1] + p[2] * p[2];
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            ata_[i][j] += row[i] * row[j];
+        }
+        atb_[i] += row[i] * rhs;
+    }
+    residualSum_ += rhs * rhs;
+    count_++;
+    return true;
+}
+
+GravityFit::Result GravityFit::result(float oneG) const
+{
+    Result r;
+    r.samples = count_;
+    if (count_ < config_.minimumSamples) {
+        return r;
+    }
+
+    double a[4][4];
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            a[i][j] = ata_[i][j];
+        }
+    }
+    double x[4];
+    if (!solve4(a, atb_, x)) {
+        return r;
+    }
+
+    const double centreSq = x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+    const double radiusSq = x[3] + centreSq;
+    if (!(radiusSq > 0.0) || !std::isfinite(radiusSq)) {
+        return r;
+    }
+
+    r.offset = Vec3f{static_cast<float>(x[0]), static_cast<float>(x[1]),
+                     static_cast<float>(x[2])};
+    r.radius = static_cast<float>(std::sqrt(radiusSq));
+
+    // A sphere so far from one g is not a zero-g offset; it is a wrong
+    // sensitivity constant, a sweep that never turned, or a different sensor.
+    // Reporting it as an offset would write a bad constant confidently.
+    if (oneG > 0.0f) {
+        const float scale = r.radius / oneG;
+        if (scale < 0.5f || scale > 1.5f) {
+            return r;
+        }
+    }
+
+    // RMS distance from the fitted sphere. Without a buffer the per-sample
+    // distances are gone, but the least-squares objective is not: the row
+    // sums already held give
+    //
+    //     sum (rhs - row.x)^2 = sum rhs^2 - 2 x.atb + x^T ata x
+    //
+    // which is the algebraic residual, in units of length squared. For a
+    // sample near the surface f = |p-c|^2 - r^2 is about 2r times its
+    // distance from it, so dividing by twice the radius puts this back in the
+    // caller's units. The approximation is second order in residual/radius,
+    // which on real captures is 8 mg against 1000.
+    double square = residualSum_;
+    for (int i = 0; i < 4; i++) {
+        square -= 2.0 * x[i] * atb_[i];
+        for (int j = 0; j < 4; j++) {
+            square += x[i] * ata_[i][j] * x[j];
+        }
+    }
+    if (square > 0.0 && std::isfinite(square) && r.radius > 0.0f) {
+        const double rms = std::sqrt(square / count_);
+        r.residual = static_cast<float>(rms / (2.0 * r.radius));
+    }
+
+    r.valid = true;
+    return r;
+}
+
+} // namespace calibcore

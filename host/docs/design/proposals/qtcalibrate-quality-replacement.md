@@ -24,7 +24,7 @@ were inherited from PJRC's MotionCal. This proposal replaces them with code we
 own, keeping the equal-area coverage idea and discarding the rest.
 
 The Freescale solver in
-[`magcal.c`](../../../applications/qtcalibrate/magcal/magcal.c) is out of scope
+[`magcal.c`](../../../libraries/sensoranalysis/core/magcal/magcal.c) is out of scope
 and does not change.
 
 ## Purpose

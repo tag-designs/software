@@ -37,8 +37,54 @@ To build all of them at once, name each target, or build everything:
 ```sh
 cmake --build $BUILD --target accelcalibration_check gravityfit_check \
                               magquality_check magretention_check \
-                              compass_core_parity_check capture_replay
+                              compass_core_parity_check capture_replay \
+                              calibration_dump calibration_session_check
 ```
+
+## `calibration_session_check`
+
+Requires `calibcore::CalibrationSession` to match a verbatim copy of the
+qtcalibrate `CompassData` code it replaced, bit for bit, on the two paths
+qtcalibrate's replay logs do not record: the low-pass filtered live compass
+(every sample of both fixtures, with and without an accelerometer offset in
+force) and constants loaded from a tag (the recomputed field and every
+calibrated point of a buffer each fixture filled). 48,702 values; the
+reference must not be edited to match the session.
+
+On 2026-10-28 it was shown to bite: moving the filter's new-sample weight one
+float ulp from 0.6 failed 25,022 of them.
+
+## `calibration_dump`
+
+Not a check: it compares nothing itself. It drives `Directions`,
+`MagQuality`, `MagRetention`, `GravityFit` and `AccelCalibration` through
+their Qt API over both qtcalibrate capture fixtures and seeded synthetic
+spheres, and prints every result as a hexadecimal float (`%a`), so two runs
+agree as text exactly when they agree to the bit. Use it for a change that
+must not alter results: build it on the code before, save the output, build
+it on the code after, and diff.
+
+```sh
+$BUILD/Release/bin/calibration_dump > before.txt     # old code
+$BUILD/Release/bin/calibration_dump > after.txt      # new code
+diff before.txt after.txt                            # must be empty
+```
+
+The magnetometer samples are calibrated with each fixture's stored
+calibration and given CompassProcessor's dip, as qtcalibrate feeds
+`MagQuality`; `MagRetention` is asked about windows of the buffer with and
+without probation, the outlier test and the patch floor; `AccelCalibration`
+is read every tenth sample, which also tightens its gate as qtcalibrate's
+tick does. The synthetic data comes from a fixed `std::mt19937` stream through
+integer arithmetic only.
+
+On 2026-10-28 it showed the move of these classes onto the Qt-free core
+(`core/*_core.*`) changed nothing: 4,913 lines, identical before and after,
+on macOS arm64 in a Release build. qtcalibrate's own replay logs of both
+fixtures (`--replay-capture ... --replay-exit --log-file`), which also cover
+its retention decisions and seeded fallback, were byte-identical too. The same
+replay logs, before and after, showed moving the magcal solver into the core
+and `CompassData` onto `CalibrationSession` changed nothing either.
 
 ## `compass_core_parity_check`
 
@@ -55,11 +101,16 @@ flag.
 | random | 200,000 seeded sensor pairs under random hard and soft iron, covering both accelerometer branches and both magnetometer branches. |
 | edges | Zero vectors (refused by both), vectors exactly at, within and just beyond 1e-5 of unit length -- Qt's vector `normalize()` leaves the first two alone -- and vectors small enough that normalization is skipped. |
 | calibration JSON | 20,000 random calibrations written by protobuf as the download path writes them (zeros omitted, accelerometer sometimes absent), the fixture's stored row with its retired `b` field, and hand-written oddities, each read three ways: the Qt reader as it stood, the Qt reader on `calibrationFromLookup()`, and the Qt-free `calibrationFromJson()`. All three must agree to the bit. |
+| angles | 100,000 rounds of random, scaled, tiny and near-gimbal-lock quaternions, solved orientations and axis-angle rotations: `sensormath::toEulerAngles()` and `fromAxisAndAngle()` against Qt's own compiled `QQuaternion` methods, `compasscore::displayAngles()` against sensorui's `compassAnglesFromQuaternion()` as it stood, and qtcalibrate's tag-model composition `qz * qy * qx`. |
 
 On 2026-10-20 it was shown to bite: making vector `normalize()` always divide,
 as glm and Eigen do, failed 12 comparisons, all in the edge group; writing the
 quaternion product the textbook way failed 1.4 million; reading the
 calibration through float, as the typed protobuf message would, failed 17,451.
+The angles group was added on 2026-10-28, when the display conversion moved
+into the core; computing the yaw's `360 - z` in double rather than float failed
+133,605 of its comparisons.
+
 The negative-zero edge case is why `calibrationFromJson()` folds `-0` to `+0`:
 Qt's reader does, protobuf's does not.
 

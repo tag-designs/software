@@ -444,6 +444,10 @@ design document.
 
 - [Host Libraries](../host/libraries/README.md) — Table of host libraries and their dependency direction.
 
+### Libraries / calibsession-rs
+
+- [calibsession (Rust)](../host/libraries/calibsession-rs/README.md) — calibsession, a safe Rust wrapper over the tag calibration session and compass display angles in tagcore_c - so a Rust program calibrates exactly as qtcalibrate does; building, the API, and the replay test against qtcalibrate's own figures.
+
 ### Libraries / sensoranalysis
 
 - [SensorAnalysis Library](../host/libraries/sensoranalysis/README.md) — Contents of the UI-free sensoranalysis library for compass calibration and orientation.
@@ -499,8 +503,8 @@ design document.
 
 ### Libraries / tagcore-c
 
-- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer for Rust and other languages - the tlw_* functions, the shared and static builds, symbol hiding, and how it was checked.
-- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer - the layers (tag-dwnld, taglogwriter-rs, tagcore_c, SqliteTagLogWriter), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer and the calibration session for Rust and other languages - the tlw_* and tcs_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer, and calibrate through the C++ calibration session - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, tagcore_c, SqliteTagLogWriter, CalibrationSession), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
 ### Libraries / tagcore-rs
 

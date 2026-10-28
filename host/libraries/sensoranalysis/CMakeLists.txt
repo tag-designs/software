@@ -4,11 +4,24 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 message("Configure sensoranalysis")
 
-# The Qt-free core: compass calibration and the orientation solve on plain
-# float vector and quaternion types (core/vecmath.h) that reproduce Qt's
-# QVector3D and QQuaternion bit for bit. Command-line tools link this alone;
-# the Qt classes below are adapters over it, so there is one implementation.
-add_library(sensoranalysis_core STATIC core/compass_core.cpp)
+# The Qt-free core: compass calibration, the orientation solve, the
+# magnetometer calibration solver, and the calibration-sweep classes (sphere patches, magnetometer quality and
+# retention, the accelerometer fits) on plain float vector and quaternion
+# types (core/vecmath.h) that reproduce Qt's QVector3D and QQuaternion bit for
+# bit. Command-line tools and the Rust apps link this alone; the Qt classes
+# below are adapters over it, so there is one implementation.
+add_library(sensoranalysis_core STATIC
+  core/accelcalibration_core.cpp
+  core/calibration_session.cpp
+  # Freescale's magnetometer calibration solver, in C (BSD-3-Clause; see
+  # LICENSES/host/third-party/freescale-magcal.txt).
+  core/magcal/magcal.c
+  core/magcal/matrix.c
+  core/compass_core.cpp
+  core/directions_core.cpp
+  core/gravityfit_core.cpp
+  core/magquality_core.cpp
+  core/magretention_core.cpp)
 target_include_directories(sensoranalysis_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/core")
 target_compile_features(sensoranalysis_core PUBLIC cxx_std_17)
 
@@ -68,6 +81,25 @@ if(BUILD_SENSORANALYSIS_CHECKS)
   target_compile_definitions(
     compass_core_parity_check PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   set_target_properties(compass_core_parity_check PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+
+  # Requires CalibrationSession's live compass and loaded constants to match a
+  # verbatim copy of the qtcalibrate code they replaced, bit for bit.
+  add_executable(calibration_session_check test/calibration_session_check.cc)
+  target_link_libraries(calibration_session_check PRIVATE sensoranalysis)
+  target_compile_definitions(
+    calibration_session_check PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(calibration_session_check PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
+
+  # Prints every result of the calibration classes as exact hex floats, for a
+  # before-and-after diff of a change that must not alter them. Not a check:
+  # it compares nothing itself. See test/README.md.
+  add_executable(calibration_dump test/calibration_dump.cc)
+  target_link_libraries(calibration_dump PRIVATE sensoranalysis)
+  target_compile_definitions(
+    calibration_dump PRIVATE TAG_DESIGNS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(calibration_dump PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>/bin)
 
   # A tool rather than a check: it takes a capture and prints what the
