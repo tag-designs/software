@@ -8,6 +8,26 @@ summary: Open work on the base and programmer firmware: the 0x81 (STLINK_DEBUG_E
 
 Delete an item when it is done.
 
+- **0x81 cause found (2026-10-27): DBGMCU_CR.DBG_SLEEP is clear during a
+  monitor session.** On an STM32L4 with DBG_SLEEP clear, Sleep mode (the RTOS
+  idle `__WFI()`) stops HCLK, so every debug access waits (SWD WAIT) until the
+  tag wakes. Any wait in the tag -- an I2C transfer, a test delay, a flash poll
+  -- then holds the bus off for its whole length. Measured on a UIUCTag
+  (`2036354B3032500800520028`) on `tag-breakout-base-l432-v1` with fault
+  logging and a 100000-retry test build: 9-10 ms stalls during Synchronize
+  Clock, 150-600 ms during Self-Test; with the usual 25 retries (under 2 ms on
+  this base) each became a burst of 0x81. Registers while attached:
+  `DBGMCU_CR = 0`, `SCB_SCR = 0` (plain Sleep, not Stop), SRAM and flash
+  Sleep-mode clocks enabled. Setting `DBG_SLEEP` after attach
+  (`provoke_0x81 --dbg-sleep`): 0 of 48 status reads failed, no base faults,
+  longest WAIT run 3, and the `SWD_Close` no-ack below disappeared too. The
+  tag's own Stop path clears `DBGMCU_CR` again after the session. Nothing in
+  the tree sets DBG_SLEEP; `pwr-l432.c` and `time.c` only clear it.
+  **Fix to choose:** set DBG_SLEEP while a session is open -- from the host
+  at attach (tagcore, both languages; works with every field base and tag),
+  from the base in `SWD_Open`, or from the tag when a session opens. Measure
+  the resting current after a detach either way
+  (`families/CompassTag/design/investigations/2026-09-compasstag-standby-after-attach.md`).
 - **0x81 errors while the tag is busy.** Host tools see the base answer
   `STLINK_DEBUG_ERR_FAULT` (0x81) in bursts while a tag is erasing flash,
   setting its RTC or running self-tests: `read debug register 0xe000edfc failed

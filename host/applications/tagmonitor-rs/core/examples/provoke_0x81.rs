@@ -11,6 +11,10 @@
 //! Detaches at the end. It does not start, stop or erase the tag; the attach
 //! resets it, and Synchronize Clock sets its clock.
 //!
+//! `--dbg-sleep` sets `DBGMCU_CR.DBG_SLEEP` (STM32L4) after attaching, which
+//! keeps HCLK running while the tag sleeps in WFI, so debug accesses are not
+//! held off; the tag's Stop and terminal-sleep paths clear it again.
+//!
 //! ```sh
 //! cargo run -p tagmonitor-core --example provoke_0x81 -- --serial 8009001A5556431520303537
 //! ```
@@ -72,14 +76,18 @@ fn main() -> ExitCode {
     log::set_max_level(log::LevelFilter::Warn);
     ms();
     let (mut serial, mut rounds, mut poll_ms) = (String::new(), 3u32, 100u64);
+    let mut dbg_sleep = false;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--serial" => serial = args.next().unwrap_or_default(),
             "--rounds" => rounds = args.next().and_then(|v| v.parse().ok()).unwrap_or(3),
             "--poll-ms" => poll_ms = args.next().and_then(|v| v.parse().ok()).unwrap_or(100),
+            "--dbg-sleep" => dbg_sleep = true,
             _ => {
-                eprintln!("usage: provoke_0x81 [--serial SN] [--rounds N] [--poll-ms MS]");
+                eprintln!(
+                    "usage: provoke_0x81 [--serial SN] [--rounds N] [--poll-ms MS] [--dbg-sleep]"
+                );
                 return ExitCode::from(2);
             }
         }
@@ -113,6 +121,22 @@ fn main() -> ExitCode {
     if !tag.attach(&base) {
         eprintln!("attach failed");
         return ExitCode::FAILURE;
+    }
+    if dbg_sleep {
+        // DBGMCU_CR on the STM32L4; bit 0 is DBG_SLEEP.
+        const DBGMCU_CR: u32 = 0xE004_2004;
+        let mut was = [0u8; 4];
+        let _ = tag.read_memory(DBGMCU_CR, &mut was);
+        let set = u32::from_le_bytes(was) | 1;
+        let r = tag.write_memory(DBGMCU_CR, &set.to_le_bytes(), false);
+        let mut now = [0u8; 4];
+        let _ = tag.read_memory(DBGMCU_CR, &mut now);
+        println!(
+            "{:>7} DBGMCU_CR 0x{:08X} -> 0x{:08X} ({r:?})",
+            ms(),
+            u32::from_le_bytes(was),
+            u32::from_le_bytes(now)
+        );
     }
     let info = tag.tag_info().unwrap_or_default();
     println!(
