@@ -68,10 +68,32 @@ static void adxl362_init(void)
   ADXL362_DeviceEnd(device);
 }
 
+/*
+ * Stand build only: the ADXL362's current sample, for the edge log. Compiles
+ * to nothing otherwise, so a stock build makes no extra SPI transfer.
+ */
+static void edge_log_xyz(int16_t xyz[3])
+{
+#if defined(BITTAG_EDGE_LOG) && BITTAG_EDGE_LOG
+  const TagAdxl362Device *device = TAG_ACCEL_DEVICE;
+  short x, y, z;
+
+  ADXL362_DeviceBegin(device);
+  ADXL362_GetXyzDevice(device, &x, &y, &z);
+  ADXL362_DeviceEnd(device);
+  xyz[0] = x;
+  xyz[1] = y;
+  xyz[2] = z;
+#else
+  xyz[0] = xyz[1] = xyz[2] = 0;
+#endif
+}
+
 enum Sleep Running(enum StateTrans t, State_Event reason)
 {
   int16_t temp10;
   uint16_t vdd100;
+  int16_t xyz[3];
 
   if (t == T_ERROR)
   {
@@ -99,7 +121,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     pState->temp10 = temp10;
 
     adxl362_init();
-    edgeLogStart(timestamp, timestamp_millis, palReadLine(LINE_ACCEL_INT));
+    edge_log_xyz(xyz);
+    edgeLogStart(timestamp, timestamp_millis, palReadLine(LINE_ACCEL_INT), xyz);
 
     pState->state = TagState_RUNNING;
     recordState(reason);
@@ -119,7 +142,8 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     isActive = palReadLine(LINE_ACCEL_INT);
 
     // stand build only: before the catch-up below can move timestamp
-    edgeLogWake(timestamp, timestamp_millis, isActive);
+    edge_log_xyz(xyz);
+    edgeLogWake(timestamp, timestamp_millis, isActive, xyz);
 
     
     // flush out current data
