@@ -279,3 +279,52 @@ fn saves_files_the_page_makes() {
     assert_eq!(std::fs::read(&file).unwrap(), b"%PDF-1.4\n");
     let _ = std::fs::remove_file(file);
 }
+
+#[test]
+fn compass_panel_follows_the_heading_stream() {
+    let mut viewer = viewer_with("compasstag.db3");
+    let spec = viewer.view_state()["spec"].clone();
+    let t = spec["xDataRange"][0].as_f64().unwrap();
+    let panel = viewer.query("compass", &json!({ "t": t }));
+    // The panel's heading is the plotted heading stream's, as the hover shows it.
+    let hover = viewer.query("hover", &json!({ "t": t }));
+    let heading_row = hover["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["text"].as_str().unwrap().to_owned())
+        .find(|r| r.starts_with("Heading: "))
+        .expect("heading row");
+    assert_eq!(
+        heading_row,
+        format!("Heading: {:.2} deg", panel["heading"].as_f64().unwrap())
+    );
+    assert_eq!(panel["batteryForward"], true);
+    assert!(panel["gravity"].as_f64().unwrap() > 800.0);
+
+    // Battery aft: heading turned 180 degrees, pitch and roll negated.
+    viewer.command(
+        "set_parameter",
+        &json!({ "id": "compass.battery_forward", "value": 0.0 }),
+    );
+    let aft = viewer.query("compass", &json!({ "t": t }));
+    let turned = (panel["heading"].as_f64().unwrap() + 180.0) % 360.0;
+    assert!((aft["heading"].as_f64().unwrap() - turned).abs() < 1e-9);
+    assert_eq!(
+        aft["pitch"].as_f64().unwrap(),
+        -panel["pitch"].as_f64().unwrap()
+    );
+    assert_eq!(
+        aft["roll"].as_f64().unwrap(),
+        -panel["roll"].as_f64().unwrap()
+    );
+
+    // Past the end, the last sample; no compass, nothing.
+    let end = viewer.query("compass", &json!({ "t": 1e12 }));
+    assert!(end["time"].as_f64().unwrap() <= spec["xDataRange"][1].as_f64().unwrap());
+    assert!(
+        viewer_with("imutag.db3")
+            .query("compass", &json!({}))
+            .is_null()
+    );
+}

@@ -70,9 +70,14 @@ How it differs from the Qt app:
   ([toolkit-neutral core](../sensorviz/design/proposals/toolkit-neutral-core.md), revised 2026-10-28).
 - **Axis Sides** lists streams, not axis groups.
 
-Still to do (step 4b): the compass panel (Tag Calibrator's heading dial and
-tag model, from the session's compass samples), screenshots, packaging and
-the user manual page.
+For a compass log the Plot page has the Qt app's compass panel beside the
+plot: the heading dial (the kit's `HeadingDial`, shared with Tag Calibrator)
+and the heading, roll, pitch, dip, field, gravity, declination and battery
+direction of the sample at or after the hover time (the engine's `compass`
+query, from the core's display angles, with declination and battery
+direction applied as MyCompass.qml applies them).
+
+Still to do (step 4b): screenshots, packaging and the user manual page.
 
 ## The plot spike (2026-10-28)
 

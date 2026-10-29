@@ -29,7 +29,10 @@
       </div>
       <div class="pages">
         <section id="page-plot" class="page kit-panel">
-          <div id="plot"></div>
+          <div class="plot-row">
+            <div id="plot"></div>
+            <aside id="compass" class="svz-compass" hidden></aside>
+          </div>
           <div id="empty" class="svz-empty">File &gt; Load... opens a tag log (.db3).</div>
         </section>
         <section id="page-info" class="page kit-panel" hidden><pre id="info" class="kit-selectable"></pre></section>
@@ -41,6 +44,7 @@
   <script src="../../../ui-kit/preact-htm.js"></script>
   <script src="../../../ui-kit/kit.js"></script>
   <script src="../../../ui-kit/kit-components.js"></script>
+  <script src="../../../ui-kit/heading-dial.js"></script>
   <script src="uPlot.iife.min.js"></script>
   <script src="jspdf.umd.min.js"></script>
   <script src="plot.js"></script>

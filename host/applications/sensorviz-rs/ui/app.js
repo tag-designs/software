@@ -24,7 +24,46 @@
   let messageSeq = 0;
   const plot = new SvzPlot($("plot"), {
     query: (name, args) => engine.query(name, args),
+    onHover: (t) => { if (t !== null) showCompass(t); },
   });
+
+  // ---- The compass panel -----------------------------------------------------
+
+  /** The panel's readouts, by key, and the time it last showed. */
+  const readouts = {};
+  let compassTime = null;
+  let compassSeq = 0;
+  (function buildCompass() {
+    const rows = (pairs) => Kit.el("div", { class: "svz-readouts" }, pairs.flatMap(([key, label]) => {
+      readouts[key] = Kit.el("output", {}, "");
+      return [Kit.el("span", {}, label), readouts[key]];
+    }));
+    $("compass").append(
+      Kit.el("div", { id: "dial" }),
+      Kit.el("h3", {}, "Sensors"),
+      rows([["heading", "Heading:"], ["roll", "Roll:"], ["pitch", "Pitch:"], ["dip", "Dip Angle:"], ["field", "Field:"], ["gravity", "Gravity:"]]),
+      Kit.el("h3", {}, "Configuration"),
+      rows([["declination", "Declination:"], ["battery", "Battery:"]]));
+  })();
+
+  /**
+   * The panel at time `t` (the first sample when null), from the engine's
+   * `compass` query; a reply overtaken by a newer request is dropped.
+   */
+  async function showCompass(t) {
+    if (!state || !state.hasCompass) return;
+    compassTime = t;
+    const seq = ++compassSeq;
+    const c = await engine.query("compass", t === null ? {} : { t });
+    if (!c || seq !== compassSeq) return;
+    preact.render(Kit.html`<${Kit.HeadingDial} heading=${c.heading}/>`, $("dial"));
+    // Whole numbers, as the Qt panel shows them; the declination to 0.01.
+    for (const key of ["heading", "roll", "pitch", "dip", "field", "gravity"]) {
+      readouts[key].textContent = (Math.round(c[key]) || 0).toString();
+    }
+    readouts.declination.textContent = c.declination.toFixed(2);
+    readouts.battery.textContent = c.batteryForward ? "forward" : "backward";
+  }
 
   /** Sends a command to the engine. */
   const send = (cmd, args) => engine.command(cmd, args || {});
@@ -378,6 +417,11 @@
     if (!old || JSON.stringify(old.spec) !== JSON.stringify(s.spec)) plot.setSpec(s.spec);
     if (s.view) plot.cursors.visible = s.view.cursorsVisible;
     $("info").textContent = s.fileInfo || "";
+    $("compass").hidden = !s.hasCompass;
+    // A new log starts the panel at its first sample; a changed declination
+    // or battery direction redraws it at the same time.
+    if (s.hasCompass && (!old || old.path !== s.path)) showCompass(null);
+    else if (s.hasCompass && JSON.stringify(old.parameters) !== JSON.stringify(s.parameters)) showCompass(compassTime);
     $("empty").hidden = !!s.hasLog;
     Kit.setTitle(s.fileName ? `sensorViz - ${s.fileName}` : "sensorViz");
     showStatus();

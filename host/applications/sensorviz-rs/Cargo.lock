@@ -375,6 +375,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "calibsession"
+version = "0.1.0"
+dependencies = [
+ "tagcore-c-sys",
+]
+
+[[package]]
 name = "camino"
 version = "1.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2951,6 +2958,7 @@ name = "sensorviz-core"
 version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
+ "calibsession",
  "log",
  "sensorviz-session",
  "serde_json",

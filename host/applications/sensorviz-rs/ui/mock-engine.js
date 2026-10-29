@@ -275,7 +275,7 @@
         status: sim.status,
         fileInfo: log ? [log.name].concat(log.info.map(([k, v]) => `${k}: ${v}`)).join("\n") : "",
         timeDomain: log ? log.domain : null,
-        hasCompass: false,
+        hasCompass: !!log && sim.logName === "compasstag",
         spec: log ? specFor(log, sim.utcOffset, sim.breakAtGaps) : null,
         view: log ? {
           // Every stream, as the engine lists them; those drawn are visible.
@@ -326,6 +326,9 @@
         return { time: timeText(log.domain, args.t, sim.utcOffset), rows };
       }
       if (name === "range") return { lower: 0, upper: 1 };
+      // A fixed compass reading, so the panel shows in a preview.
+      if (name === "compass") return log && sim.logName === "compasstag"
+        ? { time: 0, heading: 5, roll: 10, pitch: -5, dip: 38, field: 61, gravity: 984, declination: 0, batteryForward: true } : null;
       if (name === "about") return { title: "sensorViz", version: "mock", userGuide: null };
       return null;
     }

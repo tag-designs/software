@@ -38,6 +38,7 @@
 //! | `envelope` | `t0`, `t1`, `width` | `{traces: {id: {t, v}}, ms}`: each drawn trace's M4 envelope at `width` columns; a gap marker's value is `null` |
 //! | `hover` | `t` | `{time, rows: [{text}]}`: the hover readout |
 //! | `range` | `id` | `{lower, upper}`: where the range dialog starts |
+//! | `compass` | `t` | The compass panel at `t`, from the sample at or after it: `{time, heading, pitch, roll, dip, field, gravity, declination, batteryForward}`, angles as the Qt panel shows them; null without a compass |
 //! | `about` | | `{title, version, userGuide, previewDialog}` |
 
 use std::path::{Path, PathBuf};
@@ -47,7 +48,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use base64::Engine as _;
-use sensorviz_session::{Preferences, Session, Side};
+use sensorviz_session::{OrientationSample, Preferences, Session, Side};
 use serde_json::{Map, Value, json};
 
 /// Where the engine starts, and what it tells Help.
@@ -236,6 +237,8 @@ pub struct Viewer {
     message: Option<Message>,
     /// The directory of the last file opened or saved, where dialogs start.
     last_dir: PathBuf,
+    /// The open log's compass samples, for the compass panel; empty without one.
+    compass: Vec<OrientationSample>,
 }
 
 /// A string argument, or "".
@@ -275,6 +278,7 @@ impl Viewer {
             session: Session::new()?,
             preferences: Preferences::new()?,
             message: None,
+            compass: Vec::new(),
             config,
         })
     }
@@ -442,6 +446,7 @@ impl Viewer {
         match self.session.open(path, Some(&self.preferences)) {
             Ok(()) => {
                 self.remember_dir(path);
+                self.compass = self.session.compass_samples();
                 log::info!(
                     "Loaded {} in {} ms",
                     path.display(),
@@ -517,6 +522,7 @@ impl Viewer {
                 Some((lower, upper)) => json!({ "lower": lower, "upper": upper }),
                 None => Value::Null,
             },
+            "compass" => self.compass_at(arg_f64(args, "t")),
             "about" => json!({
                 "title": "sensorViz",
                 "version": env!("CARGO_PKG_VERSION"),
@@ -525,6 +531,50 @@ impl Viewer {
             }),
             other => json!({ "error": format!("unknown query {other}") }),
         }
+    }
+
+    /// The compass panel at `t` (the first sample if none is given), as the
+    /// Qt app's MyCompass.qml shows it: from the sample at or after `t` (the
+    /// last after the end), its display angles (the core's), the
+    /// declination added to the heading, and with the battery aft the
+    /// heading turned 180 degrees and pitch and roll negated.
+    fn compass_at(&mut self, t: Option<f64>) -> Value {
+        if self.compass.is_empty() {
+            return Value::Null;
+        }
+        let i = t
+            .map_or(0, |t| self.compass.partition_point(|s| s.time < t))
+            .min(self.compass.len() - 1);
+        let sample = self.compass[i];
+        let angles = calibsession::display_angles(sample.q);
+        let parameters = self
+            .session
+            .view()
+            .map(|v| v.parameters)
+            .unwrap_or_default();
+        let declination = parameters
+            .get("compass.declination_deg")
+            .copied()
+            .unwrap_or(0.0);
+        let forward = parameters
+            .get("compass.battery_forward")
+            .copied()
+            .unwrap_or(1.0)
+            != 0.0;
+        let (mut heading, mut pitch, mut roll) =
+            (angles.yaw + declination, angles.pitch, angles.roll);
+        if !forward {
+            heading += 180.0;
+            pitch = -pitch;
+            roll = -roll;
+        }
+        heading = (heading + 360.0) % 360.0;
+        json!({
+            "time": sample.time,
+            "heading": heading, "pitch": pitch, "roll": roll,
+            "dip": sample.dip, "field": sample.field, "gravity": sample.mg,
+            "declination": declination, "batteryForward": forward,
+        })
     }
 
     /// Every drawn trace's envelope over `[t0, t1]` at `width` columns.

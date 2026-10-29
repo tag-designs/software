@@ -25,6 +25,7 @@ CSS or a classic script, vendored or written by hand
 | `preact-htm.js` | Preact 10.29.8, its hooks and htm 3.1.1, vendored (see [Updating Preact and htm](#updating-preact-and-htm)) |
 | `kit.js` | Defines the global `Kit`: the engine connection, the menu bar, dialogs, file pickers, URL and folder opening |
 | `kit-components.js` | Adds `Kit.html`, `Kit.render`, `Kit.hooks`, the components in `Kit.ui` and `Kit.logModel` |
+| `heading-dial.js` | Adds `Kit.HeadingDial({heading})`, the heading indicator sensorui's MyCompass.qml draws (SVG): Tag Calibrator's Orientation page and sensorViz's compass panel. Load after `kit-components.js` |
 | `screenshot.sh` | Captures a page, against its mock, as a PNG (see [Checking a page without the app](#checking-a-page-without-the-app)) |
 
 ## Using it in a page
