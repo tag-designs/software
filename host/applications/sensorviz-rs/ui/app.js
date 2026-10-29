@@ -68,11 +68,37 @@
     });
   }
 
+  /**
+   * The streams with their own visibility, for the Visible Streams list: an
+   * axis group (IMUTag's accelerometer, gyroscope, magnetometer) as one block
+   * where it first appears, its magnitude first and its channels indented
+   * under it; streams without a group as they come.
+   * @returns {Array<{s: Object, indent: boolean}>}
+   */
+  function listedStreams() {
+    const own = streams().filter((s) => !s.derived);
+    const out = [];
+    const done = new Set();
+    for (const s of own) {
+      if (!s.group) { out.push({ s, indent: false }); continue; }
+      if (done.has(s.group)) continue;
+      done.add(s.group);
+      const members = own.filter((m) => m.group === s.group);
+      const heads = members.filter((m) => /magnitude/.test(m.id));
+      const channels = members.filter((m) => !/magnitude/.test(m.id));
+      if (!heads.length) { members.forEach((m) => out.push({ s: m, indent: false })); continue; }
+      heads.forEach((m) => out.push({ s: m, indent: false }));
+      channels.forEach((m) => out.push({ s: m, indent: true }));
+    }
+    return out;
+  }
+
   /** View > Visible Streams: a check box per stream with its own visibility. */
   async function visibleStreamsDialog() {
-    const boxes = streams().filter((s) => !s.derived).map((s) => {
+    const boxes = listedStreams().map(({ s, indent }) => {
       const input = Kit.el("input", { type: "checkbox", checked: s.visible });
-      return { id: s.id, input, row: Kit.el("label", { class: "svz-check-row" }, input, named(s)) };
+      return { id: s.id, input,
+        row: Kit.el("label", { class: "svz-check-row" + (indent ? " svz-indent" : "") }, input, named(s)) };
     });
     const all = (on) => boxes.forEach((b) => { b.input.checked = on; });
     const body = Kit.el("div", {},

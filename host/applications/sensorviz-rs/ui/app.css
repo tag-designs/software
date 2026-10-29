@@ -21,6 +21,7 @@
 /* Dialogs. */
 .svz-list { max-height: 360px; overflow: auto; display: flex; flex-direction: column; gap: 4px; padding: 2px; }
 .svz-check-row { display: flex; align-items: center; gap: 6px; }
+.svz-check-row.svz-indent { padding-left: 22px; }
 .svz-form-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .svz-row-buttons { display: flex; gap: 8px; margin-top: 10px; }
 .svz-form { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: baseline; }
