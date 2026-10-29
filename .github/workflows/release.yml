@@ -240,6 +240,26 @@ jobs:
         shell: bash
         run: cmake --build build --config Release --parallel
 
+      # Each Tauri app embeds its page at compile time; when Tauri cannot
+      # find it the build still succeeds and the window opens on "index.html
+      # not found" (on Windows, until the build scripts canonicalized the
+      # page's path). Each executable must carry its page's app.js.
+      - name: Check the Rust apps embed their pages
+        shell: bash
+        run: |
+          status=0
+          for app in tagprogram-rs/tagprogram tagmonitor-rs/tagmonitor \
+                     tagcalibrate-rs/tagcalibrate sensorviz-rs/tagview; do
+            exe=build/host/applications/${app%%/*}/cargo/release/${app##*/}
+            [ -f "$exe" ] || exe="$exe.exe"
+            if grep -aqF "/app.js" "$exe"; then
+              echo "ok      $exe"
+            else
+              echo "::error::$exe has no embedded page"; status=1
+            fi
+          done
+          exit $status
+
       - name: Package
         shell: bash
         run: cmake --build build --config Release --target package

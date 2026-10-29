@@ -85,6 +85,11 @@ fn main() {
         println!("cargo:rerun-if-changed={}", manifest.join(watched).display());
     }
     // The page generate_context! embeds: the staged copy, by absolute path.
+    // Canonical, because Tauri reads frontendDist as a URL when it can: a
+    // Windows path such as `d:/a/...` parses as one (scheme `d`), and then
+    // nothing is embedded and the window finds no index.html. The canonical
+    // form there, `\\?\D:\a\...`, cannot.
+    let dist = dist.canonicalize().expect("canonical staging path");
     let config = format!(
         r#"{{"build":{{"frontendDist":{}}}}}"#,
         serde_json::to_string(&dist.to_string_lossy()).expect("path as JSON")
