@@ -34,6 +34,7 @@ its own module documentation describes it.
 | <a href="rust/tagprogram_core/index.html">tagprogram_core</a> | `host/applications/tagprogram-rs/core` | Tag Programmer: programming, testing and recording tags |
 | <a href="rust/tagmonitor_core/index.html">tagmonitor_core</a> | `host/applications/tagmonitor-rs/core` | Tag Monitor: the port of qtmonitor's core -- attach, check, configure, start and download tags |
 | <a href="rust/tagcalibrate_core/index.html">tagcalibrate_core</a> | `host/applications/tagcalibrate-rs/core` | Tag Calibrator: the port of qtcalibrate's behaviour, over the C++ calibration session |
+| <a href="rust/sensorviz_core/index.html">sensorviz_core</a> | `host/applications/sensorviz-rs/core` | sensorViz: the port of the Qt sensorviz's behaviour, over sensorViz's C++ core |
 
 ## Command-line tools
 

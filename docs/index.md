@@ -407,7 +407,7 @@ design document.
 
 ### Applications / sensorviz-rs
 
-- [sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — sensorViz in Rust, to replace the Qt sensorviz - so far the plot spike, which settled the renderer (uPlot in the page, from M4 envelopes) and printing (jsPDF, 300 dpi); how to run it and what it showed.
+- [sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — sensorViz in Rust, the Tauri port of the Qt sensorviz over sensorViz's C++ core - the engine, the shell and the uPlot page; how to build and run it, how it differs from the Qt app, what is still to do, and what the plot spike that chose uPlot and jsPDF showed.
 
 ### Applications / tagcalibrate-rs
 

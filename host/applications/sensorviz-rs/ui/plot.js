@@ -21,6 +21,11 @@
  *    `hover`), in a tooltip; `onHover(t)` is told the time as well, for the
  *    compass panel.
  *
+ * The spec is sensorviz_core's PlotSpec as the engine sends it (see
+ * host/libraries/sensorviz-session-rs/README.md): `timeDomain`,
+ * `utcOffsetHours`, `xDataRange`, `traces` (`penWidth`), `axes` (`mode`,
+ * `range`), `eventMarkerTimes`, `metadataRows`, `title`.
+ *
  * Defines one global, `SvzPlot`. Load after uPlot.iife.min.js.
  */
 (function () {
@@ -37,6 +42,27 @@
 
   /** The IANA zone that shifts UTC by whole hours, for uPlot's tick placement. */
   const etcZone = (hours) => (hours ? `Etc/GMT${hours > 0 ? "-" : "+"}${Math.abs(hours)}` : "Etc/UTC");
+
+  /**
+   * An axis's y range from the spec, as the Qt plot sets it: `fixed` and
+   * `linked` exactly; `auto` the data range padded by 5% (paddedRange() in
+   * plot_spec.cpp), or 0 to 1 without data. The Qt plot also widens an auto
+   * axis to include the range the axis showed before, which for a new
+   * QCustomPlot axis is 0 to 5; that history is not kept here.
+   */
+  function axisRange(a) {
+    if (!a.range) return [0, 1];
+    if (a.mode !== "auto") return a.range;
+    let [lower, upper] = a.range;
+    let span = upper - lower;
+    if (span <= 0) {
+      const center = (lower + upper) / 2;
+      span = Math.max(1, Math.abs(center) * 0.1);
+      lower = center - span / 2;
+      upper = center + span / 2;
+    }
+    return [lower - span * 0.05, upper + span * 0.05];
+  }
 
   /**
    * Aligns the traces' envelopes on one sorted time array.
@@ -63,7 +89,7 @@
         for (let i = 0; i < e.t.length; i++) {
           while (xs[j] < e.t[i]) j++;
           const v = e.v[i];
-          ys[j] = Number.isNaN(v) ? null : v;   // null: a gap, the line breaks
+          ys[j] = v === null || Number.isNaN(v) ? null : v;   // null: a gap, the line breaks
           // Fill the other traces' times since the last point of this one,
           // on the segment between them, unless either end is a gap.
           if (prev >= 0 && ys[prev] !== null && ys[j] !== null && j - prev > 1) {
@@ -136,10 +162,10 @@
     this.titleEl.textContent = spec ? spec.title : "";
     this.titleEl.hidden = !spec || !spec.title;
     let keep = null;
-    if (this.u && old && spec && old.domain === spec.domain) keep = [this.u.scales.x.min, this.u.scales.x.max];
+    if (this.u && old && spec && old.timeDomain === spec.timeDomain) keep = [this.u.scales.x.min, this.u.scales.x.max];
     if (this.u) { this.u.destroy(); this.u = null; }
     this.chartEl.replaceChildren();
-    if (!spec) return;
+    if (!spec || !spec.xDataRange) return;
     this.build(spec);
     const [a, b] = spec.xDataRange;
     const pad = (b - a) * 0.05 || 1;
@@ -168,25 +194,28 @@
     const font = `${12 * k}px ` + (css.getPropertyValue("--font").trim() || "sans-serif");
     const tick = (stroke) => ({ stroke, size: 10 * k, width: k });
     const gridLine = (show) => ({ show, stroke: grid, width: k, dash: [2 * k, 3 * k] });
-    // Grid lines come from the innermost left axis -- the spec's last -- as in
-    // the Qt plot.
-    const innermostLeft = spec.axes.map((a, i) => [a, i]).filter(([a]) => a.side === "left").pop();
-    const epoch = spec.domain === "epoch";
-    const zone = etcZone(spec.utcOffset);
+    // Grid lines come from the innermost left axis -- the spec's first left
+    // one, QCustomPlot's own yAxis -- as in the Qt plot.
+    const innermostLeft = spec.axes.map((a, i) => [a, i]).find(([a]) => a.side === "left");
+    const epoch = spec.timeDomain === "epoch";
+    const utc = spec.utcOffsetHours;
+    const zone = etcZone(utc);
     const axes = [{
       stroke: ink, font, labelFont: font, gap: 5 * k, labelSize: 30 * k, labelGap: 0,
       space: 50 * k,   // uPlot's minimum spacing between ticks, in pixels
       grid: gridLine(true),
       ticks: tick(ink),
-      label: epoch ? `Hour:Minute (${spec.utcOffset ? `UTC${spec.utcOffset > 0 ? "+" : ""}${spec.utcOffset}` : "UTC"})` : "Elapsed Time (s)",
+      // The Qt plot's two-line title on one line: uPlot draws one.
+      label: epoch ? `Hour:Minute (${utc ? `UTC${utc > 0 ? "+" : ""}${utc}` : "UTC"}) · Month/Day/Year` : "Elapsed Time (s)",
       size: (epoch ? 54 : 40) * k,
-      values: epoch ? epochTicks(spec.utcOffset) : undefined,
+      values: epoch ? epochTicks(utc) : undefined,
     }];
     const scales = { x: { time: epoch, auto: false } };
-    // uPlot stacks each side's axes outward in the order given; the Qt plot
-    // puts the spec's first axis outermost, so they are given last first.
-    spec.axes.map((a, i) => [a, i]).reverse().forEach(([a, i]) => {
-      scales[`y${i}`] = { auto: false, range: () => a.range };
+    // uPlot stacks each side's axes outward in the order given, as the Qt
+    // plot does: the spec's first axis innermost.
+    spec.axes.forEach((a, i) => {
+      const range = axisRange(a);
+      scales[`y${i}`] = { auto: false, range: () => range };
       axes.push({
         scale: `y${i}`, side: a.side === "left" ? 3 : 1, label: a.label, stroke: a.color, font, labelFont: font,
         gap: 5 * k, labelSize: 30 * k, labelGap: 0, space: 30 * k,
@@ -195,7 +224,7 @@
       });
     });
     const series = [{}].concat(spec.traces.map((tr) => ({
-      label: tr.name, scale: `y${tr.axis}`, stroke: tr.color, width: tr.width * k,
+      label: tr.name, scale: `y${tr.axis}`, stroke: tr.color, width: tr.penWidth * k,
       spanGaps: false, points: { show: false },
     })));
     return {
@@ -309,11 +338,16 @@
   SvzPlot.prototype.installBoxes = function (spec) {
     const over = this.u.over;
     const meta = Kit.el("div", { class: "svz-box svz-meta" },
-      spec.metadata.map(([k, v]) => Kit.el("div", { class: "svz-meta-row" }, Kit.el("span", {}, k), Kit.el("span", {}, v))));
+      spec.metadataRows.map((row) => Kit.el("div", { class: "svz-meta-row" }, row)));
+    // As the Qt plot's legend: only traces sharing an axis, which its label
+    // cannot name, one column per shared axis; none when no axis is shared.
+    const shared = spec.axes.filter((a) => a.traces.length > 1);
     const legend = Kit.el("div", { class: "svz-box svz-legend" },
-      spec.traces.map((tr) => Kit.el("div", { class: "svz-legend-row" },
-        Kit.el("span", { class: "svz-swatch", style: { background: tr.color } }), tr.name)));
-    meta.hidden = !spec.metadata.length;
+      shared.map((a) => Kit.el("div", { class: "svz-legend-column" }, a.traces.map((i) => spec.traces[i]).map((tr) =>
+        Kit.el("div", { class: "svz-legend-row" },
+          Kit.el("span", { class: "svz-swatch", style: { background: tr.color } }), tr.name)))));
+    legend.hidden = !shared.length;
+    meta.hidden = !spec.metadataRows.length;
     over.append(meta, legend);
     this.boxes = [draggable(meta, over, this.metaPos || [0.02, 0.03]), draggable(legend, over, [0.72, 0.03])];
     this.boxEls = [meta, legend];
@@ -339,7 +373,7 @@
       ctx.stroke();
       ctx.restore();
     };
-    for (const m of this.spec.markers) line(m, "#888", [4, 4]);
+    for (const m of this.spec.eventMarkerTimes) line(m, "#888", [4, 4]);
     if (this.cursors.visible) {
       line(this.cursors.left, "#d62728", [6, 3]);
       line(this.cursors.right, "#1f77b4", [6, 3]);
@@ -356,7 +390,7 @@
     Promise.resolve(this.opts.query("hover", { t })).then((h) => {
       if (seq !== this.hoverSeq || !h) return;
       this.tipEl.replaceChildren(Kit.el("div", { class: "svz-tip-time" }, h.time),
-        ...h.rows.map((r) => Kit.el("div", {}, Kit.el("span", { class: "svz-swatch", style: { background: r.color } }), r.text)));
+        ...h.rows.map((r) => Kit.el("div", {}, r.text)));
       const o = u.over.getBoundingClientRect(), hr = this.host.getBoundingClientRect();
       this.tipEl.style.left = `${o.left - hr.left + x + 14}px`;
       this.tipEl.style.top = `${o.top - hr.top + y + 14}px`;
@@ -365,16 +399,16 @@
   };
 
   /**
-   * Puts the cursors near the edges of the view (as a rebuild does in the Qt
-   * app): of `range`, or of the current window. A new plot passes its range,
-   * since uPlot applies a first setScale only once it has data.
+   * Puts the cursors at the edges of the view, as the Qt app's
+   * resetCursorsToView() does: of `range`, or of the current window. A new
+   * plot passes its range, since uPlot applies a first setScale only once it
+   * has data.
    */
   SvzPlot.prototype.resetCursors = function (range) {
     if (!this.u) return;
     const [min, max] = range || [this.u.scales.x.min, this.u.scales.x.max];
-    const span = max - min;
-    this.cursors.left = min + span * 0.1;
-    this.cursors.right = max - span * 0.1;
+    this.cursors.left = min;
+    this.cursors.right = max;
     this.u.redraw(false);
   };
 
@@ -479,10 +513,13 @@
         doc.setTextColor(0).text(r.text, tx, ty);
       });
     };
-    if (spec.metadata.length && !this.boxEls[0].hidden) {
-      box(this.boxes[0].pos, spec.metadata.map(([k, v]) => ({ text: `${k.padEnd(8)}${v}` })), true);
+    if (spec.metadataRows.length && !this.boxEls[0].hidden) {
+      box(this.boxes[0].pos, spec.metadataRows.map((row) => ({ text: row })), true);
     }
-    box(this.boxes[1].pos, spec.traces.map((tr) => ({ text: tr.name, color: tr.color })), false);
+    if (!this.boxEls[1].hidden) {
+      const legendTraces = spec.axes.filter((a) => a.traces.length > 1).flatMap((a) => a.traces.map((i) => spec.traces[i]));
+      box(this.boxes[1].pos, legendTraces.map((tr) => ({ text: tr.name, color: tr.color })), false);
+    }
     u.destroy();
     holder.remove();
     return doc;

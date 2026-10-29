@@ -12,7 +12,9 @@ for the plot, jsPDF for printing. Step 1 is done: the toolkit-neutral
 core is complete through phase F, with `Session` as the facade and
 `session_cli` reproducing the Qt app's state without Qt. Step 3 is
 done: the `svz_*` C interface and the `sensorviz-session` crate, with
-`tagcore-c-sys` the one crate linking `tagcore_c` (see below). Step 4 is next.
+`tagcore-c-sys` the one crate linking `tagcore_c` (see below). Step 4 is
+under way: the app opens and plots logs with every menu but the compass
+panel ([sensorviz-rs](../../../sensorviz-rs/README.md)).
 
 sensorviz is the last host application with no non-Qt version: Tag
 Programmer, Tag Monitor and Tag Calibrator each have a Rust/Tauri port on the

@@ -179,7 +179,8 @@ set(DEVELOPER_RUST_DOCS
   "host/commandline-rs|tag-tools tagcore taglogwriter tagcore-c-sys"
   "host/applications/tagprogram-rs|tagprogram-core tagcore tagprobe"
   "host/applications/tagmonitor-rs|tagmonitor-core tagcore taglogwriter tagcore-c-sys"
-  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession tagcore-c-sys")
+  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession tagcore-c-sys"
+  "host/applications/sensorviz-rs|sensorviz-core sensorviz-session tagcore-c-sys")
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
 # The developer documents staged into the portal are not listed here.
 # docs/tools/docs.py finds every Markdown file carrying developer-doc front
