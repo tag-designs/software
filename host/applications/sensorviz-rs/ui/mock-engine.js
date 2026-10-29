@@ -278,10 +278,12 @@
         hasCompass: false,
         spec: log ? specFor(log, sim.utcOffset, sim.breakAtGaps) : null,
         view: log ? {
-          streams: log.traces.map((tr) => {
-            const s = log.streams.find((x) => x.id === tr.id);
-            return { id: tr.id, label: s.label, units: s.units, effectiveColor: tr.color, derived: false,
-              visible: true, effectiveAxisSide: tr.side };
+          // Every stream, as the engine lists them; those drawn are visible.
+          streams: log.streams.map((s) => {
+            const tr = log.traces.find((x) => x.id === s.id);
+            const color = tr ? tr.color : "#50648c", side = tr ? tr.side : "left";
+            return { id: s.id, label: s.label, units: s.units, color, effectiveColor: color, derived: false,
+              visible: !!tr, axisSide: side, effectiveAxisSide: side };
           }),
           visibleStreamIds: log.traces.map((tr) => tr.id), customRanges: {},
           title: log.name, titleVisible: true, utcOffsetHours: sim.utcOffset, cursorsVisible: true,

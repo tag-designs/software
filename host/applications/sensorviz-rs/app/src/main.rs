@@ -6,7 +6,9 @@
 //!
 //! `sensorviz [log.db3] [--load-preferences prefs.json]` opens a log and
 //! loads a preference file at startup, as the Qt app's `--load-log` and
-//! `--load-preferences` do. The shell is Tag Calibrator's
+//! `--load-preferences` do. `SENSORVIZ_PREVIEW_DIALOG=visible` (or `sides`,
+//! `colors`, `calibration`) opens that dialog once the log is drawn, for
+//! screenshots. The shell is Tag Calibrator's
 //! (`tagcalibrate-rs/app/src/main.rs`) without the tag.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -105,6 +107,7 @@ fn main() {
                 user_guide_url: Some(user_guide_url()),
                 initial_log,
                 initial_preferences,
+                preview_dialog: std::env::var("SENSORVIZ_PREVIEW_DIALOG").ok(),
             };
             let _ = log::set_logger(&engine::LOGGER);
             let handle = app.handle().clone();

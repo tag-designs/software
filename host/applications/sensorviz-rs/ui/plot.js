@@ -191,7 +191,10 @@
     const css = getComputedStyle(document.documentElement);
     const ink = print ? "#000" : css.getPropertyValue("--text").trim() || "#222";
     const grid = print ? "#ccc" : css.getPropertyValue("--separator").trim() || "#ddd";
-    const font = `${12 * k}px ` + (css.getPropertyValue("--font").trim() || "sans-serif");
+    // A whole number of pixels: uPlot reads the size back from the font
+    // string to space multi-line tick labels, and a fractional size (a print
+    // chart's 12 * k) read as an integer stacks the date line on the time.
+    const font = `${Math.round(12 * k)}px ` + (css.getPropertyValue("--font").trim() || "sans-serif");
     const tick = (stroke) => ({ stroke, size: 10 * k, width: k });
     // The axis line itself, which uPlot leaves out unless asked.
     const border = (stroke) => ({ show: true, stroke, width: k });
@@ -488,6 +491,7 @@
     // wait two frames before reading the canvas and the plot area.
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const image = u.ctx.canvas.toDataURL("image/png");
+    this.lastPrintImage = image;   // for the preview's ?export=chart check
 
     const doc = new jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: o.page });
     if (spec.title) {

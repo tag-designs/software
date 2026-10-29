@@ -38,7 +38,7 @@
 //! | `envelope` | `t0`, `t1`, `width` | `{traces: {id: {t, v}}, ms}`: each drawn trace's M4 envelope at `width` columns; a gap marker's value is `null` |
 //! | `hover` | `t` | `{time, rows: [{text}]}`: the hover readout |
 //! | `range` | `id` | `{lower, upper}`: where the range dialog starts |
-//! | `about` | | `{title, version, userGuide}` |
+//! | `about` | | `{title, version, userGuide, previewDialog}` |
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -61,6 +61,9 @@ pub struct EngineConfig {
     pub initial_log: Option<PathBuf>,
     /// A preference file to load on `ready`, as `--load-preferences` does.
     pub initial_preferences: Option<PathBuf>,
+    /// A dialog for the page to open once the log is drawn (`visible`,
+    /// `sides`, `colors`, `calibration`), for screenshots of the app.
+    pub preview_dialog: Option<String>,
 }
 
 /// What the engine tells the UI, through the sink given to [`spawn`].
@@ -518,6 +521,7 @@ impl Viewer {
                 "title": "sensorViz",
                 "version": env!("CARGO_PKG_VERSION"),
                 "userGuide": self.config.user_guide_url,
+                "previewDialog": self.config.preview_dialog,
             }),
             other => json!({ "error": format!("unknown query {other}") }),
         }

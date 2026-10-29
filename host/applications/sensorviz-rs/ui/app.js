@@ -8,7 +8,9 @@
  *
  * Outside the app it runs against MockEngine on the spike's fixture data:
  * ?log=imutag|compasstag|big picks the log, ?nopanel hides the switcher,
- * ?theme=dark|light forces a theme.
+ * ?theme=dark|light forces a theme, and ?dialog=visible|sides|colors|calibration
+ * opens that dialog once the log is drawn, for screenshots (in the app,
+ * SENSORVIZ_PREVIEW_DIALOG does).
  */
 (function () {
   "use strict";
@@ -374,7 +376,18 @@
     }
     engine = Kit.createEngine(mock);
     await engine.on("state", apply);
-    send("ready");
+    await send("ready");
+    const dialogs = { visible: visibleStreamsDialog, sides: axisSidesDialog, colors: colorsDialog, calibration: calibrationDialog };
+    const preview = Kit.inApp() ? ((await engine.query("about", {})) || {}).previewDialog : params.get("dialog");
+    if (dialogs[preview]) setTimeout(dialogs[preview], 500);
+    // Browser preview: ?export=chart shows the PDF's chart image in place of
+    // the window, to check how the print rendering looks.
+    if (!Kit.inApp() && params.get("export") === "chart") {
+      setTimeout(async () => {
+        await plot.exportPdf();
+        document.body.replaceChildren(Kit.el("img", { src: plot.lastPrintImage, style: { width: "100%" } }));
+      }, 500);
+    }
   }
   start();
 })();
