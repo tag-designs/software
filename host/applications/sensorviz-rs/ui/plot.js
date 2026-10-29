@@ -193,6 +193,8 @@
     const grid = print ? "#ccc" : css.getPropertyValue("--separator").trim() || "#ddd";
     const font = `${12 * k}px ` + (css.getPropertyValue("--font").trim() || "sans-serif");
     const tick = (stroke) => ({ stroke, size: 10 * k, width: k });
+    // The axis line itself, which uPlot leaves out unless asked.
+    const border = (stroke) => ({ show: true, stroke, width: k });
     const gridLine = (show) => ({ show, stroke: grid, width: k, dash: [2 * k, 3 * k] });
     // Grid lines come from the innermost left axis -- the spec's first left
     // one, QCustomPlot's own yAxis -- as in the Qt plot.
@@ -205,6 +207,7 @@
       space: 50 * k,   // uPlot's minimum spacing between ticks, in pixels
       grid: gridLine(true),
       ticks: tick(ink),
+      border: border(ink),
       // The Qt plot's two-line title on one line: uPlot draws one.
       label: epoch ? `Hour:Minute (${utc ? `UTC${utc > 0 ? "+" : ""}${utc}` : "UTC"}) · Month/Day/Year` : "Elapsed Time (s)",
       size: (epoch ? 54 : 40) * k,
@@ -219,7 +222,7 @@
       axes.push({
         scale: `y${i}`, side: a.side === "left" ? 3 : 1, label: a.label, stroke: a.color, font, labelFont: font,
         gap: 5 * k, labelSize: 30 * k, labelGap: 0, space: 30 * k,
-        ticks: tick(a.color), size: 54 * k,
+        ticks: tick(a.color), border: border(a.color), size: 54 * k,
         grid: gridLine(innermostLeft && innermostLeft[1] === i),
       });
     });
@@ -236,6 +239,9 @@
   /** Builds the uPlot instance and the overlays for a spec. */
   SvzPlot.prototype.build = function (spec) {
     const self = this;
+    // A new chart has no data yet: the next request must go out even for
+    // the same window and width as the last chart's.
+    this.lastWindow = "";
     const size = this.size();
     this.u = new uPlot(Object.assign(chartOptions(spec, false), {
       width: size.width, height: size.height,

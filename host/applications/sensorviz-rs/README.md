@@ -62,7 +62,8 @@ How it differs from the Qt app:
 - **Auto axes** take the data range padded by 5%. The Qt plot also widens an
   auto axis to include the range the axis showed before, and a new
   QCustomPlot axis starts at 0 to 5, so there every auto axis includes zero
-  (an IMUTag altitude axis spans -100 to 350 m around 245 m).
+  (an IMUTag altitude axis spans -100 to 350 m around 245 m). Kept on
+  purpose (owner's decision, 2026-10-28): the trace fills its axis.
 - **Printing** is File ▸ Export PDF (below), not the system print dialog.
 - **The x axis title** is one line; uPlot draws one.
 - **No activity filter**: it stays in the Qt app
