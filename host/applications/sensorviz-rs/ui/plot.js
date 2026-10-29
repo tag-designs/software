@@ -210,6 +210,20 @@
       const text = Math.max(...labels.map((v) => u.ctx.measureText(v).width)) / devicePixelRatio;
       return Math.ceil(Math.max(30 * k, text + axis.ticks.size + axis.gap + 6 * k));
     };
+    // The right margin: with no right axis there, wide enough for half the
+    // widest x tick label (the line of a date label that is widest), which
+    // uPlot centres on its tick and so lets run past the plot's right edge.
+    // uPlot asks again once the ticks exist.
+    const rightPadding = (u, side, sidesWithAxes) => {
+      const least = 16 * k;
+      if (sidesWithAxes[1]) return least;
+      const lines = (u.axes[0]._values || []).filter((v) => v != null)
+        .flatMap((v) => String(v).split("\n"));
+      if (!lines.length) return least;
+      u.ctx.font = u.axes[0].font[0];
+      const text = Math.max(...lines.map((s) => u.ctx.measureText(s).width)) / devicePixelRatio;
+      return Math.ceil(Math.max(least, text / 2 + 4 * k));
+    };
     // The axis line itself, which uPlot leaves out unless asked.
     const border = (stroke) => ({ show: true, stroke, width: k });
     const gridLine = (show) => ({ show, stroke: grid, width: k, dash: [2 * k, 3 * k] });
@@ -251,7 +265,7 @@
       scales, axes, series, legend: { show: false },
       // A margin round the chart, so the outermost axes' titles keep clear
       // of the edge (and of a PDF's crop), scaled as everything else is.
-      padding: [10 * k, 16 * k, 4 * k, 8 * k],
+      padding: [10 * k, rightPadding, 4 * k, 8 * k],
       tzDate: epoch ? (ts) => uPlot.tzDate(new Date(ts * 1000), zone) : undefined,
     };
   }
