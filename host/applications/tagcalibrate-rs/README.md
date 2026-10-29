@@ -77,6 +77,7 @@ the scenario live. `mock-engine.js` lists them all.
   Read Data File have no handlers and are not carried over.
 - The Tag Connection bar names the attached tag.
 
-## Next
+## User manual
 
-A user manual page.
+`host/docs/src/apps/tagcalibrate.md`, which Help opens; `ui/screenshots.sh`
+makes its pictures.

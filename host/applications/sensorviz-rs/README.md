@@ -88,7 +88,8 @@ decision, 2026-10-28). The window and bundle are "Tag View"; the app and
 crates in this directory keep the sensorViz names. Its crates' notices are
 `LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt`.
 
-Still to do: screenshots for the manual, and its page.
+Its user manual page is `host/docs/src/apps/tagview.md`, which Help opens; its
+pictures are of the app on the committed fixtures.
 
 ## The plot spike (2026-10-28)
 

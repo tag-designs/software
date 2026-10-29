@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # screenshots.sh: Tag Calibrator pictures, from this page and its mock
-# engine (no app, no tag), for the user manual once it has a Tag Calibrator
-# page.
+# engine (no app, no tag), for the user manual's Tag Calibrator page.
 #
 #   screenshots.sh [out-dir]        (default: host/docs/src/images)
 #
@@ -15,6 +14,5 @@ out=${1:-$here/../../../docs/src/images}
 shot() { "$here/../../../ui-kit/screenshot.sh" "$here/index.html" "$out/$1.png" "$2" 1040 800; }
 
 shot tagcalibrate-startup        "scenario=startup"
-shot tagcalibrate-collection-050 "scenario=collected&percent=50"
 shot tagcalibrate-collection-100 "scenario=collected&percent=100"
 shot tagcalibrate-orientation    "scenario=orientation&page=orientation"

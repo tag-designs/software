@@ -347,7 +347,7 @@
         menus: MENUS,
         about: { title: "About Tag Calibrator", text: "Tag Calibrator v1.0\n\nCollect magnetometer samples from a tag " +
           "through its USB base, fit the calibration constants, store them on the tag, and check the resulting compass." },
-        user_guide_url: "https://tag-designs.github.io/software/user/apps/qtcalibrate.html",
+        user_guide_url: "https://tag-designs.github.io/software/user/apps/tagcalibrate.html",
       }[name] ?? null)),
       on: (event, cb) => { (listeners[event] = listeners[event] || []).push(cb); return Promise.resolve(); },
     };

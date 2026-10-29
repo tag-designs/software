@@ -393,7 +393,7 @@
     { title: "View", items: viewItems },
     { title: "Configuration", items: configurationItems },
     { title: "Help", items: () => [
-      { label: "sensorViz User Guide", action: userGuide },
+      { label: "Tag View User Guide", action: userGuide },
       "-",
       { label: "About", action: about },
     ] },
