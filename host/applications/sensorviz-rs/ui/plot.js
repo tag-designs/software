@@ -196,6 +196,20 @@
     // chart's 12 * k) read as an integer stacks the date line on the time.
     const font = `${Math.round(12 * k)}px ` + (css.getPropertyValue("--font").trim() || "sans-serif");
     const tick = (stroke) => ({ stroke, size: 10 * k, width: k });
+    // A y axis as wide as its widest tick label needs, measured in its own
+    // font, plus the tick and gap (uPlot adds the title's labelSize): a fixed
+    // width clipped long labels, and the outermost right axis's title with
+    // them. uPlot asks before it has tick values too; then the last size
+    // stands.
+    const axisSize = (u, values, i) => {
+      const axis = u.axes[i];
+      const labels = (values || []).filter((v) => v != null).map(String);
+      if (!labels.length) return axis._size || 54 * k;
+      // axis.font[0] is the font at the canvas's pixel ratio.
+      u.ctx.font = axis.font[0];
+      const text = Math.max(...labels.map((v) => u.ctx.measureText(v).width)) / devicePixelRatio;
+      return Math.ceil(Math.max(30 * k, text + axis.ticks.size + axis.gap + 6 * k));
+    };
     // The axis line itself, which uPlot leaves out unless asked.
     const border = (stroke) => ({ show: true, stroke, width: k });
     const gridLine = (show) => ({ show, stroke: grid, width: k, dash: [2 * k, 3 * k] });
@@ -224,8 +238,8 @@
       scales[`y${i}`] = { auto: false, range: () => range };
       axes.push({
         scale: `y${i}`, side: a.side === "left" ? 3 : 1, label: a.label, stroke: a.color, font, labelFont: font,
-        gap: 5 * k, labelSize: 30 * k, labelGap: 0, space: 30 * k,
-        ticks: tick(a.color), border: border(a.color), size: 54 * k,
+        gap: 5 * k, labelSize: 30 * k, labelGap: 6 * k, space: 30 * k,
+        ticks: tick(a.color), border: border(a.color), size: axisSize,
         grid: gridLine(innermostLeft && innermostLeft[1] === i),
       });
     });
@@ -235,6 +249,9 @@
     })));
     return {
       scales, axes, series, legend: { show: false },
+      // A margin round the chart, so the outermost axes' titles keep clear
+      // of the edge (and of a PDF's crop), scaled as everything else is.
+      padding: [10 * k, 16 * k, 4 * k, 8 * k],
       tzDate: epoch ? (ts) => uPlot.tzDate(new Date(ts * 1000), zone) : undefined,
     };
   }
