@@ -24,6 +24,8 @@
 #include "plot_view.h"
 #include "sensor_preferences.h"
 #include "sensorstream.h"
+#include "session.h"
+#include "transforms.h"
 
 class QQuickWidget;
 class QSplitter;
@@ -45,6 +47,7 @@ struct MainWindowOptions
     QString captureSuite;         ///< Capture suite name such as @c startup, @c menus, or @c all.
     QString screenshotDir;        ///< Destination directory for generated PNG files.
     bool noUserPrompts = false;   ///< Report fixture/capture errors to stderr instead of dialogs.
+    QString dumpStatePath;        ///< Where --dump-state writes the scripted state dump; empty for none.
 };
 
 // MainWindow is the Qt adapter over sensorViz's Qt-free core. It owns the
@@ -58,14 +61,15 @@ struct MainWindowOptions
 //   pane, status bar, and cursor items. If a widget is missing, a signal is not
 //   connected, or a menu action needs to exist at startup, start there.
 //
-// - dataloading.cpp handles the "File -> Load" workflow. It asks the SQLite
-//   loader for a SensorLog, resets the ViewModel for its streams, updates the
+// - dataloading.cpp handles the "File -> Load" workflow. It asks
+//   sensorviz::openLog() for a SensorLog, resets the ViewModel for its streams, updates the
 //   File Info tab, and refreshes the plot. If a file opens but the app state is wrong after loading, start there.
 //
-// - sqlite_loader.cpp reads tagcore's streams metadata table from the on-disk
-//   SQLite schema. It maps scalar stream rows into SensorStream objects and
-//   grouped record-column rows into SensorRecordSet objects. If a table exists
-//   but does not load correctly, start there.
+// - core/stream_catalog.cpp (sensorviz::openLog(), Qt-free) reads tagcore's
+//   streams metadata table from the on-disk SQLite schema. It maps scalar
+//   stream rows into SensorStream objects and grouped record-column rows into
+//   SensorRecordSet objects. If a table exists but does not load correctly,
+//   start there.
 //
 // - sensor_preferences.cpp owns the per-tag preference map and its JSON
 //   load/store; the ViewModel applies and captures them.
@@ -128,8 +132,6 @@ private:
     void createUi();
     void createActions();
     QString unitsSuffix(const SensorStream &stream) const;
-    double pressureToAltitude(double pressure_mbar) const;
-    double pressureToAltitude(double pressure_mbar, double temperature_c) const;
 
     // Log metadata and tag-dependent menu state. updateLoadedStateActions()
     // keeps startup discoverable but disabled except for Load/About.
@@ -141,16 +143,28 @@ private:
     void updateTransformActions();
     void setLogLoadInProgress(bool loading, const QString &path = {});
     void applyLoadedLog(const QString &path, const SensorLog &log);
-    void createAltitudeStream();
-    void createImuMagnitudeStreams();
-    // Compass views are built from orientation quaternions: stored ones from a
-    // processed log's orientation record set when present, otherwise derived
-    // from compass_raw and the calibration constants.
-    const SensorRecordSet *storedOrientationRecordSet() const;
-    bool hasCompassOrientationSource() const;
-    bool loadCompassSamples(QString &error);
-    void addCompassStream(SensorStream stream, const QVector<double> &values, bool checked);
-    void createCompassPlotStreams();
+    // The display transforms are the core's (core/transforms.h): run after a
+    // load, remade when a parameter changes, outputs published through
+    // TransformSink (transforms.cpp). askParameter() is the one dialog for a
+    // numeric parameter, built from its ParameterSpec.
+    class TransformSink;
+    void runTransforms();
+    void setTransformParameter(const char *id, double value);
+    bool askParameter(const char *id, double &value);
+    // The compass panel's samples, from the core's compass transform.
+    void loadCompassPanelSamples();
+    // The value half of the Configuration and range dialogs: each sets the
+    // value and does exactly what accepting its dialog does. The state dump
+    // (state_dump.cpp) drives them.
+    void applySeaLevelPressure(double sea_level_mbar);
+    void enableActivityFilter(double time_constant_seconds);
+    void applyDeclination(double declination_degrees);
+    void applyUtcOffset(int hours);
+    void applyStreamRange(const QString &id, double lower, double upper);
+    // The --dump-state check (state_dump.cpp): the core's script of setting
+    // changes (core/state_dump.h), made through the functions above.
+    class StateDumpDriver;
+    bool writeStateDump(const QString &path, QString &error);
     QString preferenceKey() const;
     void rememberCurrentPreferences();
     void applyPreferencesForCurrentTag();
@@ -235,7 +249,6 @@ private:
     void rebuildRangeActions();
     void addRangeAction(const SensorStream &stream);
     void setStreamRange(const QString &id);
-    QCPRange defaultRangeForStream(const SensorStream &stream) const;
 
     // Axis side choices are viewer preferences layered over stream defaults,
     // chosen per axis and stored per member stream. The default remains in
@@ -252,42 +265,43 @@ private:
     QString formatPlotTime(double time_seconds) const;
     void updateTimeAxisForLog();
 
-    // The plot. view_.plotSpec() builds the PlotSpec (core/plot_spec.h) from
-    // the view state and plotLogInfo(), and PlotView draws it. refreshPlot()
+    // The plot. session_.plotSpec() builds the PlotSpec (core/plot_spec.h)
+    // from the view state and the log, and PlotView draws it. refreshPlot()
     // keeps the visible time window; refreshPlotFullRange() is used after a
     // new file is loaded or after Reset Zoom clears custom y-axis ranges.
     void refreshPlot();
     void refreshPlotFullRange();
     void rebuildPlot(bool reset_x_range);
-    sensorviz::PlotLogInfo plotLogInfo() const;
     QString streamValueAt(const SensorStream &stream, double epoch) const;
 
     // Plot data in log_.data: the hover readout and value ranges read it,
     // transforms read their inputs from it and register their outputs in it.
     const sensordata::StreamInfo *plotDataInfo(const SensorStream &stream) const;
-    sensordata::StreamInfo derivedPlotInfo(const SensorStream &stream) const;
     bool readStreamDoubles(
         const SensorStream &stream,
         std::vector<double> &time,
         std::vector<double> &value) const;
     void releasePlotData(const SensorStream &stream);
 
-    SensorLog log_;
-    sensorviz::ViewModel view_;
+    // The opened log, its view state and transforms, and the rules over them
+    // (core/session.h). log_ and view_ name the session's catalog and view
+    // model, which most of this class reads.
+    sensorviz::Session session_;
+    SensorLog &log_ = session_.catalog();
+    sensorviz::ViewModel &view_ = session_.view();
     QString current_path_;
     bool log_load_in_progress_ = false;
     MainWindowOptions options_;
 
+    // The compass transform's orientation samples, for the QML panel, and
+    // where they came from, for the File Info pane.
     QVector<CompassDerivedSample> compass_samples_;
-    // Where compass_samples_ came from, for the File Info pane, and a stored
-    // stream on that record set's time axis, which the compass streams share.
     QString compass_source_;
-    sensordata::StreamId compass_time_source_ = sensordata::kNoStream;
 
     // Preferences are keyed by tag type/profile and store only differences from
     // sensorViz display defaults. The currently loaded tag's are applied to
     // and captured from view_.
-    QMap<QString, SensorVizPreferences> preferences_by_tag_type_;
+    sensorviz::PreferenceStore preferences_;
     bool suppress_preference_updates_ = false;
 
     QWidget *central_ = nullptr;

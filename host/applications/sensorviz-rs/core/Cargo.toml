@@ -1,0 +1,22 @@
+[package]
+name = "sensorviz-core"
+version = "1.0.0"
+edition = "2024"
+description = "sensorViz engine: no UI toolkit (the Qt sensorviz's MainWindow logic over sensorViz's C++ core)"
+publish = false
+
+[dependencies]
+sensorviz-session = { path = "../../../libraries/sensorviz-session-rs" }
+# The compass display angles (the core's displayAngles(), decision 0040).
+calibsession = { path = "../../../libraries/calibsession-rs" }
+serde_json = "1"
+base64 = "0.22"
+log = "0.4"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

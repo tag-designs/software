@@ -8,7 +8,13 @@ summary: The path for sensorviz, the last Qt-only host application, to a Rust/Ta
 
 **Status:** accepted 2026-10-28. Step 2, the plot spike, is done
 ([results](../../../sensorviz-rs/README.md#what-it-showed-2026-10-28)): uPlot
-for the plot, jsPDF for printing. Step 1 is next.
+for the plot, jsPDF for printing. Step 1 is done: the toolkit-neutral
+core is complete through phase F, with `Session` as the facade and
+`session_cli` reproducing the Qt app's state without Qt. Step 3 is
+done: the `svz_*` C interface and the `sensorviz-session` crate, with
+`tagcore-c-sys` the one crate linking `tagcore_c` (see below). Step 4 is
+under way: the app opens and plots logs with every menu but the compass
+panel ([sensorviz-rs](../../../sensorviz-rs/README.md)).
 
 sensorviz is the last host application with no non-Qt version: Tag
 Programmer, Tag Monitor and Tag Calibrator each have a Rust/Tauri port on the
@@ -86,7 +92,12 @@ Each step leaves the Qt app shipping.
    rows as JSON, envelopes as float arrays; and a Rust crate over it. Merge
    `taglogwriter` and `calibsession` into one crate over `tagcore_c` at the
    same time, since only one crate in a build may declare `links =
-   "tagcore_c"`.
+   "tagcore_c"`. *Built:* rather than merging the wrappers, a `-sys` crate,
+   `tagcore-c-sys`, links the library and declares all its functions, and
+   `taglogwriter`, `calibsession` and the new `sensorviz-session` depend on
+   it -- the usual Cargo pattern, which kept the two existing APIs
+   unchanged. A session driven through the Rust setters reaches exactly the
+   state the core's state-dump script reaches.
 4. **The Tauri app** (`sensorviz-rs`), as Tag Monitor is built: an engine with
    the menus, prompts and the generic transform-parameter form from the core;
    a page drawing the plot and reusing Tag Calibrator's heading dial and tag

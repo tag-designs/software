@@ -52,25 +52,6 @@ QString MainWindow::unitsSuffix(const SensorStream &stream) const
     return stream.units.empty() ? QString() : " " + toQString(stream.units);
 }
 
-double MainWindow::pressureToAltitude(double pressure_mbar) const
-{
-    // Display transform for pressure-derived altitude. The sea-level pressure is
-    // configured from the Altitude action in transforms.cpp.
-    return 44330.0 * (1.0 - std::pow(pressure_mbar / view_.seaLevelPressure(), 1.0 / 5.257));
-}
-
-double MainWindow::pressureToAltitude(double pressure_mbar, double temperature_c) const
-{
-    // Temperature-aware hypsometric display transform. Pressure tags report
-    // ambient pressure-sensor temperature as "sensor_temperature"; core
-    // temperature is intentionally not used for altitude. The pressure-only
-    // overload remains the fallback when no ambient temperature stream exists.
-    const double temperature_k = temperature_c + 273.15;
-    return (std::pow(view_.seaLevelPressure() / pressure_mbar, 1.0 / 5.257) - 1.0)
-        * temperature_k
-        / 0.0065;
-}
-
 void MainWindow::showAbout()
 {
     // Keep the About action here with other small general-purpose actions.
@@ -87,7 +68,7 @@ void MainWindow::showUserGuide()
 
 void MainWindow::editGraphTitle()
 {
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         return;
     }
 
@@ -122,7 +103,7 @@ void MainWindow::editGraphTitle()
 
 void MainWindow::setGraphTitleVisible(bool visible)
 {
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         return;
     }
 
@@ -132,7 +113,7 @@ void MainWindow::setGraphTitleVisible(bool visible)
 
 void MainWindow::showCalibrationConstants()
 {
-    // Compass calibration is loaded in sqlite_loader.cpp and stored as typed
+    // Compass calibration is loaded by sensorviz::openLog() and stored as typed
     // SensorLog metadata. This dialog is read-only and shared through sensorui.
     if (!log_.hasCompassCalibration) {
         QMessageBox::information(
@@ -143,6 +124,6 @@ void MainWindow::showCalibrationConstants()
     }
 
     CompassCalibrationDialog dialog(this);
-    dialog.setConstants(log_.compassCalibration);
+    dialog.setConstants(toCompassCalibration(log_.compassCalibration));
     dialog.exec();
 }

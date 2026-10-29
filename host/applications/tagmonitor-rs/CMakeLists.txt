@@ -15,7 +15,8 @@
   Download Data... writes SQLite through the C++ writer, so the build turns
   on the sqlitelog feature and links tagcore_c from this CMake build: the
   static archive inside the macOS executable (target tagcore_c_static), the
-  shared library elsewhere (target tagcore_c), installed with the program.
+  shared library elsewhere (target tagcore_c), which host/CMakeLists.txt
+  installs once for every Rust application.
   host/CMakeLists.txt builds tagcore_c whenever BUILD_RUST_APPS is ON.
 
   Needs cargo (Rust 1.85 or newer); Linux needs the WebKitGTK 4.1
@@ -82,16 +83,15 @@ add_custom_target(
 add_dependencies(tagmonitor ${_tagcore_c_target})
 
 #[[
-  @brief  Installs the program, and on Linux and Windows the shared
-          tagcore_c it links, in each platform's package layout.
+  @brief  Installs the program in each platform's package layout.
 
   @details macOS: the .app bundle is assembled from cargo's executable, a
            configured Info.plist and the icon, then signed at install time by
            macos_codesign_bundle, as for Tag Programmer. Windows: the program
-           goes to HOST_WINDOWS_APPDIR (tag_tools/lib) with tagcore_c.dll, and
+           goes to HOST_WINDOWS_APPDIR (tag_tools/lib), beside tagcore_c.dll, and
            the GUI launcher to tag_tools under the program's name, since
-           Windows finds a program's DLLs only beside it. Linux: tag_tools/bin,
-           and libtagcore_c.so in tag_tools/lib, where its rpath points.
+           Windows finds a program's DLLs only beside it. Linux: tag_tools/bin;
+           libtagcore_c.so is in tag_tools/lib, where its rpath points.
 #]]
 if(APPLE)
   set(_bundle "${HOST_BUNDLE_INSTALL_DIR}/tagmonitor.app")
@@ -112,12 +112,10 @@ if(APPLE)
   endif()
 elseif(WIN32)
   install(PROGRAMS "${_tagmonitor_bin}" DESTINATION "${HOST_WINDOWS_APPDIR}")
-  install(TARGETS tagcore_c RUNTIME DESTINATION "${HOST_WINDOWS_APPDIR}")
   install(
     PROGRAMS "$<TARGET_FILE:tag_tools_launcher_gui>"
     DESTINATION "${CMAKE_INSTALL_BINDIR}"
     RENAME "tagmonitor${CMAKE_EXECUTABLE_SUFFIX}")
 else()
   install(PROGRAMS "${_tagmonitor_bin}" DESTINATION "${HOST_BUNDLE_INSTALL_DIR}/bin")
-  install(TARGETS tagcore_c LIBRARY DESTINATION "${HOST_BUNDLE_INSTALL_DIR}/lib")
 endif()

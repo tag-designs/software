@@ -44,11 +44,11 @@ async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<V
         .map_err(|e| e.to_string())
 }
 
-/// The published manual's page, used when no built copy is found. Until Tag
-/// Calibrator has a page of its own, qtcalibrate's describes the same work.
-const ONLINE_GUIDE: &str = "https://tag-designs.github.io/software/user/apps/qtcalibrate.html";
+/// The published manual's Tag Calibrator page, used when no built copy is
+/// found.
+const ONLINE_GUIDE: &str = "https://tag-designs.github.io/software/user/apps/tagcalibrate.html";
 
-/// The user manual's calibration page, searched for as Tag Monitor searches
+/// The user manual's Tag Calibrator page, searched for as Tag Monitor searches
 /// for its own: `docs`, `host/docs/site` and `share/UltralightTags/docs`
 /// beside the executable and up to five directories above it, then the
 /// source tree's site. Returns a `file://` URL for a local copy, else
@@ -66,8 +66,8 @@ fn user_guide_url() -> String {
         .iter()
         .flat_map(|r| {
             [
-                r.join("apps/qtcalibrate.html"),
-                r.join("apps/qtcalibrate/index.html"),
+                r.join("apps/tagcalibrate.html"),
+                r.join("apps/tagcalibrate/index.html"),
             ]
         })
         .find(|p| p.is_file())

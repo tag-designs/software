@@ -1,27 +1,53 @@
 ---
 type: readme
 status: current
-summary: How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
+summary: How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state, and session_cli, sensorViz without Qt.
 ---
 
 # sensorViz Offline Checks
 
-Two checks of `sensorviz_core`, the Qt-free half of sensorViz. Both link only
-the core (and through it `sensordata`), so they also prove the core builds
-without Qt. They open no window.
+Five checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
+only the core (and through it `sensordata` and sensoranalysis's Qt-free
+core; `catalog_check` also sqlite3), and are defined in
+[`core/CMakeLists.txt`](../core/CMakeLists.txt), so they build in a host build
+without `BUILD_QT_APPS` and prove the core needs no Qt. They open no window.
 
 Like the other checks in this tree they are plain `main()` programs with their
 own `CHECK()` macro, built behind an option and run by hand:
 
 ```sh
 cmake -DBUILD_SENSORVIZ_CHECKS=ON <build-dir>
-cmake --build <build-dir> --target plotspec_check viewmodel_check
+cmake --build <build-dir> --target catalog_check plotspec_check preference_check \
+    transforms_check viewmodel_check
+<build-dir>/Release/bin/catalog_check
 <build-dir>/Release/bin/plotspec_check
+<build-dir>/Release/bin/preference_check
+<build-dir>/Release/bin/transforms_check
 <build-dir>/Release/bin/viewmodel_check
 ```
 
 Each prints every failing check with its line, then a count, and exits
 non-zero if any failed.
+
+## `catalog_check`
+
+Checks `openLog()` ([`stream_catalog.h`](../core/stream_catalog.h)), which
+reads a log into a `StreamCatalog`. It opens the committed fixtures, then
+edits a temporary copy of the IMUTag fixture (in the system temporary
+directory, removed afterwards) to reach what no fixture holds.
+
+| Area | Cases |
+| --- | --- |
+| Description | Tag type and profile name, `info` rows, time domain, collection start (IMUTag header; earliest epoch sample), the `compass_raw` record set's table, columns and time source |
+| Calibration | The newest row read, its epoch and constants; an empty table, text that is not JSON, and JSON with no magnetometer each leaving no calibration and the expected warning |
+| IMU corrections | Every magnetometer sample calibrated with `compasscore::applyMagnetometer()`, and every acceleration sample less the zero-g offset, compared bit for bit with the stored rows corrected independently; uncorrected when there is no calibration |
+| Events | `RESYNC*` and `RESTART_RECOVERY`, in any case, becoming the `imu_resync` marker in time order; other events ignored |
+| Failure | A missing file refused with the open error, the caller's catalog untouched |
+
+When `openLog()` replaced the Qt loader, a one-off comparison of the two over
+every log on hand (54, five tag types) found every field and every envelope
+point identical; see the [toolkit-neutral core](../design/proposals/toolkit-neutral-core.md)
+proposal.
 
 ## `plotspec_check`
 
@@ -41,6 +67,75 @@ not taken from the code under test.
 | Time and markers | The time extent over all traces; event markers only with traces visible |
 | Metadata box and title | The start row on elapsed-time logs only, sea level with altitude, declination with heading, a hidden title, the gap mode |
 | Formatting | The collection-start text (UTC, rounded to the second) and range padding |
+
+## `preference_check`
+
+Checks `PreferenceStore` and `colorFromString()`
+([`preference_store.h`](../core/preference_store.h)). The expected file text
+and colors are what Qt's `QJsonDocument` and `QColor` produced for the same
+input, taken when the store replaced the Qt code.
+
+| Area | Cases |
+| --- | --- |
+| Writing | A two-tag file with every kind of override byte for byte, an empty store, escaped strings, and keys above U+FFFF ordered before U+E000 as UTF-16 orders them |
+| Reading | The written file read back and rewritten identically; no version; sides trimmed in any case; color names; entries without overrides dropped |
+| Entries | `remember()` storing and removing, `forget()` |
+| Refusals | Each error and its message, the first fault in key order, and the store left unchanged |
+| Colors | Hex forms including 12- and 16-bit channels rounded as Qt rounds them, names ignoring case, spaces and tabs, and the strings Qt refused |
+
+When the store replaced the Qt code, a one-off comparison against that code
+found identical output for 3,000 random preference sets and identical results
+for 63,000 loads of valid and mutated files, apart from the malformed-JSON
+differences listed in the
+[toolkit-neutral core](../design/proposals/toolkit-neutral-core.md#phase-c-as-built)
+proposal, and identical colors for about 300,000 strings.
+
+## `transforms_check`
+
+Checks the display transforms and `TransformRegistry`
+([`transforms.h`](../core/transforms.h)). It opens the fixtures with
+`openLog()`, sets up a `ViewModel` as sensorViz does after a load, and runs
+the registry through a sink that adds each output to the `ViewModel` and
+records it.
+
+| Area | Cases |
+| --- | --- |
+| Applicability | IMUTag: altitude and magnitudes, never the compass; CompassTag: the compass, no altitude |
+| Outputs | Which streams each fixture gets, in publishing order, shown or hidden |
+| Values | Every acceleration-magnitude sample against its three stored axes; every compass sample against `compasscore::solveOrientation()` of its raw row; heading and pitch against `compasscore::displayAngles()` |
+| Parameters | Sea-level pressure remaking only altitude and carrying a pressure range over; declination and battery direction remaking only the heading, keeping its visibility, by the right amount; compass parameters changing nothing on IMUTag; a new run starting again |
+| Specs | The parameter specs the dialog and a web form are built from, and the `ViewModel`'s parameters by id |
+
+Whether the outputs equal those of the Qt code they replaced is a question
+for sensorViz's `--dump-state`
+([State dump](../README.md#state-dump)); this check holds the contracts.
+When the transforms moved, the dumps of 51 logs and two `dataprocessing`
+outputs were identical before and after.
+
+## `session_cli`
+
+Not a check but a third client of the core, beside the Qt app and the future
+Rust one: it opens a log with `Session` and writes the state dump, or prints
+the hover readout at a time. Everything it prints comes from `Session`, so it
+shows the core's boundary is real.
+
+```sh
+cmake --build <build-dir> --target session_cli
+<build-dir>/Release/bin/session_cli <log.db3> [--load-preferences <file>] --dump-state <out>
+<build-dir>/Release/bin/session_cli <log.db3> [--load-preferences <file>] --hover <seconds>
+```
+
+Its dump of a log must equal the Qt app's `--dump-state` up to the activity
+filter step, which only the Qt app has:
+
+```sh
+sensorviz --load-log <log> --dump-state /tmp/qt.txt --no-user-prompts
+session_cli <log> --dump-state /tmp/cli.txt
+sed '/^== activity filter/,$d' /tmp/qt.txt | diff - /tmp/cli.txt
+```
+
+When it was added, that held for all 53 logs on hand (51, and two
+`dataprocessing` outputs), and with a preference file loaded.
 
 ## `viewmodel_check`
 

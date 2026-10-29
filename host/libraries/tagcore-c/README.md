@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore_c, a C interface to the C++ SQLite log writer and the calibration session for Rust and other languages - the tlw_* and tcs_* functions, the shared and static builds, symbol hiding, and how it was checked.
+summary: tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_* and svz_* functions, the shared and static builds, symbol hiding, and how it was checked.
 ---
 
 # tagcore_c (C interface)
@@ -23,6 +23,16 @@ accelerometer calibration (sensoranalysis's `CalibrationSession`) and the
 compass display angles, for the Rust Tag Calibrator through
 [`calibsession-rs`](../calibsession-rs/README.md).
 
+And the `svz_*` functions of [`sensorviz_c.h`](sensorviz_c.h): sensorViz's
+Qt-free core (`sensorviz::Session`) -- opening a log, the display transforms,
+the plot spec, envelopes, the hover readout and the preference file -- for the
+Rust sensorViz through
+[`sensorviz-session-rs`](../sensorviz-session-rs/README.md).
+
+In Rust, [`tagcore-c-sys`](../tagcore-c-sys/README.md) links the library and
+declares all three sets of functions, so the three wrappers can be used in one
+program.
+
 It is built with `-DBUILD_TAGCORE_C=ON`, and whenever the Rust applications
 are (`BUILD_RUST_APPS`): Tag Monitor in Rust
 ([`tagmonitor-rs`](../../applications/tagmonitor-rs/README.md)) writes its downloads
@@ -39,16 +49,17 @@ installed for no other program.
 | `tagcore_c` | `libtagcore_c.so`, or a DLL and its import library: **the link on Linux and Windows**, where one copy in the install directory serves every tool (also builds as a `.dylib`) | all (checked on macOS) |
 
 Both contain the shim, `tagcore`, the generated protobuf code, libprotobuf
-with abseil, SQLite and `sensoranalysis_core`, and both expose only the
-`tlw_*` and `tcs_*` functions:
+with abseil, SQLite, `sensoranalysis_core` and `sensorviz_core` (with
+`sensordata`), and both expose only the `tlw_*`, `tcs_*` and `svz_*`
+functions:
 
 - **Shared:** an export list (`exports.macos`, `exports.linux`) hides
   everything else; a Windows DLL exports only what `TLW_API` marks, which
   both headers use.
 - **Static:** [`static/CMakeLists.txt`](static/CMakeLists.txt) pre-links the
   same inputs with `c++ -r` and the export list, so the archive holds one
-  object in which everything but `tlw_*` and `tcs_*` is local. A caller links it plus
-  the C++ runtime and the system libraries it calls (`c++`, `objc`,
+  object in which everything but `tlw_*`, `tcs_*` and `svz_*` is local. A
+  caller links it plus the C++ runtime and the system libraries it calls (`c++`, `objc`,
   CoreFoundation, IOKit and Security on macOS).
 
 Hiding matters because a caller may have its own SQLite or protobuf; with

@@ -8,7 +8,7 @@
 #include <QtConcurrent/QtConcurrent>
 
 #include "qtfiledialog.h"
-#include "sqlite_loader.h"
+#include "sensorstream.h"
 
 namespace
 {
@@ -23,7 +23,9 @@ struct LoadResult
 LoadResult loadSensorLog(const QString &path)
 {
     LoadResult result;
-    result.ok = SqliteLoader::load(path, result.log, result.error);
+    std::string error;
+    result.ok = sensorviz::openLog(path.toStdString(), result.log, error);
+    result.error = toQString(error);
     return result;
 }
 
@@ -32,12 +34,12 @@ LoadResult loadSensorLog(const QString &path)
 // This file owns the load workflow:
 //
 // 1. Ask the user for a SQLite log.
-// 2. Convert the file into a SensorLog with SqliteLoader.
+// 2. Read the file into a SensorLog with sensorviz::openLog().
 // 3. Replace the current stream list and View menu actions.
 // 4. Update File Info, tag-dependent menus, and the plot.
 //
 // If the application opens a file but does not show the expected streams, check
-// the database streams table first, then sqlite_loader.cpp to see whether that
+// the database streams table first, then core/stream_catalog.cpp to see whether that
 // metadata was loaded successfully.
 void MainWindow::loadLog()
 {
@@ -45,7 +47,7 @@ void MainWindow::loadLog()
         return;
     }
 
-    // This is the only file-open path. It asks SqliteLoader for a fresh
+    // This is the only file-open path. It asks openLog() for a fresh
     // SensorLog, replaces all stream/action state, and then lets transform
     // actions auto-enable any derived streams that should exist on load.
     const QString path = HostFileDialog::getOpenFileName(
@@ -126,7 +128,7 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     current_path_ = QFileInfo(path).absolutePath();
     const std::string title = QFileInfo(path).fileName().toStdString();
     view_.setTitle(title);
-    if (!view_.titleVisible() && !log_.path.isEmpty()) {
+    if (!view_.titleVisible() && !log_.path.empty()) {
         // Re-showing a hidden title redraws, as toggling Show Graph Title
         // always has; this is still the previous log's plot.
         view_.setTitleVisible(true);
@@ -142,7 +144,7 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     // A new log starts from the display defaults: each stream's default
     // visibility, no custom ranges, colors or sides. The ViewModel is the
     // runtime source of truth from here on; the actions follow it.
-    view_.resetForLog(std::vector<SensorStream>(log.streams.cbegin(), log.streams.cend()), title);
+    view_.resetForLog(log.streams, title);
     clearRangeActions();
     updateColorsAction();
     updateAxisSidesAction();
@@ -154,20 +156,11 @@ void MainWindow::applyLoadedLog(const QString &path, const SensorLog &log)
     qInfo().noquote() << "Loaded" << path;
     updateTransformActions();
 
-    // Altitude is a generated stream controlled from Visible Streams; mean
-    // sea-level pressure is the Configuration value that changes its samples.
-    if (hasStream("pressure") || hasStream("imu_pressure")) {
-        createAltitudeStream();
-    }
-
-    // Compass logs are mostly useful once orientation is converted into scalar
-    // streams. Generate that family automatically, from stored quaternions or
-    // from raw CompassTag rows; the resulting streams are ordinary entries in
-    // the Visible Streams dialog.
-    if (hasCompassOrientationSource()) {
-        createCompassPlotStreams();
-    }
-    createImuMagnitudeStreams();
+    // The display transforms make their streams: altitude (sea-level pressure
+    // is the Configuration value that changes it), compass orientation from
+    // stored quaternions or raw CompassTag rows, and the IMU magnitudes. Their
+    // outputs are ordinary entries in the Visible Streams dialog.
+    runTransforms();
 
     applyPreferencesForCurrentTag();
 
@@ -184,52 +177,52 @@ void MainWindow::updateMetadata()
     // Large protobuf/config blobs stay in log_.info but are omitted here so the
     // pane remains readable and useful for bug reports.
     info_->clear();
-    if (log_.path.isEmpty()) {
+    if (log_.path.empty()) {
         status_->setText(tr("No log loaded"));
         return;
     }
 
     QStringList lines;
-    lines << QFileInfo(log_.path).fileName();
-    if (!log_.tagType.isEmpty()) {
-        lines << "Tag type: " + log_.tagType;
+    lines << QFileInfo(toQString(log_.path)).fileName();
+    if (!log_.tagType.empty()) {
+        lines << "Tag type: " + toQString(log_.tagType);
     }
-    if (!log_.profileName.isEmpty()) {
-        lines << "Profile: " + log_.profileName;
+    if (!log_.profileName.empty()) {
+        lines << "Profile: " + toQString(log_.profileName);
     }
-    if (!log_.recordSets.isEmpty()) {
+    if (!log_.recordSets.empty()) {
         QStringList record_sets;
         for (const SensorRecordSet &record_set : log_.recordSets) {
-            record_sets << record_set.label;
+            record_sets << toQString(record_set.label);
         }
         lines << "Record sets: " + record_sets.join(", ");
     }
     if (log_.hasCompassCalibration) {
         lines << "Compass calibration: loaded";
         lines << QString("Compass calibration epoch: %1").arg(log_.compassCalibrationEpoch);
-        if (!log_.compassCalibrationWarning.isEmpty()) {
-            lines << "Compass calibration warning: " + log_.compassCalibrationWarning;
+        if (!log_.compassCalibrationWarning.empty()) {
+            lines << "Compass calibration warning: " + toQString(log_.compassCalibrationWarning);
         }
-    } else if (!log_.compassCalibrationWarning.isEmpty()) {
-        lines << "Compass calibration: " + log_.compassCalibrationWarning;
+    } else if (!log_.compassCalibrationWarning.empty()) {
+        lines << "Compass calibration: " + toQString(log_.compassCalibrationWarning);
     }
     if (!compass_source_.isEmpty()) {
         lines << "Compass orientation: " + compass_source_;
     }
-    for (auto it = log_.info.cbegin(); it != log_.info.cend(); ++it) {
+    for (const auto &[field, value] : log_.info) {
         // The raw protobuf/config blobs are too large for the summary pane.
-        if (it.key() == "config" || it.key() == "info") {
+        if (field == "config" || field == "info") {
             continue;
         }
-        lines << it.key() + ": " + it.value();
+        lines << toQString(field) + ": " + toQString(value);
     }
     info_->setPlainText(lines.join("\n"));
 
-    if (log_.recordSets.isEmpty()) {
+    if (log_.recordSets.empty()) {
         status_->setText(tr("%1 streams loaded").arg(view_.streams().size()));
     } else {
         status_->setText(tr("%1 streams, %2 record sets loaded")
                              .arg(view_.streams().size())
-                             .arg(log_.recordSets.size()));
+                             .arg(static_cast<qsizetype>(log_.recordSets.size())));
     }
 }

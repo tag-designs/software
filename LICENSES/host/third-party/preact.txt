@@ -2,7 +2,7 @@ Preact 10.29.8
 ==============
 
 License:    MIT
-Used in:    tagprogram, tagmonitor (the window, in host/ui-kit/preact-htm.js)
+Used in:    tagprogram, tagmonitor, tagcalibrate, tagview (the window, in host/ui-kit/preact-htm.js)
 Source:     https://github.com/preactjs/preact
 
 The MIT License (MIT)

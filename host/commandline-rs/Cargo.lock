@@ -994,6 +994,7 @@ dependencies = [
  "log",
  "prost-reflect",
  "tagcore",
+ "tagcore-c-sys",
  "taglogwriter",
 ]
 
@@ -1012,11 +1013,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagcore-c-sys"
+version = "0.1.0"
+
+[[package]]
 name = "taglogwriter"
 version = "0.1.0"
 dependencies = [
  "prost",
  "tagcore",
+ "tagcore-c-sys",
 ]
 
 [[package]]

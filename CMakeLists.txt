@@ -171,13 +171,16 @@ set(DEVELOPER_DOXYGEN_APPS
 # compiles Tauri and WebKitGTK, and their behaviour is in the core crates.
 set(DEVELOPER_RUST_DOCS
   "host/libraries/tagcore-rs|tagcore"
-  "host/libraries/taglogwriter-rs|taglogwriter tagcore"
-  "host/libraries/calibsession-rs|calibsession"
+  "host/libraries/tagcore-c-sys|tagcore-c-sys"
+  "host/libraries/taglogwriter-rs|taglogwriter tagcore tagcore-c-sys"
+  "host/libraries/calibsession-rs|calibsession tagcore-c-sys"
+  "host/libraries/sensorviz-session-rs|sensorviz-session tagcore-c-sys"
   "host/libraries/tagprobe-rs|tagprobe tagcore"
-  "host/commandline-rs|tag-tools tagcore taglogwriter"
+  "host/commandline-rs|tag-tools tagcore taglogwriter tagcore-c-sys"
   "host/applications/tagprogram-rs|tagprogram-core tagcore tagprobe"
-  "host/applications/tagmonitor-rs|tagmonitor-core tagcore taglogwriter"
-  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession")
+  "host/applications/tagmonitor-rs|tagmonitor-core tagcore taglogwriter tagcore-c-sys"
+  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession tagcore-c-sys"
+  "host/applications/sensorviz-rs|sensorviz-core sensorviz-session tagcore-c-sys")
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
 # The developer documents staged into the portal are not listed here.
 # docs/tools/docs.py finds every Markdown file carrying developer-doc front

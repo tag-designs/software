@@ -1,15 +1,16 @@
 <!doctype html>
 <!--
-  sensorViz plot spike: the sensorviz window's plot drawn in the page with
-  uPlot from M4 envelopes, against mock-engine.js (no engine yet). See
-  ../README.md and host/applications/sensorviz/design/proposals/leaving-qt.md.
-  The fixture data is generated: run ../tools/export_mock_data.py first.
+  sensorViz: the window of the Rust sensorViz (../app), drawn from its
+  engine's view state (../core). The plot is uPlot over the engine's M4
+  envelopes (plot.js). Opened as a file in a browser it runs against
+  mock-engine.js on the fixture data that ../tools/export_mock_data.py writes
+  into mock/; see ../README.md.
 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sensorViz</title>
+  <title>Tag View</title>
   <link rel="stylesheet" href="../../../ui-kit/kit.css">
   <link rel="stylesheet" href="uPlot.min.css">
   <link rel="stylesheet" href="app.css">
@@ -27,7 +28,13 @@
         <button type="button" role="tab" id="tab-info" aria-selected="false">File Info</button>
       </div>
       <div class="pages">
-        <section id="page-plot" class="page kit-panel"><div id="plot"></div></section>
+        <section id="page-plot" class="page kit-panel">
+          <div class="plot-row">
+            <div id="plot"></div>
+            <aside id="compass" class="svz-compass" hidden></aside>
+          </div>
+          <div id="empty" class="svz-empty">File &gt; Load... opens a tag log (.db3).</div>
+        </section>
         <section id="page-info" class="page kit-panel" hidden><pre id="info" class="kit-selectable"></pre></section>
       </div>
       <div id="status" class="status"></div>
@@ -37,12 +44,10 @@
   <script src="../../../ui-kit/preact-htm.js"></script>
   <script src="../../../ui-kit/kit.js"></script>
   <script src="../../../ui-kit/kit-components.js"></script>
+  <script src="../../../ui-kit/heading-dial.js"></script>
   <script src="uPlot.iife.min.js"></script>
   <script src="jspdf.umd.min.js"></script>
   <script src="plot.js"></script>
-  <script src="mock/data-imutag.js"></script>
-  <script src="mock/data-compasstag.js"></script>
-  <script src="mock-engine.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

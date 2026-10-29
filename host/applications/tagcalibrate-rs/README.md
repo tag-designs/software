@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, and how it is checked against qtcalibrate; CMake and packaging are still to come.
+summary: Tag Calibrator in Rust, the port of qtcalibrate, shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, how it is packaged, and how it is checked against qtcalibrate.
 ---
 
 # Tag Calibrator (Rust)
@@ -12,7 +12,10 @@ A port of [qtcalibrate](../qtcalibrate/README.md), to be shipped as
 [`host/ui-kit`](../../ui-kit/README.md), an engine that holds every rule, and
 a thin Tauri shell.
 
-**Status: runs against a tag; not yet built by CMake or packaged.** The
+**Status: runs against a tag, and is built by CMake and packaged as
+`tagcalibrate`** (`CMakeLists.txt`, as Tag Monitor's: see its
+[build and packaging](../tagmonitor-rs/design/build-and-packaging.md); the
+macOS bundle is `tag_tools/tagcalibrate.app`, "Tag Calibrator"). The
 calibration is the C++ `CalibrationSession` that qtcalibrate's `CompassData`
 runs, reached through [`calibsession-rs`](../../libraries/calibsession-rs/README.md).
 
@@ -74,6 +77,7 @@ the scenario live. `mock-engine.js` lists them all.
   Read Data File have no handlers and are not carried over.
 - The Tag Connection bar names the attached tag.
 
-## Next
+## User manual
 
-CMake and packaging as for Tag Monitor, and a user manual page.
+`host/docs/src/apps/tagcalibrate.md`, which Help opens; `ui/screenshots.sh`
+makes its pictures.

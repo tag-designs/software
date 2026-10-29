@@ -23,10 +23,11 @@
 #      for qtcalibrate (its 3D orientation view included), logs for
 #      sensorviz -- and must exit 0 with its screenshots written and not
 #      blank, and nothing on stderr saying a plugin, library or QML module
-#      failed to load. btviz, qtprogram, tagprogram and tagmonitor (Tag
-#      Programmer and Tag Monitor in Rust) have no capture mode; they must
-#      start and stay up. tagmonitor finds no base in the container, says so
-#      in a message box, and stays up.
+#      failed to load. btviz, qtprogram, tagprogram, tagmonitor,
+#      tagcalibrate and tagview (Tag Programmer, Tag Monitor, Tag Calibrator
+#      and sensorViz in Rust) have no capture mode; they must start and stay
+#      up. tagmonitor and tagcalibrate find no base in the container, say so,
+#      and stay up; tagview opens the IMUTag fixture.
 #
 # Usage: linux-package-test.sh TARBALL SOURCE_DIR OUT_DIR
 #   TARBALL     the package
@@ -205,6 +206,8 @@ run_apps() {
     run_stays_up "$p" qtprogram -- "$tt/bin/qtprogram"
     run_stays_up "$p" tagprogram -- "$tt/bin/tagprogram"
     run_stays_up "$p" tagmonitor -- "$tt/bin/tagmonitor"
+    run_stays_up "$p" tagcalibrate -- "$tt/bin/tagcalibrate"
+    run_stays_up "$p" tagview -- "$tt/bin/tagview" "$fixtures/sensorviz/imutag.db3"
 }
 
 export XDG_RUNTIME_DIR=/tmp/xdg

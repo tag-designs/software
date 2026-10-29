@@ -4,10 +4,12 @@
  * by tools/export_mock_data.py into mock/data-*.js) and a synthetic
  * five-million-sample log, served the way the engine will serve them.
  *
- *  - The view state carries a `spec` shaped like sensorviz_core's PlotSpec:
+ *  - The view state has the engine's shape (core/src/engine.rs): `hasLog`,
+ *    `status`, `fileInfo`, `timeDomain`, `view` (streams and choices),
+ *    `parameters`, and a `spec` shaped as sensorviz_core's PlotSpec JSON:
  *    traces (id, name, colour, pen width, axis index), axes (side, label,
- *    colour, range), the time domain and UTC offset, the full data range,
- *    event markers, metadata rows and the title.
+ *    colour, mode, range), the time domain and UTC offset, the full data
+ *    range, event markers, metadata rows and the title.
  *  - Query `envelope {t0, t1, width}` answers with each visible trace's M4
  *    envelope of [t0, t1] at `width` columns, as sensordata::Log::view()
  *    does: per column the first, minimum, maximum and last sample in time
@@ -207,6 +209,7 @@
   /** The spec for a log: one axis per trace, ranges from the full data plus 5%. */
   function specFor(log, utcOffset, breakAtGaps) {
     let tmin = Infinity, tmax = -Infinity;
+    let axes_index = 0;
     const axes = log.traces.map((tr) => {
       const s = log.streams.find((x) => x.id === tr.id);
       let lo = Infinity, hi = -Infinity;
@@ -218,18 +221,19 @@
       tmin = Math.min(tmin, s.t[0]);
       tmax = Math.max(tmax, s.t[s.t.length - 1]);
       const pad = (hi - lo) * 0.05 || 1;
-      return { side: tr.side, label: `${s.label} ${s.units}`, color: tr.color, range: [lo - pad, hi + pad] };
+      return { side: tr.side, label: `${s.label} ${s.units}`, color: tr.color, mode: "fixed",
+        linkedGroup: "", traces: [axes_index++], range: [lo - pad, hi + pad] };
     });
     return {
-      domain: log.domain, utcOffset, breakAtGaps,
+      timeDomain: log.domain, utcOffsetHours: utcOffset, breakAtGaps,
       xDataRange: [tmin, tmax],
       traces: log.traces.map((tr, i) => {
         const s = log.streams.find((x) => x.id === tr.id);
-        return { id: tr.id, name: `${s.label} ${s.units}`, color: tr.color, width: tr.width, axis: i };
+        return { id: tr.id, name: `${s.label} ${s.units}`, stream: i, color: tr.color, penWidth: tr.width, axis: i };
       }),
       axes,
-      markers: log.markers,
-      metadata: log.metadata,
+      eventMarkerTimes: log.markers,
+      metadataRows: log.metadata.map(([k, v]) => `${k.padEnd(8)}${v}`),
       title: log.name,
     };
   }
@@ -263,11 +267,30 @@
     }
 
     function view() {
+      const log = sim.log;
       return {
-        title: "sensorViz",
+        title: "Tag View",
+        hasLog: !!log,
+        fileName: log ? log.name : null,
         status: sim.status,
-        log: sim.log ? { name: sim.log.name, info: sim.log.info } : null,
-        spec: sim.log ? specFor(sim.log, sim.utcOffset, sim.breakAtGaps) : null,
+        fileInfo: log ? [log.name].concat(log.info.map(([k, v]) => `${k}: ${v}`)).join("\n") : "",
+        timeDomain: log ? log.domain : null,
+        hasCompass: !!log && sim.logName === "compasstag",
+        spec: log ? specFor(log, sim.utcOffset, sim.breakAtGaps) : null,
+        view: log ? {
+          // Every stream, as the engine lists them; those drawn are visible.
+          streams: log.streams.map((s) => {
+            const tr = log.traces.find((x) => x.id === s.id);
+            const color = tr ? tr.color : "#50648c", side = tr ? tr.side : "left";
+            return { id: s.id, label: s.label, units: s.units, color, effectiveColor: color, derived: false,
+              visible: !!tr, axisSide: side, effectiveAxisSide: side };
+          }),
+          visibleStreamIds: log.traces.map((tr) => tr.id), customRanges: {},
+          title: log.name, titleVisible: true, utcOffsetHours: sim.utcOffset, cursorsVisible: true,
+          breakAtGaps: sim.breakAtGaps, parameters: {},
+        } : null,
+        parameters: [],
+        message: null,
       };
     }
     const publish = () => emit("state", view());
@@ -302,7 +325,11 @@
         }).filter(Boolean);
         return { time: timeText(log.domain, args.t, sim.utcOffset), rows };
       }
-      if (name === "menus") return { menus: [] };
+      if (name === "range") return { lower: 0, upper: 1 };
+      // A fixed compass reading, so the panel shows in a preview.
+      if (name === "compass") return log && sim.logName === "compasstag"
+        ? { time: 0, heading: 5, roll: 10, pitch: -5, dip: 38, field: 61, gravity: 984, declination: 0, batteryForward: true } : null;
+      if (name === "about") return { title: "Tag View", version: "mock", userGuide: null };
       return null;
     }
 

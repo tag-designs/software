@@ -5,6 +5,7 @@
 #include "view_model.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace sensorviz {
 
@@ -343,6 +344,40 @@ ViewModel::Changes ViewModel::setActivityTimeConstant(double seconds)
     }
     activity_time_constant_ = seconds;
     return notify(Parameters);
+}
+
+double ViewModel::parameter(const std::string &id) const
+{
+    if (id == kSeaLevelPressure) {
+        return sea_level_pressure_;
+    }
+    if (id == kDeclination) {
+        return declination_degrees_;
+    }
+    if (id == kBatteryForward) {
+        return battery_forward_ ? 1.0 : 0.0;
+    }
+    if (id == kActivityTimeConstant) {
+        return activity_time_constant_;
+    }
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+ViewModel::Changes ViewModel::setParameter(const std::string &id, double value)
+{
+    if (id == kSeaLevelPressure) {
+        return setSeaLevelPressure(value);
+    }
+    if (id == kDeclination) {
+        return setDeclinationDegrees(value);
+    }
+    if (id == kBatteryForward) {
+        return setBatteryForward(value != 0.0);
+    }
+    if (id == kActivityTimeConstant) {
+        return setActivityTimeConstant(value);
+    }
+    return None;
 }
 
 std::set<std::string> ViewModel::defaultVisibleIds() const

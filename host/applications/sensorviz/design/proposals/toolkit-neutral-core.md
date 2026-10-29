@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation.
+summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation; all phases are built, with the as-built differences and checks recorded per phase.
 ---
 
 # A Toolkit-Neutral Core for sensorviz
@@ -9,7 +9,11 @@ summary: Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel,
 **Status:** phase A is built (`13516ce2`): `sensorviz_core` with a Qt-free
 `ViewModel`, `PlotSpec`/`buildPlotSpec()` and `StreamMeta`, and menus that show
 the state instead of holding it. [Phase A as built](#phase-a-as-built) records
-where it differs from the sketch below. Phases B-F are not built.
+where it differs from the sketch below. Phase B is built: `openLog()` and
+`StreamCatalog` in the core, the Qt loader removed;
+[phase B as built](#phase-b-as-built) records its differences. Phase C is
+built: `PreferenceStore` reads and writes the preference file in the core
+([phase C as built](#phase-c-as-built)). Phases C2, D+E and F are built ([phase D+E as built](#phase-de-as-built), [phase F as built](#phase-f-as-built)): the core is complete.
 
 sensorviz should be split into a **Qt-free core** and **thin front ends**.
 
@@ -594,9 +598,154 @@ or folded into a later phase as follows.
 | Setters return their changes *and* notify an optional listener | Returned changes only | Keep both; the listener suits Qt, the return value suits commands |
 | Typed parameter setters (`setSeaLevelPressure()`, `setDeclinationDegrees()`, `setBatteryForward()`, `setActivityTimeConstant()`) | `setParameter(key, value)` over `ParameterValues` | Phase D replaces them when transforms declare their parameters |
 
-`TagPreferences` is in the core, but the preference file I/O is still
-Qt's `QJsonDocument` in `sensor_preferences.cpp`, which is phase C. The
+`TagPreferences` is in the core; its file I/O followed in phase C. The
 sensorviz TODO lists everything still Qt-bound.
+
+### Phase B as built
+
+`sensorviz::openLog()` and `StreamCatalog` (`core/stream_catalog.h`) replaced
+`sqlite_loader.cpp`; `SensorLog`, `SensorRecordSet` and `SensorEventMarker`
+are now aliases of the core's `StreamCatalog`, `RecordSet` and `EventMarker`,
+and the Qt app converts strings where it shows them. Calibration is read by
+`compasscore::calibrationFromJson()` (`sensoranalysis_core_json`) and the
+IMUTag magnetometer corrected by `compasscore::applyMagnetometer()`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| A plain struct with the old `SensorLog` field names, holding the `std::shared_ptr<sensordata::Log>` | A class with accessors; `openLog()` returns `{unique_ptr<Log>, StreamCatalog}` | Kept for now: the Qt app copies the result between the loader thread and the window, and the field names kept the change to the call sites mechanical. Phase F's `Session` owns both and can hide the fields |
+| `openLog(path, catalog, error)` returning `bool` | `optional<OpenedLog>` with a progress callback | Progress is not wired in the Qt app today; add it with `Session` |
+| `ViewModel` still holds the stream list, stored and derived | The catalog owns streams | Moves with phase D: the list changes only when transforms add or remove derived streams, which the registry will own |
+| No `Origin`/`producer` on streams | `StreamEntry::origin`, `producer` | Phase D, with the registry |
+
+**Checked:**
+
+- **Old and new loaders on every log.** A one-off program ran the old Qt
+  loader and `openLog()` side by side over every log on hand: 54 files, five
+  tag types (BitTag LE, CompassTag, IMUTag, PresTag and UIUCTag), 31 of them
+  with calibration tables, and three that both refused. It compared every
+  catalog field, every stream's metadata, every stream's envelope at 1,000
+  columns and at one column per sample (2,605,928 points, bit for bit), and
+  exact read-back at 201 times per stream. Everything was identical.
+- **Capture suites.** The startup, `imutag`, `compasstag` and `menus` suites
+  (13 images, including both File Info tabs) were pixel-identical before and
+  after.
+- **Core checks.** `plotspec_check` and `viewmodel_check` were unchanged.
+  `catalog_check` is new; mutating the accelerometer correction or the resync
+  match makes it fail.
+
+**Behaviour differences, none reachable from a log tagcore writes:**
+
+- Text that is not JSON now gives the warning "Compass calibration constants
+  are not a valid JSON object: ...", with protobuf's message, instead of Qt's
+  wording.
+- A calibration whose `magnetometer` value is an empty object `{}` loads as
+  the identity calibration; Qt rejected it as missing.
+- Tag-type, table and event names are matched ignoring ASCII case, not
+  Unicode case.
+- `info` rows are ordered by UTF-8 bytes, not UTF-16 code units. The two
+  orders differ only between characters above U+FFFF and those from U+E000
+  to U+FFFF.
+
+### Phase C as built
+
+`sensorviz::PreferenceStore` (`core/preference_store.h`) holds the per-tag
+`TagPreferences` and reads and writes the preference file;
+`sensor_preferences.cpp` keeps only the menu, the file dialogs and the file
+I/O. Colors are parsed by the core's `colorFromString()`, which follows
+`QColor(QString)`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| Reading through protobuf's `google.protobuf.Value`; writing by hand | `MessageToJsonString` for writing too | protobuf's printer cannot produce Qt's layout (four-space indents, `"key": value`, one array element per line), so the writer is about sixty lines |
+| Keys ordered by UTF-16 code unit | -- | Qt orders object keys so, which puts characters above U+FFFF before U+E000-U+FFFF; the writer sorts the same way, and the reader reports the first fault in that order |
+| The SVG color table copied from `QColor::colorNames()` | -- | Needed to read hand-edited names without Qt; 12- and 16-bit hex channels are rounded through 16 bits as Qt rounds them |
+
+**Checked:** a one-off program ran the Qt code, copied verbatim, against the
+store. Over 3,000 random preference sets (with quotes, backslashes, control
+characters, U+2028, U+E000 and characters above U+FFFF in tags and ids) the
+saved bytes were identical; over 63,000 loads of those files and random
+mutations of them, the result and error message were identical whenever both
+readers parsed the JSON; and `colorFromString()` agreed with `QColor` on
+about 300,000 strings, including every color name in four spellings. The
+capture suites were pixel-identical, and a preference file loaded through
+`--load-preferences` drew as expected. `preference_check` is new.
+
+**Malformed JSON** is the one difference: protobuf's reader accepts trailing
+commas, which Qt refused, and refuses duplicate keys, unknown escapes such as
+`\,` and numbers such as `1.`, which Qt accepted. None comes from a file
+sensorViz writes; matching them would mean writing a JSON parser that copies
+Qt's.
+
+### Phase D+E as built
+
+`core/transforms.h` holds `ParameterSpec`, `Transform`, `TransformContext`,
+`TransformRegistry` and the three transforms: altitude, the IMU magnitudes and
+the compass, the last on `compasscore::solveOrientation()` and
+`compasscore::displayAngles()`
+([0040](../../../../../docs/decisions/0040-host-compass-display-angles-in-core.md)).
+The Qt app runs the registry after a load, implements the sink, and asks for
+numeric parameters with one dialog built from each `ParameterSpec`.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| Outputs go to a `TransformSink` the front end implements, one `publish()` per output | The registry adds outputs to the catalog | The Qt app redraws after each output and its y axes take their range partly from the previous drawing, so the order of redraws shows; the sink keeps it. `Session` (F) implements the sink for non-Qt front ends |
+| `applicable(catalog, view)` | `applicable(catalog)` | Altitude and the magnitudes depend on streams, which `ViewModel` keeps (see the revision above) |
+| Parameter values live in `ViewModel` (`parameter(id)`, `setParameter(id, value)`) over its typed fields | `ParameterValues` passed to `run()` | The typed setters stay for the plot policy and `viewmodel_check` |
+| `update(context, parameter)` remakes what one parameter affects | Re-run the affected transform | Declination and battery direction remake only the heading, as before |
+| The compass keeps its `OrientationSample`s for the panel | -- | The QML panel stays Qt; the Rust app will draw its own from the same samples |
+| No `outputs()` or `Origin`/`producer` | Declared outputs, owned derived entries | Nothing needed them yet; a transform's outputs are what it publishes |
+
+**Checked:** sensorViz's `--dump-state` output was identical before and after
+for every log on hand -- 51 that load (18 CompassTag logs on the raw-sample
+path, 30 with altitude from pressure and temperature, 13 with the IMU
+magnitudes, 24 with the activity filter) -- and for a CompassTag and an IMUTag
+log processed by `dataprocessing`, which take the stored-quaternion path. The
+capture suites were pixel-identical. `transforms_check` (53 checks) is new;
+changing the battery-direction offset, the magnitude formula, or the
+declination remake to a full re-run each fail it.
+
+### Phase F as built
+
+`core/session.h`: `Session` owns the `StreamCatalog`, `ViewModel` and
+`TransformRegistry`, and holds what `MainWindow` computed -- the hover text and
+time text, the range dialog's starting range, the range links, Reset Zoom,
+the preference key -- with `open()` doing a whole File > Load for front ends
+without Qt. `core/state_dump.h` holds the state dump's script and text, which
+the Qt app drives through its own functions and `session_cli` through
+`Session` alone.
+
+| As built | Sketch | Resolution |
+| --- | --- | --- |
+| `MainWindow` holds a `Session`; its `log_` and `view_` are references to the session's catalog and view model, and most setters still go to `view()` directly | Every change through a `Session` setter returning `Changes` | Kept: the `ViewModel` setters already return `Changes`, and the session adds rules only where there are any (ranges, parameters, Reset Zoom). Moving every call is churn without effect |
+| The Qt app loads through `adopt()`/`runTransforms()` step by step, redrawing between steps | `Session::open()` for everyone | The Qt plot's y axes depend on the redraw order, so the Qt app keeps its sequence; `open()` does the same steps for `session_cli` and the Rust app, and their dumps agree |
+| `session_cli` writes the state dump and the hover readout | `PlotSpec` as JSON, envelope sizes, hover rows | The dump holds the spec, every sample's hash and the hover rows, and compares with the Qt app's directly |
+| `formatValue2()` prints the exact decimal value and rounds by hand | `printf` | Qt rounds exact ties half away from zero (0.125 is `0.13`) and drops the sign of -0.0; `printf` rounds ties to even |
+| No `envelope()` on `Session` | `envelope(trace, t0, t1, columns)` | `catalog().data->view()` already is that; the C interface (step 3 of leaving Qt) can wrap it |
+
+**Checked:**
+
+- A one-off comparison of `formatValue2()` and `formatTime()` with Qt's own
+  formatting (`QString::arg(v, 0, 'f', 2)`, the elapsed format, `QDateTime`
+  at every UTC offset from -12 to +12) agreed on 1,000,233 values and times,
+  after 13,076 had differed with `printf` rounding.
+- `--dump-state` from the Qt app was identical before and after, for all 53
+  logs on hand (a baseline from `7ce2e6db`), once when `MainWindow` moved onto
+  `Session` and again when the dump itself moved into the core. The second
+  run takes the spec from `Session` rather than from `PlotView`, so the spec
+  the session builds is the one drawn at every step.
+- `session_cli`'s dump equalled the Qt app's up to the activity filter for all
+  53 logs, and with a preference file loaded; built without Qt, it gave the
+  same dump.
+- The capture suites were pixel-identical.
+
+**Done means**, against the list below:
+
+- No file in `sensorviz_core` includes a Qt header, and the core and its
+  checks build in a host build without `BUILD_QT_APPS`.
+- `MainWindow` computes on sample values only for the activity filter, which
+  leaves with the Qt app, and in finding the compass panel's nearest sample.
+- `session_cli` reproduces the `PlotSpec`, every sample and the hover readout
+  the Qt app shows, for every log on hand.
 
 ## The compass convention needs a decision
 
@@ -631,20 +780,40 @@ backend phases were:
 | Phase | Work |
 | --- | --- |
 | A | `sensorviz_core` target; Qt-free `PlotSpec`/`buildPlotSpec()`; `ViewModel`; menus sync from it. *Built, `13516ce2`.* |
-| B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired |
-| C | `PreferenceStore` with protobuf JSON, byte-compatible |
-| D | `Transform`/`TransformRegistry`; port magnitudes, altitude, activity filter; one generic Qt parameter dialog |
-| E | Compass transform on `sensoranalysis_core` plus the copied Euler conversion and its decision record |
-| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli` |
+| B | `StreamCatalog` and `openLog()` in the core; calibration through `sensoranalysis_core_json`; `SensorLog`/`SensorStream` retired. *Built, `cc3ca1c3`.* |
+| C | `PreferenceStore` with protobuf JSON, byte-compatible. *Built, `88830bd3`.* |
+| C2 | `sensorviz_core` built without Qt, in its own directory (`4d0ee4e8`); the state dump (`--dump-state`), the comparison oracle for D-F. *Built.* |
+| D+E | `Transform`/`TransformRegistry`; port magnitudes, altitude and compass (onto `sensoranalysis_core`, with the decision record superseding part of 0030); one generic Qt parameter dialog. *Built.* |
+| F | `Session` facade, `hover()`/`formatTime()` in the core; `MainWindow` reduced to menus, dialogs and widgets; `session_cli`, which reproduces the Qt app's `--dump-state` output without Qt. *Built.* |
 
-B and C are independent of each other. D needs B. E needs D. F needs all of
-them. A webview prototype, if wanted, comes after F and changes nothing in
-the core.
+**Revised 2026-10-28**, after phases B and C:
+
+- **C2 comes first.** `sensorviz_core` was defined after `find_package(Qt6
+  REQUIRED)` in sensorviz's CMakeLists, so it could not be built without Qt,
+  and the C interface (step 3 of [leaving Qt](leaving-qt.md)) needs it in a
+  Qt-free build. The capture suites show only default settings, so before D
+  touches declination, battery forward and sea-level pressure, a dump of every
+  stream, hover row and plot spec under scripted setting changes is the
+  before-and-after check.
+- **D and E are one phase.** The Euler conversion E was to copy
+  (`compasscore::displayAngles()`, parity-checked against Qt) was built for
+  Tag Calibrator, so the compass transform goes onto the core directly
+  instead of being ported twice.
+- **The activity filter is not ported.** It stays in the Qt sensorViz as it
+  is, outside the registry, and goes when that app retires; the Rust app will
+  not have it. Its prompt-on-enable dialog is the one parameter UI that does
+  not fit a generic form, and it is little used.
+- **`ViewModel` keeps the stream list.** Transforms add and remove derived
+  streams through it; the catalog stays what `openLog()` read. Moving the
+  list, as the sketch has it, changes nothing visible.
+
+C2 needs C. D+E needs C2. F needs all of them.
 
 **Done means:**
 
 - No file in `sensorviz_core` includes a Qt header.
-- `MainWindow` contains no computation on sample values.
+- `MainWindow` contains no computation on sample values, except the activity
+  filter, which leaves with the Qt app.
 - `session_cli` reproduces the `PlotSpec` the Qt app draws for every fixture.
 
 ## Risks

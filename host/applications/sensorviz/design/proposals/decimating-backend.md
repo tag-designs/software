@@ -53,7 +53,7 @@ applies unchanged to the slower streams.
 
 ### Where the memory goes today
 
-[`sqlite_loader.cpp:352-410`](../../sqlite_loader.cpp) loads each scalar
+`sqlite_loader.cpp:352-410` (since replaced by `core/stream_catalog.cpp`) loads each scalar
 stream with its own `SELECT time, value FROM table ORDER BY time` into
 `SensorStream::time` and `SensorStream::value`, both `QVector<double>`.
 [`plotting.cpp:236`](../../plotting.cpp) then calls

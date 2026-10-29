@@ -16,8 +16,10 @@ report each Markdown link as broken. -->
 | Crate | Source | What it is |
 | --- | --- | --- |
 | <a href="rust/tagcore/index.html">tagcore</a> | `host/libraries/tagcore-rs` | Talking to tag firmware monitors through a tag base: the Rust port of tagcore's `Tag`, the protobuf messages, ConfigShape |
+| <a href="rust/tagcore_c_sys/index.html">tagcore-c-sys</a> | `host/libraries/tagcore-c-sys` | Links `tagcore_c`, the C interface to the C++ host libraries, and declares its functions; the one crate that does, so the wrappers below can be used together |
 | <a href="rust/taglogwriter/index.html">taglogwriter</a> | `host/libraries/taglogwriter-rs` | Writing tag SQLite logs through the C++ writer in `tagcore_c` |
 | <a href="rust/calibsession/index.html">calibsession</a> | `host/libraries/calibsession-rs` | The magnetometer and accelerometer calibration session and the compass display angles, through the C++ core in `tagcore_c` |
+| <a href="rust/sensorviz_session/index.html">sensorviz-session</a> | `host/libraries/sensorviz-session-rs` | Opening and viewing tag logs through sensorViz's C++ core in `tagcore_c`: the catalog, view, plot spec, envelopes, hover text, transforms and preferences |
 | <a href="rust/tagprobe/index.html">tagprobe</a> | `host/libraries/tagprobe-rs` | Programming tags through the tag bases with probe-rs |
 
 ## Applications
@@ -32,6 +34,7 @@ its own module documentation describes it.
 | <a href="rust/tagprogram_core/index.html">tagprogram_core</a> | `host/applications/tagprogram-rs/core` | Tag Programmer: programming, testing and recording tags |
 | <a href="rust/tagmonitor_core/index.html">tagmonitor_core</a> | `host/applications/tagmonitor-rs/core` | Tag Monitor: the port of qtmonitor's core -- attach, check, configure, start and download tags |
 | <a href="rust/tagcalibrate_core/index.html">tagcalibrate_core</a> | `host/applications/tagcalibrate-rs/core` | Tag Calibrator: the port of qtcalibrate's behaviour, over the C++ calibration session |
+| <a href="rust/sensorviz_core/index.html">sensorviz_core</a> | `host/applications/sensorviz-rs/core` | sensorViz: the port of the Qt sensorviz's behaviour, over sensorViz's C++ core |
 
 ## Command-line tools
 

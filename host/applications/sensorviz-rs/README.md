@@ -1,46 +1,103 @@
 ---
 type: readme
 status: current
-summary: sensorViz in Rust, to replace the Qt sensorviz - so far the plot spike, which settled the renderer (uPlot in the page, from M4 envelopes) and printing (jsPDF, 300 dpi); how to run it and what it showed.
+summary: Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 ---
 
-# sensorViz (Rust)
+# Tag View: sensorViz (Rust)
 
 The Rust/Tauri sensorViz, step 4 of
-[leaving Qt](../sensorviz/design/proposals/leaving-qt.md). Until the C++
-core's `Session` exists (steps 1 and 3), this directory holds **the plot
-spike** (step 2): the sensorViz plot drawn in the page, against a mock
-engine, to settle the renderer before anything depends on it.
+[leaving Qt](../sensorviz/design/proposals/leaving-qt.md): the Qt sensorviz's
+window over the same C++ core, which it reaches through
+[`sensorviz-session`](../../libraries/sensorviz-session-rs/README.md). Built
+as Tag Calibrator is ([`tagcalibrate-rs`](../tagcalibrate-rs/README.md)): a
+toolkit-free engine, a thin Tauri shell, and a page on the shared
+[UI kit](../../ui-kit/README.md).
 
 | Path | What |
 | --- | --- |
-| `ui/plot.js` | The plot: draws a PlotSpec with uPlot from the engine's M4 envelopes, with sensorViz's interactions, and exports a PDF |
-| `ui/index.html`, `app.js`, `app.css` | A window around it: menus, Plot and File Info tabs, a status line with each redraw's timings |
-| `ui/mock-engine.js` | The engine's part: envelopes and hover values as sensordata answers them, a spec as sensorviz_core builds one, derived streams as the transforms make them |
+| `core/src/engine.rs` | The engine: one thread owning the open log's `Session` and the per-tag `Preferences`; commands in, the whole view state out after every change, and the `envelope`, `hover`, `range` and `about` queries. Its doc comment lists every command and query |
+| `core/tests/engine.rs` | The engine on the committed fixtures: descriptions, File Info and the status line, view commands, preference files, failures as messages, saving the PDF |
+| `app/` | The Tauri shell (`main.rs`), its build script (stages `ui/` and the kit), configuration, capabilities and icons |
+| `ui/index.html`, `app.js`, `app.css` | The window: the Qt app's menus and plot context menu, Plot and File Info tabs, the dialogs, the status line |
+| `ui/plot.js` | The plot: draws the core's PlotSpec with uPlot from the engine's M4 envelopes, with sensorViz's interactions, and exports a PDF |
+| `ui/mock-engine.js` | The engine's part in a browser preview, on fixture data `tools/export_mock_data.py` writes into `ui/mock/` (generated, not committed, not shipped) |
 | `ui/uPlot.iife.min.js`, `uPlot.min.css`, `jspdf.umd.min.js` | uPlot 1.6.32 and jsPDF 2.5.2, vendored (see their headers) |
-| `tools/export_mock_data.py` | Writes `ui/mock/data-*.js` from the fixture logs (generated, not committed) |
-| `tools/print-spike/` | The plotters prototype (not shipped): the same plot drawn by plotters, as SVG and PNG |
+| `tools/print-spike/` | The plotters prototype from the spike (not shipped) |
 
-## Running the spike
+## Building and running
 
 ```sh
-cd host/applications/sensorviz-rs
+cmake -DBUILD_TAGCORE_C=ON <build-dir>
+cmake --build <build-dir> --target tagcore_c_static tagcore_c
+export TAGCORE_C_LIB_DIR=<build-dir>/Release/lib
+cargo test -p sensorviz-core
+cargo run -p tagview -- [log.db3] [--load-preferences prefs.json]
+```
+
+The page also opens as a file in a browser, against the mock:
+
+```sh
 for n in imutag compasstag; do
   tools/export_mock_data.py ../../docs/fixtures/sensorviz/$n.db3 $n ui/mock/data-$n.js
 done
 open ui/index.html            # ?log=imutag (default), compasstag or big
 ```
 
-`big` is a synthetic log of 5,000,000 samples at 1 kHz with a gap and
-event markers. Drag pans time, the wheel zooms it, double-click and
-shift-double-click place the cursors, View has Reset Zoom, Zoom to Cursors,
-Show Cursors and Break Lines at Gaps, and File ▸ Export PDF writes the view.
+## What it does
 
-## What it showed (2026-10-28)
+Everything the Qt app computes comes from the core, so the numbers are the
+Qt app's: the streams and transforms (altitude, IMU magnitudes, compass), the
+plot spec (axes, groups, fixed and linked ranges, metadata box, title), the
+hover readout, the preference file, File Info and the status line. The menus
+are the Qt app's -- File (Load, Preferences ▸ Load / Store / Load Defaults,
+Export PDF), View (Visible Streams, Axis Sides, Colors, Ranges ▸ per stream,
+Reset Zoom, Zoom to Cursors, Show Cursors, Break Lines at Gaps, Calibration
+Constants), Configuration (Graph Title, Show Graph Title, UTC Offset, then one
+item per transform parameter, built from the core's `ParameterSpec`s), Help --
+and the plot's context menu repeats View and Configuration.
+
+How it differs from the Qt app:
+
+- **Auto axes** take the data range padded by 5%. The Qt plot also widens an
+  auto axis to include the range the axis showed before, and a new
+  QCustomPlot axis starts at 0 to 5, so there every auto axis includes zero
+  (an IMUTag altitude axis spans -100 to 350 m around 245 m). Kept on
+  purpose (owner's decision, 2026-10-28): the trace fills its axis.
+- **Printing** is File ▸ Export PDF (below), not the system print dialog.
+- **The x axis title** is one line; uPlot draws one.
+- **No activity filter**: it stays in the Qt app
+  ([toolkit-neutral core](../sensorviz/design/proposals/toolkit-neutral-core.md), revised 2026-10-28).
+- **Axis Sides** lists streams, not axis groups.
+
+For a compass log the Plot page has the Qt app's compass panel beside the
+plot: the heading dial (the kit's `HeadingDial`, shared with Tag Calibrator)
+and the heading, roll, pitch, dip, field, gravity, declination and battery
+direction of the sample at or after the hover time (the engine's `compass`
+query, from the core's display angles, with declination and battery
+direction applied as MyCompass.qml applies them).
+
+## Packaging
+
+CMake builds it with `BUILD_RUST_APPS` (`CMakeLists.txt`, as Tag Monitor's:
+see its [build and packaging](../tagmonitor-rs/design/build-and-packaging.md))
+and installs it as **`tagview`** -- `tag_tools/tagview.app` ("Tag View") on
+macOS, `tag_tools/tagview.exe` on Windows, `tag_tools/bin/tagview` on Linux --
+beside the Qt `sensorviz`, which keeps its name while both ship (owner's
+decision, 2026-10-28). The window and bundle are "Tag View"; the app and
+crates in this directory keep the sensorViz names. Its crates' notices are
+`LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt`.
+
+Its user manual page is `host/docs/src/apps/tagview.md`, which Help opens; its
+pictures are of the app on the committed fixtures.
+
+## The plot spike (2026-10-28)
+
+What the spike that chose the renderer showed, before the engine existed.
 
 **uPlot draws the sensorViz plot.** Each sensorViz feature checked: stacked
-y axes on both sides, each in its trace's colour, the spec's first axis
-outermost, the grid from the innermost; the elapsed time axis and the epoch
+y axes on both sides, each in its trace's colour, stacked outward in the
+spec's order with the grid from the innermost; the elapsed time axis and the epoch
 one with two-line `HH:MM` over `MM/DD/YY` labels in UTC or an offset; drag to
 pan, the wheel to zoom, the cursors and Zoom to Cursors; event markers; gap
 breaks; the title; the draggable metadata box and legend; the hover readout.

@@ -245,6 +245,31 @@ public:
 
     // -- Transform parameters -----------------------------------------------
 
+    /// Parameter id of the sea-level pressure (altitude), mbar.
+    static constexpr const char *kSeaLevelPressure = "altitude.sea_level_mbar";
+    /// Parameter id of the declination added to heading (compass), degrees.
+    static constexpr const char *kDeclination = "compass.declination_deg";
+    /// Parameter id of the battery-forward heading convention (compass), 1 or 0.
+    static constexpr const char *kBatteryForward = "compass.battery_forward";
+    /// Parameter id of the activity filter's time constant, seconds.
+    static constexpr const char *kActivityTimeConstant = "activity.time_constant_s";
+
+    /**
+     * @brief   A transform parameter by id, for front ends that render
+     *          parameters as data (ParameterSpec).
+     * @param[in] id  One of the k... parameter ids above.
+     * @return  The value; a toggle as 1 or 0; NaN for an unknown id.
+     */
+    double parameter(const std::string &id) const;
+
+    /**
+     * @brief   Sets a transform parameter by id, through its typed setter.
+     * @param[in] id     One of the k... parameter ids above.
+     * @param[in] value  The value; a toggle is on when non-zero.
+     * @return  Changes made; None for an unknown id or an unchanged value.
+     */
+    Changes setParameter(const std::string &id, double value);
+
     double seaLevelPressure() const { return sea_level_pressure_; }  ///< mbar, for altitude.
     Changes setSeaLevelPressure(double mbar);                        ///< @return Changes made.
 

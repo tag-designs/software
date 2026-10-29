@@ -239,7 +239,7 @@ void MainWindow::updateLoadedStateActions()
     // before a log exists. After a load, general plot/preference controls are
     // enabled here while tag-specific controls remain governed by the stream
     // availability helpers.
-    const bool has_log = !log_.path.isEmpty();
+    const bool has_log = !log_.path.empty();
     load_preferences_action_->setEnabled(has_log);
     save_preferences_action_->setEnabled(has_log);
     default_preferences_action_->setEnabled(has_log);

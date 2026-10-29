@@ -2,7 +2,7 @@ uPlot 1.6.32
 ============
 
 License:    MIT
-Used in:    sensorviz-rs (the plot, in host/applications/sensorviz-rs/ui/uPlot.iife.min.js; not yet shipped)
+Used in:    tagview (the plot, in host/applications/sensorviz-rs/ui/uPlot.iife.min.js)
 Source:     https://github.com/leeoniya/uPlot
 
 The MIT License (MIT)

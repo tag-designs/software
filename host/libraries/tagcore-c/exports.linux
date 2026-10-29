@@ -1,4 +1,4 @@
 {
-  global: tlw_*; tcs_*;
+  global: tlw_*; tcs_*; svz_*;
   local: *;
 };

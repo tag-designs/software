@@ -12,12 +12,14 @@ log = "0.4.34"
 prost-reflect = "0.16.5"
 tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
 taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optional = true }
+# Named directly only so build.rs receives DEP_TAGCORE_C_LIB_DIR for the rpath.
+tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }
 
 [features]
 # tag-dwnld writes its log through the C++ writer, so it needs libtagcore_c
 # built by CMake (-DBUILD_TAGCORE_C=ON) and TAGCORE_C_LIB_DIR naming it. Off
 # by default so the other tools still build with cargo alone.
-sqlitelog = ["dep:taglogwriter"]
+sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]
 
 [[bin]]
 name = "tag-dwnld"

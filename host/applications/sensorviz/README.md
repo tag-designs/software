@@ -42,11 +42,11 @@ hooks as built are described under
   loaded file name and can be hidden from the Configuration menu or the plot
   context menu's Configuration submenu.
 - Applies stored magnetometer calibration to IMUTag magnetometer axes on load
-  (`applyCalibrationToImuMagnetometer()` in `sqlite_loader.cpp`), so the axis
+  (`applyCalibrationToImuMagnetometer()` in `core/stream_catalog.cpp`), so the axis
   streams and the derived magnitude use the same corrected data.
 - Subtracts the stored accelerometer zero-g offset (mg) from IMUTag
   acceleration axes on load (`applyCalibrationToImuAccelerometer()`), and
-  from CompassTag acceleration inside `CompassProcessor`, so acceleration,
+  from CompassTag acceleration inside the compass transform, so acceleration,
   heading, pitch, roll and dip all use the corrected vector. Logs written
   before the offset existed carry none and are shown uncorrected.
 - Stores per-tag display preferences as sparse, formatted JSON overrides.
@@ -55,11 +55,13 @@ hooks as built are described under
 
 sensorViz is two layers:
 
-- **`sensorviz_core`** (`core/`, a static library with no Qt): the view state
-  and plot policy, in standard C++ over
-  [`sensordata`](../../libraries/sensordata/README.md). CMake links no Qt to
-  it, so a Qt include there fails to build. A non-Qt front end, such as a
-  webview, could reuse it unchanged.
+- **`sensorviz_core`** (`core/`, a static library with no Qt): the log
+  reader, view state, plot policy and preference file, in standard C++ over
+  [`sensordata`](../../libraries/sensordata/README.md). It has its own
+  `core/CMakeLists.txt`, which `host/CMakeLists.txt` adds with the other
+  Qt-free libraries, so it and its checks build in a host build without
+  `BUILD_QT_APPS`; a Qt include there fails to build. A non-Qt front end,
+  such as a webview, could reuse it unchanged.
   - `stream_meta.*`: `StreamMeta`, one plottable stream (metadata only; the
     samples are its `dataId` in the backend), and the built-in per-stream
     display defaults, `defaultDisplayForStream()`.
@@ -93,31 +95,42 @@ The Qt front end is split by responsibility:
 - `dataloading.cpp`: File > Load workflow, active `SensorLog` replacement,
   default graph title, stream-action creation, File Info updates, and initial
   plot refresh.
-- `sqlite_loader.*`: read-only SQLite adapter. It opens the
+- `core/stream_catalog.*` (in `sensorviz_core`, Qt-free): `openLog()`, the
+  read-only log reader, and the `StreamCatalog` it fills. It opens the
   [`sensordata`](../../libraries/sensordata/README.md) plot backend, which
   reads tagcore's mandatory `streams` metadata and every sample once; turns
   its scalar streams into `SensorStream`s and groups its `record_column`
-  streams into `SensorRecordSet`s; loads CompassTag calibration metadata and
-  applies it to the IMUTag magnetometer and acceleration axes; and records
-  collection-start metadata and events for elapsed-time IMUTag logs (see
-  [Data Model](#data-model)).
-- `sensor_preferences.*`: the per-tag preference map and its JSON load/store,
-  converting to and from the core's `TagPreferences`; applying and capturing
-  them is the ViewModel's.
-- `sensorstream.h`: the loaded-log model (`SensorLog`, record sets, event
-  markers) and the Qt-side names for the core stream types, with
+  streams into record sets; reads the `info` table; loads the compass
+  calibration through sensoranalysis's Qt-free JSON reader and applies it to
+  the IMUTag magnetometer and acceleration axes; and records collection-start
+  metadata and events for elapsed-time IMUTag logs (see
+  [Data Model](#data-model)). `dataloading.cpp` calls it off the UI thread.
+- `core/preference_store.*` (in `sensorviz_core`, Qt-free): the per-tag
+  preference map (`PreferenceStore`) and its JSON file, byte-compatible with
+  what the Qt code wrote, and the color names and hex forms `QColor`
+  accepts (`colorFromString()`).
+- `sensor_preferences.*`: the Preferences menu's files and dialogs around the
+  store; applying and capturing preferences is the ViewModel's.
+- `sensorstream.h`: the Qt-side names for the core types (`SensorLog` is
+  `sensorviz::StreamCatalog`, `SensorStream` is `sensorviz::StreamMeta`), with
   conversions between core and Qt strings and colors (see
   [Data Model](#data-model)).
 - `stream_actions.cpp`: the stream actions (views of the ViewModel's
   visibility), visible-stream, axis-side, color and range dialogs, and range
   coupling between related streams. The visible-stream and axis-side dialogs
   list a group of streams that share an axis together.
-- `transforms.cpp`: scalar display transforms such as altitude, activity
-  low-pass, and IMUTag vector magnitudes.
-- `compass_transforms.cpp`: compass orientation samples, built from a processed
-  log's stored quaternions or derived from the raw CompassTag record set; the
-  heading, pitch and roll streams computed from them; heading declination,
-  battery-forward convention, and compass-panel sample updates.
+- `core/transforms.*` (in `sensorviz_core`, Qt-free): the display transforms
+  -- altitude, the IMUTag vector magnitudes and compass orientation -- with
+  their parameters as data (`ParameterSpec`) and the `TransformRegistry` that
+  runs them after a load and remakes outputs when a parameter changes. Outputs
+  go to a `TransformSink` the front end implements, one at a time.
+- `transforms.cpp`: the Qt side of the transforms: runs the registry, the one
+  numeric parameter dialog built from a `ParameterSpec`, the Configuration
+  actions, and the activity low-pass filter, which stays in the Qt app and
+  is not ported to the core.
+- `compass_transforms.cpp`: the compass panel's samples (from the core's
+  compass transform), and declination and battery direction applied to the
+  panel and, through the registry, to the heading.
 - `plot_view.*`: `PlotView`, the only code that touches QCustomPlot. It draws
   a `PlotSpec` (converting its strings and colors to Qt's), owns the graphs, dynamic axes, elapsed/date time axis, cursors,
   event markers, title, draggable metadata box and draggable legend (one
@@ -125,11 +138,21 @@ The Qt front end is split by responsibility:
   plot backend, prints, and reports the mouse through signals (`hoverTime`,
   `cursorsChanged`, `xRangeChanged`, `contextMenuRequested`). A different
   renderer could draw the same spec.
+- `core/session.*` (in `sensorviz_core`, Qt-free): `Session`, which owns the
+  catalog, `ViewModel` and transforms and is what a front end talks to: the
+  hover readout and time text (`hover()`, `formatTime()`, matching Qt's
+  formatting), the range dialog's starting range and the linked ranges,
+  Reset Zoom, the preference key, and `open()`, a whole File > Load for front
+  ends without Qt. `MainWindow` holds one; its `log_` and `view_` are the
+  session's.
+- `core/state_dump.*` (Qt-free): the state dump's script and text, shared by
+  `--dump-state` and `session_cli` ([State dump](#state-dump)).
 - `plotting.cpp`: MainWindow's side of the plot: hands `PlotView` the spec
-  the ViewModel builds, describes the log to the core (`plotLogInfo()`), and
-  reads transform inputs from and registers outputs in the plot backend.
+  the session builds, and reads the activity filter's input from the plot
+  backend.
 - `interaction.cpp`: context menu, print preview, cursor commands, UTC offset,
-  and the hover readout built from `PlotView::hoverTime`.
+  and the hover tooltip, whose rows are the session's, shown at
+  `PlotView::hoverTime`.
 - `controls.cpp`: general actions and small shared helpers, including graph
   title editing and calibration-constant display.
 - `documentation_capture.cpp`: maintainer-only screenshot automation (see
@@ -170,28 +193,30 @@ Most SensorViz changes should start in one of four places:
   metadata for one-value time series, or grouped `record_column` metadata for
   multi-column data that will later feed transforms.
 - Table exists but does not load:
-  check `sqlite_loader.cpp`. The loader applies the database `streams` metadata
+  check `core/stream_catalog.cpp`. The loader applies the database `streams` metadata
   to the actual SQLite schema; missing referenced tables are schema errors.
 - File loads but menu state, default visibility, or metadata is wrong:
   check `dataloading.cpp`. It replaces the active `SensorLog`, rebuilds stream
   actions, clears old custom ranges, and updates File Info.
 - Default stream color, initial visibility, axis side, or fixed range is wrong:
-  check `sensor_preferences.cpp`, especially `defaultDisplayForStream()`.
+  check `defaultDisplayForStream()` in `core/stream_meta.cpp`.
 - Preference files load/store incorrectly:
-  check `sensor_preferences.cpp`. Preference files are formatted JSON and store
-  only overrides from the sensorViz defaults.
+  check `core/preference_store.cpp` (format) and `sensor_preferences.cpp`
+  (files). Preference files are formatted JSON and store only overrides from
+  the sensorViz defaults.
 - Stream visibility or range behavior is wrong:
   check `stream_actions.cpp`.
-- Scalar transform behavior is wrong:
-  check `transforms.cpp`.
-- CompassTag derived streams, declination, or battery direction are wrong:
-  check `compass_transforms.cpp`.
+- Altitude, magnitude or compass stream values are wrong:
+  check `core/transforms.cpp` (and `transforms_check`).
+- A Configuration action, the parameter dialog or the activity filter is
+  wrong: check `transforms.cpp`; the compass panel, `compass_transforms.cpp`.
 - Plot axis layout, scaling, metadata rows or title are wrong:
   check `buildPlotSpec()` in `plot_spec.cpp` (and `plotspec_check`); if the
   spec is right but the drawing is not, check `plot_view.cpp`.
 - Cursor, pan/zoom, print, or metadata-box dragging is wrong:
   check `plot_view.cpp`.
-- UTC, mouse readout, or context-menu behavior is wrong:
+- Hover text, time text, or the ranges a range change links are wrong:
+  check `core/session.cpp`. UTC dialog, tooltip or context-menu behavior:
   check `interaction.cpp`.
 - Graph title editing or visibility is wrong:
   check `controls.cpp` for the dialog/state update.
@@ -238,11 +263,19 @@ Transforms read their inputs from the backend in one of two ways:
   IMUTag magnitudes and the acceleration calibration offset. Nothing is read
   back from SQLite and no `double` copy is held. The magnetometer calibration
   also works from the `float`s, which is exact, because the calibration takes
-  a float `QVector3D` anyway.
+  float vectors anyway.
 - **SQLite `double`s**, through `sensordata::Log::forEachRow()`, where results
   must match the database: altitude (pressure and the pressure-sensor
   temperature), the activity filter, and the compass orientation, whose
-  inputs go to sensoranalysis's `CompassProcessor` bit for bit.
+  inputs go to sensoranalysis's core (`compasscore::solveOrientation()`) bit
+  for bit.
+
+`SensorLog` is the core's `sensorviz::StreamCatalog`
+(`core/stream_catalog.h`), filled by `sensorviz::openLog()`: the `info` rows,
+tag type and profile name, the stored streams, record sets, event markers,
+collection start and compass calibration, all in standard types with UTF-8
+strings, and the `sensordata::Log`. The Qt front end converts strings with
+`toQString()` where it shows them.
 
 `SensorRecordSet` is a multi-column table that is loaded but not plotted
 directly: its table, time domain, column names and a stream on its time axis.
@@ -251,7 +284,9 @@ only from CompassTag's `compass_raw` record set. IMUTag orientation comes only
 from a processed log's stored `imu_compass_orientation` quaternions; sensorViz
 never pairs IMUTag `ImuAccel` with `ImuMag` itself.
 
-Compass calibration constants are stored as typed metadata on `SensorLog`.
+Compass calibration constants are stored as typed metadata on `SensorLog`, as
+the core's `compasscore::CalibrationConstants`; `toCompassCalibration()`
+wraps them, exactly, for the Qt `CompassProcessor` and calibration dialog.
 Keeping calibration beside the raw compass record set lets the compass
 transforms derive heading, pitch, roll, and related streams without reparsing
 the SQLite JSON.
@@ -334,6 +369,12 @@ Saved preference files may contain:
 - `break_lines_at_gaps`: `false` when the user turned off View > Break Lines
   at Gaps; absent when it is on, the default.
 
+The file is written and read by the core's `PreferenceStore`
+(`core/preference_store.h`), which keeps Qt's layout byte for byte: four-space
+indents, keys in UTF-16 order, colors as `#rrggbb`. Colors may be edited by
+hand as any form `QColor` accepts: `#rgb`, `#rrggbb`, `#aarrggbb` (alpha
+ignored), 12- and 16-bit hex, or an SVG color name.
+
 Saved preference files intentionally do not contain y-axis ranges, sea-level
 pressure, declination, UTC offset, or battery-forward. Those are session or
 analysis context rather than durable tag-type display preferences.
@@ -369,9 +410,12 @@ Every compass view works from orientation quaternions. When the log carries a
 `compass_orientation` or `imu_compass_orientation` record set, written by
 `dataprocessing`, its stored quaternions are used; otherwise a CompassTag's raw
 `compass_raw` record set and calibration constants go through
-`CompassProcessor`. Either way the result is one list of quaternion samples:
-the plotted heading, pitch and roll come from `compassAnglesFromQuaternion()`,
-and the QML compass panel is handed the quaternion and computes its own angles.
+`compasscore::solveOrientation()`. Either way the result is one list of
+quaternion samples, the core compass transform's: the plotted heading, pitch
+and roll come from `compasscore::displayAngles()`
+([0040](../../../docs/decisions/0040-host-compass-display-angles-in-core.md)),
+and the QML compass panel is handed the quaternion and computes its own angles
+with Qt's same conversion.
 File Info names the source. Configuration > Declination adjusts only the
 displayed heading; Configuration > Battery Forward applies the matching 180
 degree display convention. The samples themselves remain magnetic-frame data.
@@ -400,19 +444,25 @@ kept equal until the user gives one of them an explicit range of its own.
 
 ## Adding A Display Transform
 
-Transforms are still hardcoded in `transforms.cpp` and
-`compass_transforms.cpp`, but they follow a consistent pattern:
+A transform is a class in `core/transforms.cpp`, registered in
+`TransformRegistry::makeDefault()` in the order it should run after a load:
 
-1. Check that required input streams or record sets exist.
-2. Prompt for transform-specific parameters.
-3. Read the inputs from `log_.data`: `addComputed()` over the stored floats
-   for a display transform, or `readStreamDoubles()` / `forEachRow()` when the
-   result must match the database.
-4. Build a derived `SensorStream` (metadata only), register its values with
-   `addComputed()` or `addDerived()` on an input's time axis, set its
-   `dataId`, and call `addOrReplaceStream()` so plotting, ranges, and context
-   menus update. A replaced stream's plot data is released there.
-5. Remove the derived stream when the transform action is unchecked.
+1. `applicable()`: whether its input streams or record sets exist.
+2. `parameters()`: a `ParameterSpec` for each parameter, whose value lives in
+   the `ViewModel` under the spec's id (`ViewModel::parameter()`); add the id
+   there. The Qt app's dialog and a web form are built from the spec.
+3. `run()`: read the inputs from the catalog's `sensordata::Log` --
+   `addComputed()` over the stored floats for a display transform, or
+   `TransformContext::readDoubles()` / `forEachRow()` when the result must
+   match the database -- build each output's `StreamMeta`, register its values
+   with `addComputed()` or `addDerived()` on an input's time axis, set its
+   `dataId`, and hand it to the sink with `publish()`.
+4. `update()`, optionally: remake only what one parameter affects (the
+   compass remakes only the heading).
+
+The Qt app then needs only a Configuration action that calls
+`askParameter()` and `setTransformParameter()`. Check new transforms in
+`transforms_check`, and changes to existing ones with `--dump-state`.
 
 Future transforms should keep computation separate from file loading. The
 SQLite loader should only normalize on-disk data into streams, record sets, and
@@ -437,6 +487,7 @@ sensorviz \
   --capture-screenshot <name> \
   --capture-suite <startup|menus|imutag|compasstag|bitprestag|all> \
   --screenshot-dir <dir> \
+  --dump-state <path> \
   --no-user-prompts
 ```
 
@@ -499,11 +550,41 @@ Only `imutag.db3` and `compasstag.db3` are committed under
 `host/docs/fixtures/sensorviz/`; there is no BitPresTag fixture, so the
 `bitprestag` suite needs a BitPresTag log supplied with `--load-log`.
 
+### State dump
+
+`--dump-state <path>`, with `--load-log`, is the check for changes that move
+behaviour without changing what the default screenshots show, such as moving
+the transforms into the core. After loading it takes the log through a fixed
+script -- sea-level pressure 1000 mbar, a pressure range of 950-1010 mbar
+(which links the altitude range), declination 12.5 degrees, battery forward
+toggled, gaps joined, UTC -5 for epoch-time logs, Reset Zoom, and last the
+activity filter at 600 s, which only the Qt app has -- making each change
+through the same functions the dialogs and menu actions call. After each step
+it writes the `PlotSpec` (numbers as hex floats), every stream's metadata and
+visibility with a hash of every sample the plot backend holds, the custom
+ranges, hover rows at 25 times, and a hash of the compass samples; then it
+exits.
+
+The script and the text are the core's (`core/state_dump.h`); the Qt app
+supplies a driver that makes the changes its own way (`state_dump.cpp`).
+`session_cli`, the Qt-free client in `test/`, runs the same script through
+`Session` alone, so its dump of a log is identical to the Qt app's up to the
+activity filter step ([test/README.md](test/README.md#session_cli)).
+
+The dump is deterministic, so a change that should alter nothing is checked
+with `diff`:
+
+```sh
+sensorviz --load-log host/docs/fixtures/sensorviz/compasstag.db3 \
+  --dump-state /tmp/before.txt --no-user-prompts
+# change, rebuild, dump to /tmp/after.txt
+diff /tmp/before.txt /tmp/after.txt
+```
+
 ## Known Limitations
 
-- Transform definitions are hardcoded in `transforms.cpp` and
-  `compass_transforms.cpp`, and transform parameter dialogs are simple
-  action-specific dialogs, not a common transform configuration framework.
+- The activity filter is the one transform not in the core's registry; it
+  stays in the Qt app with its own time-constant prompt.
 - Display preferences are loaded and stored manually from JSON files; there is
   no automatic recent or default preference file.
 - Current-view session parameters (graph title, ranges, sea-level pressure,
@@ -530,6 +611,7 @@ git diff --check
 When changing SQLite loading or stream metadata, also test with representative
 BitTag, BitPresTag, PresTag, CompassTag, and IMUTag logs.
 
-When changing plot policy or view state, run `plotspec_check` and
-`viewmodel_check` ([test/README.md](test/README.md)). Both link only
-`sensorviz_core`.
+When changing the core, run its four checks, `catalog_check`,
+`plotspec_check`, `preference_check` and `viewmodel_check`
+([test/README.md](test/README.md)). They link only `sensorviz_core` and
+build without Qt.

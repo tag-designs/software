@@ -55,9 +55,9 @@ const SensorStream *MainWindow::streamById(const QString &id) const
 
 const SensorRecordSet *MainWindow::recordSetById(const QString &id) const
 {
-    // Look up a raw multi-column record set loaded by sqlite_loader.cpp.
+    // Look up a raw multi-column record set loaded by sensorviz::openLog().
     for (const SensorRecordSet &record_set : log_.recordSets) {
-        if (record_set.id == id) {
+        if (record_set.id == id.toStdString()) {
             return &record_set;
         }
     }
@@ -68,8 +68,7 @@ bool MainWindow::isStreamVisible(const QString &id) const
 {
     // A transform keeps its output's visibility when it remakes it. Streams
     // without a visibility of their own (none yet, or derived) count as shown.
-    const SensorStream *stream = streamById(id);
-    return !stream || stream->derived || view_.isVisible(stream->id);
+    return session_.shown(id.toStdString());
 }
 
 void MainWindow::addOrReplaceStream(const SensorStream &stream, bool checked)
@@ -147,7 +146,7 @@ void MainWindow::syncStreamActions()
         action->setText(toQString(stream->label) + unitsSuffix(*stream));
         action->setChecked(view_.isVisible(stream->id));
     }
-    if (!log_.path.isEmpty()) {
+    if (!log_.path.empty()) {
         // Before any log the command stays visible but disabled, like the
         // rest of the startup menus.
         const bool any = !stream_actions_.isEmpty();
@@ -492,36 +491,6 @@ void MainWindow::addRangeAction(const SensorStream &stream)
     range_menu_->addAction(action);
 }
 
-QCPRange MainWindow::defaultRangeForStream(const SensorStream &stream) const
-{
-    // Default y-axis range priority:
-    // 1. fixed metadata range, such as activity 0-100 or voltage 0-5;
-    // 2. data-derived range with 5% padding.
-    // Custom user ranges are handled by setStreamRange()/rebuildPlot() before
-    // this helper is consulted.
-    if (stream.axisRange.enabled) {
-        return QCPRange(stream.axisRange.lower, stream.axisRange.upper);
-    }
-
-    sensorviz::PlotRange data_range;
-    if (!sensorviz::plotDataRange(log_.data.get(), stream.dataId, data_range)) {
-        return QCPRange(0.0, 1.0);
-    }
-
-    double lower = data_range.lower;
-    double upper = data_range.upper;
-    double span = upper - lower;
-    if (span <= 0.0) {
-        span = std::max(1.0, std::abs((lower + upper) * 0.5) * 0.1);
-        const double center = (lower + upper) * 0.5;
-        lower = center - span * 0.5;
-        upper = center + span * 0.5;
-    }
-
-    const double margin = span * 0.05;
-    return QCPRange(lower - margin, upper + margin);
-}
-
 void MainWindow::setStreamRangeFromAction()
 {
     // Slot used by persistent View > Ranges actions. QAction::data carries the
@@ -543,10 +512,7 @@ void MainWindow::setStreamRange(const QString &id)
         return;
     }
 
-    const std::string key = id.toStdString();
-    const QCPRange initial_range = view_.hasCustomRange(key)
-        ? QCPRange(view_.customRanges().at(key).lower, view_.customRanges().at(key).upper)
-        : defaultRangeForStream(*stream);
+    const sensorviz::PlotRange initial_range = session_.rangeForDialog(id.toStdString());
     double lower = initial_range.lower;
     double upper = initial_range.upper;
     const double span = std::max(1.0, upper - lower);
@@ -590,39 +556,18 @@ void MainWindow::setStreamRange(const QString &id)
         return;
     }
 
-    view_.setCustomRange(key, sensorviz::PlotRange{lower, upper}, true);
+    applyStreamRange(id, lower, upper);
+}
 
-    // Streams in one axis group share one axis, which takes the first
-    // member's custom range; give them all this one so the axis follows it.
-    const std::string group_key = sensorviz::axisGroupKey(*stream);
-    if (!group_key.empty()) {
-        for (const SensorStream &member : view_.streams()) {
-            if (member.id != key && sensorviz::axisGroupKey(member) == group_key) {
-                view_.setCustomRange(member.id, sensorviz::PlotRange{lower, upper}, true);
-            }
-        }
+void MainWindow::applyStreamRange(const QString &id, double lower, double upper)
+{
+    // Sets a range the user chose, and the ranges linked to it (the session's
+    // rules: the stream's axis group, altitude from pressure, activity and its
+    // filter).
+    if (!streamById(id)) {
+        return;
     }
-
-    // Altitude is derived directly from pressure. When the user changes the
-    // pressure range, keep altitude aligned unless they have explicitly set an
-    // altitude range of its own.
-    if ((id == "pressure" || id == "imu_pressure")
-        && hasStream("altitude")
-        && !view_.isExplicitRange("altitude")) {
-        view_.setCustomRange(
-            "altitude",
-            sensorviz::PlotRange{pressureToAltitude(upper), pressureToAltitude(lower)},
-            false);
-    }
-    if (id == "activity"
-        && hasStream("activity_lowpass")
-        && !view_.isExplicitRange("activity_lowpass")) {
-        view_.setCustomRange("activity_lowpass", sensorviz::PlotRange{lower, upper}, false);
-    } else if (id == "activity_lowpass"
-               && hasStream("activity")
-               && !view_.isExplicitRange("activity")) {
-        view_.setCustomRange("activity", sensorviz::PlotRange{lower, upper}, false);
-    }
+    session_.setStreamRange(id.toStdString(), lower, upper);
     refreshPlot();
 }
 

@@ -20,6 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Qt is needed only to deploy the Qt applications. A host build without them
+# (BUILD_QT_APPS=OFF) still includes this file on macOS for the code-signing
+# helpers below, which sign the command-line tools.
+if(BUILD_QT_APPS)
 find_package(Qt6Core REQUIRED)
 
 # Retrieve the absolute path to qmake and then use that path to find
@@ -40,6 +44,7 @@ endif()
 find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${_qt_bin_dir}")
 if(APPLE AND NOT MACDEPLOYQT_EXECUTABLE)
     message(FATAL_ERROR "macdeployqt not found in ${_qt_bin_dir}")
+endif()
 endif()
 
 if(APPLE AND NOT CODESIGN_EXECUTABLE)

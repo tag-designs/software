@@ -42,7 +42,9 @@ links to that component's license:
 | `tools/generate_qt_notices.py` | Regenerates `host/Qt-THIRD-PARTY-NOTICES.txt` |
 | `host/tagprogram-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Programmer (`tagprogram`), generated from its `Cargo.lock` |
 | `host/tagmonitor-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Monitor in Rust (`tagmonitor`), generated from its `Cargo.lock` |
-| `tools/generate_rust_notices.py` | Regenerates either Rust notices file; run it whenever that application's `Cargo.lock` changes |
+| `host/tagcalibrate-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Calibrator in Rust (`tagcalibrate`), generated from its `Cargo.lock` |
+| `host/tagview-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag View, sensorViz in Rust (`tagview`), generated from its `Cargo.lock` |
+| `tools/generate_rust_notices.py` | Regenerates a Rust notices file; run it whenever that application's `Cargo.lock` changes |
 
 Each `host/` and `embedded/` directory is self-contained, with relative links,
 so it is installed into the packages as it stands.

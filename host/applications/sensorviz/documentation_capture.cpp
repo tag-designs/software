@@ -138,8 +138,8 @@ void MainWindow::runDocumentationStartup()
     processGuiEventsFor(150);
 
     bool ok = true;
-    const bool capture_requested =
-        !options_.captureScreenshot.isEmpty() || !options_.captureSuite.isEmpty();
+    const bool capture_requested = !options_.captureScreenshot.isEmpty()
+        || !options_.captureSuite.isEmpty() || !options_.dumpStatePath.isEmpty();
 
     const QString requested_single = options_.captureScreenshot.trimmed().toLower();
     const QString requested_suite = options_.captureSuite.trimmed().toLower();
@@ -171,7 +171,7 @@ void MainWindow::runDocumentationStartup()
                 tr("Could not load preferences %1: %2")
                     .arg(options_.loadPreferencesPath, error));
             ok = false;
-        } else if (!log_.path.isEmpty()) {
+        } else if (!log_.path.empty()) {
             applyPreferencesForCurrentTag();
             qInfo().noquote() << "Loaded sensorViz preferences from"
                               << options_.loadPreferencesPath;
@@ -186,6 +186,13 @@ void MainWindow::runDocumentationStartup()
     if (ok && !options_.captureSuite.isEmpty()
         && requested_suite != QStringLiteral("startup")) {
         ok = captureDocumentationSuite(options_.captureSuite) && ok;
+    }
+    if (ok && !options_.dumpStatePath.isEmpty()) {
+        QString error;
+        if (!writeStateDump(options_.dumpStatePath, error)) {
+            reportDocumentationError(error);
+            ok = false;
+        }
     }
 
     if (capture_requested) {
@@ -330,7 +337,7 @@ bool MainWindow::captureDocumentationScreenshot(const QString &name)
         return ok;
     }
 
-    if (normalized != QStringLiteral("startup") && log_.path.isEmpty()) {
+    if (normalized != QStringLiteral("startup") && log_.path.empty()) {
         reportDocumentationError(
             tr("Screenshot %1 requires --load-log unless it is the startup view.").arg(name));
         return false;

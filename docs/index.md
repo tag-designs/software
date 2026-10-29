@@ -83,6 +83,7 @@ design document.
 - [0037. Host: Tag Monitor in Rust (tagmonitor-rs)](decisions/0037-host-tagmonitor-rs.md) *(decision)* — Tag Monitor was ported to Rust as tagmonitor-rs (shipped as tagmonitor beside qtmonitor) on Tag Programmer's pattern - a toolkit-free engine with a tag thread, a Tauri page on the shared kit, every dialog an engine prompt - with the configuration form reproducing qtmonitor's panels and Qt widget behaviour exactly, checked against all 710 probe goldens, and downloads written by the C++ writer through tagcore_c.
 - [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
 - [0039. Host: Tag Calibrator in Rust (tagcalibrate-rs)](decisions/0039-host-tagcalibrate-rs.md) *(decision)* — qtcalibrate was ported to Rust as tagcalibrate-rs on Tag Monitor's pattern, with its calibration not ported but moved into sensoranalysis's Qt-free C++ core - shown bit-identical to the Qt code at each step - and reached from Rust through tagcore_c and calibsession-rs; the engine reproduces qtcalibrate's replay log line for line.
+- [0040. Host: compass display angles are computed in the Qt-free core](decisions/0040-host-compass-display-angles-in-core.md) *(decision)* — Compass heading, pitch and roll are computed by compasscore::displayAngles() in sensoranalysis's Qt-free core - a bit-identical copy of Qt's toEulerAngles() and the historical relabelling - instead of by Qt at each display, so the sensorViz compass transform and non-Qt front ends show the same angles; this replaces only that part of 0030, whose quaternion-only storage stands.
 
 ### Investigations
 
@@ -394,7 +395,7 @@ design document.
 
 ### Applications / sensorviz / Proposals
 
-- [A Toolkit-Neutral Core for sensorviz](../host/applications/sensorviz/design/proposals/toolkit-neutral-core.md) *(proposal, proposed)* — Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation.
+- [A Toolkit-Neutral Core for sensorviz](../host/applications/sensorviz/design/proposals/toolkit-neutral-core.md) *(proposal, proposed)* — Split sensorviz into a Qt-free core (Session, StreamCatalog, ViewModel, TransformRegistry, PreferenceStore over sensordata) and thin front ends, so the Qt app and a possible webview app are both clients of one implementation; all phases are built, with the as-built differences and checks recorded per phase.
 - [Decimating Backend Measurements](../host/applications/sensorviz/design/proposals/decimating-backend-results.md) *(results)* — Measured memory, load time and view-query cost of current sensorviz and of a decimating-backend prototype on a synthetic full-NAND IMUTag log (19.7M accel+gyro samples).
 - [Decimating Data Backend for sensorviz](../host/applications/sensorviz/design/proposals/decimating-backend.md) *(proposal, proposed)* — A Qt-free decimating data backend for sensorviz - one-pass columnar loading, a min/max pyramid and per-view M4 envelopes - with a memory and performance analysis of the worst-case IMUTag log (4.8 GB originally, about 1 GB proposed); all phases are built.
 - [SensorViz Documentation Screenshot Capture Plan](../host/applications/sensorviz/design/proposals/screenshot-capture-plan.md) *(proposal, historical)* — Plan, largely built, for fixture logs and capture hooks that generate sensorviz user-guide screenshots.
@@ -402,15 +403,15 @@ design document.
 
 ### Applications / sensorviz / test
 
-- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run plotspec_check and viewmodel_check, the Qt-free checks of sensorViz's plot policy and view state against the committed fixtures.
+- [sensorViz Offline Checks](../host/applications/sensorviz/test/README.md) — How to build and run catalog_check, plotspec_check, preference_check, transforms_check and viewmodel_check, the Qt-free checks of sensorViz's log reader, plot policy, preference files, display transforms and view state, and session_cli, sensorViz without Qt.
 
 ### Applications / sensorviz-rs
 
-- [sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — sensorViz in Rust, to replace the Qt sensorviz - so far the plot spike, which settled the renderer (uPlot in the page, from M4 envelopes) and printing (jsPDF, 300 dpi); how to run it and what it showed.
+- [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 
 ### Applications / tagcalibrate-rs
 
-- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, and how it is checked against qtcalibrate; CMake and packaging are still to come.
+- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate, shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, how it is packaged, and how it is checked against qtcalibrate.
 - [Tag Calibrator (Rust): UI/engine contract](../host/applications/tagcalibrate-rs/design/ui-engine-contract.md) — The contract between Tag Calibrator's Rust engine and its web UI - the threads, where the calibration runs, the view state the engine publishes, the prompts that replace qtcalibrate's dialogs, and the commands and queries the UI sends.
 
 ### Applications / tagmonitor-rs
@@ -479,6 +480,10 @@ design document.
 
 - [SensorUI Library](../host/libraries/sensorui/README.md) — Contents of the sensorui library of reusable Qt and QML sensor widgets.
 
+### Libraries / sensorviz-session-rs
+
+- [sensorviz-session (Rust)](../host/libraries/sensorviz-session-rs/README.md) — sensorviz-session, a safe Rust wrapper over sensorViz's Qt-free core through tagcore_c's svz_* functions - so a Rust program opens and shows a tag log exactly as the Qt sensorViz does; building, the API, the JSON the interface carries, and the tests.
+
 ### Libraries / tagcore
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
@@ -514,8 +519,12 @@ design document.
 
 ### Libraries / tagcore-c
 
-- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer and the calibration session for Rust and other languages - the tlw_* and tcs_* functions, the shared and static builds, symbol hiding, and how it was checked.
-- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer, and calibrate through the C++ calibration session - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, tagcore_c, SqliteTagLogWriter, CalibrationSession), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_* and svz_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer, calibrate through the C++ calibration session, and view logs through sensorViz's core - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, sensorviz-session-rs, tagcore-c-sys, tagcore_c, SqliteTagLogWriter, CalibrationSession, sensorviz::Session), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
+
+### Libraries / tagcore-c-sys
+
+- [tagcore-c-sys (Rust)](../host/libraries/tagcore-c-sys/README.md) — tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*, svz_*), so the safe wrappers over it - taglogwriter, calibsession, sensorviz-session - can be used together in one program.
 
 ### Libraries / tagcore-rs
 

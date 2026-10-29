@@ -96,7 +96,14 @@ int main(int argc, char *argv[])
         QStringLiteral("no-user-prompts"),
         QStringLiteral("Report automation failures without opening modal prompts."));
 
+    QCommandLineOption dump_state_option(
+        QStringLiteral("dump-state"),
+        QStringLiteral("After loading, apply a fixed script of setting changes, write the "
+                       "plot state after each to a file, and exit."),
+        QStringLiteral("path"));
+
     parser.addOption(load_log_option);
+    parser.addOption(dump_state_option);
     parser.addOption(load_preferences_option);
     parser.addOption(capture_screenshot_option);
     parser.addOption(capture_suite_option);
@@ -114,6 +121,7 @@ int main(int argc, char *argv[])
     options.captureSuite = parser.value(capture_suite_option);
     options.screenshotDir = parser.value(screenshot_dir_option);
     options.noUserPrompts = parser.isSet(no_user_prompts_option);
+    options.dumpStatePath = parser.value(dump_state_option);
 
     MainWindow window(options);
     window.show();

@@ -17,7 +17,8 @@ the library together.
 
 ## Building
 
-The crate links a library that CMake builds, so `cargo build` alone is not
+The crate links a library that CMake builds, through
+[`tagcore-c-sys`](../tagcore-c-sys/README.md), so `cargo build` alone is not
 enough:
 
 ```sh
@@ -34,9 +35,10 @@ copied into every one, and a static executable needs nothing at run time.
 Linux and Windows link the shared library: the tools share one install
 directory, so one copy serves them all. With the shared library, a binary
 finds it through an rpath. That rpath is
-set by `build.rs` for this crate's own examples and tests. For a dependent
-binary, its own package's build script sets it, from
-`DEP_TAGCORE_C_LIB_DIR`; see `commandline-rs/build.rs`. On Windows the DLL
+set by `tagcore-c-sys`'s build script for this crate's own examples and
+tests. For a dependent binary, its own package's build script sets it, from
+`DEP_TAGCORE_C_LIB_DIR`, which Cargo gives to direct dependents of
+`tagcore-c-sys`; see `commandline-rs/build.rs`. On Windows the DLL
 must sit beside the executable or on `PATH`.
 
 ## Using it

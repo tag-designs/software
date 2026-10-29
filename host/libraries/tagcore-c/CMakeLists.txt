@@ -2,14 +2,15 @@
   tagcore_c: a C interface to the C++ host libraries, built as one shared
   library for programs in other languages (the Rust tag-dwnld first).
 
-  It exports only the tlw_* functions in taglogwriter_c.h and the tcs_*
-  functions in calibsession_c.h. The C++ writer
-  (tagcore), libprotobuf with abseil, and SQLite are linked statically inside
-  it with every other symbol hidden, as is sensoranalysis's Qt-free
-  calibration core behind tcs_*, so a caller links one library and its
-  own copies of those cannot clash. tagcore is linked whole as a static
-  archive, so the writer's reference to Tag (SqliteTagLogWriter::writeHeader
-  (Tag &)) also brings in the link layer and libusb; they are never called.
+  It exports only the tlw_* functions in taglogwriter_c.h, the tcs_*
+  functions in calibsession_c.h and the svz_* functions in sensorviz_c.h.
+  The C++ writer (tagcore), libprotobuf with abseil, and SQLite are linked
+  statically inside it with every other symbol hidden, as are
+  sensoranalysis's Qt-free calibration core behind tcs_* and sensorViz's
+  Qt-free core behind svz_*, so a caller links one library and its own
+  copies of those cannot clash. tagcore is linked whole as a static archive,
+  so the writer's reference to Tag (SqliteTagLogWriter::writeHeader(Tag &))
+  also brings in the link layer and libusb; they are never called.
 
   Built when BUILD_TAGCORE_C or BUILD_RUST_APPS is ON. Tag Monitor in Rust
   (host/applications/tagmonitor-rs) writes its downloads through it and installs
@@ -19,6 +20,7 @@
 
 add_library(tagcore_c SHARED
   calibsession_c.cc calibsession_c.h
+  sensorviz_c.cc sensorviz_c.h
   taglogwriter_c.cc taglogwriter_c.h)
 
 # A shared library can only take in position-independent code, and on Linux
@@ -26,12 +28,13 @@ add_library(tagcore_c SHARED
 # Windows has no such rule). vcpkg's static libraries are built PIC already,
 # so only our own need it. The release workflow's Linux build failed here
 # ("relocation R_X86_64_PC32 ... recompile with -fPIC") until they were.
-set_target_properties(tagcore proto sensoranalysis_core PROPERTIES
+set_target_properties(tagcore proto sensoranalysis_core sensoranalysis_core_json
+  sensordata sensorviz_core PROPERTIES
   POSITION_INDEPENDENT_CODE ON)
 target_compile_features(tagcore_c PRIVATE cxx_std_20)
 target_compile_definitions(tagcore_c PRIVATE TAGCORE_C_BUILDING)
 target_include_directories(tagcore_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(tagcore_c PRIVATE tagcore sensoranalysis_core)
+target_link_libraries(tagcore_c PRIVATE tagcore sensoranalysis_core sensorviz_core)
 
 # Hide everything but the tlw_* and tcs_* entry points. Windows DLLs export only what is
 # marked dllexport, so they need no list.

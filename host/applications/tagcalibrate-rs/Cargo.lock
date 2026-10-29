@@ -377,6 +377,9 @@ dependencies = [
 [[package]]
 name = "calibsession"
 version = "0.1.0"
+dependencies = [
+ "tagcore-c-sys",
+]
 
 [[package]]
 name = "camino"
@@ -3646,6 +3649,10 @@ dependencies = [
  "rusb",
  "serde_json",
 ]
+
+[[package]]
+name = "tagcore-c-sys"
+version = "0.1.0"
 
 [[package]]
 name = "tao"

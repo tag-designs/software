@@ -3,18 +3,17 @@
 # through the tagcore_c library (host/libraries/tagcore-c), so a Rust program
 # calibrates exactly as qtcalibrate does.
 #
-# Needs libtagcore_c built by CMake (-DBUILD_TAGCORE_C=ON); build.rs finds it
-# through TAGCORE_C_LIB_DIR. See README.md.
+# Needs libtagcore_c built by CMake (-DBUILD_TAGCORE_C=ON); tagcore-c-sys
+# links it, found through TAGCORE_C_LIB_DIR. See README.md.
 [package]
 name = "calibsession"
 version = "0.1.0"
 edition = "2024"
 description = "The tag calibration session and compass angles, through the C++ core (tagcore_c)"
 publish = false
-# Lets a dependent's build script read DEP_TAGCORE_C_LIB_DIR, to set an rpath.
-# Only one crate in a build may declare this, so a program cannot depend on
-# both this and taglogwriter; see README.md.
-links = "tagcore_c"
+
+[dependencies]
+tagcore-c-sys = { version = "0.1.0", path = "../tagcore-c-sys" }
 
 [dev-dependencies]
 serde_json = "1.0.154"

@@ -75,8 +75,8 @@ macOS build carries no build-tree path.
 | Platform | Installed as | Notes |
 | --- | --- | --- |
 | macOS | `tag_tools/tagmonitor.app` | Bundle assembled by CMake: binary, `Info.plist` from `cmake/Info.plist.in`, `icon.icns`; signed by `macos_codesign_bundle`. |
-| Windows | `tag_tools/tagmonitor.exe` (launcher), `tag_tools/lib/tagmonitor.exe`, `tag_tools/lib/tagcore_c.dll` | `tagcore_c.dll` uses the MSVC runtime DLLs, which the package keeps in `tag_tools/lib`, and Windows finds a program's DLLs only beside it. So the program lives there and the GUI launcher starts it, as for the Qt applications. Uses the WebView2 runtime. |
-| Linux | `tag_tools/bin/tagmonitor`, `tag_tools/lib/libtagcore_c.so` | Links the system WebKitGTK 4.1. |
+| Windows | `tag_tools/tagmonitor.exe` (launcher), `tag_tools/lib/tagmonitor.exe`, `tag_tools/lib/tagcore_c.dll` | `tagcore_c.dll` (installed once by `host/CMakeLists.txt` for every Rust application that links it) uses the MSVC runtime DLLs, which the package keeps in `tag_tools/lib`, and Windows finds a program's DLLs only beside it. So the program lives there and the GUI launcher starts it, as for the Qt applications. Uses the WebView2 runtime. |
+| Linux | `tag_tools/bin/tagmonitor`, `tag_tools/lib/libtagcore_c.so` | Links the system WebKitGTK 4.1. `libtagcore_c.so` is installed once, by `host/CMakeLists.txt`, for every Rust application that links it. |
 
 The bundle is named `tagmonitor.app`, beside qtmonitor's `qtmonitor.app`;
 the window and the bundle's display name are "Tag Monitor". The app's
