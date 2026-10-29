@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  const params = Kit.setupPage("sensorViz");
+  const params = Kit.setupPage("Tag View");
   const $ = (id) => document.getElementById(id);
   let engine = null;
   /** The engine's last view state. */
@@ -320,7 +320,7 @@
 
   async function about() {
     const a = await engine.query("about", {});
-    Kit.alert("About sensorViz", "sensorViz", `SQLite sensor log visualization tool, version ${a ? a.version : ""}.`);
+    Kit.alert("About Tag View", "Tag View", `sensorViz in Rust: the tag SQLite log viewer, version ${a ? a.version : ""}.`);
   }
   async function userGuide() {
     const a = await engine.query("about", {});
@@ -423,7 +423,7 @@
     if (s.hasCompass && (!old || old.path !== s.path)) showCompass(null);
     else if (s.hasCompass && JSON.stringify(old.parameters) !== JSON.stringify(s.parameters)) showCompass(compassTime);
     $("empty").hidden = !!s.hasLog;
-    Kit.setTitle(s.fileName ? `sensorViz - ${s.fileName}` : "sensorViz");
+    Kit.setTitle(s.fileName ? `Tag View - ${s.fileName}` : "Tag View");
     showStatus();
     if (s.message && s.message.seq > messageSeq) {
       messageSeq = s.message.seq;

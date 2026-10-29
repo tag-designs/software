@@ -1,10 +1,10 @@
 # The Tauri shell: runs the engine, forwards the page's commands and queries
 # to it, and emits its events to the page. All behaviour is in ../core.
 [package]
-name = "sensorviz"
+name = "tagview"
 version = "1.0.0"
 edition = "2024"
-description = "sensorViz: view downloaded tag logs"
+description = "Tag View (sensorViz in Rust): view downloaded tag logs"
 publish = false
 
 [dependencies]

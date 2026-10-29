@@ -1,10 +1,11 @@
-//! sensorViz's Tauri shell.
+//! Tag View's Tauri shell: sensorViz in Rust, installed as `tagview` beside
+//! the Qt `sensorviz` while both ship.
 //!
 //! It starts the engine, installs the logger, and connects the page to the
 //! engine: two commands (`command`, `query`) in, two events (`state`, `log`)
 //! out. Everything else is the engine's (`../core`) or the page's (`../ui`).
 //!
-//! `sensorviz [log.db3] [--load-preferences prefs.json]` opens a log and
+//! `tagview [log.db3] [--load-preferences prefs.json]` opens a log and
 //! loads a preference file at startup, as the Qt app's `--load-log` and
 //! `--load-preferences` do. `SENSORVIZ_PREVIEW_DIALOG=visible` (or `sides`,
 //! `colors`, `calibration`) opens that dialog once the log is drawn, for
@@ -94,7 +95,7 @@ fn startup_files() -> (Option<PathBuf>, Option<PathBuf>) {
 ///
 /// # Panics
 ///
-/// Panics (with "error while running sensorViz") if Tauri fails to start or
+/// Panics (with "error while running Tag View") if Tauri fails to start or
 /// `setup` fails, e.g. when no home directory can be found.
 fn main() {
     let (initial_log, initial_preferences) = startup_files();
@@ -124,5 +125,5 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![command, query])
         .run(tauri::generate_context!())
-        .expect("error while running sensorViz");
+        .expect("error while running Tag View");
 }

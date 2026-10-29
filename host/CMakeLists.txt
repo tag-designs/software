@@ -534,10 +534,22 @@ if(host_install_targets)
     TARGETS ${host_install_targets})
 endif()
 
-# Tag Programmer and Tag Monitor in Rust. Added last so their install rules
-# run after the Qt deployment steps above, which scan the installed
-# executables.
+# The Rust applications: Tag Programmer, Tag Monitor, Tag Calibrator and Tag
+# View (sensorViz in Rust). Added last so their install rules run after the
+# Qt deployment steps above, which scan the installed executables.
 if(BUILD_RUST_APPS)
   add_subdirectory(applications/tagprogram-rs)
   add_subdirectory(applications/tagmonitor-rs)
+  add_subdirectory(applications/tagcalibrate-rs)
+  add_subdirectory(applications/sensorviz-rs)
+  # The shared tagcore_c that Tag Monitor, Tag Calibrator and Tag View link
+  # on Linux and Windows, installed once: beside the programs in
+  # tag_tools/lib on Windows, where a program finds its DLLs only beside it;
+  # in tag_tools/lib on Linux, where their rpath points. macOS links the
+  # static archive into each executable.
+  if(WIN32)
+    install(TARGETS tagcore_c RUNTIME DESTINATION "${HOST_WINDOWS_APPDIR}")
+  elseif(NOT APPLE)
+    install(TARGETS tagcore_c LIBRARY DESTINATION "${HOST_BUNDLE_INSTALL_DIR}/lib")
+  endif()
 endif()

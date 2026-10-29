@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>Tag View</string>
+  <key>CFBundleExecutable</key>
+  <string>tagview</string>
+  <key>CFBundleIconFile</key>
+  <string>icon.icns</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.tagdesigns.tagview</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>Tag View</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@ULTRALIGHT_PACKAGE_VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@ULTRALIGHT_PACKAGE_VERSION@</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>@CMAKE_OSX_DEPLOYMENT_TARGET@</string>
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>Tag View opens logs and preference files, and saves PDFs and preferences, wherever you choose them, including your Documents folder.</string>
+  <key>NSDesktopFolderUsageDescription</key>
+  <string>Tag View opens logs and preference files, and saves PDFs and preferences, wherever you choose them, including the Desktop.</string>
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>Tag View opens logs and preference files you choose from the Downloads folder.</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>

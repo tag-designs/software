@@ -407,11 +407,11 @@ design document.
 
 ### Applications / sensorviz-rs
 
-- [sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — sensorViz in Rust, the Tauri port of the Qt sensorviz over sensorViz's C++ core - the engine, the shell and the uPlot page; how to build and run it, how it differs from the Qt app, what is still to do, and what the plot spike that chose uPlot and jsPDF showed.
+- [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 
 ### Applications / tagcalibrate-rs
 
-- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate to be shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, and how it is checked against qtcalibrate; CMake and packaging are still to come.
+- [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate, shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, how it is packaged, and how it is checked against qtcalibrate.
 - [Tag Calibrator (Rust): UI/engine contract](../host/applications/tagcalibrate-rs/design/ui-engine-contract.md) — The contract between Tag Calibrator's Rust engine and its web UI - the threads, where the calibration runs, the view state the engine publishes, the prompts that replace qtcalibrate's dialogs, and the commands and queries the UI sends.
 
 ### Applications / tagmonitor-rs

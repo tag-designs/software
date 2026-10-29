@@ -269,7 +269,7 @@
     function view() {
       const log = sim.log;
       return {
-        title: "sensorViz",
+        title: "Tag View",
         hasLog: !!log,
         fileName: log ? log.name : null,
         status: sim.status,
@@ -329,7 +329,7 @@
       // A fixed compass reading, so the panel shows in a preview.
       if (name === "compass") return log && sim.logName === "compasstag"
         ? { time: 0, heading: 5, roll: 10, pitch: -5, dip: 38, field: 61, gravity: 984, declination: 0, batteryForward: true } : null;
-      if (name === "about") return { title: "sensorViz", version: "mock", userGuide: null };
+      if (name === "about") return { title: "Tag View", version: "mock", userGuide: null };
       return null;
     }
 

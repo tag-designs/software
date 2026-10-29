@@ -2,7 +2,7 @@ jsPDF 2.5.2
 ===========
 
 License:    MIT
-Used in:    sensorviz-rs (Export PDF, in host/applications/sensorviz-rs/ui/jspdf.umd.min.js; not yet shipped)
+Used in:    tagview (Export PDF, in host/applications/sensorviz-rs/ui/jspdf.umd.min.js)
 Source:     https://github.com/parallax/jsPDF
 
 Copyright

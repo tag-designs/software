@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Generate the notices for the Rust crates compiled into a Rust application.
 
-Tag Programmer (``host/applications/tagprogram-rs``) and Tag Monitor
-(``host/applications/tagmonitor-rs``) are each one executable with
+Tag Programmer (``host/applications/tagprogram-rs``), Tag Monitor
+(``host/applications/tagmonitor-rs``), Tag Calibrator
+(``host/applications/tagcalibrate-rs``) and Tag View
+(``host/applications/sensorviz-rs``) are each one executable with
 every crate it depends on compiled in, and most of those licenses (MIT, BSD,
 ISC, Zlib, Apache-2.0's NOTICE clause) require their notice to accompany a
 binary distribution. This script asks cargo for the application's dependency
@@ -19,6 +21,10 @@ and installed into the packages. Regenerate it whenever the application's
         tagprogram > LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt
     LICENSES/tools/generate_rust_notices.py host/applications/tagmonitor-rs \\
         tagmonitor > LICENSES/host/tagmonitor-THIRD-PARTY-NOTICES.txt
+    LICENSES/tools/generate_rust_notices.py host/applications/tagcalibrate-rs \\
+        tagcalibrate > LICENSES/host/tagcalibrate-THIRD-PARTY-NOTICES.txt
+    LICENSES/tools/generate_rust_notices.py host/applications/sensorviz-rs \\
+        tagview > LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt
 
 Like the Qt notices it errs towards listing too much: dependencies for every
 target platform are included, though a given package compiles only its own.

@@ -1,10 +1,10 @@
 ---
 type: readme
 status: current
-summary: sensorViz in Rust, the Tauri port of the Qt sensorviz over sensorViz's C++ core - the engine, the shell and the uPlot page; how to build and run it, how it differs from the Qt app, what is still to do, and what the plot spike that chose uPlot and jsPDF showed.
+summary: Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 ---
 
-# sensorViz (Rust)
+# Tag View: sensorViz (Rust)
 
 The Rust/Tauri sensorViz, step 4 of
 [leaving Qt](../sensorviz/design/proposals/leaving-qt.md): the Qt sensorviz's
@@ -32,7 +32,7 @@ cmake -DBUILD_TAGCORE_C=ON <build-dir>
 cmake --build <build-dir> --target tagcore_c_static tagcore_c
 export TAGCORE_C_LIB_DIR=<build-dir>/Release/lib
 cargo test -p sensorviz-core
-cargo run -p sensorviz -- [log.db3] [--load-preferences prefs.json]
+cargo run -p tagview -- [log.db3] [--load-preferences prefs.json]
 ```
 
 The page also opens as a file in a browser, against the mock:
@@ -77,7 +77,18 @@ direction of the sample at or after the hover time (the engine's `compass`
 query, from the core's display angles, with declination and battery
 direction applied as MyCompass.qml applies them).
 
-Still to do (step 4b): screenshots, packaging and the user manual page.
+## Packaging
+
+CMake builds it with `BUILD_RUST_APPS` (`CMakeLists.txt`, as Tag Monitor's:
+see its [build and packaging](../tagmonitor-rs/design/build-and-packaging.md))
+and installs it as **`tagview`** -- `tag_tools/tagview.app` ("Tag View") on
+macOS, `tag_tools/tagview.exe` on Windows, `tag_tools/bin/tagview` on Linux --
+beside the Qt `sensorviz`, which keeps its name while both ship (owner's
+decision, 2026-10-28). The window and bundle are "Tag View"; the app and
+crates in this directory keep the sensorViz names. Its crates' notices are
+`LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt`.
+
+Still to do: screenshots for the manual, and its page.
 
 ## The plot spike (2026-10-28)
 

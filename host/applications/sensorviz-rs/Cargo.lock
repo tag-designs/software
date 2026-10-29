@@ -2941,19 +2941,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sensorviz"
-version = "1.0.0"
-dependencies = [
- "log",
- "sensorviz-core",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
-]
-
-[[package]]
 name = "sensorviz-core"
 version = "1.0.0"
 dependencies = [
@@ -3362,6 +3349,19 @@ dependencies = [
 [[package]]
 name = "tagcore-c-sys"
 version = "0.1.0"
+
+[[package]]
+name = "tagview"
+version = "1.0.0"
+dependencies = [
+ "log",
+ "sensorviz-core",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+]
 
 [[package]]
 name = "tao"

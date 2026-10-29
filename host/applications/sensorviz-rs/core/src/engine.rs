@@ -524,7 +524,7 @@ impl Viewer {
             },
             "compass" => self.compass_at(arg_f64(args, "t")),
             "about" => json!({
-                "title": "sensorViz",
+                "title": "Tag View",
                 "version": env!("CARGO_PKG_VERSION"),
                 "userGuide": self.config.user_guide_url,
                 "previewDialog": self.config.preview_dialog,
@@ -625,7 +625,7 @@ impl Viewer {
         };
         let path = catalog["path"].as_str().unwrap_or("").to_owned();
         json!({
-            "title": "sensorViz",
+            "title": "Tag View",
             "hasLog": has_log,
             "path": path,
             "fileName": Path::new(&path).file_name().map(|n| n.to_string_lossy().into_owned()),

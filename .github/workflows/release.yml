@@ -151,8 +151,9 @@ jobs:
           restore-keys: |
             vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_BASELINE }}-
 
-      # Tag Programmer (host/applications/tagprogram-rs) and Tag Monitor
-      # (host/applications/tagmonitor-rs) are built by cargo.
+      # Tag Programmer, Tag Monitor, Tag Calibrator and Tag View
+      # (host/applications/{tagprogram,tagmonitor,tagcalibrate,sensorviz}-rs)
+      # are built by cargo.
       # The runners carry rustup; this pins the toolchain to current stable
       # (the crates need Rust 1.85 or newer, for edition 2024) and caches the
       # dependency builds under the CMake build tree's cargo directory.
@@ -165,6 +166,8 @@ jobs:
           workspaces: |
             host/applications/tagprogram-rs -> ../../../build/host/applications/tagprogram-rs/cargo
             host/applications/tagmonitor-rs -> ../../../build/host/applications/tagmonitor-rs/cargo
+            host/applications/tagcalibrate-rs -> ../../../build/host/applications/tagcalibrate-rs/cargo
+            host/applications/sensorviz-rs -> ../../../build/host/applications/sensorviz-rs/cargo
 
       - name: Set up Python
         uses: actions/setup-python@v6
