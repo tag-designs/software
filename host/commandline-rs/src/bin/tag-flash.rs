@@ -47,6 +47,10 @@ use tagprobe::{Driver, Erase, Progress};
 use tagprogram_core::model::elf::Elf;
 use tagprogram_core::model::flashplan::{self, plan_flash};
 
+/// How long to wait after a command that attaches before exiting, so the
+/// next tool can attach to the base.
+const SETTLE: std::time::Duration = std::time::Duration::from_secs(1);
+
 /// program, erase and read a tag's flash through a base
 #[derive(Parser)]
 #[command(name = "tag-flash")]
@@ -174,7 +178,8 @@ fn connect(wanted: Option<&str>, image_flash: Option<u32>) -> Result<Target, Str
     let base = find_base(wanted)?;
     let driver = Driver::for_identity(tagprobe::identify(&base).as_deref());
     let found = tagprobe::connect_check(&base)?;
-    let chip = tagprobe::chip_for(found.device_id, found.flash_bytes.or(image_flash))?;
+    let flash = tagprobe::flash_bytes(&base, driver, found.device_id)?;
+    let chip = tagprobe::chip_for(found.device_id, flash.or(image_flash))?;
     log::debug!("{chip} through {} ({})", base.serial, driver.name());
     Ok(Target { base, driver, chip })
 }
@@ -220,7 +225,8 @@ fn info(wanted: Option<&str>) -> Result<(), String> {
         Driver::for_identity(identity.as_deref()).name()
     );
     println!("Device:   0x{:03x} {}", found.device_id, found.device_name);
-    if let Some(bytes) = found.flash_bytes {
+    let driver = Driver::for_identity(identity.as_deref());
+    if let Some(bytes) = tagprobe::flash_bytes(&base, driver, found.device_id)? {
         println!("Flash:    {} KB", bytes / 1024);
     }
     match found.voltage {
@@ -344,6 +350,7 @@ fn main() -> ExitCode {
         LevelFilter::Error
     });
     let base = cli.base.as_deref();
+    let attaches = !matches!(cli.command, Command::List);
     let result = match &cli.command {
         Command::List => list(),
         Command::Info => info(base),
@@ -355,6 +362,13 @@ fn main() -> ExitCode {
             output,
         } => read(base, *address, *length, output),
     };
+    if attaches {
+        // A tool that attaches the moment this one has let the base go can
+        // fail its first debug read (SWD status 0x81); a second later it
+        // does not. On a BitTag, 3 of 5 back-to-back `tag-info` runs failed
+        // after `program`, and 6 of 6 passed with this pause.
+        std::thread::sleep(SETTLE);
+    }
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

@@ -198,13 +198,6 @@ pub struct Connect {
     /// Target supply voltage measured by the base, in volts; `None` if the
     /// base's voltage command failed.
     pub voltage: Option<f32>,
-    /// The part's internal flash in bytes, from its flash size register, for
-    /// [`chip_for`]; `None` when it was not read.
-    ///
-    /// Read on the STM32L4 only, where it tells an L432KB (128 KB, the
-    /// UIUCTag) from an L432KC (256 KB) running the same image. It is `None`
-    /// on the STM32U375, whose tags are all 1 MB parts.
-    pub flash_bytes: Option<u32>,
 }
 
 /// Returns the family name for a DBGMCU device ID, as STM32CubeProgrammer
@@ -282,11 +275,6 @@ pub fn connect_check(usbdev: &UsbDev) -> Result<Connect, String> {
     let id = [L4_DBGMCU_IDCODE, U3_DBGMCU_IDCODE]
         .iter()
         .find_map(|a| link.read_debug32(*a).filter(|v| plausible(*v)));
-    let flash_bytes = id
-        .filter(|idcode| (idcode & 0xfff) as u16 == DEV_L432)
-        .and_then(|_| link.read_debug32(L4_FLASHSIZE))
-        .map(|kb| (kb & 0xffff) * 1024)
-        .filter(|&bytes| bytes > 0);
     link.assert_reset(true);
     link.detach();
     match id {
@@ -296,7 +284,6 @@ pub fn connect_check(usbdev: &UsbDev) -> Result<Connect, String> {
                 device_id,
                 device_name: device_name(device_id),
                 voltage,
-                flash_bytes,
             })
         }
         None => Err("No STM32 target found".into()),
@@ -579,6 +566,31 @@ fn clear_l4_pempty(core: &mut probe_rs::Core<'_>) -> Result<(), String> {
         return Err("FLASH_SR.PEMPTY is still set; the tag would boot its ROM bootloader".into());
     }
     Ok(())
+}
+
+/// Reads the part's internal flash size from its flash size register, for
+/// [`chip_for`]: `Some(bytes)` on an STM32L4, `None` for any other device.
+///
+/// On the STM32L4 it tells an L432KB (128 KB, the UIUCTag) from an L432KC
+/// (256 KB) running the same image. The STM32U375 tags are all 1 MB parts,
+/// so nothing is read there. The register is in system memory, which does
+/// not answer while the core is held in reset, so this is a probe-rs session
+/// ([`read_memory`] on the smaller L432KB target), not part of
+/// [`connect_check`]: one more attach under reset.
+///
+/// # Errors
+///
+/// A message if the attach or the read fails, or the register reads 0.
+pub fn flash_bytes(usbdev: &UsbDev, driver: Driver, device_id: u16) -> Result<Option<u32>, String> {
+    if device_id != DEV_L432 {
+        return Ok(None);
+    }
+    let bytes = read_memory(usbdev, driver, "STM32L432KB", u64::from(L4_FLASHSIZE), 4)?;
+    let kb = u32::from(u16::from_le_bytes([bytes[0], bytes[1]]));
+    if kb == 0 {
+        return Err("the flash size register reads 0".into());
+    }
+    Ok(Some(kb * 1024))
 }
 
 /// Mass-erases the tag's internal flash and programs nothing (STM32_Programmer_CLI's

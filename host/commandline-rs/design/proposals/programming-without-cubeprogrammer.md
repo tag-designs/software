@@ -87,7 +87,7 @@ dfu-util -a 0 -i 0 -s 0x08000000:leave -D base.bin
 
 ### How STM32 DFU differs from plain DFU
 
-The ROM bootloader on the base MCUs (STM32F042, STM32C071, STM32L432) speaks
+The ROM bootloader on the base MCUs (STM32F042, STM32L432) speaks
 **DfuSe**, ST's extension of DFU 1.1, announced as bcdDFU `0x011A`. Plain DFU
 writes a stream to an implied location; DfuSe adds commands carried in
 DFU_DNLOAD block 0:
@@ -156,13 +156,32 @@ the blocks. Against the `dfu-util` line above:
 
 ## Progress
 
-- `tag-flash` is built; not yet run against a tag.
+- `tag-flash` ran on 2026-10-30 against a BitTag V6 (UUID
+  `2039354D30315012005E0068`, STM32L432KC, 3.22 V from the base) on that
+  `bittag-base-v7`, with the fw-v0.6 BitTag image the tag was already running
+  (`56e5e6a0`, verified against its manifest):
+  - `read` of the image's 33,996 bytes was identical to the release `.bin`;
+  - `program` (image pages) took 2.5 s, and the tag then ran its image, IDLE,
+    self-tests `ALL_PASSED`;
+  - 14 mass-erase cycles (`program --erase plan`, which is a mass erase for
+    this pre-layout image) and 4 separate `erase`-then-`program` cycles all
+    left the tag running its image; `FLASH_SR` read 0 (PEMPTY clear). Bench
+    check 2 is done for this BitTag.
+  - A tool attaching the moment `tag-flash` let the base go could fail its
+    first debug read (SWD status `0x81`): 3 of 5 back-to-back `tag-info` runs
+    did, and the tag answered at the next attach. `tag-flash` now waits 1 s
+    before exiting after any command that attaches; 4 of 4 then passed.
+  - The connect check cannot read the L4's flash size register, because
+    system memory does not answer while the core is held in reset, so
+    `tagprobe::flash_bytes()` reads it in a probe-rs session (one more
+    attach). It read 256 KB.
 - `base-flash` is built, and on 2026-10-30 wrote a `bittag-base-v7`
   (STM32F042, serial `8009001A5556431520303537`) its own image (`be8f9062`)
   over DFU: the bootloader's string parsed, the 19,548-byte image was written,
   *leave* started it without a replug, and the base came back as an ST-LINK
-  reporting the image's identity. Bench check 4 is done for the F042; the C071
-  and L432 bases remain.
+  reporting the image's identity. Bench check 4 is done for the F042; the L432
+  base remains. (`tag-base-c071` was an abandoned development base and is
+  not a target.)
 - `nusb`'s futures need a Tokio reactor when awaited (its `tokio` feature is
   on through `dfu-nusb`), so `tagprobe::dfu` opens the device on a
   single-threaded Tokio runtime. The download itself is synchronous.
@@ -180,7 +199,7 @@ the firmware that wrote the log, flash, self-test):
    bootloader 3 times in 4).
 3. **`--erase keep-calibration`** on a CompassTag: calibration survives,
    configuration and log do not.
-4. **`base-flash` on each base MCU** (F042, C071, L432): the image starts after
+4. **`base-flash` on each base MCU** (F042, L432): the image starts after
    *leave* without a power cycle, and the identity string names the new commit.
 5. **Windows and Linux** for `base-flash` (driver and udev, below).
 
