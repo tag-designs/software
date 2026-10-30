@@ -448,6 +448,10 @@ design document.
 
 - [Tag command-line tools (Rust)](../host/commandline-rs/README.md) — Rust ports of the tag command-line tools built on tagcore-rs - which tools exist, which are not ported yet and why, how they differ from the C++, and how they were checked.
 
+### commandline-rs / Proposals
+
+- [Programming Without STM32CubeProgrammer](../host/commandline-rs/design/proposals/programming-without-cubeprogrammer.md) *(proposal, proposed)* — Two Rust command-line tools that remove STM32CubeProgrammer from the build and the bench tools - tag-flash, which programs, erases and reads tags through a base on the tagprobe library Tag Programmer already uses, and base-flash, which programs bases through the STM32 ROM bootloader's DfuSe interface with dfu-core and dfu-nusb.
+
 ### Common
 
 - [Host Common Qt Helpers](../host/common/README.md) — Small shared Qt helpers used by host applications through the host_common target.

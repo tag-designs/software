@@ -10,7 +10,8 @@ Rust ports of the tools in [`../commandline`](../commandline/README.md),
 built on the Rust tag interface in
 [`../libraries/tagcore-rs`](../libraries/tagcore-rs/README.md). Each tool
 keeps its C++ name, options, messages and exit status, so scripts can use
-either. The crate is not wired into the CMake build.
+either. The ports are not wired into the CMake build; `tag-flash` and
+`base-flash` (below) are, and ship in the host tools package.
 
 ```sh
 cargo build --release            # binaries in target/release/
@@ -63,6 +64,48 @@ directory, and finds it through an rpath to that directory. Messages and exit
 status follow the C++; the format check that names an unsupported tag type
 reports the writer's own message ("Could not open output: SQLite log output
 does not support tag type ...").
+
+## Programming without STM32CubeProgrammer
+
+`tag-flash` has no C++ counterpart. It programs, erases and reads a tag's
+internal flash through a base, on [`tagprobe`](../libraries/tagprobe-rs/README.md),
+the probe-rs library Tag Programmer uses, and replaces STM32_Programmer_CLI in
+the CMake `-download` and `-erase` targets, `flash_release.py` and
+`decode_scratchpad.py --read`. The plan, and the bench checks still to run,
+are in [the proposal](design/proposals/programming-without-cubeprogrammer.md).
+
+CMake builds both tools with cargo as the `flash_tools` target
+([`cmake/RustFlashTools.cmake`](../../cmake/RustFlashTools.cmake)), which the
+embedded programming targets depend on, and with `BUILD_RUST_APPS` installs
+them with the host tools ([`CMakeLists.txt`](CMakeLists.txt)). The embedded
+targets fall back to STM32_Programmer_CLI where cargo is missing and the tools
+are not on `PATH`, or when configured with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`.
+
+```sh
+tag-flash list                                  # bases: serial, bus:device, identity
+tag-flash -b <serial> info                      # device, flash size, voltage
+tag-flash -b <serial> program BitTag.elf        # image pages only, as -download
+tag-flash -b <serial> program BitTag.elf --erase plan   # Tag Programmer's erase plan
+tag-flash -b <serial> erase                     # mass erase
+tag-flash -b <serial> read 0x2003E000 8192 -o scratch.bin
+```
+
+Unlike the other tools, `-b` takes the base's USB serial, not `bus:device`.
+Every command but `list` resets the tag.
+
+`base-flash` programs a **base** through its MCU's ROM bootloader over USB
+DFU, and is what the CMake `-dfu` targets run. Plug the base in with its
+button held, then:
+
+```sh
+base-flash list                                 # devices in DFU mode
+base-flash program bittag-base-v7.elf           # write, leave DFU, confirm
+base-flash program --wait 120 bittag-base-v7.elf  # start first, then plug in
+```
+
+It succeeds only when the base comes back as an ST-LINK reporting the
+identity string the image carries. On Linux it needs the `0483:df11` line of
+`host/linux/70-ultralight-tags.rules`.
 
 ## Not ported yet
 

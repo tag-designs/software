@@ -41,12 +41,24 @@ Every base presents as an ST-LINK V2 (`0483:3748`).
 | `list()` | Bases on USB. |
 | `identify(&base)` | The base's identity string, or `None` for older firmware. |
 | `connect_check(&base)` | `Connect { device_id, device_name, voltage }`, attaching under reset. |
+| `flash_bytes(&base, driver, device_id)` | An STM32L4's flash size from its register (one more attach), for `chip_for`; `None` on other parts. |
 | `chip_for(device_id, flash_bytes)` | The probe-rs target: `STM32L432KC` or `STM32U375RG`. |
 | `program(&base, driver, chip, elf, erase, on_progress)` | Erase (`ImagePages`, `Range`, `All`), program and verify in one session. Then clear `FLASH_SR.PEMPTY` on an L4 if it is set, and start the image from its vector table. |
+| `erase_all(&base, driver, chip)` | Mass erase and nothing else (`-e all`). An L4 then boots its ROM bootloader until programmed. |
 | `read_memory(&base, driver, chip, addr, len)` | Read target memory under reset. |
 
 Every call attaches **under reset**, so it ends whatever the tag was doing.
 That is right for programming, and wrong for observing a running tag.
+
+## Bases over DFU
+
+The `dfu` module programs a **base** through its MCU's ROM bootloader
+(`0483:df11`, ST's DfuSe dialect of DFU), on `dfu-core` and `dfu-nusb`:
+`dfu::list()`, `dfu::flatten_elf()` (the ELF's load image, as
+`objcopy -O binary`) and `dfu::program()`, which writes alternate setting 0
+only after checking it is internal flash, then leaves DFU mode
+(`dfu-util -s 0x08000000:leave`). `base-flash` in `host/commandline-rs` is its
+command line.
 
 ## Tests
 

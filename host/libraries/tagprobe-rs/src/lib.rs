@@ -24,9 +24,10 @@
 //!
 //! - [`list`] and [`identify`] never touch nRST or SWD, so the tag keeps
 //!   running.
-//! - [`connect_check`], [`program`] and [`read_memory`] all hold the tag in
-//!   reset to attach. A running log is ended, and the tag reboots its firmware
-//!   afterwards. [`program`] also rewrites internal flash.
+//! - [`connect_check`], [`program`], [`erase_all`] and [`read_memory`] all
+//!   hold the tag in reset to attach. A running log is ended, and the tag
+//!   reboots its firmware afterwards. [`program`] also rewrites internal
+//!   flash, and [`erase_all`] empties it.
 //!
 //! # Threading
 //!
@@ -57,6 +58,7 @@
 //! # Ok::<(), String>(())
 //! ```
 
+pub mod dfu;
 pub mod fieldsafe;
 
 use std::path::Path;
@@ -100,6 +102,9 @@ pub const DEV_U375: u16 = 0x454;
 const L4_DBGMCU_IDCODE: u32 = 0xE004_2000;
 /// Address of `DBGMCU_IDCODE` on the STM32U3.
 const U3_DBGMCU_IDCODE: u32 = 0xE004_4000;
+/// Address of the STM32L4 flash size data register, `FLASHSIZE_BASE`: the
+/// part's internal flash in KB, in the low 16 bits.
+const L4_FLASHSIZE: u32 = 0x1FFF_75E0;
 /// Address of the STM32L4 flash status register, `FLASH_SR`.
 const L4_FLASH_SR: u64 = 0x4002_2010;
 /// `FLASH_SR.PEMPTY` (bit 17) on the STM32L4.
@@ -561,6 +566,49 @@ fn clear_l4_pempty(core: &mut probe_rs::Core<'_>) -> Result<(), String> {
         return Err("FLASH_SR.PEMPTY is still set; the tag would boot its ROM bootloader".into());
     }
     Ok(())
+}
+
+/// Reads the part's internal flash size from its flash size register, for
+/// [`chip_for`]: `Some(bytes)` on an STM32L4, `None` for any other device.
+///
+/// On the STM32L4 it tells an L432KB (128 KB, the UIUCTag) from an L432KC
+/// (256 KB) running the same image. The STM32U375 tags are all 1 MB parts,
+/// so nothing is read there. The register is in system memory, which does
+/// not answer while the core is held in reset, so this is a probe-rs session
+/// ([`read_memory`] on the smaller L432KB target), not part of
+/// [`connect_check`]: one more attach under reset.
+///
+/// # Errors
+///
+/// A message if the attach or the read fails, or the register reads 0.
+pub fn flash_bytes(usbdev: &UsbDev, driver: Driver, device_id: u16) -> Result<Option<u32>, String> {
+    if device_id != DEV_L432 {
+        return Ok(None);
+    }
+    let bytes = read_memory(usbdev, driver, "STM32L432KB", u64::from(L4_FLASHSIZE), 4)?;
+    let kb = u32::from(u16::from_le_bytes([bytes[0], bytes[1]]));
+    if kb == 0 {
+        return Err("the flash size register reads 0".into());
+    }
+    Ok(Some(kb * 1024))
+}
+
+/// Mass-erases the tag's internal flash and programs nothing (STM32_Programmer_CLI's
+/// `-e all`).
+///
+/// `chip` comes from [`chip_for`]. The tag is held in reset to attach and is
+/// left with empty flash: an STM32L4 then latches FLASH_SR.PEMPTY at its next
+/// reset and boots its ROM bootloader until it is programmed. Calibration
+/// stored in internal flash is destroyed; the external flash log is not
+/// touched.
+///
+/// # Errors
+///
+/// A message if the attach or the erase fails.
+pub fn erase_all(usbdev: &UsbDev, driver: Driver, chip: &str) -> Result<(), String> {
+    let mut session = session(usbdev, driver, chip)?;
+    flashing::erase_all(&mut session, &mut FlashProgress::empty(), false)
+        .map_err(|e| format!("Erase failed: {e}"))
 }
 
 /// Reads `len` bytes of tag memory at `addr` in a session under reset (the

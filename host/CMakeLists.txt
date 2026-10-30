@@ -535,13 +535,16 @@ if(host_install_targets)
 endif()
 
 # The Rust applications: Tag Programmer, Tag Monitor, Tag Calibrator and Tag
-# View (sensorViz in Rust). Added last so their install rules run after the
+# View (sensorViz in Rust), and the Rust programming tools. Added last so their install rules run after the
 # Qt deployment steps above, which scan the installed executables.
 if(BUILD_RUST_APPS)
   add_subdirectory(applications/tagprogram-rs)
   add_subdirectory(applications/tagmonitor-rs)
   add_subdirectory(applications/tagcalibrate-rs)
   add_subdirectory(applications/sensorviz-rs)
+  # tag-flash and base-flash, which program tags and bases without
+  # STM32CubeProgrammer.
+  add_subdirectory(commandline-rs)
   # The shared tagcore_c that Tag Monitor, Tag Calibrator and Tag View link
   # on Linux and Windows, installed once: beside the programs in
   # tag_tools/lib on Windows, where a program finds its DLLs only beside it;

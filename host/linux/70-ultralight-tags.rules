@@ -26,3 +26,6 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374e", TAG+="uaccess
 SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374f", TAG+="uaccess"
 # STLINK-V3PWR
 SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3757", TAG+="uaccess"
+# STM32 ROM bootloader in DFU mode, for base-flash: a base plugged in with its
+# button held. Not an ST-LINK, so not in isSTlink's list.
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="df11", TAG+="uaccess"
