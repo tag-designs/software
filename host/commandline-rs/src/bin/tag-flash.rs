@@ -79,6 +79,7 @@ enum Command {
     /// Program an image, verify it and start it
     Program {
         /// The firmware's .elf
+        #[arg(value_parser = tag_tools::parse_elf_path)]
         elf: PathBuf,
         /// What to erase before programming
         #[arg(long, value_enum, default_value_t = EraseArg::Image)]

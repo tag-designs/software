@@ -172,6 +172,25 @@ pub fn parse_bus_device(text: &str) -> Option<(u8, u8)> {
     ))
 }
 
+/// Parses an `.elf` argument for clap, refusing a directory.
+///
+/// Reading a directory fails on Windows with "Access is denied", which reads
+/// like a USB permission problem; this names the mistake instead. A missing
+/// file is left to the reader, whose error already says so.
+///
+/// # Errors
+///
+/// A message when `text` names a directory.
+pub fn parse_elf_path(text: &str) -> Result<std::path::PathBuf, String> {
+    let path = std::path::PathBuf::from(text);
+    if path.is_dir() {
+        return Err(format!(
+            "{text} is a directory; give the .elf file inside it"
+        ));
+    }
+    Ok(path)
+}
+
 /// The protobuf name of a tag state number, such as `"IDLE"`, or the number
 /// itself when it has no name, as `TagState_Name()` prints it.
 pub fn state_name(state: i32) -> String {

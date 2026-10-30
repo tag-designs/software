@@ -69,6 +69,7 @@ enum Command {
     /// Write a base image through DFU and start it
     Program {
         /// The base firmware's .elf
+        #[arg(value_parser = tag_tools::parse_elf_path)]
         elf: PathBuf,
         /// The DFU device's serial, as `base-flash list` prints it; needed
         /// only when more than one device is in DFU mode
