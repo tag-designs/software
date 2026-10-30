@@ -72,10 +72,14 @@ endif()
 
 # Always run: Cargo decides what is out of date. --locked builds exactly the
 # committed Cargo.lock.
+# The executable is then copied into bin/ beside the C++ programs, from
+# where the Linux rpath ($ORIGIN/../lib) reaches tagcore_c in lib/.
 add_custom_target(
   tagcalibrate ALL
   COMMAND ${CMAKE_COMMAND} -E env ${_cargo_env}
           "${CARGO_EXECUTABLE}" build --release --locked -p tagcalibrate
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_tagcalibrate_bin}" "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   BYPRODUCTS "${_tagcalibrate_bin}"
   COMMENT "Building Tag Calibrator (tagcalibrate-rs) with cargo"

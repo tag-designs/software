@@ -57,12 +57,16 @@ function(rust_flash_tools out_found)
         list(APPEND _env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
       endif()
       # Always run: cargo decides what is out of date. --locked builds
-      # exactly the committed Cargo.lock.
+      # exactly the committed Cargo.lock. Both are then copied into bin/
+      # beside the C++ tools.
       add_custom_target(
         flash_tools
         COMMAND ${CMAKE_COMMAND} -E env ${_env}
                 "${FLASH_TOOLS_CARGO}" build --release --locked
                 --bin tag-flash --bin base-flash
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_tag_flash}" "${_base_flash}"
+                "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/host/commandline-rs"
         BYPRODUCTS "${_tag_flash}" "${_base_flash}"
         COMMENT "Building tag-flash and base-flash with cargo"
