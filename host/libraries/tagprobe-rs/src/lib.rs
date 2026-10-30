@@ -58,6 +58,7 @@
 //! # Ok::<(), String>(())
 //! ```
 
+pub mod dfu;
 pub mod fieldsafe;
 
 use std::path::Path;

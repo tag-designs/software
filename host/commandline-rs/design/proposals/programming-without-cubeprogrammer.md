@@ -149,10 +149,23 @@ the blocks. Against the `dfu-util` line above:
   `find_program`, prefers them, and falls back to STM32_Programmer_CLI while
   both exist. A cache variable `TAG_FLASH_BASE` replaces
   `STM32_PROGRAMMER_PROBE`.
-- **Linux udev rule.** `70-ultralight-tags.rules` lacks `0483:df11`, so DFU
-  needs root today. Add it with the ST-LINK products.
+- **Linux udev rule.** `70-ultralight-tags.rules` now grants `0483:df11`, so
+  `base-flash` needs no root.
 - **`BUILD_SOURCES.md`, `docs/build/toolchain-inventory.md` and
   `docs/bench/`** name the new tools where they now name STM32CubeProgrammer.
+
+## Progress
+
+- `tag-flash` is built; not yet run against a tag.
+- `base-flash` is built, and on 2026-10-30 wrote a `bittag-base-v7`
+  (STM32F042, serial `8009001A5556431520303537`) its own image (`be8f9062`)
+  over DFU: the bootloader's string parsed, the 19,548-byte image was written,
+  *leave* started it without a replug, and the base came back as an ST-LINK
+  reporting the image's identity. Bench check 4 is done for the F042; the C071
+  and L432 bases remain.
+- `nusb`'s futures need a Tokio reactor when awaited (its `tokio` feature is
+  on through `dfu-nusb`), so `tagprobe::dfu` opens the device on a
+  single-threaded Tokio runtime. The download itself is synchronous.
 
 ## Bench checks before CubeProgrammer is dropped
 
@@ -177,8 +190,8 @@ the firmware that wrote the log, flash, self-test):
   bootloader. STM32CubeProgrammer installs a driver for it; whether that is
   WinUSB, and what a machine without CubeProgrammer needs (Zadig, or an INF we
   ship), is to be checked.
-- **Whether *leave* starts the image on every bootloader version.** Some ST
-  bootloaders need the Set Address Pointer sent again before the zero-length
+- **Whether *leave* starts the image on every bootloader version.** It does on
+  the F042 (above). Some ST bootloaders need the Set Address Pointer sent again before the zero-length
   download, as `dfu-util` does for `:leave`. If one does, `base-flash` sends it
   itself rather than relying on `dfu-core`'s pointer.
 - **Whether `flash_release.py` should become a `tag-flash release <dir>`

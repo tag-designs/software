@@ -85,6 +85,20 @@ tag-flash -b <serial> read 0x2003E000 8192 -o scratch.bin
 Unlike the other tools, `-b` takes the base's USB serial, not `bus:device`.
 Every command but `list` resets the tag.
 
+`base-flash` programs a **base** through its MCU's ROM bootloader over USB
+DFU, replacing the CMake `-dfu` targets. Plug the base in with its button
+held, then:
+
+```sh
+base-flash list                                 # devices in DFU mode
+base-flash program bittag-base-v7.elf           # write, leave DFU, confirm
+base-flash program --wait 120 bittag-base-v7.elf  # start first, then plug in
+```
+
+It succeeds only when the base comes back as an ST-LINK reporting the
+identity string the image carries. On Linux it needs the `0483:df11` line of
+`host/linux/70-ultralight-tags.rules`.
+
 ## Not ported yet
 
 These need a library that the Rust crate does not have yet:

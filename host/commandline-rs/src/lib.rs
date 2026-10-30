@@ -84,6 +84,9 @@ pub fn init_logging(args: &BaseArgs) {
 pub fn init_logging_at(level: LevelFilter) {
     env_logger::Builder::new()
         .filter_level(level)
+        // nusb logs every USB device's missing properties at DEBUG on each
+        // enumeration, which buries the tools' own lines.
+        .filter_module("nusb", level.min(LevelFilter::Warn))
         .format(|buf, record| {
             writeln!(
                 buf,

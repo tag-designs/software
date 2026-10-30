@@ -4,7 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Base programming over the STM32 ROM bootloader's DfuSe interface (dfu.rs);
+# the synchronous path is used. dfu-nusb insists on naming a runtime for its
+# async path; tokio is already here through probe-rs.
+dfu-core = "0.11.1"
+dfu-nusb = "0.2.0"
+tokio = { version = "1", features = ["rt", "net", "time"] }
 log = "0.4.34"
+nusb = "0.2.9"
+object = { version = "0.39.1", default-features = false, features = ["read_core", "elf", "std"] }
 probe-rs = "0.32.0"
 tagcore = { version = "0.1.0", path = "../tagcore-rs" }
 tracing = "0.1.44"

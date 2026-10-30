@@ -49,6 +49,16 @@ Every base presents as an ST-LINK V2 (`0483:3748`).
 Every call attaches **under reset**, so it ends whatever the tag was doing.
 That is right for programming, and wrong for observing a running tag.
 
+## Bases over DFU
+
+The `dfu` module programs a **base** through its MCU's ROM bootloader
+(`0483:df11`, ST's DfuSe dialect of DFU), on `dfu-core` and `dfu-nusb`:
+`dfu::list()`, `dfu::flatten_elf()` (the ELF's load image, as
+`objcopy -O binary`) and `dfu::program()`, which writes alternate setting 0
+only after checking it is internal flash, then leaves DFU mode
+(`dfu-util -s 0x08000000:leave`). `base-flash` in `host/commandline-rs` is its
+command line.
+
 ## Tests
 
 `cargo test` checks the chip and driver selection without hardware. The
