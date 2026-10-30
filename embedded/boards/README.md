@@ -23,7 +23,7 @@ generate_configured_board_files(board-example
 Older board directories still use `generate_board_files()` with a source-tree
 `cfg/board.chcfg`, `cfg/board.fmpp`, and local FreeMarker templates. Both paths
 write generated board files into the CMake build tree. Boards used by a
-distributed tag also commit their generated files in `<board>/generated/` and
+distributed tag or base also commit their generated files in `<board>/generated/` and
 regenerate them only when a recorded input changes (see
 [Tag Firmware Build Reproducibility](../../docs/build/firmware-reproducibility.md));
 otherwise the committed files are copied to
@@ -40,7 +40,7 @@ submodule, then `$CHIBIOS_DIR` from the environment. See
 
 These are the board targets used by active tag and base firmware targets.
 
-"Committed" marks the boards behind a distributed tag, whose generated files are
+"Committed" marks the boards behind a distributed tag or base, whose generated files are
 in `<board>/generated/`.
 
 | Board directory | Board target | Generated board include | Generator | Firmware consumers |
@@ -55,11 +55,11 @@ in `<board>/generated/`.
 | `Stop1Test` | `board-stop1test` | none: `project.mk` adds `$(BOARDDIR)/Stop1Test` to `ALLINC` and compiles its `board.c` | `generate_configured_board_files()` | Tags: `stop1test` |
 | `UIUCTag` | `board-uiuctag` | `UIUCTag/board.mk` | `generate_configured_board_files()`, committed | Tags: `UIUCTag` |
 | `bittag-base-jlcpcb-v3` | `board-bittag-base-jlcpcb-v3` | `bittag-base-jlcpcb-v3/board.mk` | `generate_board_files()` | Bases: `bittag-base-jlcpcb-v3` |
-| `bittag-base-v7` | `board-bittag-base-v7` | `BITTAG_BASE_V7/board.mk` | `generate_configured_board_files()` | Bases: `bittag-base-v7` |
+| `bittag-base-v7` | `board-bittag-base-v7` | `BITTAG_BASE_V7/board.mk` | `generate_configured_board_files()`, committed | Bases: `bittag-base-v7` |
 | `tag-base-c071-v1` | `board-tag-base-c071v1` | `ST_NUCLEO64_C071RB/board.mk` | `generate_configured_board_files()` | Bases: `tag-base-c071` |
 | `tag-breakout-base-jlcpcb32-v1` | `board-tag-breakout-base-jlcpcb32-v1` | `tag-breakout-base-jlcpcb32-v1/board.mk` | `generate_board_files()` | Bases: `tag-breakout-base-jlcpcb32-v1` |
-| `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` | `generate_configured_board_files()` | Bases: `tag-breakout-base-l432-v1` |
-| `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` | `generate_configured_board_files()` | Bases: `tag-breakout-base-l432-u375-1v8` |
+| `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` | `generate_configured_board_files()`, committed | Bases: `tag-breakout-base-l432-v1` |
+| `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` | `generate_configured_board_files()`, committed | Bases: `tag-breakout-base-l432-u375-1v8` |
 
 The firmware side declares the dependency in its `CMakeLists.txt` and includes
 the generated board fragment in `project.mk`:

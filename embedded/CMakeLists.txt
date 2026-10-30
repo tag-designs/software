@@ -124,11 +124,23 @@ function(add_embedded_target name proto_target)
   # without it are development prototypes -- they must still compile, but no
   # promise is made that a build from a future checkout reproduces them.  The
   # remaining arguments are passed through to make as before.
+  #
+  # A base (a target under embedded/bases) may be marked DISTRIBUTE too, so its
+  # image is built, archived and installed beside the tags' for base-flash. It
+  # is recorded as a base rather than a tag: it carries no tag identity record
+  # and no protocol variant, and only its board joins the reproducibility set.
 
   cmake_parse_arguments(ARG "DISTRIBUTE" "" "" ${ARGN})
   set(make_vars ${ARG_UNPARSED_ARGUMENTS})
 
-  if(ARG_DISTRIBUTE)
+  set(_is_base FALSE)
+  if(CMAKE_CURRENT_SOURCE_DIR MATCHES "/embedded/bases/[^/]+$")
+    set(_is_base TRUE)
+  endif()
+
+  if(ARG_DISTRIBUTE AND _is_base)
+    set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_BASES ${name})
+  elseif(ARG_DISTRIBUTE)
     set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_TAGS ${name})
     if(NOT proto_target STREQUAL "0")
       set_property(GLOBAL APPEND PROPERTY ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS
@@ -231,10 +243,11 @@ function(add_embedded_target name proto_target)
   if(REPRODUCIBLE_BUILD)
     set(_manifest_reproducible "true")
   endif()
-  # A distributed image must name the tag type and board it is for, read from
-  # its identity record; a prototype without a record still gets a manifest.
+  # A distributed tag image must name the tag type and board it is for, read
+  # from its identity record; a prototype without a record still gets a
+  # manifest. A base names itself in its identity string instead.
   set(_manifest_require_identity "false")
-  if(ARG_DISTRIBUTE)
+  if(ARG_DISTRIBUTE AND NOT _is_base)
     set(_manifest_require_identity "true")
   endif()
 
@@ -502,6 +515,8 @@ add_subdirectory(loaders)
 #
 
 get_property(_distributed_tags GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_TAGS)
+get_property(_distributed_bases GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_BASES)
+list(SORT _distributed_bases)
 get_property(_distributed_protos GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_PROTO_TARGETS)
 list(REMOVE_DUPLICATES _distributed_protos)
 list(SORT _distributed_tags)
@@ -517,6 +532,10 @@ else()
   list(JOIN _distributed_protos " " _distributed_protos_text)
   message(STATUS "Distributed tags: ${_distributed_tags_text}")
   message(STATUS "Distributed proto targets: ${_distributed_protos_text}")
+  if(_distributed_bases)
+    list(JOIN _distributed_bases " " _distributed_bases_text)
+    message(STATUS "Distributed bases: ${_distributed_bases_text}")
+  endif()
 
   # One rule that builds everything that ships.  The per-tag targets are not in
   # ALL, and install(FILES) of the firmware artifacts creates no build
@@ -529,7 +548,8 @@ else()
 
   get_property(_distributed_loaders GLOBAL PROPERTY ULTRALIGHT_DISTRIBUTED_LOADERS)
   add_custom_target(distributed_firmware
-                    DEPENDS ${_distributed_tags} ${_distributed_loaders})
+                    DEPENDS ${_distributed_tags} ${_distributed_bases}
+                            ${_distributed_loaders})
 
   # The installed firmware and loaders carry their licenses: the firmware
   # images are conveyed under GPL-3.0 and every component's notice must travel
@@ -568,18 +588,27 @@ else()
       "-DREGENERATE_SOURCES=ON once, and commit what lands in it.")
   endif()
 
-  # Boards behind distributed tags.
+  # Boards behind distributed tags and bases.
   #
-  # A tag names its board in project.mk, as `include $(BOARDDIR)/<board>/board.mk`,
-  # so the distributed board set is derived from the distributed tags the same
-  # way the proto set is -- read out of the file that already decides it rather
-  # than listed again here.
+  # A tag or base names its board in project.mk, as
+  # `include $(BOARDDIR)/<board>/board.mk`, so the distributed board set is
+  # derived from the distributed targets the same way the proto set is -- read
+  # out of the file that already decides it rather than listed again here.
+
+  set(_distributed_project_mks "")
+  foreach(_tag IN LISTS _distributed_tags)
+    list(APPEND _distributed_project_mks "tags/${_tag}")
+  endforeach()
+  foreach(_base IN LISTS _distributed_bases)
+    list(APPEND _distributed_project_mks "bases/${_base}")
+  endforeach()
 
   set(_distributed_boards "")
-  foreach(_tag IN LISTS _distributed_tags)
-    set(_project_mk "${CMAKE_CURRENT_SOURCE_DIR}/tags/${_tag}/project.mk")
+  foreach(_target_dir IN LISTS _distributed_project_mks)
+    get_filename_component(_tag "${_target_dir}" NAME)
+    set(_project_mk "${CMAKE_CURRENT_SOURCE_DIR}/${_target_dir}/project.mk")
     if(NOT EXISTS "${_project_mk}")
-      message(WARNING "No project.mk for distributed tag ${_tag}; its board cannot be determined.")
+      message(WARNING "No project.mk for distributed target ${_tag}; its board cannot be determined.")
       continue()
     endif()
     file(READ "${_project_mk}" _project_mk_text)
@@ -587,7 +616,7 @@ else()
            _board_includes "${_project_mk_text}")
     if(NOT _board_includes)
       message(WARNING
-        "Could not determine the board for distributed tag ${_tag} from "
+        "Could not determine the board for distributed target ${_tag} from "
         "${_project_mk}; expected an `include $(BOARDDIR)/<board>/board.mk` line.")
       continue()
     endif()
@@ -613,8 +642,8 @@ else()
   if(_missing_boards)
     list(JOIN _missing_boards " " _missing_boards_text)
     reproducibility_problem(
-      "These boards are used by tags marked DISTRIBUTE but do not commit their "
-      "generated files: ${_missing_boards_text}. Create the matching "
+      "These boards are used by tags or bases marked DISTRIBUTE but do not "
+      "commit their generated files: ${_missing_boards_text}. Create the matching "
       "embedded/boards/<board>/generated directory, configure with "
       "-DREGENERATE_SOURCES=ON once, and commit what lands in it.")
   endif()
@@ -626,9 +655,9 @@ else()
   if(_extra_boards)
     list(JOIN _extra_boards " " _extra_boards_text)
     message(WARNING
-      "These boards commit generated files but no tag marked DISTRIBUTE uses "
-      "them: ${_extra_boards_text}. Delete the generated directory, or mark the "
-      "tag that uses the board DISTRIBUTE.")
+      "These boards commit generated files but no tag or base marked DISTRIBUTE "
+      "uses them: ${_extra_boards_text}. Delete the generated directory, or mark "
+      "the tag or base that uses the board DISTRIBUTE.")
   endif()
 
   set(_extra ${_committed_protos})

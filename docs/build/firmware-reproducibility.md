@@ -65,7 +65,11 @@ tiers:
 The distributed set is `BitTag`, `CompassTagAT25`, `IMUTagNandBmp581`, `PresTag`
 and `UIUCTag` -- five of the fourteen configured. `BitTag-legacy` is not
 marked: it does not currently build, which is exactly the kind of thing the tier
-is meant to keep out of a release.
+is meant to keep out of a release. Three bases are marked too --
+`bittag-base-v7`, `tag-breakout-base-l432-u375-1v8` and
+`tag-breakout-base-l432-v1` -- so their images are released for `base-flash`;
+their boards are committed like the tags', but a base carries no tag identity
+record and no proto variant.
 
 **Nothing downstream is declared twice.** The proto-c variants and the boards
 that need the same treatment are *derived* from the tag markings:
