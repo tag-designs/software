@@ -98,7 +98,7 @@ function(generate_configured_board_files name)
   #
   # A board declares that it commits them by having a generated/ directory, the
   # same way a proto-c variant does.  Boards used only by prototype tags keep
-  # generating at build time; the five behind distributed tags do not, so an
+  # generating at build time; those behind distributed tags and bases do not, so an
   # ordinary firmware build needs neither fmpp nor a Java runtime.
   #
   # Consumption is unchanged either way: the firmware makefiles reach the board

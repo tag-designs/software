@@ -47,9 +47,14 @@ include $(BOARDDIR)/<BOARD_TYPE>/board.mk
 ```
 
 Generated firmware artifacts are written under the CMake build tree, not the
-source tree. Base targets are not installed or packaged:
-`add_embedded_target()` installs only targets passed `DISTRIBUTE`, and no base
-passes it.
+source tree. The bases passed `DISTRIBUTE` -- `bittag-base-v7`,
+`tag-breakout-base-l432-u375-1v8` and `tag-breakout-base-l432-v1` -- are built
+by `distributed_firmware`, installed beside the tags' firmware, and archived by
+the firmware release workflow, so their images can be written with
+`base-flash` (`host/commandline-rs`) on a machine that does not build
+firmware. Like a distributed tag, each commits its board's generated files.
+Unlike one, a base needs no tag identity record: its identity string names
+it. The other bases are not installed or packaged.
 
 ## Active Bases
 

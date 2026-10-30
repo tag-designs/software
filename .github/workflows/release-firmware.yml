@@ -1,6 +1,6 @@
 name: Release tag firmware
 
-# Builds and publishes firmware for the tags marked DISTRIBUTE, on its own tag
+# Builds and publishes firmware for the tags and bases marked DISTRIBUTE, on its own tag
 # namespace: `fw-v1.0` and the like, separate from the `v3.0` tags that release
 # the host tools.
 #
@@ -123,9 +123,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p firmware
-          for d in build/embedded/tags/*/build; do
+          # Tags and the bases marked DISTRIBUTE, whose images base-flash
+          # writes, side by side as firmware/<target>.
+          for d in build/embedded/tags/*/build build/embedded/bases/*/build; do
             tag="$(basename "$(dirname "$d")")"
-            # Only tags that produced a manifest were built, which is the
+            # Only targets that produced a manifest were built, which is the
             # distributed set; the rest have no build directory at all.
             [ -f "$d/$tag-build-manifest.json" ] || continue
             mkdir -p "firmware/$tag"
@@ -179,6 +181,6 @@ jobs:
           else
             gh release create "$TAG" \
               --title "$TAG" \
-              --notes "Tag firmware for the distributed targets. Each image ships with its build manifest, which records the commit, the ChibiOS commit and branch, the toolchain and nanopb versions, and the SHA-256 of the image itself. These images have not been bench-tested for power behaviour by CI; that is a separate step before flight." \
+              --notes "Tag and base firmware for the distributed targets. Each image ships with its build manifest, which records the commit, the ChibiOS commit and branch, the toolchain and nanopb versions, and the SHA-256 of the image itself. These images have not been bench-tested for power behaviour by CI; that is a separate step before flight." \
               artifacts/*
           fi
