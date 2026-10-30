@@ -203,8 +203,13 @@ the blocks. Against the `dfu-util` line above:
   STM32_Programmer_CLI; `decode_scratchpad.py --read` reads the scratchpad
   with `tag-flash read`. The targets were checked by configuring a build tree
   each way and building `flash_tools` (`--locked`); the host install was
-  checked by installing and ad-hoc signing the two tools. Neither a CMake
-  target nor `flash_release.py` has yet programmed a board.
+  checked by installing and ad-hoc signing the two tools. The same day, on
+  the IMUTagNandBmp581 breakout and its `tag-breakout-base-l432-u375-1v8`,
+  each path programmed a board from a build at 33dfce16:
+  `IMUTagNandBmp581-download` (11.6 s, tag IDLE on the new image),
+  `flash_release.py` (manifest checked, JSON record written, tag IDLE), and
+  `tag-breakout-base-l432-u375-1v8-dfu` (base found in DFU mode, written,
+  confirmed reporting `fw=33dfce16`; the tag then answered through it).
 - `nusb`'s futures need a Tokio reactor when awaited (its `tokio` feature is
   on through `dfu-nusb`), so `tagprobe::dfu` opens the device on a
   single-threaded Tokio runtime. The download itself is synchronous.
