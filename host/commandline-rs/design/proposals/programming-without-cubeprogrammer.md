@@ -179,9 +179,17 @@ the blocks. Against the `dfu-util` line above:
   (STM32F042, serial `8009001A5556431520303537`) its own image (`be8f9062`)
   over DFU: the bootloader's string parsed, the 19,548-byte image was written,
   *leave* started it without a replug, and the base came back as an ST-LINK
-  reporting the image's identity. Bench check 4 is done for the F042; the L432
-  base remains. (`tag-base-c071` was an abandoned development base and is
-  not a target.)
+  reporting the image's identity. The same day it wrote a
+  `tag-breakout-base-l432-u375-1v8` (STM32L432, serial
+  `004D0059543050162030324E`) main 5017632d (22,908 bytes), with the same
+  result. Bench check 4 is done for both base MCUs. (`tag-base-c071` was an
+  abandoned development base and is not a target.)
+- `tag-flash` programmed the IMUTagNandBmp581 breakout (STM32U375RG, UUID
+  `00303143433650090059002E`) on that base three times on 2026-10-30 with the
+  image it already carried (main 7cef2ba9): 3.4 s each, the tag running its
+  image (IDLE) after each, flash read back identical. Bench check 1 is done.
+  The attempts are logged in
+  `captures/2026-10-30-imutag-tag-flash/flash-log.md`.
 - `nusb`'s futures need a Tokio reactor when awaited (its `tokio` feature is
   on through `dfu-nusb`), so `tagprobe::dfu` opens the device on a
   single-threaded Tokio runtime. The download itself is synchronous.
