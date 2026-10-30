@@ -11,6 +11,9 @@ env_logger = "0.11.11"
 log = "0.4.34"
 prost-reflect = "0.16.5"
 tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
+# tag-flash programs through probe-rs, and plans its erase as Tag Programmer does.
+tagprobe = { version = "0.1.0", path = "../libraries/tagprobe-rs" }
+tagprogram-core = { version = "0.1.0", path = "../applications/tagprogram-rs/core" }
 taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optional = true }
 # Named directly only so build.rs receives DEP_TAGCORE_C_LIB_DIR for the rpath.
 tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }

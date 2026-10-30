@@ -64,6 +64,27 @@ status follow the C++; the format check that names an unsupported tag type
 reports the writer's own message ("Could not open output: SQLite log output
 does not support tag type ...").
 
+## Programming without STM32CubeProgrammer
+
+`tag-flash` has no C++ counterpart. It programs, erases and reads a tag's
+internal flash through a base, on [`tagprobe`](../libraries/tagprobe-rs/README.md),
+the probe-rs library Tag Programmer uses, and is meant to replace
+STM32_Programmer_CLI in the CMake `-download` and `-erase` targets and the
+bench scripts. The plan, and the bench checks still to run, are in
+[the proposal](design/proposals/programming-without-cubeprogrammer.md).
+
+```sh
+tag-flash list                                  # bases: serial, bus:device, identity
+tag-flash -b <serial> info                      # device, flash size, voltage
+tag-flash -b <serial> program BitTag.elf        # image pages only, as -download
+tag-flash -b <serial> program BitTag.elf --erase plan   # Tag Programmer's erase plan
+tag-flash -b <serial> erase                     # mass erase
+tag-flash -b <serial> read 0x2003E000 8192 -o scratch.bin
+```
+
+Unlike the other tools, `-b` takes the base's USB serial, not `bus:device`.
+Every command but `list` resets the tag.
+
 ## Not ported yet
 
 These need a library that the Rust crate does not have yet:

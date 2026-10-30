@@ -40,9 +40,10 @@ Every base presents as an ST-LINK V2 (`0483:3748`).
 | --- | --- |
 | `list()` | Bases on USB. |
 | `identify(&base)` | The base's identity string, or `None` for older firmware. |
-| `connect_check(&base)` | `Connect { device_id, device_name, voltage }`, attaching under reset. |
+| `connect_check(&base)` | `Connect { device_id, device_name, voltage, flash_bytes }`, attaching under reset. `flash_bytes` is read on the STM32L4 only. |
 | `chip_for(device_id, flash_bytes)` | The probe-rs target: `STM32L432KC` or `STM32U375RG`. |
 | `program(&base, driver, chip, elf, erase, on_progress)` | Erase (`ImagePages`, `Range`, `All`), program and verify in one session. Then clear `FLASH_SR.PEMPTY` on an L4 if it is set, and start the image from its vector table. |
+| `erase_all(&base, driver, chip)` | Mass erase and nothing else (`-e all`). An L4 then boots its ROM bootloader until programmed. |
 | `read_memory(&base, driver, chip, addr, len)` | Read target memory under reset. |
 
 Every call attaches **under reset**, so it ends whatever the tag was doing.
