@@ -169,6 +169,7 @@ compiler and the ChibiOS submodule.
 | `joulescope-js220` MCP server | Not to be used; it holds the device. Kill stray `joulescope-mcp` processes. |
 | ST-LINK probes | Tag programmer base `0483:3748` (preferred), STLINK-V3PWR `0483:3757`. Select with `STM32_PROGRAMMER_PROBE`. |
 | STM32CubeProgrammer CLI | SWD with `mode=UR`, and DFU. 2.4.0 here. |
+| `tag-flash`, `base-flash` | Program tags through a base and bases over DFU without CubeProgrammer; built by the `flash_tools` target, preferred by the embedded `-download`, `-erase` and `-dfu` targets. |
 | `tag-capture` | Host tool from this repo; halts the core before firmware runs. |
 | `embedded-debugger` MCP | Probe inspection, core control, memory reads, breakpoints, RTT, over probe-rs or OpenOCD. **probe-rs has no STM32U3 target**, so U375 work needs the OpenOCD backend at `/usr/local/bin/openocd`. |
 | GDB over SWD | `arm-none-eabi-gdb` from the Arm toolchain; the VS Code configs use `cortex-debug`. |

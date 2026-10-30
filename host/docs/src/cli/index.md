@@ -2,6 +2,9 @@
 
 The host command-line tools live in `host/commandline` and are built with the
 host tools. They are intended for direct USB tag operations and scripting.
+`tag-flash` and `base-flash`, which program tags and bases, are written in
+Rust and live in `host/commandline-rs`; they take their own options,
+described on their pages.
 
 In the macOS release they are in `tag_tools/bin`; put that directory on your
 `PATH` to run them by name. In the Windows release they are in `tag_tools`
@@ -40,6 +43,8 @@ Most tag-attached tools share these options:
 | `dataprocessing` | [dataprocessing](dataprocessing.md) | Copy SQLite logs and add derived sensor streams for later analysis. |
 | `tag-txt-import` | [tag-txt-import](tag-txt-import.md) | Convert old BitTag and PresTag `.txt` logs to SQLite, checking each conversion. |
 | `tag-test` | [tag-test](tag-test.md) | Run RTC checks and tag self-tests. |
+| `tag-flash` | [tag-flash](tag-flash.md) | Program, erase or read a tag's flash through its base, without STM32CubeProgrammer. |
+| `base-flash` | [base-flash](base-flash.md) | Update a base's firmware over USB through its bootloader. |
 
 Developer and bench programs -- `tag-test-example`, `tag-monitor-test`,
 `tag-attach-cycle`, `tag-cal-write`, `tag-peek` -- are built from the same

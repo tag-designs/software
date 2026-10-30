@@ -274,10 +274,12 @@ qtprogram applies the same rule, read from the image's linker symbols
 (`host/applications/qtprogram/flashplan.cpp`); `qtprogram --flash-plan
 <elf>...` prints the erase it would use.
 
-**Erase and program in one invocation.** `flash_release.py --erase` passes
-`-e all` and `-d <image>` to the same programmer call, which is what avoids the
-bootloader problem rather than recovering from it: two separate invocations
-leave a reset between them with the flash empty, and that is what latches
+**Erase and program in one invocation.** `flash_release.py --erase` runs
+`tag-flash program --erase all`, one probe session (or, with
+`STM32_Programmer_CLI`, passes `-e all` and `-d <image>` to the same programmer
+call), which is what avoids the bootloader problem rather than recovering from
+it: two separate invocations leave a reset between them with the flash empty,
+and that is what latches
 `FLASH_SR.PEMPTY`. With `nSWBOOT0 = 1` and BOOT0 low a set PEMPTY sends every
 reset to the ROM bootloader -- the firmware does not run, no monitor answers,
 and `tag-info` reports the condition rather than the tag. Hardware re-evaluates
@@ -341,10 +343,14 @@ python3 <repo>/embedded/tools/flash_release.py <release>/BitTag \
 ```
 
 This checks the image against the SHA-256 its manifest records and refuses to
-program on a mismatch, prints the provenance it verified, then programs through
-the same probe selection the CMake targets use. `--verify-only` checks without
-programming. `--selector` picks an ST-LINK when several are attached; a
-`STM32_PROGRAMMER_PROBE` set in the environment overrides it.
+program on a mismatch, prints the provenance it verified, then programs with
+`tag-flash` -- found on `PATH`, in `TAG_FLASH`, or in this repository's
+`host/commandline-rs/target/release` -- or, when there is none, with
+`STM32_Programmer_CLI` through the probe selection the CMake targets use.
+`--tool` chooses outright. `--verify-only` checks without programming. `--base`
+picks a base by USB serial when several are attached; for
+`STM32_Programmer_CLI`, `--selector` does, and a `STM32_PROGRAMMER_PROBE` set
+in the environment overrides it.
 
 It does **not** check that the image belongs on the attached board, and cannot:
 the programmer reports the MCU, not the board, and four of the five distributed

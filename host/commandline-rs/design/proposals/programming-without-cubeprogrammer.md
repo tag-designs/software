@@ -18,9 +18,10 @@ tools:
   Apache-2.0). Its one subtlety is ST's DfuSe dialect, below.
 
 The CMake `-download`, `-erase` and `-dfu` targets then call these tools, with
-STM32CubeProgrammer as the fallback while they are proven. Nothing in the
-firmware build compiles Rust: the tools are found on the path, as
-STM32_Programmer_CLI is now.
+STM32CubeProgrammer as the fallback while they are proven. Where cargo is
+installed the build compiles them (the `flash_tools` target); without it they
+are found on the path, as STM32_Programmer_CLI is, and failing that the
+targets use STM32_Programmer_CLI.
 
 ## What uses STM32CubeProgrammer today
 
@@ -141,14 +142,18 @@ the blocks. Against the `dfu-util` line above:
 - **`host/commandline-rs`** gains the two binaries. They are new tools with no
   C++ counterpart, so they do not change the decision that the shipped
   command-line tools stay C++.
-- **Packaging.** The two tools are built by CMake the way the Rust apps are
-  (cargo, release profile) and installed with the host tools, so a bench
+- **Packaging.** `cmake/RustFlashTools.cmake` defines one cargo build of the
+  two tools (release profile, `--locked`) per build tree, the `flash_tools`
+  target. `host/commandline-rs/CMakeLists.txt`, added with the Rust apps under
+  `BUILD_RUST_APPS`, installs them with the host tools (`tag_tools/bin`;
+  beside the other tools on Windows) and signs them on macOS, so a bench
   machine gets them from the release package. Developers can also `cargo
   install --path host/commandline-rs --bin tag-flash --bin base-flash`.
-- **`embedded/CMakeLists.txt`** looks for `tag-flash` and `base-flash` with
-  `find_program`, prefers them, and falls back to STM32_Programmer_CLI while
-  both exist. A cache variable `TAG_FLASH_BASE` replaces
-  `STM32_PROGRAMMER_PROBE`.
+- **`embedded/CMakeLists.txt`** uses the same `flash_tools` build, or without
+  cargo `find_program`, and prefers the tools; `EMBEDDED_PROGRAMMER`
+  (`AUTO`, `TAG_FLASH`, `CUBEPROGRAMMER`) can choose outright. A cache
+  variable `TAG_FLASH_BASE` names a base by serial, as `STM32_PROGRAMMER_PROBE`
+  does for the fallback.
 - **Linux udev rule.** `70-ultralight-tags.rules` now grants `0483:df11`, so
   `base-flash` needs no root.
 - **`BUILD_SOURCES.md`, `docs/build/toolchain-inventory.md` and
@@ -190,6 +195,16 @@ the blocks. Against the `dfu-util` line above:
   image (IDLE) after each, flash read back identical. Bench check 1 is done.
   The attempts are logged in
   `captures/2026-10-30-imutag-tag-flash/flash-log.md`.
+- Steps 2 and 4 were done on 2026-10-30, with packaging: the CMake
+  `-download`, `-erase` and `-dfu` targets run `tag-flash program`,
+  `tag-flash erase` and `base-flash program --wait 60`; `flash_release.py`
+  programs with `tag-flash` (`--erase image|all`, and `plan` for
+  `--keep-calibration` after the script's own checks) and falls back to
+  STM32_Programmer_CLI; `decode_scratchpad.py --read` reads the scratchpad
+  with `tag-flash read`. The targets were checked by configuring a build tree
+  each way and building `flash_tools` (`--locked`); the host install was
+  checked by installing and ad-hoc signing the two tools. Neither a CMake
+  target nor `flash_release.py` has yet programmed a board.
 - `nusb`'s futures need a Tokio reactor when awaited (its `tokio` feature is
   on through `dfu-nusb`), so `tagprobe::dfu` opens the device on a
   single-threaded Tokio runtime. The download itself is synchronous.
@@ -214,9 +229,9 @@ the firmware that wrote the log, flash, self-test):
 ## Open
 
 - **Windows driver for `0483:df11`.** `nusb` needs WinUSB bound to the
-  bootloader. STM32CubeProgrammer installs a driver for it; whether that is
-  WinUSB, and what a machine without CubeProgrammer needs (Zadig, or an INF we
-  ship), is to be checked.
+  bootloader. WinUSB itself ships with Windows 11; that it binds to the ST
+  bootloader on a machine that has never had STM32CubeProgrammer installed is
+  still to be seen on hardware (bench check 5).
 - **Whether *leave* starts the image on every bootloader version.** It does on
   the F042 (above). Some ST bootloaders need the Set Address Pointer sent again before the zero-length
   download, as `dfu-util` does for `:leave`. If one does, `base-flash` sends it

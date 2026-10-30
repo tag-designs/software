@@ -83,6 +83,8 @@ nav:
       - tag-cal: cli/tag-cal.md
       - dataprocessing: cli/dataprocessing.md
       - tag-txt-import: cli/tag-txt-import.md
+      - tag-flash: cli/tag-flash.md
+      - base-flash: cli/base-flash.md
   - Workflows:
       - First Setup: workflows/first-setup.md
       - Firmware Programming: workflows/firmware-programming.md

@@ -161,8 +161,10 @@ slept has to be in the scratchpad.
 ### Reading it back
 
 ```sh
-# Must connect under reset. Hotplug does not work on this rig.
-STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin
+# Connects under reset, as every attach does; the region survives it.
+embedded/tools/decode_scratchpad.py --read scratch.bin [--base <serial>]
+# which is
+tag-flash read 0x2003E000 8192 -o scratch.bin
 embedded/tools/decode_scratchpad.py scratch.bin
 ```
 

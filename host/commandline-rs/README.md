@@ -10,7 +10,8 @@ Rust ports of the tools in [`../commandline`](../commandline/README.md),
 built on the Rust tag interface in
 [`../libraries/tagcore-rs`](../libraries/tagcore-rs/README.md). Each tool
 keeps its C++ name, options, messages and exit status, so scripts can use
-either. The crate is not wired into the CMake build.
+either. The ports are not wired into the CMake build; `tag-flash` and
+`base-flash` (below) are, and ship in the host tools package.
 
 ```sh
 cargo build --release            # binaries in target/release/
@@ -68,10 +69,17 @@ does not support tag type ...").
 
 `tag-flash` has no C++ counterpart. It programs, erases and reads a tag's
 internal flash through a base, on [`tagprobe`](../libraries/tagprobe-rs/README.md),
-the probe-rs library Tag Programmer uses, and is meant to replace
-STM32_Programmer_CLI in the CMake `-download` and `-erase` targets and the
-bench scripts. The plan, and the bench checks still to run, are in
-[the proposal](design/proposals/programming-without-cubeprogrammer.md).
+the probe-rs library Tag Programmer uses, and replaces STM32_Programmer_CLI in
+the CMake `-download` and `-erase` targets, `flash_release.py` and
+`decode_scratchpad.py --read`. The plan, and the bench checks still to run,
+are in [the proposal](design/proposals/programming-without-cubeprogrammer.md).
+
+CMake builds both tools with cargo as the `flash_tools` target
+([`cmake/RustFlashTools.cmake`](../../cmake/RustFlashTools.cmake)), which the
+embedded programming targets depend on, and with `BUILD_RUST_APPS` installs
+them with the host tools ([`CMakeLists.txt`](CMakeLists.txt)). The embedded
+targets fall back to STM32_Programmer_CLI where cargo is missing and the tools
+are not on `PATH`, or when configured with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`.
 
 ```sh
 tag-flash list                                  # bases: serial, bus:device, identity
@@ -86,8 +94,8 @@ Unlike the other tools, `-b` takes the base's USB serial, not `bus:device`.
 Every command but `list` resets the tag.
 
 `base-flash` programs a **base** through its MCU's ROM bootloader over USB
-DFU, replacing the CMake `-dfu` targets. Plug the base in with its button
-held, then:
+DFU, and is what the CMake `-dfu` targets run. Plug the base in with its
+button held, then:
 
 ```sh
 base-flash list                                 # devices in DFU mode

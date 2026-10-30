@@ -527,7 +527,8 @@ For an overview of the embedded source tree and how `bases`, `boards`,
 | Java runtime | Required by `fmpp`. |
 | `fmpp` | Needed by the default configure: the boards of prototype tags and bases do not commit their generated files, so configure fails without `fmpp`. Not needed with `-DREGENERATE_SOURCES=OFF`. |
 | `make` | Required for ChibiOS-based firmware builds. |
-| STM32CubeProgrammer | Optional for building, required for generated download/DFU targets. |
+| Rust (cargo) | Optional for building. The `-download`, `-erase` and `-dfu` targets run `tag-flash` and `base-flash`, which CMake builds with cargo (or finds on `PATH`). |
+| STM32CubeProgrammer | Optional. The fallback for the `-download`, `-erase` and `-dfu` targets where `tag-flash` is not available, or when configured with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`. |
 
 Before configuring an embedded build, initialize the ChibiOS submodule. This is
 required after a fresh clone, and may also be needed after pulling changes that
@@ -591,14 +592,18 @@ cmake --build build-embedded --target BitTag-download
 cmake --build build-embedded --target PresTag-download
 ```
 
-Download targets prefer the tag programmer base ST-LINK PID (`0483:3748`) and
-fall back to other attached ST-LINK programmers, such as STLINK-V3PWR
-(`0483:3757`). If more than one programmer is connected, select one explicitly:
+Download targets program through a base with `tag-flash`, erasing only the
+pages the image occupies, then start the image. If more than one base is
+connected, name one by the USB serial `tag-flash list` prints:
 
 ```
-STM32_PROGRAMMER_PROBE=serial:<stlink-serial> cmake --build build-embedded --target BitTag-download
-STM32_PROGRAMMER_PROBE=pid:0483:3757 cmake --build build-embedded --target BitTag-download
+cmake -DTAG_FLASH_BASE=<serial> build-embedded
 ```
+
+With STM32CubeProgrammer as the programmer, the targets prefer the tag
+programmer base ST-LINK PID (`0483:3748`) and fall back to other attached
+ST-LINK programmers, such as STLINK-V3PWR (`0483:3757`); select one with
+`STM32_PROGRAMMER_PROBE=serial:<stlink-serial>` or `pid:0483:3757`.
 
 Build base-board targets:
 
@@ -609,7 +614,10 @@ cmake --build build-embedded --target tag-breakout-base-jlcpcb32-v1
 cmake --build build-embedded --target tag-breakout-base-jlcpcb32-v1-dfu
 ```
 
-The `-dfu` targets attempt to program the board.
+The `-dfu` targets program a base through its ROM bootloader with
+`base-flash`: plug the base in with its button held, within a minute of
+starting the target, and the target succeeds once the base restarts reporting
+the new image.
 
 Install built firmware artifacts:
 
@@ -633,10 +641,20 @@ What is committed and when it is regenerated is in
 
 ## Programming Embedded Hardware
 
-Install [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html)
-to use generated download and DFU targets.
+`tag-flash` and `base-flash` (`host/commandline-rs`, packaged in
+`tag_tools/bin`) program tags and bases without STM32CubeProgrammer:
 
-Example SWD command:
+```
+tag-flash list                       # bases on USB, by serial
+tag-flash program BitTag.elf         # through the base; resets the tag
+tag-flash erase
+base-flash program bittag-base-v7.elf   # base plugged in with its button held
+```
+
+See [host/commandline-rs/README.md](host/commandline-rs/README.md). The CMake
+targets fall back to
+[STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html)
+where `tag-flash` is not available. Example SWD command:
 
 ```
 ~/Software/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe -c port=SWD mode=UR -d ch.elf -v -g 0x08000000

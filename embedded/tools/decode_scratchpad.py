@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Decode the retained debug scratchpad read out of SRAM2 page 3.
 
-Read it from a tag with the debug probe, connecting under reset because
-hotplug does not work on this rig. The reset does not matter: the region is
-outside ram0, so crt0 never clears it, and PWR_CR1_RRSB3 retains it through
-Standby.
+Read it from a tag through its base, which connects under reset. The reset
+does not matter: the region is outside ram0, so crt0 never clears it, and
+PWR_CR1_RRSB3 retains it through Standby. `--read` reads it with tag-flash
+(host/commandline-rs) into the file first, then decodes it:
 
-    STM32_Programmer_CLI -c port=SWD mode=UR -u 0x2003E000 8192 scratch.bin
+    decode_scratchpad.py --read scratch.bin [--base <serial>]
+
+which is the same as
+
+    tag-flash read 0x2003E000 8192 -o scratch.bin
     decode_scratchpad.py scratch.bin
+
+The scratchpad exists only on the STM32U375; on an STM32L432 the address is
+not RAM.
 
 Records are self-describing, so this decoder does not need to know what the
 firmware chose to log. See embedded/tags/common/core/inc/scratchpad.h.
@@ -17,7 +24,10 @@ from __future__ import annotations
 
 import argparse
 import struct
+import subprocess
 import sys
+
+from tag_flash import find_tag_flash
 
 MAGIC = 0x33524353     #: "SCR3", written once the region is formatted.
 HDR = 32               #: Header size in bytes.
@@ -76,6 +86,11 @@ def annotate(label: str, value: int) -> str:
 
 #: Bytes of payload after the 32-byte header.
 CAP = 0x2000 - 32
+
+#: Where the region is, and its size: TAG_SCRATCH_BASE in scratchpad.h, the
+#: last 8 KB of the STM32U375's SRAM.
+REGION_ADDRESS = 0x2003E000
+REGION_BYTES = 0x2000
 
 
 def _walk(body: bytes, base: int, n0: int, out: list) -> tuple[int, bool]:
@@ -197,6 +212,30 @@ def decode(path: str, show_raw: bool) -> int:
     return 0
 
 
+def read_region(path: str, base: str | None, explicit: str | None) -> int:
+    """Read the region from a tag into @p path with tag-flash.
+
+    @details Attaches under reset, which ends whatever the tag was doing; the
+             region survives it. See docs/bench/debugging-a-tag.md.
+
+    @param path     File to write.
+    @param base     USB serial of the base, or None for the only one.
+    @param explicit tag-flash path from the command line, or None.
+    @return tag-flash's exit status, or 1 when it was not found.
+    """
+    tag_flash = find_tag_flash(explicit)
+    if tag_flash is None:
+        print("tag-flash was not found: pass --tag-flash, set TAG_FLASH, or "
+              "build it with cargo build --release in host/commandline-rs",
+              file=sys.stderr)
+        return 1
+    command = [tag_flash]
+    if base:
+        command += ["--base", base]
+    command += ["read", hex(REGION_ADDRESS), str(REGION_BYTES), "-o", path]
+    return subprocess.call(command)
+
+
 def main() -> int:
     """Command line entry point.
 
@@ -206,7 +245,17 @@ def main() -> int:
     p.add_argument("file", help="binary dump of the 8 KB region")
     p.add_argument("--raw", action="store_true",
                    help="also show bytes past the used length")
+    p.add_argument("--read", action="store_true",
+                   help="first read the region from the tag into FILE with "
+                   "tag-flash (resets the tag)")
+    p.add_argument("--base", help="USB serial of the base, for --read; needed "
+                   "only when more than one base is connected")
+    p.add_argument("--tag-flash", help="tag-flash path, for --read")
     args = p.parse_args()
+    if args.read:
+        status = read_region(args.file, args.base, args.tag_flash)
+        if status != 0:
+            return status
     return decode(args.file, args.raw)
 
 
