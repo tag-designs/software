@@ -814,6 +814,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "dfu-core"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdef35f2e2bb7c34d4891a41e35d62aae017e43e2c862b07c902951f9f2e22c"
+dependencies = [
+ "bytes",
+ "displaydoc",
+ "futures",
+ "log",
+ "pretty-hex",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "dfu-nusb"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "363226a7c50e078736873ccc2c5045e52cc07372fb5fbdfcad5b54333ca5344c"
+dependencies = [
+ "dfu-core",
+ "nusb",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1180,6 +1206,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
+name = "futures"
+version = "0.3.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,6 +1295,7 @@ version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
+ "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
@@ -2544,6 +2586,7 @@ dependencies = [
  "once_cell",
  "rustix",
  "slab",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -3020,6 +3063,12 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
+
+[[package]]
+name = "pretty-hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a65843dfefbafd3c879c683306959a6de478443ffe9c9adf02f5976432402d7"
 
 [[package]]
 name = "prettyplease"
@@ -4254,9 +4303,14 @@ dependencies = [
 name = "tagprobe"
 version = "0.1.0"
 dependencies = [
+ "dfu-core",
+ "dfu-nusb",
  "log",
+ "nusb",
+ "object",
  "probe-rs",
  "tagcore",
+ "tokio",
  "tracing",
 ]
 
