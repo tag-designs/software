@@ -92,6 +92,10 @@ Focused targets: `tagcore`, `tagcore_c_static`, `tagcore_c`, `qtmonitor`,
 A Rust target always runs cargo (cargo decides what is stale) with
 `--locked`, in the host workspace, through `host_rust_app()` in
 `cmake/HostRust.cmake`, and copies the executable to `<build>/<Config>/bin`.
+That directory holds the programs a package installs; the C++ developer and
+bench tools (`tag-capture`, `tag-rebuild`, `tag-peek`, `tag-attach-cycle` and
+the rest of the list in chapter 9) build into `<build>/<Config>/bin/internal`
+and are never installed.
 
 ### Packages
 

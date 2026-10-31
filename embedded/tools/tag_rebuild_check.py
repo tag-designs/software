@@ -48,10 +48,12 @@ PROVENANCE = {"source", "capture_dir", "captured_at"}
 
 
 def tool(bin_dir: str, name: str) -> str:
-    """Path of a host tool: a plain binary, or the macOS bundle's executable."""
-    plain = os.path.join(bin_dir, name)
-    if os.path.isfile(plain):
-        return plain
+    """Path of a host tool: a plain binary in @p bin_dir, a developer tool in
+    its internal/ subdirectory (where the build puts tag-capture and
+    tag-rebuild), or the macOS bundle's executable."""
+    for candidate in (os.path.join(bin_dir, name), os.path.join(bin_dir, "internal", name)):
+        if os.path.isfile(candidate):
+            return candidate
     return os.path.join(bin_dir, f"{name}.app", "Contents", "MacOS", name)
 
 

@@ -219,7 +219,7 @@ cmake --build <build-dir> --target tag-log-import dataprocessing
 ```
 
 ```bash
-export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/tag-log-import
+export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/internal/tag-log-import
 export DATAPROCESSING_BIN=<build-dir>/Release/bin/dataprocessing
 export TAGSIM_LOG_DIR=../data/ardupilot/pattern-2023
 ```

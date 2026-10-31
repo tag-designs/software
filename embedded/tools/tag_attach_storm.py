@@ -83,6 +83,14 @@ class Storm:
     failures: list[str] = field(default_factory=list)
 
 
+def tool(bin_dir: str, name: str) -> str:
+    """Path of a host tool: in @p bin_dir, or in its internal/ subdirectory,
+    where the build puts the developer tools such as tag-attach-cycle."""
+    internal = os.path.join(bin_dir, "internal", name)
+    plain = os.path.join(bin_dir, name)
+    return internal if os.path.isfile(internal) and not os.path.isfile(plain) else plain
+
+
 def tag_info(bin_dir: str, base: str | None, timeout: float,
              verbose: bool) -> str:
     """Read the tag's full status, including the state transition log.
@@ -93,7 +101,7 @@ def tag_info(bin_dir: str, base: str | None, timeout: float,
     @param verbose True to echo commands.
     @return Captured stdout, empty when the command failed.
     """
-    argv = [os.path.join(bin_dir, "tag-info")]
+    argv = [tool(bin_dir, "tag-info")]
     if base:
         argv += ["-b", base]
     return run("info", argv, timeout, verbose).stdout
@@ -156,7 +164,7 @@ def storm_once(bin_dir: str, base: str | None, cycles: int, on_ms: int,
     @param verbose True to echo commands.
     @raise ExperimentError when the storm tool itself could not run.
     """
-    argv = [os.path.join(bin_dir, "tag-attach-cycle"),
+    argv = [tool(bin_dir, "tag-attach-cycle"),
             "--cycles", str(cycles),
             "--on-ms", str(on_ms), "--off-ms", str(off_ms)]
     if base:

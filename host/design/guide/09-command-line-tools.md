@@ -89,7 +89,10 @@ procedures depend on them:
 
 Only `tag-flash` and `base-flash` are installed; the ports are built for
 development and checking (the C++ tools of the same names still ship). The
-user manual's `cli/` pages describe the shipped tools.
+user manual's `cli/` pages describe the shipped tools. In a CMake build tree
+the shipped C++ tools land in `<build>/<Config>/bin` and the developer and
+bench tools in `bin/internal`, so the listing of `bin/` is the list of what a
+release carries.
 
 ### Not ported
 

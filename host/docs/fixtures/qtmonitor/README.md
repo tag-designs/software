@@ -33,7 +33,7 @@ Use this checklist when adding a tag type to the `qtmonitor` user guide:
    ```sh
    cmake --build <build-dir> --target qtmonitor-fixture-capture
 
-   <build-dir>/bin/qtmonitor-fixture-capture \
+   <build-dir>/bin/internal/qtmonitor-fixture-capture \
      --id imutag \
      --label IMUTag \
      --state idle \
@@ -85,7 +85,7 @@ tag:
 ```sh
 cmake --build <build-dir> --target qtmonitor-fixture-capture
 
-<build-dir>/bin/qtmonitor-fixture-capture \
+<build-dir>/bin/internal/qtmonitor-fixture-capture \
   --id compasstag \
   --label CompassTag \
   --state idle \

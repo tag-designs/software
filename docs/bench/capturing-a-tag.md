@@ -118,7 +118,7 @@ To read the identity record of a capture, run
 ## Rebuilding a download
 
 ```sh
-build-host/bin/tag-rebuild <capture-dir> -o out.db3
+build-host/bin/internal/tag-rebuild <capture-dir> -o out.db3
 ```
 
 The rebuild is "as captured". It shows the tag as found, with no stop marker

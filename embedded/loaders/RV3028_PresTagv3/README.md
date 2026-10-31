@@ -29,7 +29,7 @@ HSI16 by hand, bounded waits), keeps only the clock and delay code, and touches
 RCC, the flash latency, and GPIOB pins 6 and 7.
 
 ```sh
-build-host/bin/tag-sramcall \
+build-host/bin/internal/tag-sramcall \
     --image build-host/embedded/loaders/RV3028_PresTagv3/RV3028_PresTagv3/build/RV3028_PresTagv3.elf \
     --call Rv3028ReadRegs --args buf,0x30,8 --dump 8
 ```

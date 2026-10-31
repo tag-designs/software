@@ -52,7 +52,7 @@ the simulator and filter work is in [simulator.md](../simulator.md) and
 4. Point tagsim at the tools and the logs:
 
    ```bash
-   export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/tag-log-import
+   export TAG_LOG_IMPORT_BIN=<build-dir>/Release/bin/internal/tag-log-import
    export DATAPROCESSING_BIN=<build-dir>/Release/bin/dataprocessing
    export TAGSIM_LOG_DIR=../../../../data/ardupilot/pattern-2023
    ```

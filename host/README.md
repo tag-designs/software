@@ -158,7 +158,9 @@ tools.
 
 - `libraries/tagcore`, `libraries/sensoranalysis`, `libraries/sensordata`,
   `applications/sensorviz/core` and `commandline` are added whenever host
-  tools are built (`BUILD_HOST`).
+  tools are built (`BUILD_HOST`). The shipped command-line tools build into
+  `<build>/<Config>/bin`; the developer and bench tools into `bin/internal`,
+  and are never installed.
 - Qt support libraries and applications are added with `BUILD_QT_APPS=ON`.
 - `libraries/tagcore-c` is added with `BUILD_TAGCORE_C=ON`, and always with
   `BUILD_RUST_APPS`, which needs it.

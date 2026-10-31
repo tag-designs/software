@@ -34,8 +34,11 @@ reach a release:
   verified by rendering it back to text. User page:
   [`cli/tag-txt-import.md`](../docs/src/cli/tag-txt-import.md). See below.
 
-Developer and bench tools -- built from this directory, never installed. They
-exist to exercise hardware and firmware during development, they carry no user
+Developer and bench tools -- built from this directory into
+`<build>/<Config>/bin/internal` (the `INTERNAL` keyword of `host_cli_tool()`
+in `CMakeLists.txt`), never installed. `bin/` itself holds only the shipped
+tools above, so a directory listing says what a release carries. They exist
+to exercise hardware and firmware during development, they carry no user
 guide pages, and adding one to the install list is what put an unsigned,
 undocumented `tag-attach-cycle.app` into every macOS release until it was
 caught by the signature check in `host/tools/release-macos.sh`:
@@ -100,7 +103,7 @@ attach a monitor, which lets the firmware boot, and the boot clears the reset
 flags and can rewrite `pState` and the marker log.
 
 ```sh
-build-host/bin/tag-capture --reason "returned from site 3, would not start"
+build-host/bin/internal/tag-capture --reason "returned from site 3, would not start"
 ```
 
 It writes `captures/capture-YYYYmmdd-HHMMSS/` with one `.bin` per region and a
@@ -131,7 +134,7 @@ It halts the tag at its reset vector, downloads an external-flash loader from
 host. CubeProgrammer is not involved, and internal flash is not written.
 
 ```sh
-build-host/bin/tag-xflash dump \
+build-host/bin/internal/tag-xflash dump \
     --loader build-host/embedded/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3/build/AT25XE_PresTagv3.stldr \
     -o xflash.bin
 ```
@@ -165,7 +168,7 @@ function with up to four arguments, hex-dumps the buffer, and resets the tag.
 An argument written `buf` becomes the buffer's address.
 
 ```sh
-build-host/bin/tag-sramcall \
+build-host/bin/internal/tag-sramcall \
     --image build-host/embedded/loaders/RV3028_PresTagv3/RV3028_PresTagv3/build/RV3028_PresTagv3.elf \
     --call Rv3028ReadRegs --args buf,0x30,8 --dump 8
 ```
@@ -184,7 +187,7 @@ back into the messages the firmware would have served, and written by the same
 SQLite writer `tag-dwnld` uses:
 
 ```sh
-build-host/bin/tag-rebuild <capture-dir> -o tag.db3
+build-host/bin/internal/tag-rebuild <capture-dir> -o tag.db3
 ```
 
 The file is "as captured": the tag as it was found, before the reset recovery
@@ -203,7 +206,7 @@ Writes a download in the JSONL format of `tagclient`'s
 with the same writer `tag-dwnld` uses. It needs no tag:
 
 ```sh
-build-host/bin/tag-log-import download.jsonl -o tag.db3
+build-host/bin/internal/tag-log-import download.jsonl -o tag.db3
 ```
 
 The input has two parts:
@@ -292,7 +295,7 @@ otherwise-healthy board with no other symptom.
 with `A` = identity, `V` = 0, `B` = 1) so the tag will start again:
 
 ```sh
-build-host/bin/tag-cal-write
+build-host/bin/internal/tag-cal-write
 build-host/bin/tag-reset --set-rtc
 build-host/bin/tag-start --start-now
 ```
