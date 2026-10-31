@@ -15,7 +15,7 @@
 
 use std::time::{Duration, Instant};
 
-use log::{debug, error, warn};
+use log::{debug, error};
 
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns, libusb_name};
 
@@ -273,23 +273,22 @@ impl LinkAdapt {
         self.cmd_read(&debug_cmd(DEBUG_EXIT, 0), &mut [])
     }
 
-    /// Enters SWD debug mode.
+    /// Sends the SWD enter command once and returns the probe's status.
     ///
-    /// True once the command completed over USB, even if the probe's status
-    /// is not OK (that is only warned about, as in the C++); the caller
-    /// confirms with [`current_mode`](Self::current_mode).
-    pub(super) fn enter_debug_mode(&mut self) -> bool {
+    /// [`DEBUG_ERR_OK`] means the probe opened the target's debug port. On a
+    /// tag base anything else means its `SWD_Open()` failed, and the base
+    /// does not reopen the port on later debug-register reads, so every one
+    /// of them would fail; [`enter_swd`](LinkAdapt::enter_swd) retries.
+    /// `None` if the command did not complete over USB (logged by the
+    /// transfer layer).
+    pub(super) fn enter_debug_mode(&mut self) -> Option<u16> {
         let mut cmd = debug_cmd(DEBUG_APIV2_ENTER, 0);
         cmd[2] = DEBUG_ENTER_SWD;
         let mut result = [0u8; 2];
         if !self.cmd_read(&cmd, &mut result) {
-            return false;
+            return None;
         }
-        let status = unpack16(&result);
-        if status != DEBUG_ERR_OK {
-            warn!("enter swd mode reported status 0x{status:x}");
-        }
-        true
+        Some(unpack16(&result))
     }
 
     /// Leaves the probe's DFU mode. No reply; true means the block was sent.

@@ -93,25 +93,6 @@ UUID `00303143433650090059002E`, IMUTagNandBmp581 at `8f1350da`, 3.3 V):
 
 Still to check, then delete each item:
 
-- **Intermittent L4 attach failure through a TagBase v7.** 2 of about 32
-  attaches to an IDLE BitTag V6 failed outright: detection logged `read debug
-  register 0xe0042000/0xe0044000 failed status=0x81`, then the DEMCR read
-  failed and `AttachL4` gave up. Neither followed a timed-out session; both
-  followed a clean detach, and 20 back-to-back attaches and 8 after 20 s idle
-  were all clean, on `main` and on this branch alike. The code is unchanged by
-  this branch apart from the link lock. The leading suspect is that
-  `enter_debug_mode()` in `linkadapt.cc` treats a failed SWD enter (the base's
-  `SWD_Open`) as a warning and returns true, after which no read recovers;
-  the warning is below the default log level, so the failing runs could not
-  show it. Next: catch a failure with `--debug` to see that warning, then
-  decide between failing the attach and retrying the SWD enter.
-  A third failure, on 2026-10-26, had the same signature but followed a board
-  swap rather than a clean detach: it was the first attach to a BitTag V6
-  just placed on a tag programmer base (SN 0037001A5556431520303537), and
-  every later attach, Rust and C++, was clean. It ran without `--debug`, so
-  it adds no SWD-enter evidence. The Rust port on the `rust-tagclass` branch
-  (`host/libraries/tagcore-rs`, `link/stlink.rs`) copies the same
-  warn-and-continue `enter_debug_mode()`, so a fix applies to both.
 - **Noisy detach from a running U3 tag.** Detaching from a RUNNING tag logs a
   burst of `linkadapt.cc` `error return 81` read failures, 41 in one run. They
   come from the MONITORSTOP status poll in `CallU3`: once the firmware handles

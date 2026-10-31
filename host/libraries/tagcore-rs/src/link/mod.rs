@@ -44,9 +44,10 @@
 //! layer does that as part of its own attach sequence. Detaching sends the
 //! ST-LINK's exit-debug command and closes the probe.
 
-use std::time::Instant;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
-use log::{debug, error};
+use log::{debug, error, warn};
 use rusb::{Context, DeviceHandle};
 
 pub mod discovery;
@@ -63,6 +64,16 @@ pub use discovery::{UsbDev, decode_serial, is_stlink};
 /// type-checked; the optimiser removes it when the feature is off. Mirrors
 /// `TAGCORE_ENABLE_INSTRUMENTATION` in the C++ build.
 const INSTRUMENTED: bool = cfg!(feature = "instrumentation");
+
+/// How many times [`LinkAdapt::enter_swd`] sends the enter command while
+/// the probe reports it failed. On the bench a failed enter recovered on
+/// the next send every time (98 of 98, 2026-10-31); four sends leave room.
+pub const SWD_ENTER_ATTEMPTS: u32 = 4;
+
+/// The pause between failed enter sends: long enough for a tag woken from
+/// Shutdown by nRST to power its debug port (it answered at once in 97 of
+/// 97 trials), short enough that three retries add only about 30 ms.
+pub const SWD_ENTER_RETRY_DELAY: Duration = Duration::from_millis(10);
 
 /// Counts and cumulative times of the link's USB and ST-LINK operations.
 ///
@@ -306,15 +317,49 @@ impl LinkAdapt {
     /// Enters SWD debug mode on an open probe and checks that the probe
     /// reports it.
     ///
+    /// The enter command is retried while the probe reports it failed: up to
+    /// [`SWD_ENTER_ATTEMPTS`] sends, [`SWD_ENTER_RETRY_DELAY`] apart. A
+    /// sleeping tag's debug port is unpowered until nRST wakes the part, and
+    /// the enter sent about a millisecond after nRST is asserted
+    /// occasionally reaches the port before it answers. A tag base then
+    /// fails the enter, and does not reopen the port on later reads, so
+    /// without a retry every debug access of the session fails (status
+    /// 0x81). Call this with nRST held, as [`attach`](Self::attach) does, so
+    /// the tag stays in reset across the retries. If every send fails the
+    /// failure is logged and the sequence continues as before the retry
+    /// existed: the mode read-back below decides.
+    ///
     /// Returns false, with the reason logged, if the enter command could not
-    /// be sent or the probe then reports a mode other than debug. A non-OK
-    /// status from the enter command itself is only warned about, as in the
-    /// C++ code; the mode read-back is the real check. Leaves the probe open
-    /// either way.
+    /// be sent or the probe then reports a mode other than debug. Leaves the
+    /// probe open either way. Blocks for up to about 30 ms more when the
+    /// enter fails. See
+    /// `host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md`.
     pub fn enter_swd(&mut self) -> bool {
-        if !self.enter_debug_mode() {
-            error!("enter swd mode command failed");
-            return false;
+        let mut attempt = 1;
+        loop {
+            match self.enter_debug_mode() {
+                None => {
+                    error!("enter swd mode command failed");
+                    return false;
+                }
+                Some(stlink::DEBUG_ERR_OK) => {
+                    if attempt > 1 {
+                        warn!("enter swd mode succeeded on attempt {attempt}");
+                    }
+                    break;
+                }
+                Some(status) if attempt < SWD_ENTER_ATTEMPTS => {
+                    debug!("enter swd mode reported status 0x{status:x}; retrying");
+                    sleep(SWD_ENTER_RETRY_DELAY);
+                    attempt += 1;
+                }
+                Some(status) => {
+                    error!(
+                        "enter swd mode reported status 0x{status:x} on all {SWD_ENTER_ATTEMPTS} attempts"
+                    );
+                    break;
+                }
+            }
         }
         // Mode 4 is accepted as well as DEBUG_MODE for existing bases.
         match self.current_mode() {

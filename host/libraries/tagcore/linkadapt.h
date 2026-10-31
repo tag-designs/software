@@ -120,6 +120,7 @@ private:
     bool usb_xfer(bool In, unsigned char *buf, int length);
     bool cmd_eval(LinkReq &req, bool ReadnWrite);
     bool current_mode(uint16_t &mode);
+    /// Enters SWD mode, retrying a failed enter; see linkadapt.cc.
     bool enter_debug_mode();
     bool exit_debug_mode();
     bool exit_dfu_mode();

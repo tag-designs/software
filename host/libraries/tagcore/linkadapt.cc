@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <thread>
 
 extern "C"
 {
@@ -237,25 +238,65 @@ bool LinkAdapt::exit_debug_mode()
     return cmd_eval(req, true);
 }
 
+namespace {
+/// Sends of the SWD enter command while the probe reports it failed. On the
+/// bench a failed enter recovered on the next send every time (98 of 98,
+/// 2026-10-31); four sends leave room. Matches tagcore-rs.
+constexpr int kSwdEnterAttempts = 4;
+/// Pause between failed enter sends: time for a tag woken from Shutdown by
+/// nRST to power its debug port, and only about 30 ms over three retries.
+constexpr std::chrono::milliseconds kSwdEnterRetryDelay{10};
+} // namespace
+
+/**
+ * @brief   Enters SWD debug mode, retrying while the probe reports failure.
+ *
+ * @details A sleeping tag's debug port is unpowered until nRST wakes the
+ *          part, and the enter sent about a millisecond after nRST is
+ *          asserted occasionally reaches the port before it answers. A tag
+ *          base then fails the enter (its SWD_Open()) and does not reopen the
+ *          port on later reads, so without a retry every debug access of the
+ *          session fails with status 0x81. The command is sent up to
+ *          kSwdEnterAttempts times, kSwdEnterRetryDelay apart. If every send
+ *          fails the failure is logged and true is still returned, so the
+ *          caller's mode read-back decides, as before the retry existed. See
+ *          design/investigations/2026-10-l4-attach-swd-enter.md.
+ *
+ * @return  false if the command did not complete over USB; true otherwise.
+ *
+ * @pre     nRST held low by the caller, so the tag stays in reset across
+ *          the retries.
+ * @warning Blocks for up to about 30 ms more when the enter fails.
+ */
 bool LinkAdapt::enter_debug_mode()
 {
-    uint8_t result[2];
-    LinkReq req;
-    req.cmd[0] = STLINK_DEBUG_COMMAND;
-    req.cmd[1] = STLINK_DEBUG_APIV2_ENTER;
-    req.cmd[2] = STLINK_DEBUG_ENTER_SWD;
-    req.len = sizeof(result);
-    req.buf = result;
-    if (cmd_eval(req, true))
+    for (int attempt = 1;; attempt++)
     {
+        uint8_t result[2];
+        LinkReq req;
+        req.cmd[0] = STLINK_DEBUG_COMMAND;
+        req.cmd[1] = STLINK_DEBUG_APIV2_ENTER;
+        req.cmd[2] = STLINK_DEBUG_ENTER_SWD;
+        req.len = sizeof(result);
+        req.buf = result;
+        if (!cmd_eval(req, true))
+            return false;
         uint16_t status = UNPACK16(result);
-        if (status != STLINK_DEBUG_ERR_OK)
+        if (status == STLINK_DEBUG_ERR_OK)
         {
-            log_warn("enter swd mode reported status 0x%x", status);
+            if (attempt > 1)
+                log_warn("enter swd mode succeeded on attempt %d", attempt);
+            return true;
         }
-        return true;
+        if (attempt >= kSwdEnterAttempts)
+        {
+            log_error("enter swd mode reported status 0x%x on all %d attempts", status,
+                      kSwdEnterAttempts);
+            return true;
+        }
+        log_debug("enter swd mode reported status 0x%x; retrying", status);
+        std::this_thread::sleep_for(kSwdEnterRetryDelay);
     }
-    return false;
 }
 
 bool LinkAdapt::exit_dfu_mode()
