@@ -18,6 +18,12 @@ tag-start [options]
 | --- | --- | --- |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
+| `-c`, `--config` | file | Writes this configuration, in the protobuf JSON that Tag Monitor saves, to the tag before starting it. |
+| `--merge` | none | With `--config`, copies only the fields the tag supports onto its stored configuration, instead of replacing it. |
+| `--set-rtc` | none | Sets the tag's clock from the computer before starting. |
+| `--start-now` | none | Sets the start delay to zero, so logging begins at once. |
+| `--start-timeout` | seconds | How long to wait for the tag to leave `IDLE` after the start is accepted. Default 10. |
+| `--settle-timeout` | seconds | How long to wait after connecting for the tag to report its state. Connecting restarts the tag, which reports no definite state while it boots. Default 10. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
 ## Preconditions

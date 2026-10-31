@@ -230,8 +230,8 @@ Read: [`README.md`](../../applications/tagcalibrate-rs/README.md),
 axes against time, with hover readouts, cursors, zoom, event markers, gap
 breaks, per-stream ranges, colours and axis sides, a compass panel for
 compass logs, per-tag preference files, File Info, and PDF export. A port of
-the Qt SensorViz's window; the Qt application keeps its name while both
-ship.
+the Qt SensorViz's window; it took a new name so that the two could ship
+side by side before v4.0.
 
 **Shape.** One engine thread and no tag. The engine owns the open log as a
 `sensorviz_session::Session`: sensorViz's C++ core (chapter 5), so the
@@ -276,8 +276,9 @@ the [leaving-Qt proposal](../../applications/sensorviz/design/proposals/leaving-
 
 ## The Qt applications, briefly
 
-They are the references the ports are held to, and they ship beside them
-until retired. `qtmon` is structured like its port (a Qt-free `core/`, a
+They are the references the ports are held to. From v4.0 they are not in
+the packages and build only with `BUILD_LEGACY_HOST`, which is needed to
+regenerate an oracle (chapter 13). `qtmon` is structured like its port (a Qt-free `core/`, a
 tag session on a worker thread, a window that draws), by design. `qtprogram`
 is the batch station, through `STM32_Programmer_CLI`. `qtcalibrate`'s
 `CompassData` is now an adapter over the C++ session the Rust application

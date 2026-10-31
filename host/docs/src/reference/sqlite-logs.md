@@ -287,7 +287,7 @@ record table and calibration history.
 | `ax`, `ay`, `az` | mg | Raw accelerometer axes used for orientation. |
 | `mx`, `my`, `mz` | uT | Raw magnetometer axes used for orientation. |
 
-SensorViz uses `Compass` and `Calibration` together to generate heading,
+Tag View uses `Compass` and `Calibration` together to generate heading,
 pitch, roll, dip, field-strength, and acceleration views.
 
 Example:
@@ -323,7 +323,7 @@ The sample tables share timing columns:
 | `SegmentId` | Timing segment containing the sample. |
 | `SampleIndex` | Nominal sample index within the segment. For `ImuMag`, `ImuPressure` and `ImuTemperature` rows this is the first IMU sample index of the superframe the value belongs to. |
 | `RawElapsedUs` | Uncorrected elapsed microseconds from the segment start: `SampleIndex` times the nominal sample period. |
-| `ElapsedUs` | Corrected elapsed microseconds used by SensorViz. |
+| `ElapsedUs` | Corrected elapsed microseconds used by Tag View. |
 
 `ImuAccel`, `ImuGyro`, and `ImuMag` then add axis columns:
 
@@ -421,14 +421,14 @@ missing key as zero. Logs written before October 2026 have no
 `accelerometer` object and carry a `b` field magnitude that nothing applies.
 
 Use the newest calibration row when you need the same default behavior as
-SensorViz. Keep older rows if you need to audit how calibration changed over
+Tag View. Keep older rows if you need to audit how calibration changed over
 time.
 
 ## External Analysis Notes
 
 - Prefer `streams` over hard-coded table names when possible.
 - Use `units` from `streams` so scripts label exported data correctly.
-- Treat SensorViz preferences as display settings, not as database schema.
+- Treat Tag View preferences as display settings, not as database schema.
 - Processed database copies may add derived tables and derived stream rows.
   Re-read `streams` after processing instead of assuming only raw streams are
   present.
@@ -437,7 +437,7 @@ time.
 
 - [tag-dwnld](../cli/tag-dwnld.md) explains how to create SQLite downloads from
   the command line.
-- [SensorViz](../apps/sensorviz.md) explains how to load and inspect SQLite
+- [Tag View](../apps/tagview.md) explains how to load and inspect SQLite
   logs visually.
 - [dataprocessing](../cli/dataprocessing.md) explains how processed database
   copies add derived streams.

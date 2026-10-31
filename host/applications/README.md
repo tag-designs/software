@@ -1,18 +1,20 @@
 ---
 type: readme
 status: current
-summary: Table of the host applications - the Qt ones and their Rust/Tauri ports - with the executable and product name of each, and the rule for where application behaviour lives.
+summary: Table of the host applications - the shipped Rust/Tauri ones and the legacy Qt ones they replace - with the executable and product name of each, and the rule for where application behaviour lives.
 ---
 
 # Host Applications
 
 Each application owns its menus, workflows and application-specific glue.
-There are two lines, and both ship until the Qt one is retired: the Qt
-applications, and their Rust ports, which draw a web page in a Tauri window
-over a toolkit-free Rust engine. The pattern the Rust applications share is
+There are two lines. The Rust applications, which draw a web page in a Tauri
+window over a toolkit-free Rust engine, are the product: from v4.0 they are the
+only applications in the packages. The Qt applications they were ported from
+build only with `BUILD_LEGACY_HOST`, as a reference and to regenerate the test
+oracles below ([decision 0042](../../docs/decisions/0042-host-rust-default-release.md)). The pattern the Rust applications share is
 described in the [guide](../design/guide/10-application-pattern.md).
 
-## Qt (C++)
+## Qt (C++, legacy)
 
 | Directory | Target | Product name | Purpose |
 | --- | --- | --- | --- |

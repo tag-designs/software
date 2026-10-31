@@ -29,7 +29,8 @@
 
          Every file is kept under the output directory.
 
-@warning Detach qtmonitor first: it holds the monitor.
+@warning Detach Tag Monitor (tagmonitor or qtmonitor) first: it holds the
+         monitor.
 """
 from __future__ import annotations
 

@@ -6,6 +6,11 @@ summary: qtmonitor live and fixture screenshot modes, screenshot commands and si
 
 # QtMonitor
 
+**Legacy.** From v4.0 this program is not in the host packages; Tag Monitor (`tagmonitor`, [tagmonitor-rs](../tagmonitor-rs/README.md))
+replaces it. It builds only when CMake is configured with
+`-DBUILD_LEGACY_HOST=ON`, which needs Qt, and is kept as the reference its port
+is tested against ([decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)).
+
 `qtmonitor` is the Qt host application for inspecting an attached tag, editing
 its configuration, issuing basic state-control commands, viewing the tag error
 log, and starting downloads from finished or aborted logs.

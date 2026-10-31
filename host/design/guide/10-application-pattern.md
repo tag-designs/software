@@ -153,7 +153,7 @@ makes designing it quick. `host/ui-kit` is what every page shares:
 
 | File | What it is |
 | --- | --- |
-| `kit.css` | The look: a macOS-native style in plain CSS, with light and dark themes as custom properties, matching the Qt applications that ship beside these |
+| `kit.css` | The look: a macOS-native style in plain CSS, with light and dark themes as custom properties, matching the Qt applications these replaced |
 | `preact-htm.js` | [Preact](https://preactjs.com) 10 (a small React-compatible renderer), its hooks, and htm (templates as tagged strings), vendored as one classic script |
 | `kit.js` | The global `Kit`: `createEngine()` (Tauri inside the app, a mock in a browser), the in-window menu bar, dialogs, file pickers, URL and folder opening |
 | `kit-components.js` | Preact components for the kit's own classes: `Button`, `Group`, `Row`, `Progress`, `StatusGrid`, `LogPane`, and `Kit.dialog` taking a Preact body |
@@ -230,7 +230,9 @@ In this order, for any of the four:
   fixtures hold every sample of a calibration session; Tag Calibrator
   reproduces qtcalibrate's quality log line for line. sensorViz's state-dump
   script is Tag View's. The Qt application's test files are changed in the
-  same commit as its behaviour, and the Rust test then fails, which is how
+  same commit as its behaviour (regenerating them needs a build with
+  `BUILD_LEGACY_HOST`, since the Qt applications are no longer built by
+  default), and the Rust test then fails, which is how
   two implementations are kept honest without duplicating specifications.
 - **Screenshots:** `ui/screenshots.sh` renders the manual's pictures from
   the mock; 30 to 34 screenshots per application were compared pixel for

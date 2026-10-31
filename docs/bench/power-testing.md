@@ -7,7 +7,7 @@ summary: The shared procedure for measuring a tag's current with the Joulescope 
 # Power Testing
 
 Measure with `joulescope_server.py` held open for the whole session, the
-Joulescope desktop app and qtmonitor detached, the supply set and confirmed
+Joulescope desktop app and Tag Monitor detached, the supply set and confirmed
 before the tag is connected, and the tag flashed with `mode=UR`. Measure after
 an attach and detach, not from a cold boot. Read the `charge/time` figure, never
 the window mean, over windows that hold a whole number of the target's
@@ -31,11 +31,12 @@ required and how to bisect a bad one. To qualify a release, follow
 
 ## 1. Before measuring
 
-1. **Ask the user to detach the Joulescope desktop app and qtmonitor, and wait
-   for confirmation.** Both spoil the result, each in its own way, and neither
+1. **Ask the user to detach the Joulescope desktop app and Tag Monitor
+   (`tagmonitor`, or the legacy `qtmonitor`), and wait for confirmation.**
+   Both spoil the result, each in its own way, and neither
    failure shows in the output:
    - the desktop app holds the instrument, so the scripts cannot open it;
-   - qtmonitor holds the monitor, which keeps `isMonitorEnabled()` true, so the
+   - Tag Monitor holds the monitor, which keeps `isMonitorEnabled()` true, so the
      tag never sleeps at all. On the L432, `tagPowerEnterTerminalSleep()`
      returns without sleeping. On the U375 the idle hook
      (`tagPowerEnterIdleMode()`) falls back to plain Sleep, and the Stop 3
@@ -48,7 +49,7 @@ required and how to bisect a bad one. To qualify a release, follow
    `jsdrv_open timed out` and no explanation.
 
    ```sh
-   pgrep -af 'qtmonitor|joulescope-mcp'          # must be empty
+   pgrep -af 'tagmonitor|qtmonitor|joulescope-mcp'   # must be empty
    ```
 
 3. **Set the supply for the target, and confirm it on the Joulescope before the
@@ -291,7 +292,7 @@ never edited out. Record for every session:
 - the config used;
 - the interpreter used for the Joulescope, and confirmation that the server
   was used, not the desktop app or the MCP server;
-- confirmation that qtmonitor and the desktop app were detached;
+- confirmation that Tag Monitor and the desktop app were detached;
 - the directory holding the session's own evidence: logs, databases, the
   flashed manifest. The write-up points at it; it does not replace it.
 

@@ -6,6 +6,11 @@ summary: qtprogram (Tag Programmer) source layout, how it chooses the internal-f
 
 # qtprogram
 
+**Legacy.** From v4.0 this program is not in the host packages; Tag Programmer (`tagprogram`, [tagprogram-rs](../tagprogram-rs/README.md))
+replaces it. It builds only when CMake is configured with
+`-DBUILD_LEGACY_HOST=ON`, which needs Qt, and is kept as the reference its port
+is tested against ([decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)).
+
 `qtprogram` (Tag Programmer) is a station for programming a batch of tags. It
 finds STM32CubeProgrammer, the base and the tag by itself. It offers the
 published firmware releases, verified against their manifests. It programs and

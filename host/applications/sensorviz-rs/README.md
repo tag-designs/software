@@ -6,8 +6,8 @@ summary: Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensor
 
 # Tag View: sensorViz (Rust)
 
-The Rust/Tauri sensorViz, step 4 of
-[leaving Qt](../sensorviz/design/proposals/leaving-qt.md): the Qt sensorviz's
+The Rust/Tauri sensorViz, and from v4.0 the packages' only log viewer, step
+4 of [leaving Qt](../sensorviz/design/proposals/leaving-qt.md): the Qt sensorviz's
 window over the same C++ core, which it reaches through
 [`sensorviz-session`](../../libraries/sensorviz-session-rs/README.md). Built
 as Tag Calibrator is ([`tagcalibrate-rs`](../tagcalibrate-rs/README.md)): a
@@ -84,8 +84,8 @@ CMake builds it with `BUILD_RUST_APPS` (`CMakeLists.txt`, as Tag Monitor's:
 see its [build and packaging](../tagmonitor-rs/design/build-and-packaging.md))
 and installs it as **`tagview`** -- `tag_tools/tagview.app` ("Tag View") on
 macOS, `tag_tools/tagview.exe` on Windows, `tag_tools/bin/tagview` on Linux --
-beside the Qt `sensorviz`, which keeps its name while both ship (owner's
-decision, 2026-10-28). The window and bundle are "Tag View"; the app and
+the name chosen (owner's decision, 2026-10-28) so it could ship beside the Qt
+`sensorviz`; from v4.0 it is the only viewer in the packages. The window and bundle are "Tag View"; the app and
 crates in this directory keep the sensorViz names. Its crates' notices are
 `LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt`.
 

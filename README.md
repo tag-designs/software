@@ -17,7 +17,7 @@ This repository builds two broad families of software:
 
 | Area | Description |
 | --- | --- |
-| Host tools | Desktop command-line tools and Qt applications used to communicate with, configure, program, monitor, and visualize tag data. |
+| Host tools | Desktop command-line tools and Rust/Tauri applications used to communicate with, configure, program, monitor, and visualize tag data. The Qt applications they replaced build as a legacy option. |
 | Embedded tools | Firmware and support targets for tags and base boards. |
 
 The top-level CMake build is controlled with cache options:
@@ -144,9 +144,10 @@ cmake --build --preset windows-vcpkg-static-package
 ```
 
 Windows install and packaging are Release-only. The ZIP contains one shared
-`tag_tools` directory with Qt application and command-line launcher
-executables, the real applications and command-line tools, Qt DLLs, MSVC
-runtime DLLs, Qt plugins, and QML runtime files.
+`tag_tools` directory with the applications, the command-line launcher
+executables, the real command-line tools, `tagcore_c.dll` and the MSVC runtime
+DLLs. A legacy build (`-DBUILD_LEGACY_HOST=ON`) adds the Qt applications, Qt
+DLLs, Qt plugins and QML runtime files.
 Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies are linked
 statically and are not packaged as separate DLLs. The version in the ZIP name
 comes from the highest `vX.Y[.Z]` tag reachable from HEAD at configure time,
@@ -193,7 +194,7 @@ cmake -S . -B build ^
 | --- | --- |
 | Xcode or command-line tools | Provides the Apple compiler toolchain. |
 | CMake 3.20 or newer | Used for configure, build, install, and packaging. |
-| Qt 6 | Required for Qt host applications and `macdeployqt`. |
+| Qt 6 | Only for the legacy Qt applications (`-DBUILD_LEGACY_HOST=ON`) and `macdeployqt`. |
 | `pkg-config` | Used to locate `libusb-1.0` for non-vcpkg builds. |
 | vcpkg | Used by the `macos-vcpkg` preset for static non-Qt libraries. The preset expects vcpkg at `$HOME/Software/vcpkg` and Qt at `$HOME/qt/6.10.3/macos`. |
 | Homebrew autotools | Required by vcpkg's `libusb` port on macOS: `brew install autoconf autoconf-archive automake libtool`. These are build-only tools, not packaged runtime dependencies. |
@@ -201,17 +202,17 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
-| Rust 1.85 or newer | For Tag Programmer. Install with [rustup](https://rustup.rs). Without `cargo` Tag Programmer is skipped. |
+| Rust 1.85 or newer | Builds the applications and the tag tools. Install with [rustup](https://rustup.rs). Without `cargo` a host configure stops and says how to install it. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
-Make sure the Qt `bin` directory for the selected Qt version is on `PATH` so
-CMake can find `macdeployqt`.
+For a legacy build, make sure the Qt `bin` directory for the selected Qt
+version is on `PATH` so CMake can find `macdeployqt`.
 
 ## macOS Build
 
-The preferred packaged host build uses vcpkg for static non-Qt libraries and
-the standard dynamic Qt distribution:
+The preferred packaged host build uses vcpkg for static libraries (and, in a
+legacy build, the standard dynamic Qt distribution):
 
 ```
 # Run these from the repository source directory. The preset writes the
@@ -237,8 +238,8 @@ verifies the signatures inside the resulting DMG. See
 [Releasing the host tools](docs/release/release-procedure.md#3-releasing-the-host-tools).
 
 This keeps Protobuf, SQLite, libusb, Abseil, and related vcpkg dependencies out
-of the app bundles as separate dylibs. Qt remains dynamic and is deployed with
-`macdeployqt`.
+of the app bundles as separate dylibs. In a legacy build Qt remains dynamic and
+is deployed with `macdeployqt`.
 
 Before using this preset, install the host autotools required by vcpkg's
 `libusb` build:
@@ -262,11 +263,12 @@ cmake --build build-package --parallel
 cmake --build build-package --target package
 ```
 
-The macOS package flow runs `macdeployqt` during package staging, including
-the QML import directories registered on each Qt target with
-`QT_DEPLOY_QML_DIRS`, copies the curated Qt plug-ins, signs the final app
-bundles, then CPack creates the DragNDrop DMG. These package-related options
-default to `ON`:
+The macOS package flow assembles and signs the four application bundles and
+the tools, then CPack creates the DragNDrop DMG. In a legacy build it also runs
+`macdeployqt` on the Qt bundles during package staging, including the QML
+import directories registered on each Qt target with `QT_DEPLOY_QML_DIRS`, and
+copies the curated Qt plug-ins. These package-related options default to `ON`;
+all but `MACOS_SIGN_APPS` concern only the Qt bundles:
 
 ```
 MACOS_SIGN_APPS
@@ -696,8 +698,11 @@ The project's own code is licensed under the [MIT License](LICENSE), Copyright
 GPL-licensed components and are therefore distributed under the GNU GPL,
 version 3:
 - **The tag and base-board firmware:** ChibiOS/RT.
-- **`sensorviz`:** QCustomPlot.
-- **`qtcalibrate`:** Qt Quick 3D.
+- **The legacy `sensorviz`:** QCustomPlot.
+- **The legacy `qtcalibrate`:** Qt Quick 3D.
+
+The legacy Qt programs are not in the host packages from v4.0, so the
+packages contain no GPL program.
 
 [LICENSES/](LICENSES/README.md) explains this, and lists every third-party
 component with links to its license:

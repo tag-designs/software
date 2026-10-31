@@ -57,7 +57,7 @@ Store published guide images in `host/docs/src/images/`. Reference them from
 Markdown with relative paths from the page location:
 
 ```md
-![Qt Program main window](../images/qtprogram-main-window.png)
+![Tag Programmer ready to program a BitTag](../images/tagprogram-station.png)
 ```
 
 Capture only the relevant application window or panel. Use realistic sample
@@ -69,27 +69,22 @@ pages.
 
 Use short, stable names that identify the app and screen:
 
-- `qtprogram-main-window.png`
-- `qtcalibrate-startup.png`
-- `qtcalibrate-collection.png`
-- `qtcalibrate-collection-000.png`
-- `qtcalibrate-collection-025.png`
-- `qtcalibrate-collection-050.png`
-- `qtcalibrate-collection-100.png`
-- `qtcalibrate-orientation-forward.png`
-- `qtcalibrate-orientation-backward.png`
-- `qtmonitor-startup.png`
-- `qtmonitor-main-idle.png`
-- `qtmonitor-main-running.png`
-- `qtmonitor-main-finished.png`
-- `qtmonitor-config-bittag.png`
-- `qtmonitor-config-bittag-le.png`
-- `qtmonitor-config-bitprestag.png`
-- `qtmonitor-config-compasstag.png`
-- `qtmonitor-config-imutag.png`
-- `qtmonitor-config-prestag.png`
-- `qtmonitor-error-log.png`
-- `sensorviz-compass-view.png`
+- `tagprogram-station.png`
+- `tagprogram-program.png`
+- `tagmonitor-configuration.png`
+- `tagmonitor-tag-info.png`
+- `tagmonitor-choose-base.png`
+- `tagcalibrate-startup.png`
+- `tagcalibrate-collection-100.png`
+- `tagcalibrate-orientation.png`
+- `tagview-imutag-plot.png`
+- `tagview-visible-streams.png`
+
+Tag Programmer's, Tag Monitor's and Tag Calibrator's pictures are rendered
+from each application's mock by its `ui/screenshots.sh`, so they can be
+regenerated after a change to the window.
+The `qtprogram-*`, `qtmonitor-*`, `qtcalibrate-*`, `sensorviz-*` and
+`TagMonitor*` images belong to the legacy pages and go with them.
 
 When adding a new screenshot, add a name that remains correct if minor wording
 or layout changes. Prefer `app-area-state.png` over names tied to transient

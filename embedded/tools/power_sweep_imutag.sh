@@ -33,7 +33,7 @@
 #   STOP_ON_FAILURE=1 power_sweep_imutag.sh 60 results.csv
 #
 # Before running: the Joulescope desktop app must have released the device and
-# qtmonitor must not be holding the monitor. The app blocks the driver outright;
+# Tag Monitor (tagmonitor or qtmonitor) must not be holding the monitor. The app blocks the driver outright;
 # a held monitor keeps isMonitorEnabled() true so the tag never sleeps, which
 # shows up only as a wrong average.
 

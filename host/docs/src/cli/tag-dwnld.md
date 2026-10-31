@@ -2,7 +2,8 @@
 
 `tag-dwnld` downloads stored log records from a tag and writes them to a file.
 Use it for scripted downloads, recovery work, or cases where the GUI monitor is
-not convenient.
+not convenient. The file is written by the same code as a download from
+[Tag Monitor](../apps/tagmonitor.md), so the two are interchangeable.
 
 ## Usage
 
@@ -18,6 +19,9 @@ tag-dwnld [options]
 | `-f`, `--format` | `default`, `sqlite` | Selects the output storage format. SQLite is the only format; `sqlite`, `sql`, `db` and `db3` are accepted. The text format is retired: `text` and `txt` are refused before the tag is touched. Convert existing `.txt` logs with [tag-txt-import](tag-txt-import.md). |
 | `-s`, `--stop` | none | Stops a running tag before downloading. Without this option, download proceeds only when the tag is already finished, aborted, or in exception state. |
 | `--rescue-exception` | none | For old firmware that refuses downloads from `EXCEPTION`, changes the monitor-visible backup state to `ABORTED` before downloading. This does not erase log flash or reset log counters. |
+| `--stop-timeout` | seconds | With `--stop`, how long to wait for the tag to reach `FINISHED` or `ABORTED`. Default 30. |
+| `--settle-timeout` | seconds | How long to wait after connecting for the tag to report its state. Connecting restarts the tag, which reports no definite state while it boots. Default 10. |
+| `--profile` | none | Prints download timing and the link's transfer profile, for diagnosing a slow download. |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
 | `-h`, `--help` | none | Prints command usage and exits. |

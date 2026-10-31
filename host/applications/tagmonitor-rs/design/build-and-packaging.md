@@ -7,7 +7,7 @@ summary: How Tag Monitor in Rust is built and shipped - the cargo workspace, the
 # Building and packaging Tag Monitor (Rust)
 
 Tag Monitor in Rust is built by cargo and shipped inside the host tools
-package beside the Qt applications as `tagmonitor`, exactly as
+package as `tagmonitor`, exactly as
 [Tag Programmer](../../tagprogram-rs/design/build-and-packaging.md) is. This
 page covers what is particular to it. The page staging in `app/build.rs`, the
 user-guide search, the macOS bundle and signing, and the CI Rust steps are

@@ -74,7 +74,7 @@ on the U375 by a fault of its own, at 1.71 mA, a different signature from the
 995 uA one ([TODO](../../embedded/tags/TODO.md)).
 
 Before measuring, **ask the user to detach the Joulescope desktop app and
-qtmonitor, and wait for confirmation.** The reasons are in
+Tag Monitor, and wait for confirmation.** The reasons are in
 [power-testing.md](power-testing.md#1-before-measuring). Then run the life-cycle
 check, which takes the tag through idle, running, stopped and idle again and
 measures every resting state. `--use-server` needs `joulescope_server.py

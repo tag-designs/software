@@ -34,7 +34,8 @@ and [decision 0032](../../../../docs/decisions/0032-host-config-shape-and-fixed-
 
 ## Checking a change
 
-Build qtmonitor, run the probe, and compare the results with the goldens:
+Build qtmonitor, run the probe, and compare the results with the goldens.
+qtmonitor builds only in a tree configured with `-DBUILD_LEGACY_HOST=ON`:
 
 ```sh
 cmake --build <build-dir> --target qtmonitor

@@ -121,8 +121,8 @@ these procedures catch.
   [Verifying a firmware change](docs/bench/verifying-firmware.md),
   [Power testing](docs/bench/power-testing.md),
   [Release procedure](docs/release/release-procedure.md).
-- **Ask the user to detach the Joulescope desktop app and qtmonitor first, and
-  wait for confirmation.** Never use the `joulescope-js220` MCP server; for any
+- **Ask the user to detach the Joulescope desktop app and Tag Monitor
+  (`tagmonitor`, or the legacy `qtmonitor`) first, and wait for confirmation.** Never use the `joulescope-js220` MCP server; for any
   sweep run `joulescope_server.py`. [Power testing](docs/bench/power-testing.md).
 - **An acknowledgement is not a completion, and an attach starts under reset.**
   Poll for the state you asked for; wait for a definite state before the first

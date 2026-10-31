@@ -69,7 +69,7 @@ does.
    the flash fills.
 4. **Recover and download.** Attach it again and download to a single SQLite
    file.
-5. **Look at the data.** `sensorviz` plots everything in that file; the file is
+5. **Look at the data.** Tag View (`tagview`) plots everything in that file; the file is
    also directly readable from Python, R or MATLAB.
 
 ### Current status
@@ -284,13 +284,14 @@ not the deployment.
 Three desktop tools cover the whole cycle. All of them talk to the tag through
 the same small wired probe.
 
-### 4.1 Configuring and arming: qtmonitor
+### 4.1 Configuring and arming: Tag Monitor
 
-`qtmonitor` is where you inspect a tag and set it up. It has three tabs.
-**Tag State** shows live status -- what the tag is doing, its battery voltage,
-clock error, how much data it holds, and its identity and firmware version.
-**Configuration** is where you set up a recording. **Error Log** collects
-messages if something goes wrong.
+Tag Monitor (`tagmonitor`) is where you inspect a tag and set it up. A status
+strip across the window shows what the tag is doing, its battery voltage and
+its clock. **Configuration**, the tab it opens on, is where you set up a
+recording. **Tag Info** has the rest of the tag's state: how much data it
+holds, and its identity and firmware version. **Error Log** collects messages
+if something goes wrong.
 
 Four settings matter for an IMUTag:
 
@@ -307,42 +308,42 @@ checks every sensor and the flash, and it is worth running before a deployment.
 
 Magnetometer calibration is a separate step, covered next.
 
-### 4.2 Calibrating the magnetometer: qtcalibrate
+### 4.2 Calibrating the magnetometer: Tag Calibrator
 
 The magnetometer is the one channel that needs a per-tag calibration step, for
 the reason given in section 3.3 -- uncalibrated, its offset is half the size of
-the field it is trying to measure. `qtcalibrate` is the tool that fixes it, and
-it is a once-per-tag job, not a once-per-deployment one.
+the field it is trying to measure. Tag Calibrator (`tagcalibrate`) is the tool
+that fixes it, and it is a once-per-tag job, not a once-per-deployment one.
 
-Attach the tag, press **Start**, and turn it through as many orientations as
+Attach the tag, tick **Stream**, press **Start**, and turn it through as many orientations as
 you can manage while samples accumulate. The plot shows where those samples
 fall on a sphere; what you are aiming for is even coverage, because the fit is
 only as good as the directions you actually visited.
 
-![qtcalibrate at the end of a collection: the sample cloud covers the sphere, with the fitted constants and quality metrics on the right](images/qtcalibrate-collection-100.png)
+![Tag Calibrator at the end of a collection: the sample cloud covers the sphere, with the fitted constants and quality metrics beside it](images/tagcalibrate-collection-100.png)
 
-Four numbers under the plot tell you whether you turned the tag enough.
-**Gaps** is how much of the sphere you missed, **Variance** and **Wobble**
-describe how tightly the samples sit on it, and **Fit Error** is how well the
-fitted model matches them. Lower is better on all four; if Gaps stays high,
-keep turning.
+The figures under the plot tell you whether you turned the tag enough.
+**Coverage** counts how many of 100 patches of the sphere you visited and
+**Evenness** how evenly; **Spread** and **Fit Error** say how tightly the
+samples sit on the fitted sphere. If Coverage stays low, keep turning; the
+[Tag Calibrator](apps/tagcalibrate.md#reading-the-results) page explains every
+figure.
 
 The fit produces a magnetic offset, a 3x3 mapping matrix and the field strength
 those imply. **Tag Write** stores them on the tag and **Tag Read** shows what is
 already there. Once written, the constants are copied into every download from
-that tag, and `sensorviz` applies them without being asked.
+that tag, and Tag View applies them without being asked.
 
 The **Orientation** tab then shows live compass heading and attitude, which is
 the quickest way to confirm the calibration behaves before you commit a tag to
 a deployment.
 
-Step-by-step instructions and the other collection milestones are in the
-application guide, `host/docs/src/apps/qtcalibrate.md`.
+Step-by-step instructions are in the application guide, [Tag Calibrator](apps/tagcalibrate.md).
 
 ### 4.3 Downloading
 
 
-Either choose **File ▸ Download Data…** in `qtmonitor`, or use the command-line tool:
+Either choose **File ▸ Download Data…** in Tag Monitor, or use the command-line tool:
 
 ```
 tag-dwnld -o flight042.db3
@@ -357,9 +358,9 @@ You can download a tag as many times as you like. The data stays on the tag
 until you explicitly erase it, which is worth doing only once you have the file
 safely copied.
 
-### 4.4 Looking at the data: sensorviz
+### 4.4 Looking at the data: Tag View
 
-`sensorviz` opens a downloaded file and plots everything in it. It works out
+Tag View (`tagview`) opens a downloaded file and plots everything in it. It works out
 what the file contains from the file itself, so there is nothing to configure
 per tag type.
 
@@ -515,7 +516,7 @@ this sensor set.
 
 1. **Is the recording schedule intentionally limited to a start delay?**
    The stored configuration carries absolute start and stop times, but only the
-   start delay is offered in `qtmonitor` for this tag type.
+   start delay is offered in Tag Monitor for this tag type.
 2. **Why does idle measure as two populations?** 5.52 uA and 6.71 uA on the
    same board and image, splitting on the day rather than the procedure. It is
    worth 16 days of shelf life on a 12 mAh cell. See *Idle does not agree with

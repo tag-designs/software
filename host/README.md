@@ -16,13 +16,17 @@ the communication and storage models, and each component's architecture and
 code structure, with the reading order a newcomer needs. This README is the
 map; the guide is the book.
 
-The host code exists in two implementations, and both ship today:
+The host code exists in two implementations. From v4.0 the packages carry
+the Rust applications and tools; the Qt applications and the C++ tools the Rust
+ones replace build only with `BUILD_LEGACY_HOST`, as a reference and to
+regenerate the test oracles
+([decision 0042](../docs/decisions/0042-host-rust-default-release.md)).
 
 - **C++**: the `tagcore` library (the original tag interface, the SQLite
-  writer, the SWD recovery library), the sensor libraries, the Qt
-  applications (`qtmonitor`, `qtprogram`, `qtcalibrate`, `sensorviz`)
-  and most command-line tools.
-- **Rust**: ports made in October 2026. A Rust tag interface (`tagcore-rs`),
+  writer, the SWD recovery library), the sensor libraries, the legacy Qt
+  applications (`qtmonitor`, `qtprogram`, `qtcalibrate`, `sensorviz`), the
+  recovery tools, and `dataprocessing` and `tag-txt-import`, which ship.
+- **Rust**: ports made in October 2026, and the shipped product. A Rust tag interface (`tagcore-rs`),
   programming through probe-rs (`tagprobe-rs`), the command-line tools that
   need only the tag interface (`commandline-rs`), and four Tauri applications
   (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View). Where the C++ holds
@@ -36,7 +40,7 @@ The host code exists in two implementations, and both ship today:
 | Directory | Role |
 | --- | --- |
 | `libraries/` | Reusable code, C++ and Rust: the tag interface, programming, log writing and reading, sensor maths, shared widgets, and the C interface between the two languages. See [libraries/README.md](libraries/README.md). |
-| `applications/` | The applications, Qt (`qtmon`, `qtprogram`, `qtcalibrate`, `sensorviz`) and Rust/Tauri (`*-rs`). See [applications/README.md](applications/README.md). |
+| `applications/` | The applications: Rust/Tauri (`*-rs`), which ship, and the legacy Qt ones (`qtmon`, `qtprogram`, `qtcalibrate`, `sensorviz`). See [applications/README.md](applications/README.md). |
 | `commandline/` | The C++ command-line tools (`tag-*`, `dataprocessing`), on `libraries/tagcore`. See [commandline/README.md](commandline/README.md). |
 | `commandline-rs/` | The Rust command-line tools: ports of the C++ `tag-*` tools, plus `tag-flash` and `base-flash`, which program tags and bases without STM32CubeProgrammer. See [commandline-rs/README.md](commandline-rs/README.md). |
 | `ui-kit/` | The web front ends' shared look and plumbing: CSS, Preact components, the engine connection, menus and dialogs. See [ui-kit/README.md](ui-kit/README.md). |

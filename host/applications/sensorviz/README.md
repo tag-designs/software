@@ -6,6 +6,11 @@ summary: What sensorviz does, its architecture, design rules, data model, plotti
 
 # sensorViz
 
+**Legacy.** From v4.0 this program is not in the host packages; Tag View (`tagview`, [sensorviz-rs](../sensorviz-rs/README.md))
+replaces it. It builds only when CMake is configured with
+`-DBUILD_LEGACY_HOST=ON`, which needs Qt, and is kept as the reference its port
+is tested against ([decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)).
+
 `sensorviz` is the general Qt/QCustomPlot viewer for the SQLite sensor logs
 written by the host download tools: BitTag, BitPresTag, PresTag, UIUCTag,
 CompassTag and IMUTag. It replaces the retired `compviz`.

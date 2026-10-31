@@ -6,6 +6,11 @@ summary: qtcalibrate source layout, runtime flow, sample capture and replay, cal
 
 # qtcalibrate
 
+**Legacy.** From v4.0 this program is not in the host packages; Tag Calibrator (`tagcalibrate`, [tagcalibrate-rs](../tagcalibrate-rs/README.md))
+replaces it. It builds only when CMake is configured with
+`-DBUILD_LEGACY_HOST=ON`, which needs Qt, and is kept as the reference its port
+is tested against ([decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)).
+
 `qtcalibrate` is the host application for collecting live magnetometer samples,
 fitting magnetometer calibration constants, saving/loading those constants on a
 tag, and previewing the resulting compass orientation.

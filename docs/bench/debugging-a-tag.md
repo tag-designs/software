@@ -23,7 +23,7 @@ each one destroys by being used.
 | GDB over SWD | hundreds of uA | full core and peripheral state, live | an established session, with `DBG_STOP`/`DBG_STANDBY` |
 | Joulescope | none (external) | current only, but truthfully | n/a |
 | GPIO markers | ~0, or 700 uA if left driven | coarse timing of a few events | no |
-| Monitor / qtmonitor | tag never sleeps | protocol-level state | no |
+| Monitor / Tag Monitor | tag never sleeps | protocol-level state | no |
 
 The ordering matters. The scratchpad is nearly free and can be left in a
 shipped image; the debugger costs more than the fault you are usually chasing;
@@ -398,7 +398,7 @@ work area elsewhere before letting OpenOCD program anything.
 
 **The monitor and OpenOCD share one ST-Link.** Only one can hold it. The
 `tag-*` tools attach and detach per invocation, so they interleave with an
-OpenOCD session, but anything holding a session open -- qtmonitor especially --
+OpenOCD session, but anything holding a session open -- Tag Monitor especially --
 locks OpenOCD out, and vice versa.
 
 ### What it costs
@@ -453,7 +453,7 @@ driven against the board's 4.7k pull-ups costs about 700 uA per line.
 
 ## 5. The monitor
 
-`qtmonitor` and the `tag-*` tools speak the protocol and are the right way to
+Tag Monitor (`tagmonitor`) and the `tag-*` tools speak the protocol and are the right way to
 ask what state the tag believes it is in. They cannot be used while measuring
 sleep: an open session keeps `isMonitorEnabled()` true, so the tag never sleeps
 at all, and the failure is invisible in the output -- it just reads as a high

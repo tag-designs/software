@@ -8,7 +8,7 @@ summary: Capturing a tag's state over SWD before anything resets it, rebuilding 
 
 Capture a tag **before anything else touches it**. Use `tag-capture`, which
 holds the core at its reset vector so the firmware never runs. Any monitor
-attach (`tag-info`, `tag-reset`, qtmonitor) lets the firmware boot, and that
+attach (`tag-info`, `tag-reset`, Tag Monitor) lets the firmware boot, and that
 boot clears the reset flags, can rewrite `pState`, and can append to the flash
 marker log. `tag-rebuild` then turns a capture into the SQLite file
 `tag-dwnld -f sqlite` would have written, with no tag attached.
@@ -164,7 +164,7 @@ succeed, stops the tag and downloads it with `tag-dwnld --stop -f sqlite`,
 and captures it again. Both captures are rebuilt. The final rebuild must equal
 the download table by table, apart from the provenance rows in `info`. The
 mid-run rebuild must be an exact prefix of the download. Every file is kept
-under `--out-dir` (default `rebuild-checks`). Detach qtmonitor first.
+under `--out-dir` (default `rebuild-checks`). Detach Tag Monitor first.
 
 `tag_rebuild_check.py compare <capture> <download.db3>` rebuilds one stored
 capture and checks it against its download offline. Keep the reference pairs

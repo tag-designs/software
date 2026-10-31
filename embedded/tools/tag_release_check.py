@@ -13,8 +13,8 @@
          A build that passes every functional test can still draw 240x the idle
          current. The only way to know is to measure the image being shipped.
 
-@warning Detach the Joulescope desktop app and qtmonitor first. Both invalidate
-         the result -- the app holds the instrument, and qtmonitor holds the
+@warning Detach the Joulescope desktop app and Tag Monitor first. Both invalidate
+         the result -- the app holds the instrument, and Tag Monitor holds the
          monitor so the tag never sleeps at all -- and neither failure is
          obvious in the output.
 """

@@ -68,19 +68,23 @@ read the external flash, `tag-capture` stores the tag's state, and
 
 ## Host tools
 
-The host software exists in C++ and, since October 2026, in Rust; both ship.
+The host software exists in C++ and, since October 2026, in Rust. From v4.0
+the packages carry the Rust applications and tools; the Qt applications build
+only with `BUILD_LEGACY_HOST`
+([decision 0042](../decisions/0042-host-rust-default-release.md)).
 `host/libraries/tagcore` is the C++ low-level host interface (USB, monitor,
 log writers, recovery), and `host/libraries/tagcore-rs` its Rust port of the
-tag interface. The Qt applications in `host/applications` are `qtmonitor`
-(monitor, configure, download), `qtprogram`, `qtcalibrate` and `sensorviz`
-(SQLite log visualization); their Rust/Tauri ports are
-`tagmonitor`, `tagprogram`, `tagcalibrate` and `tagview`, which reach the C++
-SQLite writer, calibration session and sensorViz core through the `tagcore_c`
-C interface ([applications README](../../host/applications/README.md)). The
-command-line tools in `host/commandline` (`tag-info`, `tag-start`, `tag-stop`,
-`tag-reset`, `tag-capture`, `tag-xflash`, `tag-rebuild`, and others) script the
-same operations, with Rust ports of the tag-interface tools and the
-programming tools `tag-flash` and `base-flash` in `host/commandline-rs`. User
+tag interface. The applications in `host/applications` are `tagmonitor`
+(monitor, configure, download), `tagprogram`, `tagcalibrate` and `tagview`
+(SQLite log visualization), Rust/Tauri ports of the Qt `qtmonitor`,
+`qtprogram`, `qtcalibrate` and `sensorviz`. They reach the C++ SQLite writer,
+calibration session and sensorViz core through the `tagcore_c` C interface
+([applications README](../../host/applications/README.md)). The Rust
+command-line tools in `host/commandline-rs` (`tag-info`, `tag-start`,
+`tag-stop`, `tag-reset`, `tag-dwnld`, `tag-flash`, `base-flash`, and others)
+script the same operations; `host/commandline` keeps the C++ recovery tools
+(`tag-capture`, `tag-xflash`, `tag-rebuild`), `dataprocessing` and
+`tag-txt-import`. User
 manuals are in `host/docs/`. The [Host Software Guide](../../host/design/guide/README.md)
 explains the host side for a newcomer.
 

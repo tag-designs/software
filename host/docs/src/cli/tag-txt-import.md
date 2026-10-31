@@ -1,7 +1,7 @@
 # tag-txt-import
 
 `tag-txt-import` converts a BitTag or PresTag log saved in the old text format
-(`.txt`) into the SQLite format (`.db3`) that SensorViz and the other tools
+(`.txt`) into the SQLite format (`.db3`) that Tag View and the other tools
 read. The text format is being retired; SQLite holds the same data together
 with the tag's description, and any analysis tool can read it (see
 [SQLite Log Format](../reference/sqlite-logs.md)).

@@ -137,14 +137,16 @@ configurations, so a new type gets cases for every field once they are
 regenerated (from the repository root):
 
 ```sh
-cmake -DBUILD_QTMON_CHECKS=ON <build-dir>
+cmake -DBUILD_LEGACY_HOST=ON -DBUILD_QTMON_CHECKS=ON <build-dir>
 cmake --build <build-dir> --target config_probe_cases qtmonitor
 <build-dir>/Release/bin/config_probe_cases . host/applications/qtmon/test/cases
 host/applications/qtmon/test/probe.sh <qtmonitor> host/applications/qtmon/test/golden
 ```
 
 The goldens come from **qtmonitor**, the reference; the Rust port is the
-build under test. For a change to an existing type, take the goldens from the
+build under test. qtmonitor is no longer in the packages and builds only with
+`BUILD_LEGACY_HOST`, which needs Qt, so the tree that regenerates goldens is
+configured with it. For a change to an existing type, take the goldens from the
 commit before the change, as `host/applications/qtmon/test/README.md`
 explains, and record any intended difference in its `expected-differences.md`.
 Then:
@@ -184,9 +186,9 @@ Only two rules outside the form look at the tag type:
 
 ## Docs and samples
 
-- The user manual's **Tag Configuration** section, in
-  `host/docs/src/apps/qtmonitor.md`, gets a subsection for the type, with a
-  screenshot from qtmonitor's capture.
+- The user manual's **Settings by tag type** section, in
+  `host/docs/src/apps/tagmonitor.md`, gets a subsection for the type. A
+  screenshot comes from the mock (`ui/screenshots.sh`).
 - Optionally, regenerate the browser mock's sample if the new panel should be
   in it: `cargo run -p tagmonitor-core --example form_view -- NEWTAG`
   prints the panels; `ui/mock-engine.js` says where they go.

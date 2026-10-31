@@ -6,8 +6,8 @@ summary: Tag Calibrator in Rust, the port of qtcalibrate, shipped as tagcalibrat
 
 # Tag Calibrator (Rust)
 
-A port of [qtcalibrate](../qtcalibrate/README.md), to be shipped as
-`tagcalibrate`, built the way [Tag Monitor](../tagmonitor-rs/README.md) and
+A port of [qtcalibrate](../qtcalibrate/README.md), shipped as
+`tagcalibrate` and, from v4.0, the packages' only calibrator, built the way [Tag Monitor](../tagmonitor-rs/README.md) and
 [Tag Programmer](../tagprogram-rs/README.md) were: a generic web UI on
 [`host/ui-kit`](../../ui-kit/README.md), an engine that holds every rule, and
 a thin Tauri shell.

@@ -17,7 +17,7 @@ It follows the structure qtmonitor was given for this purpose
 ([architecture](../qtmon/design/architecture.md),
 [decision 0036](../../../docs/decisions/0036-host-qtmonitor-engine-model-view.md)).
 
-**Status: complete on the `tagmonitor-rs` branch; shipped as `tagmonitor` beside qtmonitor** ([decision 0037](../../../docs/decisions/0037-host-tagmonitor-rs.md)).
+**Status: complete; from v4.0 the packages' Tag Monitor, shipped as `tagmonitor`; qtmonitor builds only with `BUILD_LEGACY_HOST`** ([decision 0037](../../../docs/decisions/0037-host-tagmonitor-rs.md)).
 
 | Phase | What | State |
 | --- | --- | --- |

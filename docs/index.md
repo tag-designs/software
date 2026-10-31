@@ -85,6 +85,7 @@ design document.
 - [0039. Host: Tag Calibrator in Rust (tagcalibrate-rs)](decisions/0039-host-tagcalibrate-rs.md) *(decision)* — qtcalibrate was ported to Rust as tagcalibrate-rs on Tag Monitor's pattern, with its calibration not ported but moved into sensoranalysis's Qt-free C++ core - shown bit-identical to the Qt code at each step - and reached from Rust through tagcore_c and calibsession-rs; the engine reproduces qtcalibrate's replay log line for line.
 - [0040. Host: compass display angles are computed in the Qt-free core](decisions/0040-host-compass-display-angles-in-core.md) *(decision)* — Compass heading, pitch and roll are computed by compasscore::displayAngles() in sensoranalysis's Qt-free core - a bit-identical copy of Qt's toEulerAngles() and the historical relabelling - instead of by Qt at each display, so the sensorViz compass transform and non-Qt front ends show the same angles; this replaces only that part of 0030, whose quaternion-only storage stands.
 - [0041. Host: one Cargo workspace for the Rust code](decisions/0041-host-one-cargo-workspace.md) *(decision)* — All of the host's Rust crates form one Cargo workspace at host/Cargo.toml with one Cargo.lock and, in a CMake build, one shared cargo target directory, replacing six independent lock files and four application workspaces; the crates' directories and names are unchanged.
+- [0042. Host: the Rust applications and tools are the release from v4.0](decisions/0042-host-rust-default-release.md) *(decision)* — From host release v4.0 the packages carry the Rust applications and tools only; the Qt applications and the C++ tools with Rust equivalents build behind BUILD_LEGACY_HOST (off), Qt leaves the default build and CI, and dataprocessing, tag-txt-import, the recovery tools and tagcore_c stay C++.
 
 ### Investigations
 
@@ -351,7 +352,7 @@ design document.
 
 ### Applications
 
-- [Host Applications](../host/applications/README.md) — Table of the host applications - the Qt ones and their Rust/Tauri ports - with the executable and product name of each, and the rule for where application behaviour lives.
+- [Host Applications](../host/applications/README.md) — Table of the host applications - the shipped Rust/Tauri ones and the legacy Qt ones they replace - with the executable and product name of each, and the rule for where application behaviour lives.
 
 ### Applications / qtcalibrate
 

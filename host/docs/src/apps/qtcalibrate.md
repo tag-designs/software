@@ -1,4 +1,10 @@
-# Qt Calibrate
+# Qt Calibrate (legacy)
+
+!!! note "Legacy"
+    `qtcalibrate` is no longer in the host packages. From v4.0 the packages carry
+    [Tag Calibrator](tagcalibrate.md) in its place. This page is kept for one release for
+    anyone who builds the Qt program from source with the CMake option
+    `BUILD_LEGACY_HOST`, and will then be removed.
 
 Use Qt Calibrate to collect calibration data and generate calibration values
 for supported sensors.

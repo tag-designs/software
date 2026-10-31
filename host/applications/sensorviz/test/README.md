@@ -114,8 +114,8 @@ outputs were identical before and after.
 
 ## `session_cli`
 
-Not a check but a third client of the core, beside the Qt app and the future
-Rust one: it opens a log with `Session` and writes the state dump, or prints
+Not a check but a third client of the core, beside the Qt app and the Rust
+one (`tagview`): it opens a log with `Session` and writes the state dump, or prints
 the hover readout at a time. Everything it prints comes from `Session`, so it
 shows the core's boundary is real.
 

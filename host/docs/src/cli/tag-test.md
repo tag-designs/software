@@ -18,6 +18,7 @@ tag-test [options]
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
 | `-t`, `--test` | `TestReq` | Runs one requested self-test by enum name or number; default is `RUN_ALL`. |
+| `--test-timeout` | seconds | How long to wait for the tag to return to `IDLE` with a result. This is when `tag-test` gives up, not a pass or fail limit; raise it for slow tests. Default 30. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
 ## Preconditions

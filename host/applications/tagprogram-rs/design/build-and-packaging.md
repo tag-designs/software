@@ -6,10 +6,9 @@ summary: How Tag Programmer is built and shipped - the cargo workspace, what bui
 
 # Building and packaging Tag Programmer
 
-Tag Programmer is built by cargo and shipped inside the host tools package
-beside the Qt applications. The top-level CMake build runs cargo through a
-custom target, and installs the binary where each platform's package expects
-an application. Nothing outside the Rust toolchain is needed on macOS and
+Tag Programmer is built by cargo and shipped inside the host tools package.
+The top-level CMake build runs cargo through a custom target, and installs the
+binary where each platform's package expects an application. Nothing outside the Rust toolchain is needed on macOS and
 Windows: libusb and protoc are vendored by crates. Linux needs WebKitGTK 4.1,
 at build time and on the user's machine. The build writes nothing into the
 source tree.
@@ -95,8 +94,8 @@ target `tagprogram`:
 
 | Platform | Installed as | Notes |
 | --- | --- | --- |
-| macOS | `tag_tools/tagprogram.app` | Bundle assembled by CMake: binary, `Info.plist` from `cmake/Info.plist.in`, `icon.icns`. Signed by `macos_codesign_bundle`, as the Qt bundles are. |
-| Windows | beside the Qt executables | Self-contained; uses the WebView2 runtime that Windows 10 and 11 carry. |
+| macOS | `tag_tools/tagprogram.app` | Bundle assembled by CMake: binary, `Info.plist` from `cmake/Info.plist.in`, `icon.icns`. Signed by `macos_codesign_bundle`, as every bundle in the image is. |
+| Windows | `tag_tools/tagprogram.exe` | Self-contained; uses the WebView2 runtime that Windows 10 and 11 carry. |
 | Linux | `tag_tools/bin/tagprogram` | Links the system WebKitGTK 4.1 (`libwebkit2gtk-4.1-0`). |
 
 The bundle is assembled by CMake rather than by Tauri's bundler. That keeps

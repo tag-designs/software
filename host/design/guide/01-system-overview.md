@@ -118,13 +118,13 @@ Each job below is one or two programs, described in chapters 9 and 11.
 
 | Job | Programs | When |
 | --- | --- | --- |
-| **Program** a tag's firmware into its internal flash, and a base's into its own | Tag Programmer (`tagprogram`, `qtprogram`), `tag-flash`, `base-flash` | Manufacturing, firmware upgrades |
+| **Program** a tag's firmware into its internal flash, and a base's into its own | Tag Programmer (`tagprogram`), `tag-flash`, `base-flash` | Manufacturing, firmware upgrades |
 | **Commission** a tag: run its self tests, set its clock, record it | Tag Programmer, `tag-test`, `tag-info` | After programming, before deployment |
-| **Calibrate** a tag's magnetometer and accelerometer and store the constants on it | Tag Calibrator (`tagcalibrate`, `qtcalibrate`), `tag-cal`, `tag-cal-write` | CompassTag and IMUTag, before deployment |
-| **Configure and start** a tag with a schedule and sensor settings | Tag Monitor (`tagmonitor`, `qtmonitor`), `tag-start` | Deployment |
+| **Calibrate** a tag's magnetometer and accelerometer and store the constants on it | Tag Calibrator (`tagcalibrate`), `tag-cal`, `tag-cal-write` | CompassTag and IMUTag, before deployment |
+| **Configure and start** a tag with a schedule and sensor settings | Tag Monitor (`tagmonitor`), `tag-start` | Deployment |
 | **Monitor** an attached tag: state, clock error, voltage, test results | Tag Monitor, `tag-info` | Any time a tag is on a base |
 | **Stop, download and erase** a returned tag | Tag Monitor, `tag-stop`, `tag-dwnld`, `tag-reset` | Recovery |
-| **View and process** the downloaded data | Tag View (`tagview`), SensorViz (`sensorviz`), `dataprocessing` | Analysis |
+| **View and process** the downloaded data | Tag View (`tagview`), `dataprocessing` | Analysis |
 | **Recover** a tag that cannot run its firmware: capture its memory, read its external flash through a loader, rebuild the download offline | `tag-capture`, `tag-xflash`, `tag-rebuild` (C++ only) | Failure analysis |
 
 Two facts shape all of them:
@@ -147,8 +147,11 @@ The host code was written in C++ with Qt applications between 2018 and
 October 2026. In the last ten days of October 2026 much of it was ported to
 Rust: the tag interface, the command-line tools that need only it, and all
 four applications, which became Tauri applications (a Rust program showing a
-web page in a native window). Both lines ship today; the Qt applications are
-to be retired once their ports have been used in the field.
+web page in a native window). From v4.0 the packages carry the Rust line
+only. The Qt applications (`qtprogram`, `qtmonitor`, `qtcalibrate`,
+`sensorviz`) and the C++ tools the Rust ones replace still build, with the
+CMake option `BUILD_LEGACY_HOST`, as the reference the ports are tested
+against ([decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)).
 
 The port was not a rewrite from scratch, and that matters for reading the
 code. Three rules were followed, and each Rust file says which C++ file it

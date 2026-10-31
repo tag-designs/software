@@ -63,14 +63,18 @@ nav:
   - Project Home: https://tag-designs.github.io/
   - IMUTag Overview: imutag-overview.md
   - Applications:
-      - Tag Monitor: apps/qtmonitor.md
-      - Tag Monitor (tagmonitor): apps/tagmonitor.md
-      - SensorViz: apps/sensorviz.md
-      - Tag View: apps/tagview.md
-      - Qt Calibrate: apps/qtcalibrate.md
-      - Tag Calibrator: apps/tagcalibrate.md
-      - Qt Program: apps/qtprogram.md
       - Tag Programmer: apps/tagprogram.md
+      - Tag Monitor: apps/tagmonitor.md
+      - Tag Calibrator: apps/tagcalibrate.md
+      - Tag View: apps/tagview.md
+      # The Qt programs left the packages in v4.0. Their pages stay for
+      # one release, then go with their images (qtmonitor-*, qtprogram-*,
+      # qtcalibrate-*, sensorviz-*, TagMonitor*).
+      - Legacy:
+          - Qt Program: apps/qtprogram.md
+          - Qt Tag Monitor: apps/qtmonitor.md
+          - Qt Calibrate: apps/qtcalibrate.md
+          - SensorViz: apps/sensorviz.md
   - Command Line:
       - Overview: cli/index.md
       - tag-test: cli/tag-test.md

@@ -174,9 +174,9 @@ flashed removes the need to rely on that.
 
 ### Before starting
 
-- **Detach the Joulescope desktop app and qtmonitor.** Both invalidate the
+- **Detach the Joulescope desktop app and Tag Monitor.** Both invalidate the
   result, in different ways, and neither failure is obvious in the output. The
-  Joulescope app holds the instrument so the script cannot open it. qtmonitor
+  Joulescope app holds the instrument so the script cannot open it. Tag Monitor
   holds the monitor, which keeps `isMonitorEnabled()` true, so the tag never
   sleeps at all and simply reads as a high average.
 - **Attach the right board.** Nothing checks that the board matches the target.
@@ -277,9 +277,9 @@ it no longer understands, is not reported. So:
 - **Other STM32L432 tags, or any upgrade that changes the calibration
   format:** mass erase and reprovision.
 
-qtprogram applies the same rule, read from the image's linker symbols
-(`host/applications/qtprogram/flashplan.cpp`); `qtprogram --flash-plan
-<elf>...` prints the erase it would use.
+Tag Programmer applies the same rule, read from the image's linker symbols
+(`host/applications/tagprogram-rs/core/src/model/flashplan.rs`), and its
+Program dialog states the erase it will use.
 
 **Erase and program in one invocation.** `flash_release.py --erase` runs
 `tag-flash program --erase all`, one probe session (or, with
@@ -461,7 +461,7 @@ Two places, for two readers:
 - **A release asset** carries the evidence: the session directory for each
   target, with the board label and UUID, the supply voltage, the image
   SHA-256 read back from the manifest that was flashed, and the logs.
-  **The asset's name is read by machine**: qtprogram treats a release as
+  **The asset's name is read by machine**: Tag Programmer treats a release as
   qualified for exactly the targets that have a
   `qualification-<Target>-<YYYYMMDD>.tar.gz` asset, `<Target>` being the
   build target (`CompassTagAT25`, not `CompassTag`), and warns the operator

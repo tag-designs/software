@@ -1,4 +1,10 @@
-# Tag Monitor
+# Qt Tag Monitor (legacy)
+
+!!! note "Legacy"
+    `qtmonitor` is no longer in the host packages. From v4.0 the packages carry
+    [Tag Monitor](tagmonitor.md) in its place. This page is kept for one release for
+    anyone who builds the Qt program from source with the CMake option
+    `BUILD_LEGACY_HOST`, and will then be removed.
 
 Tag Monitor connects to a tag through a USB base and shows the information
 needed to prepare, check, run, and recover a data logging experiment. Use it to

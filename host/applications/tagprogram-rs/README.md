@@ -23,13 +23,14 @@ STM32CubeProgrammer, and its UI is a web page drawn by Tauri.
 | `design/` | [The engine](design/engine.md) (threads, loop, station, session, hazards), [building and packaging](design/build-and-packaging.md), [the UI/engine contract](design/ui-engine-contract.md), and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. Why it was built this way: [decision 0035](../../../docs/decisions/0035-host-tagprogram-rs.md). |
 
 The engine owns every rule and all state; the page holds none. That split is
-what lets the same kit and pattern serve qtmonitor and qtcalibrate later.
+what let the same kit and pattern serve Tag Monitor and Tag Calibrator.
 
 ## In the host build and the packages
 
-The top-level CMake build builds it with cargo (`BUILD_RUST_APPS`, on where
-cargo is installed; the release workflow turns it on) and installs it beside
-the Qt applications: `tag_tools/tagprogram.app` on macOS, signed with them;
+From v4.0 it is the packages' Tag Programmer; qtprogram builds only with
+`BUILD_LEGACY_HOST`. The top-level CMake build builds it with cargo
+(`BUILD_RUST_APPS`, on by default) and installs it as
+`tag_tools/tagprogram.app` on macOS, signed with the other bundles;
 `tag_tools/tagprogram.exe` on Windows; `tag_tools/bin/tagprogram` on Linux,
 where it needs the system's WebKitGTK 4.1. See `CMakeLists.txt`.
 

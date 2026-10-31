@@ -1,13 +1,17 @@
 # Command-Line Tools
 
-The host command-line tools live in `host/commandline` and are built with the
-host tools. They are intended for direct USB tag operations and scripting.
-`tag-flash` and `base-flash`, which program tags and bases, are written in
-Rust and live in `host/commandline-rs`; they take their own options,
-described on their pages.
+The host command-line tools are for direct USB tag operations and scripting.
+From v4.0 the tag tools (`tag-info`, `tag-start`, `tag-stop`, `tag-reset`,
+`tag-test`, `tag-cal`, `tag-dwnld`, `tag-flash` and `base-flash`) are written
+in Rust, in `host/commandline-rs`. They keep the names and output of
+the C++ tools they replace. `dataprocessing` and `tag-txt-import` are C++, in
+`host/commandline`.
 
-In the macOS release they are in `tag_tools/bin`; put that directory on your
-`PATH` to run them by name. In the Windows release they are in `tag_tools`
+A tool given an option it does not know, or a bad value, prints the problem
+and its usage and exits with status 2. Other failures exit with status 1.
+
+In the macOS and Linux releases they are in `tag_tools/bin`; put that
+directory on your `PATH` to run them by name. In the Windows release they are in `tag_tools`
 beside the applications.
 
 These are command-line programs: run them from a terminal, such as Terminal on
@@ -46,10 +50,9 @@ Most tag-attached tools share these options:
 | `tag-flash` | [tag-flash](tag-flash.md) | Program, erase or read a tag's flash through its base, without STM32CubeProgrammer. |
 | `base-flash` | [base-flash](base-flash.md) | Update a base's firmware over USB through its bootloader. |
 
-Developer and bench programs -- `tag-test-example`, `tag-monitor-test`,
-`tag-attach-cycle`, `tag-cal-write`, `tag-peek` -- are built from the same
-directory but are not part of a release, so they have no pages here. They are
-described in `host/commandline/README.md`.
+Developer and bench programs, such as `tag-peek`, `tag-attach-cycle` and
+`tag-log-import`, are built with the tools but are not part of a release, so
+they have no pages here. They are described in `host/commandline-rs/README.md`.
 
 ## Fill-In Checklist
 

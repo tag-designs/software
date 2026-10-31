@@ -1,4 +1,10 @@
-# SensorViz
+# SensorViz (legacy)
+
+!!! note "Legacy"
+    `sensorviz` is no longer in the host packages. From v4.0 the packages carry
+    [Tag View](tagview.md) in its place. This page is kept for one release for
+    anyone who builds the Qt program from source with the CMake option
+    `BUILD_LEGACY_HOST`, and will then be removed.
 
 Use SensorViz to inspect SQLite sensor logs from pressure, activity, IMUTag,
 and CompassTag logs. The application is intended for comparing raw sensor

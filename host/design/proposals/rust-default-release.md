@@ -337,8 +337,10 @@ licence folder, which still installs the Qt notices (phase 3).
 - The application directories' comment-only `Cargo.toml` files, left by the
   workspace change, made cargo fail inside an application; they are deleted.
 
-Not yet run: the workflow itself and the Linux package test, which need a
-push (a `workflow_dispatch` run, then one with `legacy`).
+Both `workflow_dispatch` runs of `release.yml` on 2a43d8be passed on all
+three platforms: the default configuration (run 41231412406), including the
+Linux package test and the macOS embed check, and the legacy one with Qt
+(run 41231419120).
 
 ### Phase 4: documentation
 
@@ -378,6 +380,20 @@ Developer documentation:
 - `docs/bench/*.md` and `embedded/tools/*.py` docstrings that say "detach
   qtmonitor": "detach Tag Monitor (tagmonitor)"; the `pgrep` pattern in
   `power-testing.md` gains `tagmonitor`.
+
+**Progress, 2026-10-31.** Done. The manual's nav lists the four Rust
+applications, with the Qt pages under **Legacy**, each opening with a note
+that it goes in the next release. The Rust applications' pages were rewritten
+to stand alone, carrying over what the Qt pages said wherever the Rust source
+confirms it. The command-line pages gained the Rust tools' options they
+lacked (`tag-start --config`, `--merge`, the timeouts, `tag-dwnld
+--profile`) and the exit status 2 for option errors. The developer documents
+listed above, the Qt applications' READMEs, the goldens procedure in
+`adding-a-tag-type.md`, the bench documents and scripts, and the root README's
+packaging and licence prose were updated, and
+[decision 0042](../../../docs/decisions/0042-host-rust-default-release.md)
+records the switch. `docs.py check` passes and the manual builds with
+`--strict`.
 
 ### Phase 5: the release
 

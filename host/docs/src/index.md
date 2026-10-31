@@ -5,10 +5,17 @@ calibrate, and visualize Ultralight Tags.
 
 ## Applications
 
-- [Qt Program](apps/qtprogram.md): configure and program supported tags.
-- [Qt Calibrate](apps/qtcalibrate.md): collect calibration data and generate calibration values.
-- [Tag Monitor](apps/qtmonitor.md): connect to tags and monitor live output.
-- [SensorViz](apps/sensorviz.md): inspect SQLite pressure, activity, and CompassTag sensor logs.
+- [Tag Programmer](apps/tagprogram.md): program a batch of tags and record
+  the result.
+- [Tag Monitor](apps/tagmonitor.md): inspect, configure, start, stop and
+  download a tag.
+- [Tag Calibrator](apps/tagcalibrate.md): calibrate a tag's magnetometer and
+  accelerometer and write the values to the tag.
+- [Tag View](apps/tagview.md): plot the SQLite logs downloaded from tags.
+
+The Qt programs these replace (Qt Program, Qt Tag Monitor, Qt Calibrate and
+SensorViz) are no longer in the packages; their pages are kept for one release
+under **Legacy**.
 
 ## Common Workflows
 

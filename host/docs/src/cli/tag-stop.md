@@ -15,6 +15,8 @@ tag-stop [options]
 | --- | --- | --- |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-b`, `--base` | `BUS:DEVICE` | Selects a specific USB device by bus and device address. |
+| `--stop-timeout` | seconds | How long to wait for the tag to reach a stopped state after the stop is accepted. Default 30. |
+| `--settle-timeout` | seconds | How long to wait after connecting for the tag to report its state. Connecting restarts the tag, which reports no definite state while it boots. Default 10. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
 ## Preconditions
