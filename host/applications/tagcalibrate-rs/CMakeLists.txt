@@ -32,60 +32,17 @@
 #]]
 cmake_minimum_required(VERSION 3.20)
 
-#[[
-  @brief  Finds cargo, also where rustup puts it but PATH does not reach.
-#]]
-find_program(CARGO_EXECUTABLE cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
-if(NOT CARGO_EXECUTABLE)
-  message(FATAL_ERROR
-    "BUILD_RUST_APPS is ON but cargo was not found. Install Rust (rustup.rs) "
-    "or configure with -DBUILD_RUST_APPS=OFF.")
-endif()
+include("${PROJECT_SOURCE_DIR}/cmake/HostRust.cmake")
 
 #[[
-  @brief  The environment cargo runs in.
-
-  @details CARGO_TARGET_DIR keeps cargo's output in this build tree, as for
-           Tag Programmer. TAGCORE_C_LIB_DIR is where tagcore_c's targets
-           leave the library, which taglogwriter's build script links.
-           TAGCORE_C_RPATH (Linux) is where the installed program finds the
-           shared library: tag_tools/lib, beside the package's other
-           libraries. MACOSX_DEPLOYMENT_TARGET makes rustc target the same
-           macOS as the Qt applications.
+  @brief  The cargo build, through host_rust_app() (cmake/HostRust.cmake),
+          which links tagcore_c from this build: TAGCORE_C_LIB_DIR for the
+          tagcore-c-sys build script, TAGCORE_C_RPATH on Linux, and the
+          dependency on the library target.
 #]]
-set(_cargo_target_dir "${CMAKE_CURRENT_BINARY_DIR}/cargo")
-set(_tagcalibrate_bin "${_cargo_target_dir}/release/tagcalibrate${CMAKE_EXECUTABLE_SUFFIX}")
-set(_cargo_env
-    "CARGO_TARGET_DIR=${_cargo_target_dir}"
-    "TAGCORE_C_LIB_DIR=${CMAKE_BINARY_DIR}/$<CONFIG>/lib")
-if(APPLE)
-  set(_tagcore_c_target tagcore_c_static)
-  if(CMAKE_OSX_DEPLOYMENT_TARGET)
-    list(APPEND _cargo_env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-  endif()
-else()
-  set(_tagcore_c_target tagcore_c)
-  if(NOT WIN32)
-    list(APPEND _cargo_env "TAGCORE_C_RPATH=$ORIGIN/../lib")
-  endif()
-endif()
-
-# Always run: Cargo decides what is out of date. --locked builds exactly the
-# committed Cargo.lock.
-# The executable is then copied into bin/ beside the C++ programs, from
-# where the Linux rpath ($ORIGIN/../lib) reaches tagcore_c in lib/.
-add_custom_target(
-  tagcalibrate ALL
-  COMMAND ${CMAKE_COMMAND} -E env ${_cargo_env}
-          "${CARGO_EXECUTABLE}" build --release --locked -p tagcalibrate
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_tagcalibrate_bin}" "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  BYPRODUCTS "${_tagcalibrate_bin}"
-  COMMENT "Building Tag Calibrator (tagcalibrate-rs) with cargo"
-  USES_TERMINAL
-  VERBATIM)
-add_dependencies(tagcalibrate ${_tagcore_c_target})
+host_rust_app(tagcalibrate PACKAGE tagcalibrate OUTPUT _tagcalibrate_bin
+  LINKS_TAGCORE_C
+  COMMENT "Building Tag Calibrator (tagcalibrate-rs) with cargo")
 
 #[[
   @brief  Installs the program in each platform's package layout.

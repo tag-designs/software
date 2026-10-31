@@ -43,12 +43,12 @@ Warnings go to `developer-doxygen-warnings.log` and
 `developer-doxygen-<name>-warnings.log` in the build's `docs/` directory.
 
 The Rust reference is rustdoc, under `rust/`, listed on the portal's
-[Rust Reference](src/rust.md) page. `rust_docs` runs `cargo doc` once per
-entry in `DEVELOPER_RUST_DOCS` (top-level `CMakeLists.txt`), all into one
-target directory, so the crates share one search and link to one another, and
-`developer_docs` runs it after MkDocs when `cargo` is found. To add a crate,
-add an entry -- with the path dependencies its links should reach -- and a row
-in `src/rust.md`. The Tauri shells are deliberately not documented there.
+[Rust Reference](src/rust.md) page. `rust_docs` runs one `cargo doc` over the
+host Rust workspace (`host/Cargo.toml`) for the crates named in
+`DEVELOPER_RUST_DOCS` (top-level `CMakeLists.txt`), so the crates share one
+search and link to one another, and `developer_docs` runs it after MkDocs when
+`cargo` is found. To add a crate, add its name to the list and a row in
+`src/rust.md`. The Tauri shells are deliberately not documented there.
 
 ## Published GitHub Pages
 

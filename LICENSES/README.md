@@ -40,11 +40,11 @@ links to that component's license:
 | `host/`, `embedded/` | Each side's index (`README.md`), a copy of the MIT License (`LICENSE`), one notice file per third-party component (`third-party/`), and the full texts of the licenses those notices refer to (`texts/`) |
 | `host/Qt-THIRD-PARTY-NOTICES.txt` | The third-party code inside the Qt libraries, generated from Qt's `qt_attribution.json` files |
 | `tools/generate_qt_notices.py` | Regenerates `host/Qt-THIRD-PARTY-NOTICES.txt` |
-| `host/tagprogram-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Programmer (`tagprogram`), generated from its `Cargo.lock` |
-| `host/tagmonitor-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Monitor in Rust (`tagmonitor`), generated from its `Cargo.lock` |
-| `host/tagcalibrate-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Calibrator in Rust (`tagcalibrate`), generated from its `Cargo.lock` |
-| `host/tagview-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag View, sensorViz in Rust (`tagview`), generated from its `Cargo.lock` |
-| `tools/generate_rust_notices.py` | Regenerates a Rust notices file; run it whenever that application's `Cargo.lock` changes |
+| `host/tagprogram-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Programmer (`tagprogram`), generated from the host workspace's `host/Cargo.lock` |
+| `host/tagmonitor-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Monitor in Rust (`tagmonitor`), generated from the host workspace's `host/Cargo.lock` |
+| `host/tagcalibrate-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Calibrator in Rust (`tagcalibrate`), generated from the host workspace's `host/Cargo.lock` |
+| `host/tagview-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag View, sensorViz in Rust (`tagview`), generated from the host workspace's `host/Cargo.lock` |
+| `tools/generate_rust_notices.py` | Regenerates a Rust notices file; run it for all four applications whenever `host/Cargo.lock` changes |
 
 Each `host/` and `embedded/` directory is self-contained, with relative links,
 so it is installed into the packages as it stands.

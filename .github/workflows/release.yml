@@ -151,12 +151,12 @@ jobs:
           restore-keys: |
             vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_BASELINE }}-
 
-      # Tag Programmer, Tag Monitor, Tag Calibrator and Tag View
-      # (host/applications/{tagprogram,tagmonitor,tagcalibrate,sensorviz}-rs)
-      # are built by cargo.
-      # The runners carry rustup; this pins the toolchain to current stable
-      # (the crates need Rust 1.85 or newer, for edition 2024) and caches the
-      # dependency builds under the CMake build tree's cargo directory.
+      # Tag Programmer, Tag Monitor, Tag Calibrator, Tag View and the flash
+      # tools are built by cargo from the one host Rust workspace
+      # (host/Cargo.toml). The runners carry rustup; this pins the toolchain
+      # to current stable (the crates need Rust 1.85 or newer, for edition
+      # 2024) and caches the dependency builds under the CMake build tree's
+      # shared cargo directory (cmake/HostRust.cmake).
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -164,10 +164,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
-            host/applications/tagprogram-rs -> ../../../build/host/applications/tagprogram-rs/cargo
-            host/applications/tagmonitor-rs -> ../../../build/host/applications/tagmonitor-rs/cargo
-            host/applications/tagcalibrate-rs -> ../../../build/host/applications/tagcalibrate-rs/cargo
-            host/applications/sensorviz-rs -> ../../../build/host/applications/sensorviz-rs/cargo
+            host -> ../build/host/cargo
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -248,9 +245,8 @@ jobs:
         shell: bash
         run: |
           status=0
-          for app in tagprogram-rs/tagprogram tagmonitor-rs/tagmonitor \
-                     tagcalibrate-rs/tagcalibrate sensorviz-rs/tagview; do
-            exe=build/host/applications/${app%%/*}/cargo/release/${app##*/}
+          for app in tagprogram tagmonitor tagcalibrate tagview; do
+            exe=build/host/cargo/release/$app
             [ -f "$exe" ] || exe="$exe.exe"
             if grep -aqF "/app.js" "$exe"; then
               echo "ok      $exe"

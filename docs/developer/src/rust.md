@@ -46,9 +46,10 @@ its own module documentation describes it.
 
 ## Building it
 
-The `rust_docs` target runs `cargo doc` for each crate (the list is
-`DEVELOPER_RUST_DOCS` in the top-level `CMakeLists.txt`), and
-`developer_docs` runs it after MkDocs, as it runs Doxygen. It needs `cargo`;
+The `rust_docs` target runs one `cargo doc` over the host Rust workspace
+(`host/Cargo.toml`) for the crates listed in `DEVELOPER_RUST_DOCS` in the
+top-level `CMakeLists.txt`, and `developer_docs` runs it after MkDocs, as it
+runs Doxygen. It needs `cargo`;
 without it the portal is built without this reference and these links do not
 resolve. Nothing is linked, so the crates that link `libtagcore_c` do not
 need the library to be built first.
@@ -58,7 +59,8 @@ cmake --build <build-dir> --target rust_docs        # the reference alone
 cmake --build <build-dir> --target developer_docs   # the whole portal
 ```
 
-To check one crate's documentation as you change it, from its directory:
+To check one crate's documentation as you change it, from anywhere in the
+workspace (add `-p <crate>` to restrict it):
 
 ```sh
 cargo clippy --all-targets 2>&1 | grep -c "missing documentation"   # expect 0

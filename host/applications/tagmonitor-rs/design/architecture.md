@@ -129,7 +129,7 @@ qtmonitor's oracles.
 | Path | Holds |
 | --- | --- |
 | `CMakeLists.txt`, `cmake/Info.plist.in` | The CMake target and per-platform install ([build and packaging](build-and-packaging.md)) |
-| `Cargo.toml`, `Cargo.lock` | The workspace; the lock file is committed and release builds use it |
+| `Cargo.toml` | The two crates' manifests; both are members of the host workspace (`host/Cargo.toml`), whose committed `Cargo.lock` release builds use |
 | `design/` | This page, the contract, packaging, adding a tag type |
 
 ## How a command travels: Start

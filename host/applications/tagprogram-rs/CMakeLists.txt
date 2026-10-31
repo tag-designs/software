@@ -24,55 +24,18 @@
 #]]
 cmake_minimum_required(VERSION 3.20)
 
-#[[
-  @brief  Finds cargo, also where rustup puts it but PATH does not reach
-          (an IDE or CI shell that has not sourced ~/.cargo/env).
-#]]
-find_program(CARGO_EXECUTABLE cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
-if(NOT CARGO_EXECUTABLE)
-  message(FATAL_ERROR
-    "BUILD_RUST_APPS is ON but cargo was not found. Install Rust (rustup.rs) "
-    "or configure with -DBUILD_RUST_APPS=OFF.")
-endif()
+include("${PROJECT_SOURCE_DIR}/cmake/HostRust.cmake")
 
 #[[
-  @brief  The environment cargo runs in.
+  @brief  The cargo build, through host_rust_app() (cmake/HostRust.cmake).
 
-  @details CARGO_TARGET_DIR keeps cargo's output in this CMake build tree
-           rather than the source tree's target/, so a CMake build writes
-           nothing into the source directory and separate build trees do not
-           share (and fight over) one target directory.
-           TAGPROGRAM_HOST_VERSION is read at compile time by the engine
-           (option_env!) for the record's host_version column; without it the
-           crate's own version is used. MACOSX_DEPLOYMENT_TARGET makes rustc
-           and the C code built by crates (libusb) target the same macOS
-           version as the Qt applications and LSMinimumSystemVersion.
+  @details TAGPROGRAM_HOST_VERSION is read at compile time by the engine
+           (option_env!) for the record's host_version column; without it
+           the crate's own version is used.
 #]]
-set(_cargo_target_dir "${CMAKE_CURRENT_BINARY_DIR}/cargo")
-set(_tagprogram_bin "${_cargo_target_dir}/release/tagprogram${CMAKE_EXECUTABLE_SUFFIX}")
-set(_cargo_env
-    "CARGO_TARGET_DIR=${_cargo_target_dir}"
-    "TAGPROGRAM_HOST_VERSION=${ULTRALIGHT_PACKAGE_VERSION}")
-if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
-  list(APPEND _cargo_env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-endif()
-
-# The executable path is BYPRODUCTS so that the install rules below, and
-# generators such as Ninja, know which step produces it.
-# Always run: Cargo decides what is out of date. --locked builds exactly the
-# committed Cargo.lock.
-# The executable is then copied into bin/ beside the C++ programs.
-add_custom_target(
-  tagprogram ALL
-  COMMAND ${CMAKE_COMMAND} -E env ${_cargo_env}
-          "${CARGO_EXECUTABLE}" build --release --locked -p tagprogram
-  COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_tagprogram_bin}" "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  BYPRODUCTS "${_tagprogram_bin}"
-  COMMENT "Building Tag Programmer (tagprogram-rs) with cargo"
-  USES_TERMINAL
-  VERBATIM)
+host_rust_app(tagprogram PACKAGE tagprogram OUTPUT _tagprogram_bin
+  ENV "TAGPROGRAM_HOST_VERSION=${ULTRALIGHT_PACKAGE_VERSION}"
+  COMMENT "Building Tag Programmer (tagprogram-rs) with cargo")
 
 #[[
   @brief  Installs the executable in each platform's package layout.

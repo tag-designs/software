@@ -40,14 +40,15 @@ configuration and Tauri's generated files under cargo's `OUT_DIR`.
 
 The crates it ships are listed, with their licenses, in
 `LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt`. Regenerate that file
-with `LICENSES/tools/generate_rust_notices.py` whenever `Cargo.lock` changes.
+with `LICENSES/tools/generate_rust_notices.py` whenever the workspace's
+`host/Cargo.lock` changes.
 
 ## Building and running
 
 ```sh
-cd host/applications/tagprogram-rs
+cd host/applications/tagprogram-rs   # or anywhere in the host workspace
 cargo build -p tagprogram          # the app
-./target/debug/tagprogram
+../../target/debug/tagprogram      # cargo's output is the workspace's host/target
 cargo test -p tagprogram-core      # model and view tests, no hardware
 ```
 

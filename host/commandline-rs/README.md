@@ -14,9 +14,13 @@ either. The ports are not wired into the CMake build; `tag-flash` and
 `base-flash` (below) are, and ship in the host tools package.
 
 ```sh
-cargo build --release            # binaries in target/release/
+cargo build --release -p tag-tools   # binaries in host/target/release/ (the workspace's)
 cargo run --bin tag-info -- --json
 ```
+
+The crate is a member of the host Rust workspace (`host/Cargo.toml`), so
+these commands work from this directory or from `host/`, and the output goes
+to the workspace's `target/`.
 
 Every tool that talks to a tag takes the shared options from
 [`src/lib.rs`](src/lib.rs), the port of `options.cc`: `-d`/`--debug`, and

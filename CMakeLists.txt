@@ -170,17 +170,9 @@ set(DEVELOPER_DOXYGEN_APPS
 # (the three app/ crates) are left out: they are a page each, documenting them
 # compiles Tauri and WebKitGTK, and their behaviour is in the core crates.
 set(DEVELOPER_RUST_DOCS
-  "host/libraries/tagcore-rs|tagcore"
-  "host/libraries/tagcore-c-sys|tagcore-c-sys"
-  "host/libraries/taglogwriter-rs|taglogwriter tagcore tagcore-c-sys"
-  "host/libraries/calibsession-rs|calibsession tagcore-c-sys"
-  "host/libraries/sensorviz-session-rs|sensorviz-session tagcore-c-sys"
-  "host/libraries/tagprobe-rs|tagprobe tagcore"
-  "host/commandline-rs|tag-tools tagcore taglogwriter tagcore-c-sys"
-  "host/applications/tagprogram-rs|tagprogram-core tagcore tagprobe"
-  "host/applications/tagmonitor-rs|tagmonitor-core tagcore taglogwriter tagcore-c-sys"
-  "host/applications/tagcalibrate-rs|tagcalibrate-core tagcore calibsession tagcore-c-sys"
-  "host/applications/sensorviz-rs|sensorviz-core sensorviz-session tagcore-c-sys")
+  tagcore tagcore-c-sys taglogwriter calibsession sensorviz-session tagprobe
+  tag-tools
+  tagprogram-core tagmonitor-core tagcalibrate-core sensorviz-core)
 set(DEVELOPER_DOCS_STAGE_SCRIPT "${CMAKE_BINARY_DIR}/docs/StageDeveloperDocs.cmake")
 # The developer documents staged into the portal are not listed here.
 # docs/tools/docs.py finds every Markdown file carrying developer-doc front
@@ -334,12 +326,15 @@ endforeach()
           into the portal's rust/ directory.
 
   @details One `cargo doc --no-deps --document-private-items --all-features`
-           per entry, all sharing one target directory under the build's
-           docs/, then that target's doc/ copied to rust/ in the site. Nothing
-           is linked, so the crates that link libtagcore_c are pointed at an
-           empty directory and the shared form (TAGCORE_C_LINK=dylib), which
-           their build scripts accept without the library. --locked documents
-           exactly the committed Cargo.lock of each workspace.
+           over the host Rust workspace (host/Cargo.toml) for the packages in
+           DEVELOPER_RUST_DOCS, with its target directory under the build's
+           docs/, then that target's doc/ copied to rust/ in the site. The
+           crates share one search and link to one another because they are
+           documented in one run. Nothing is linked, so the crates that link
+           libtagcore_c are pointed at an empty directory and the shared form
+           (TAGCORE_C_LINK=dylib), which their build scripts accept without
+           the library. --locked documents exactly the committed
+           host/Cargo.lock.
 
            Optional, like Doxygen: without cargo the portal is built without
            it, and rust_docs reports that cargo is missing.
@@ -349,28 +344,20 @@ set(DEVELOPER_RUST_TARGET_DIR "${CMAKE_BINARY_DIR}/docs/rust-target")
 set(DEVELOPER_RUST_NOLIB_DIR "${CMAKE_BINARY_DIR}/docs/rust-no-tagcore-c")
 set(developer_rust_runs)
 if(DEVELOPER_CARGO_EXECUTABLE)
-  list(APPEND developer_rust_runs
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_RUST_NOLIB_DIR}")
-  foreach(entry IN LISTS DEVELOPER_RUST_DOCS)
-    string(REPLACE "|" ";" entry_fields "${entry}")
-    list(GET entry_fields 0 RUST_DOC_DIR)
-    list(GET entry_fields 1 RUST_DOC_PACKAGES)
-    separate_arguments(RUST_DOC_PACKAGES)
-    set(rust_doc_package_args)
-    foreach(package IN LISTS RUST_DOC_PACKAGES)
-      list(APPEND rust_doc_package_args -p ${package})
-    endforeach()
-    list(APPEND developer_rust_runs
-      COMMAND ${CMAKE_COMMAND} -E env
-              "CARGO_TARGET_DIR=${DEVELOPER_RUST_TARGET_DIR}"
-              "TAGCORE_C_LIB_DIR=${DEVELOPER_RUST_NOLIB_DIR}"
-              TAGCORE_C_LINK=dylib
-              "${DEVELOPER_CARGO_EXECUTABLE}" doc --locked --all-features --no-deps
-              --document-private-items
-              --manifest-path "${PROJECT_SOURCE_DIR}/${RUST_DOC_DIR}/Cargo.toml"
-              ${rust_doc_package_args})
+  set(rust_doc_package_args)
+  foreach(package IN LISTS DEVELOPER_RUST_DOCS)
+    list(APPEND rust_doc_package_args -p ${package})
   endforeach()
   list(APPEND developer_rust_runs
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEVELOPER_RUST_NOLIB_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E env
+            "CARGO_TARGET_DIR=${DEVELOPER_RUST_TARGET_DIR}"
+            "TAGCORE_C_LIB_DIR=${DEVELOPER_RUST_NOLIB_DIR}"
+            TAGCORE_C_LINK=dylib
+            "${DEVELOPER_CARGO_EXECUTABLE}" doc --locked --all-features --no-deps
+            --document-private-items
+            --manifest-path "${PROJECT_SOURCE_DIR}/host/Cargo.toml"
+            ${rust_doc_package_args}
     COMMAND ${CMAKE_COMMAND} -E rm -rf "${DEVELOPER_DOCS_SITE_DIR}/rust"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${DEVELOPER_RUST_TARGET_DIR}/doc" "${DEVELOPER_DOCS_SITE_DIR}/rust")

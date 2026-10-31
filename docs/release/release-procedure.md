@@ -345,7 +345,7 @@ python3 <repo>/embedded/tools/flash_release.py <release>/BitTag \
 This checks the image against the SHA-256 its manifest records and refuses to
 program on a mismatch, prints the provenance it verified, then programs with
 `tag-flash` -- found on `PATH`, in `TAG_FLASH`, or in this repository's
-`host/commandline-rs/target/release` -- or, when there is none, with
+`host/target/release` -- or, when there is none, with
 `STM32_Programmer_CLI` through the probe selection the CMake targets use.
 `--tool` chooses outright. `--verify-only` checks without programming. `--base`
 picks a base by USB serial when several are attached; for

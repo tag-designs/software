@@ -1,7 +1,7 @@
 Third-party software compiled into tagview
 ==========================================
 
-tagview contains the following 428 Rust crates, each used under
+tagview contains the following 439 Rust crates, each used under
 its own license. Generated from the application's Cargo.lock by
 LICENSES/tools/generate_rust_notices.py. Dependencies for every platform
 are listed, though each package compiles only its own. Where a crate offers
@@ -125,7 +125,7 @@ blocking 1.7.0
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/smol-rs/blocking
   Files:      LICENSE-APACHE [13], LICENSE-MIT [3]
-brotli 9.1.1
+brotli 9.1.0
   License:    BSD-3-Clause AND MIT
   Source:     https://github.com/dropbox/rust-brotli
   Files:      LICENSE.BSD-3-Clause [7], LICENSE.MIT [21]
@@ -1033,18 +1033,22 @@ r-efi 6.0.0
   License:    MIT OR Apache-2.0 OR LGPL-2.1-or-later
   Source:     https://github.com/r-efi/r-efi
   Files:      none; the declared license applies (texts/)
+rand_core 0.10.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/rust-random/rand_core
+  Files:      COPYRIGHT [134], LICENSE-APACHE [135], LICENSE-MIT [136]
 raw-window-handle 0.6.2
   License:    MIT OR Apache-2.0 OR Zlib
   Source:     https://github.com/rust-windowing/raw-window-handle
-  Files:      LICENSE-APACHE.md [10], LICENSE-MIT.md [134], LICENSE-ZLIB.md [135]
+  Files:      LICENSE-APACHE.md [10], LICENSE-MIT.md [137], LICENSE-ZLIB.md [138]
 redox_syscall 0.5.18
   License:    MIT
   Source:     https://gitlab.redox-os.org/redox-os/syscall
-  Files:      LICENSE [136]
+  Files:      LICENSE [139]
 redox_users 0.5.3
   License:    MIT
   Source:     https://gitlab.redox-os.org/redox-os/users
-  Files:      LICENSE [137]
+  Files:      LICENSE [140]
 ref-cast 1.0.27
   License:    MIT OR Apache-2.0
   Source:     https://github.com/dtolnay/ref-cast
@@ -1068,19 +1072,19 @@ regex-syntax 0.8.11
 reqwest 0.13.5
   License:    MIT OR Apache-2.0
   Source:     https://github.com/seanmonstar/reqwest
-  Files:      LICENSE-APACHE [138], LICENSE-MIT [139]
-rfd 0.17.2
+  Files:      LICENSE-APACHE [141], LICENSE-MIT [142]
+rfd 0.16.1
   License:    MIT
   Source:     https://github.com/PolyMeilex/rfd
-  Files:      LICENSE [140]
+  Files:      LICENSE [143]
 rustc-hash 2.1.3
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/rust-lang/rustc-hash
   Files:      LICENSE-APACHE [10], LICENSE-MIT [3]
-rustix 1.1.6
+rustix 1.1.5
   License:    Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
   Source:     https://github.com/bytecodealliance/rustix
-  Files:      COPYRIGHT [141], LICENSE-APACHE [13], LICENSE-Apache-2.0_WITH_LLVM-exception [110], LICENSE-MIT [3]
+  Files:      COPYRIGHT [144], LICENSE-APACHE [13], LICENSE-Apache-2.0_WITH_LLVM-exception [110], LICENSE-MIT [3]
 rustversion 1.0.23
   License:    MIT OR Apache-2.0
   Source:     https://github.com/dtolnay/rustversion
@@ -1088,27 +1092,27 @@ rustversion 1.0.23
 same-file 1.0.6
   License:    Unlicense/MIT
   Source:     https://github.com/BurntSushi/same-file
-  Files:      COPYING [4], LICENSE-MIT [142], UNLICENSE [6]
+  Files:      COPYING [4], LICENSE-MIT [145], UNLICENSE [6]
 schemars 0.8.22
   License:    MIT
   Source:     https://github.com/GREsau/schemars
-  Files:      LICENSE [143]
+  Files:      LICENSE [146]
 schemars 0.9.0
   License:    MIT
   Source:     https://github.com/GREsau/schemars
-  Files:      LICENSE [143]
+  Files:      LICENSE [146]
 schemars 1.2.3
   License:    MIT
   Source:     https://github.com/GREsau/schemars
-  Files:      LICENSE [143]
+  Files:      LICENSE [146]
 schemars_derive 0.8.22
   License:    MIT
   Source:     https://github.com/GREsau/schemars
-  Files:      LICENSE [143]
+  Files:      LICENSE [146]
 scopeguard 1.2.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/bluss/scopeguard
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [144]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [147]
 selectors 0.38.0
   License:    MPL-2.0
   Source:     https://github.com/servo/stylo
@@ -1148,27 +1152,27 @@ serde_repr 0.1.21
 serde_spanned 0.6.9
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [37], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [37], LICENSE-MIT [148]
 serde_spanned 1.1.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 serde_with 3.24.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/jonasbb/serde_with/
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [147]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [150]
 serde_with_macros 3.24.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/jonasbb/serde_with/
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [147]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [150]
 serialize-to-javascript 0.1.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/chippers/serialize-to-javascript
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [148]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [151]
 serialize-to-javascript-impl 0.1.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/chippers/serialize-to-javascript
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [148]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [151]
 servo_arc 0.4.3
   License:    MIT OR Apache-2.0
   Source:     https://github.com/servo/stylo
@@ -1176,27 +1180,27 @@ servo_arc 0.4.3
 sha2 0.10.9
   License:    MIT OR Apache-2.0
   Source:     https://github.com/RustCrypto/hashes
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [149]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [152]
 signal-hook-registry 1.4.8
   License:    MIT OR Apache-2.0
   Source:     https://github.com/vorner/signal-hook
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [150]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [153]
 simd-adler32 0.3.10
   License:    MIT
   Source:     https://github.com/mcountryman/simd-adler32
-  Files:      LICENSE.md [151]
+  Files:      LICENSE.md [154]
 siphasher 1.0.4
   License:    MIT OR Apache-2.0
   Source:     https://github.com/jedisct1/rust-siphash
-  Files:      COPYING [152], LICENSE-APACHE [13], LICENSE-MIT [3]
+  Files:      COPYING [155], LICENSE-APACHE [13], LICENSE-MIT [3]
 slab 0.4.12
   License:    MIT
   Source:     https://github.com/tokio-rs/slab
-  Files:      LICENSE [153]
+  Files:      LICENSE [156]
 smallvec 1.16.4
   License:    MIT OR Apache-2.0
   Source:     https://github.com/servo/rust-smallvec
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [154]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [157]
 socket2 0.6.5
   License:    MIT OR Apache-2.0
   Source:     https://github.com/rust-lang/socket2
@@ -1204,7 +1208,7 @@ socket2 0.6.5
 softbuffer 0.4.8
   License:    MIT OR Apache-2.0
   Source:     https://github.com/rust-windowing/softbuffer
-  Files:      LICENSE-APACHE [155], LICENSE-MIT [156]
+  Files:      LICENSE-APACHE [158], LICENSE-MIT [159]
 soup3 0.5.0
   License:    MIT
   Source:     https://gitlab.gnome.org/World/Rust/soup3-rs
@@ -1216,7 +1220,7 @@ soup3-sys 0.5.0
 stable_deref_trait 1.2.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/storyyeller/stable_deref_trait
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [157]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [160]
 string_cache 0.9.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/servo/string-cache
@@ -1224,11 +1228,11 @@ string_cache 0.9.0
 strsim 0.11.1
   License:    MIT
   Source:     https://github.com/rapidfuzz/strsim-rs
-  Files:      LICENSE [158]
+  Files:      LICENSE [161]
 swift-rs 1.0.9
   License:    MIT OR Apache-2.0
   Source:     https://github.com/Brendonovich/swift-rs
-  Files:      LICENSE-APACHE [159], LICENSE-MIT [160]
+  Files:      LICENSE-APACHE [162], LICENSE-MIT [163]
 syn 1.0.109
   License:    MIT OR Apache-2.0
   Source:     https://github.com/dtolnay/syn
@@ -1248,59 +1252,59 @@ sync_wrapper 1.0.2
 synstructure 0.14.0
   License:    MIT
   Source:     https://github.com/mystor/synstructure
-  Files:      LICENSE [161]
+  Files:      LICENSE [164]
 tao 0.37.2
   License:    Apache-2.0
   Source:     https://github.com/tauri-apps/tao
-  Files:      LICENSE [37], LICENSE.spdx [162]
+  Files:      LICENSE [37], LICENSE.spdx [165]
 tao-macros 0.1.4
   License:    MIT OR Apache-2.0
   Source:     https://github.com/tauri-apps/tao
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [163], LICENSE.spdx [164]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [166], LICENSE.spdx [167]
 tauri 2.12.5
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
 tauri-codegen 2.7.4
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
 tauri-macros 2.7.4
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
-tauri-plugin-dialog 2.8.4
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
+tauri-plugin-dialog 2.8.3
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/plugins-workspace
-  Files:      LICENSE.spdx [166], LICENSE_APACHE-2.0 [10], LICENSE_MIT [165]
+  Files:      LICENSE.spdx [169], LICENSE_APACHE-2.0 [10], LICENSE_MIT [168]
 tauri-plugin-fs 2.7.1
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/plugins-workspace
-  Files:      LICENSE.spdx [166], LICENSE_APACHE-2.0 [10], LICENSE_MIT [165]
+  Files:      LICENSE.spdx [169], LICENSE_APACHE-2.0 [10], LICENSE_MIT [168]
 tauri-plugin-opener 2.7.2
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/plugins-workspace
-  Files:      LICENSE.spdx [166], LICENSE_APACHE-2.0 [10], LICENSE_MIT [165]
+  Files:      LICENSE.spdx [169], LICENSE_APACHE-2.0 [10], LICENSE_MIT [168]
 tauri-runtime 2.12.2
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
 tauri-runtime-wry 2.12.3
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
 tauri-utils 2.10.2
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri
-  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [165]
+  Files:      LICENSE-APACHE-2.0 [10], LICENSE-MIT [168]
 tempfile 3.27.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/Stebalien/tempfile
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [167]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [170]
 tendril 0.5.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/servo/html5ever
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [168]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [171]
 thiserror 1.0.69
   License:    MIT OR Apache-2.0
   Source:     https://github.com/dtolnay/thiserror
@@ -1320,15 +1324,15 @@ thiserror-impl 2.0.21
 time 0.3.55
   License:    MIT OR Apache-2.0
   Source:     https://github.com/time-rs/time
-  Files:      LICENSE-Apache [10], LICENSE-MIT [169]
+  Files:      LICENSE-Apache [10], LICENSE-MIT [172]
 time-core 0.1.9
   License:    MIT OR Apache-2.0
   Source:     https://github.com/time-rs/time
-  Files:      LICENSE-Apache [10], LICENSE-MIT [169]
+  Files:      LICENSE-Apache [10], LICENSE-MIT [172]
 time-macros 0.2.32
   License:    MIT OR Apache-2.0
   Source:     https://github.com/time-rs/time
-  Files:      LICENSE-Apache [10], LICENSE-MIT [169]
+  Files:      LICENSE-Apache [10], LICENSE-MIT [172]
 tinystr 0.8.5
   License:    Unicode-3.0
   Source:     https://github.com/unicode-org/icu4x
@@ -1340,15 +1344,15 @@ tinyvec 1.13.3
 tokio 1.54.1
   License:    MIT
   Source:     https://github.com/tokio-rs/tokio
-  Files:      LICENSE [170]
+  Files:      LICENSE [173]
 tokio-util 0.7.20
   License:    MIT
   Source:     https://github.com/tokio-rs/tokio
-  Files:      LICENSE [170]
+  Files:      LICENSE [173]
 toml 1.1.8+spec-1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 toml_datetime 0.6.3
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
@@ -1356,63 +1360,63 @@ toml_datetime 0.6.3
 toml_datetime 1.1.2+spec-1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 toml_edit 0.19.15
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [37], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [37], LICENSE-MIT [148]
 toml_edit 0.20.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [37], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [37], LICENSE-MIT [148]
 toml_edit 0.25.17+spec-1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 toml_parser 1.1.5+spec-1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 toml_writer 1.1.3+spec-1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/toml-rs/toml
-  Files:      LICENSE-APACHE [146], LICENSE-MIT [145]
+  Files:      LICENSE-APACHE [149], LICENSE-MIT [148]
 tower 0.5.3
   License:    MIT
   Source:     https://github.com/tower-rs/tower
-  Files:      LICENSE [171]
+  Files:      LICENSE [174]
 tower-http 0.6.11
   License:    MIT
   Source:     https://github.com/tower-rs/tower-http
-  Files:      LICENSE [172]
+  Files:      LICENSE [175]
 tower-layer 0.3.3
   License:    MIT
   Source:     https://github.com/tower-rs/tower
-  Files:      LICENSE [171]
+  Files:      LICENSE [174]
 tower-service 0.3.3
   License:    MIT
   Source:     https://github.com/tower-rs/tower
-  Files:      LICENSE [171]
+  Files:      LICENSE [174]
 tracing 0.1.44
   License:    MIT
   Source:     https://github.com/tokio-rs/tracing
-  Files:      LICENSE [173]
+  Files:      LICENSE [176]
 tracing-attributes 0.1.31
   License:    MIT
   Source:     https://github.com/tokio-rs/tracing
-  Files:      LICENSE [173]
+  Files:      LICENSE [176]
 tracing-core 0.1.36
   License:    MIT
   Source:     https://github.com/tokio-rs/tracing
-  Files:      LICENSE [173]
+  Files:      LICENSE [176]
 tray-icon 0.25.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/tauri-apps/tray-icon
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [117], LICENSE.spdx [174]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [117], LICENSE.spdx [177]
 try-lock 0.2.5
   License:    MIT
   Source:     https://github.com/seanmonstar/try-lock
-  Files:      LICENSE [175]
+  Files:      LICENSE [178]
 typeid 1.0.3
   License:    MIT OR Apache-2.0
   Source:     https://github.com/dtolnay/typeid
@@ -1420,15 +1424,15 @@ typeid 1.0.3
 typenum 1.20.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/paholg/typenum
-  Files:      LICENSE [176], LICENSE-APACHE [177], LICENSE-MIT [178]
+  Files:      LICENSE [179], LICENSE-APACHE [180], LICENSE-MIT [181]
 uds_windows 1.2.1
   License:    MIT
   Source:     https://github.com/haraldh/rust_uds_windows
-  Files:      LICENSE [179]
+  Files:      LICENSE [182]
 unicode-ident 1.0.27
   License:    (MIT OR Apache-2.0) AND Unicode-3.0
   Source:     https://github.com/dtolnay/unicode-ident
-  Files:      LICENSE-APACHE [10], LICENSE-MIT [3], LICENSE-UNICODE [180]
+  Files:      LICENSE-APACHE [10], LICENSE-MIT [3], LICENSE-UNICODE [183]
 unicode-segmentation 1.13.3
   License:    MIT OR Apache-2.0
   Source:     https://github.com/unicode-rs/unicode-segmentation
@@ -1440,15 +1444,15 @@ url 2.5.8
 urlpattern 0.6.0
   License:    MIT
   Source:     https://github.com/denoland/rust-urlpattern
-  Files:      LICENSE [181]
+  Files:      LICENSE [184]
 utf8_iter 1.0.4
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/hsivonen/utf8_iter
-  Files:      COPYRIGHT [182], LICENSE-APACHE [13], LICENSE-MIT [183]
+  Files:      COPYRIGHT [185], LICENSE-APACHE [13], LICENSE-MIT [186]
 uuid 1.29.0
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/uuid-rs/uuid
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [184]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [187]
 walkdir 2.5.0
   License:    Unlicense/MIT
   Source:     https://github.com/BurntSushi/walkdir
@@ -1456,7 +1460,7 @@ walkdir 2.5.0
 want 0.3.2
   License:    MIT
   Source:     https://github.com/seanmonstar/want
-  Files:      LICENSE [185]
+  Files:      LICENSE [188]
 wasi 0.11.1+wasi-snapshot-preview1
   License:    Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
   Source:     https://github.com/bytecodealliance/wasi
@@ -1496,7 +1500,7 @@ web-sys 0.3.106
 web-time 1.1.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/daxpedda/web-time
-  Files:      LICENSE-APACHE [186], LICENSE-MIT [187]
+  Files:      LICENSE-APACHE [189], LICENSE-MIT [190]
 web_atoms 0.2.6
   License:    MIT OR Apache-2.0
   Source:     https://github.com/servo/html5ever
@@ -1504,11 +1508,11 @@ web_atoms 0.2.6
 webkit2gtk 2.0.2
   License:    MIT
   Source:     https://github.com/tauri-apps/webkit2gtk-rs
-  Files:      LICENSE [188]
+  Files:      LICENSE [191]
 webkit2gtk-sys 2.0.2
   License:    MIT
   Source:     https://github.com/tauri-apps/webkit2gtk-rs
-  Files:      LICENSE [189]
+  Files:      LICENSE [192]
 webview2-com 0.39.1
   License:    MIT
   Source:     https://github.com/wravery/webview2-rs
@@ -1524,7 +1528,7 @@ webview2-com-sys 0.39.1
 winapi 0.3.9
   License:    MIT/Apache-2.0
   Source:     https://github.com/retep998/winapi-rs
-  Files:      LICENSE-APACHE [37], LICENSE-MIT [190]
+  Files:      LICENSE-APACHE [37], LICENSE-MIT [193]
 winapi-i686-pc-windows-gnu 0.4.0
   License:    MIT/Apache-2.0
   Source:     https://github.com/retep998/winapi-rs
@@ -1532,7 +1536,7 @@ winapi-i686-pc-windows-gnu 0.4.0
 winapi-util 0.1.11
   License:    Unlicense OR MIT
   Source:     https://github.com/BurntSushi/winapi-util
-  Files:      COPYING [4], LICENSE-MIT [142], UNLICENSE [6]
+  Files:      COPYING [4], LICENSE-MIT [145], UNLICENSE [6]
 winapi-x86_64-pc-windows-gnu 0.4.0
   License:    MIT/Apache-2.0
   Source:     https://github.com/retep998/winapi-rs
@@ -1540,95 +1544,135 @@ winapi-x86_64-pc-windows-gnu 0.4.0
 window-vibrancy 0.8.1
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/tauri-plugin-vibrancy
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [191], LICENSE.spdx [192]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [194], LICENSE.spdx [195]
 windows 0.62.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-collections 0.3.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-core 0.62.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-future 0.3.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-implement 0.60.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-interface 0.59.3
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-link 0.2.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-numerics 0.3.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-result 0.4.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-strings 0.5.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-sys 0.45.0
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows-sys 0.60.2
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-sys 0.61.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-targets 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows-targets 0.53.5
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-threading 0.2.1
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows-version 0.1.7
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_aarch64_gnullvm 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_aarch64_gnullvm 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_aarch64_msvc 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_aarch64_msvc 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_i686_gnu 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_i686_gnu 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_i686_gnullvm 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_i686_msvc 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_i686_msvc 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_x86_64_gnu 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_x86_64_gnu 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_x86_64_gnullvm 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_x86_64_gnullvm 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 windows_x86_64_msvc 0.42.2
   License:    MIT OR Apache-2.0
   Source:     https://github.com/microsoft/windows-rs
-  Files:      license-apache-2.0 [193], license-mit [194]
+  Files:      license-apache-2.0 [196], license-mit [197]
+windows_x86_64_msvc 0.53.1
+  License:    MIT OR Apache-2.0
+  Source:     https://github.com/microsoft/windows-rs
+  Files:      license-apache-2.0 [196], license-mit [197]
 winnow 0.5.40
   License:    MIT
   Source:     https://github.com/winnow-rs/winnow
@@ -1648,7 +1692,7 @@ writeable 0.6.4
 wry 0.57.1
   License:    Apache-2.0 OR MIT
   Source:     https://github.com/tauri-apps/wry
-  Files:      LICENSE-APACHE [13], LICENSE-MIT [195], LICENSE.spdx [196]
+  Files:      LICENSE-APACHE [13], LICENSE-MIT [198], LICENSE.spdx [199]
 x11 2.21.0
   License:    MIT
   Source:     https://github.com/AltF02/x11-rs.git
@@ -1668,19 +1712,19 @@ yoke-derive 0.8.4
 zbus 5.19.0
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
-  Files:      LICENSE [197]
+  Files:      LICENSE [200]
 zbus_macros 5.19.0
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
-  Files:      LICENSE [197]
+  Files:      LICENSE [200]
 zbus_names 4.3.5
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
-  Files:      LICENSE [197]
+  Files:      LICENSE [200]
 zcheapstr 1.1.0
   License:    MIT
   Source:     https://github.com/z-galaxy/zcheapstr/
-  Files:      LICENSE [198]
+  Files:      LICENSE [201]
 zerofrom 0.1.8
   License:    Unicode-3.0
   Source:     https://github.com/unicode-org/icu4x
@@ -1704,7 +1748,7 @@ zerovec-derive 0.11.7
 zlib-rs 0.6.8
   License:    Zlib
   Source:     https://github.com/trifectatechfoundation/zlib-rs
-  Files:      LICENSE [199]
+  Files:      LICENSE [202]
 zmij 1.0.23
   License:    MIT
   Source:     https://github.com/dtolnay/zmij
@@ -1712,11 +1756,11 @@ zmij 1.0.23
 zvariant 5.15.1
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
-  Files:      LICENSE [197]
+  Files:      LICENSE [200]
 zvariant_derive 5.15.1
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
-  Files:      LICENSE [197]
+  Files:      LICENSE [200]
 zvariant_utils 4.2.0
   License:    MIT
   Source:     https://github.com/z-galaxy/zbus/
@@ -10437,6 +10481,239 @@ zvariant_utils 4.2.0
 ------------------------------------------------------------------------------
 [134]
 
+    Copyrights in the Rand project are retained by their contributors. No
+    copyright assignment is required to contribute to the Rand project.
+
+    For full authorship information, see the version control history.
+
+    Except as otherwise noted (below and/or in individual files), Rand is
+    licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
+    <http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+    <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
+
+------------------------------------------------------------------------------
+[135]
+
+                                  Apache License
+                            Version 2.0, January 2004
+                         https://www.apache.org/licenses/
+
+    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+    1. Definitions.
+
+       "License" shall mean the terms and conditions for use, reproduction,
+       and distribution as defined by Sections 1 through 9 of this document.
+
+       "Licensor" shall mean the copyright owner or entity authorized by
+       the copyright owner that is granting the License.
+
+       "Legal Entity" shall mean the union of the acting entity and all
+       other entities that control, are controlled by, or are under common
+       control with that entity. For the purposes of this definition,
+       "control" means (i) the power, direct or indirect, to cause the
+       direction or management of such entity, whether by contract or
+       otherwise, or (ii) ownership of fifty percent (50%) or more of the
+       outstanding shares, or (iii) beneficial ownership of such entity.
+
+       "You" (or "Your") shall mean an individual or Legal Entity
+       exercising permissions granted by this License.
+
+       "Source" form shall mean the preferred form for making modifications,
+       including but not limited to software source code, documentation
+       source, and configuration files.
+
+       "Object" form shall mean any form resulting from mechanical
+       transformation or translation of a Source form, including but
+       not limited to compiled object code, generated documentation,
+       and conversions to other media types.
+
+       "Work" shall mean the work of authorship, whether in Source or
+       Object form, made available under the License, as indicated by a
+       copyright notice that is included in or attached to the work
+       (an example is provided in the Appendix below).
+
+       "Derivative Works" shall mean any work, whether in Source or Object
+       form, that is based on (or derived from) the Work and for which the
+       editorial revisions, annotations, elaborations, or other modifications
+       represent, as a whole, an original work of authorship. For the purposes
+       of this License, Derivative Works shall not include works that remain
+       separable from, or merely link (or bind by name) to the interfaces of,
+       the Work and Derivative Works thereof.
+
+       "Contribution" shall mean any work of authorship, including
+       the original version of the Work and any modifications or additions
+       to that Work or Derivative Works thereof, that is intentionally
+       submitted to Licensor for inclusion in the Work by the copyright owner
+       or by an individual or Legal Entity authorized to submit on behalf of
+       the copyright owner. For the purposes of this definition, "submitted"
+       means any form of electronic, verbal, or written communication sent
+       to the Licensor or its representatives, including but not limited to
+       communication on electronic mailing lists, source code control systems,
+       and issue tracking systems that are managed by, or on behalf of, the
+       Licensor for the purpose of discussing and improving the Work, but
+       excluding communication that is conspicuously marked or otherwise
+       designated in writing by the copyright owner as "Not a Contribution."
+
+       "Contributor" shall mean Licensor and any individual or Legal Entity
+       on behalf of whom a Contribution has been received by Licensor and
+       subsequently incorporated within the Work.
+
+    2. Grant of Copyright License. Subject to the terms and conditions of
+       this License, each Contributor hereby grants to You a perpetual,
+       worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+       copyright license to reproduce, prepare Derivative Works of,
+       publicly display, publicly perform, sublicense, and distribute the
+       Work and such Derivative Works in Source or Object form.
+
+    3. Grant of Patent License. Subject to the terms and conditions of
+       this License, each Contributor hereby grants to You a perpetual,
+       worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+       (except as stated in this section) patent license to make, have made,
+       use, offer to sell, sell, import, and otherwise transfer the Work,
+       where such license applies only to those patent claims licensable
+       by such Contributor that are necessarily infringed by their
+       Contribution(s) alone or by combination of their Contribution(s)
+       with the Work to which such Contribution(s) was submitted. If You
+       institute patent litigation against any entity (including a
+       cross-claim or counterclaim in a lawsuit) alleging that the Work
+       or a Contribution incorporated within the Work constitutes direct
+       or contributory patent infringement, then any patent licenses
+       granted to You under this License for that Work shall terminate
+       as of the date such litigation is filed.
+
+    4. Redistribution. You may reproduce and distribute copies of the
+       Work or Derivative Works thereof in any medium, with or without
+       modifications, and in Source or Object form, provided that You
+       meet the following conditions:
+
+       (a) You must give any other recipients of the Work or
+           Derivative Works a copy of this License; and
+
+       (b) You must cause any modified files to carry prominent notices
+           stating that You changed the files; and
+
+       (c) You must retain, in the Source form of any Derivative Works
+           that You distribute, all copyright, patent, trademark, and
+           attribution notices from the Source form of the Work,
+           excluding those notices that do not pertain to any part of
+           the Derivative Works; and
+
+       (d) If the Work includes a "NOTICE" text file as part of its
+           distribution, then any Derivative Works that You distribute must
+           include a readable copy of the attribution notices contained
+           within such NOTICE file, excluding those notices that do not
+           pertain to any part of the Derivative Works, in at least one
+           of the following places: within a NOTICE text file distributed
+           as part of the Derivative Works; within the Source form or
+           documentation, if provided along with the Derivative Works; or,
+           within a display generated by the Derivative Works, if and
+           wherever such third-party notices normally appear. The contents
+           of the NOTICE file are for informational purposes only and
+           do not modify the License. You may add Your own attribution
+           notices within Derivative Works that You distribute, alongside
+           or as an addendum to the NOTICE text from the Work, provided
+           that such additional attribution notices cannot be construed
+           as modifying the License.
+
+       You may add Your own copyright statement to Your modifications and
+       may provide additional or different license terms and conditions
+       for use, reproduction, or distribution of Your modifications, or
+       for any such Derivative Works as a whole, provided Your use,
+       reproduction, and distribution of the Work otherwise complies with
+       the conditions stated in this License.
+
+    5. Submission of Contributions. Unless You explicitly state otherwise,
+       any Contribution intentionally submitted for inclusion in the Work
+       by You to the Licensor shall be under the terms and conditions of
+       this License, without any additional terms or conditions.
+       Notwithstanding the above, nothing herein shall supersede or modify
+       the terms of any separate license agreement you may have executed
+       with Licensor regarding such Contributions.
+
+    6. Trademarks. This License does not grant permission to use the trade
+       names, trademarks, service marks, or product names of the Licensor,
+       except as required for reasonable and customary use in describing the
+       origin of the Work and reproducing the content of the NOTICE file.
+
+    7. Disclaimer of Warranty. Unless required by applicable law or
+       agreed to in writing, Licensor provides the Work (and each
+       Contributor provides its Contributions) on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+       implied, including, without limitation, any warranties or conditions
+       of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+       PARTICULAR PURPOSE. You are solely responsible for determining the
+       appropriateness of using or redistributing the Work and assume any
+       risks associated with Your exercise of permissions under this License.
+
+    8. Limitation of Liability. In no event and under no legal theory,
+       whether in tort (including negligence), contract, or otherwise,
+       unless required by applicable law (such as deliberate and grossly
+       negligent acts) or agreed to in writing, shall any Contributor be
+       liable to You for damages, including any direct, indirect, special,
+       incidental, or consequential damages of any character arising as a
+       result of this License or out of the use or inability to use the
+       Work (including but not limited to damages for loss of goodwill,
+       work stoppage, computer failure or malfunction, or any and all
+       other commercial damages or losses), even if such Contributor
+       has been advised of the possibility of such damages.
+
+    9. Accepting Warranty or Additional Liability. While redistributing
+       the Work or Derivative Works thereof, You may choose to offer,
+       and charge a fee for, acceptance of support, warranty, indemnity,
+       or other liability obligations and/or rights consistent with this
+       License. However, in accepting such obligations, You may act only
+       on Your own behalf and on Your sole responsibility, not on behalf
+       of any other Contributor, and only if You agree to indemnify,
+       defend, and hold each Contributor harmless for any liability
+       incurred by, or claims asserted against, such Contributor by reason
+       of your accepting any such warranty or additional liability.
+
+    END OF TERMS AND CONDITIONS
+
+    APPENDIX: How to apply the Apache License to your work.
+
+       To apply the Apache License to your work, attach the following
+       boilerplate notice, with the fields enclosed by brackets "[]"
+       replaced with your own identifying information. (Don't include
+       the brackets!)  The text should be enclosed in the appropriate
+       comment syntax for the file format. We also recommend that a
+       file or class name and description of purpose be included on the
+       same "printed page" as the copyright notice for easier
+       identification within third-party archives.
+
+------------------------------------------------------------------------------
+[136]
+
+    Copyright (c) 2018-2026 The Rand Project Developers
+
+    Permission is hereby granted, free of charge, to any
+    person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the
+    Software without restriction, including without
+    limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software
+    is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice
+    shall be included in all copies or substantial portions
+    of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------------
+[137]
+
     MIT License
 
     Copyright (c) 2019 Osspial
@@ -10460,7 +10737,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[135]
+[138]
 
     Copyright (c) 2020 Osspial
 
@@ -10475,7 +10752,7 @@ zvariant_utils 4.2.0
     3. This notice may not be removed or altered from any source distribution.
 
 ------------------------------------------------------------------------------
-[136]
+[139]
 
     Copyright (c) 2017 Redox OS Developers
 
@@ -10501,7 +10778,7 @@ zvariant_utils 4.2.0
     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[137]
+[140]
 
     The MIT License (MIT)
 
@@ -10526,7 +10803,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[138]
+[141]
 
                                   Apache License
                             Version 2.0, January 2004
@@ -10731,7 +11008,7 @@ zvariant_utils 4.2.0
     limitations under the License.
 
 ------------------------------------------------------------------------------
-[139]
+[142]
 
     Copyright (c) 2016-2026 Sean McArthur
 
@@ -10754,7 +11031,7 @@ zvariant_utils 4.2.0
     THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[140]
+[143]
 
     MIT License
 
@@ -10779,7 +11056,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[141]
+[144]
 
     Short version for non-lawyers:
 
@@ -10812,7 +11089,7 @@ zvariant_utils 4.2.0
     at your option.
 
 ------------------------------------------------------------------------------
-[142]
+[145]
 
     The MIT License (MIT)
 
@@ -10837,7 +11114,7 @@ zvariant_utils 4.2.0
     THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[143]
+[146]
 
     MIT License
 
@@ -10862,7 +11139,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[144]
+[147]
 
     Copyright (c) 2016-2019 Ulrik Sverdrup "bluss" and scopeguard developers
 
@@ -10891,7 +11168,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[145]
+[148]
 
     Copyright (c) Individual contributors
 
@@ -10914,7 +11191,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[146]
+[149]
 
                                      Apache License
                                Version 2.0, January 2004
@@ -11119,94 +11396,9 @@ zvariant_utils 4.2.0
        limitations under the License.
 
 ------------------------------------------------------------------------------
-[147]
-
-    Copyright (c) 2015
-
-    Permission is hereby granted, free of charge, to any
-    person obtaining a copy of this software and associated
-    documentation files (the "Software"), to deal in the
-    Software without restriction, including without
-    limitation the rights to use, copy, modify, merge,
-    publish, distribute, sublicense, and/or sell copies of
-    the Software, and to permit persons to whom the Software
-    is furnished to do so, subject to the following
-    conditions:
-
-    The above copyright notice and this permission notice
-    shall be included in all copies or substantial portions
-    of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-    DEALINGS IN THE SOFTWARE.
-
-------------------------------------------------------------------------------
-[148]
-
-    MIT License
-
-    Copyright (c) 2021 Chip Reed
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-
-------------------------------------------------------------------------------
-[149]
-
-    Copyright (c) 2006-2009 Graydon Hoare
-    Copyright (c) 2009-2013 Mozilla Foundation
-    Copyright (c) 2016 Artyom Pavlov
-
-    Permission is hereby granted, free of charge, to any
-    person obtaining a copy of this software and associated
-    documentation files (the "Software"), to deal in the
-    Software without restriction, including without
-    limitation the rights to use, copy, modify, merge,
-    publish, distribute, sublicense, and/or sell copies of
-    the Software, and to permit persons to whom the Software
-    is furnished to do so, subject to the following
-    conditions:
-
-    The above copyright notice and this permission notice
-    shall be included in all copies or substantial portions
-    of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-    DEALINGS IN THE SOFTWARE.
-
-------------------------------------------------------------------------------
 [150]
 
-    Copyright (c) 2017 tokio-jsonrpc developers
+    Copyright (c) 2015
 
     Permission is hereby granted, free of charge, to any
     person obtaining a copy of this software and associated
@@ -11237,7 +11429,7 @@ zvariant_utils 4.2.0
 
     MIT License
 
-    Copyright (c) [2021] [Marvin Countryman]
+    Copyright (c) 2021 Chip Reed
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -11260,18 +11452,38 @@ zvariant_utils 4.2.0
 ------------------------------------------------------------------------------
 [152]
 
-    Copyright 2012-2016 The Rust Project Developers.
-    Copyright 2016-2026 Frank Denis.
+    Copyright (c) 2006-2009 Graydon Hoare
+    Copyright (c) 2009-2013 Mozilla Foundation
+    Copyright (c) 2016 Artyom Pavlov
 
-    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-    http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-    <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-    option.
+    Permission is hereby granted, free of charge, to any
+    person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the
+    Software without restriction, including without
+    limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software
+    is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice
+    shall be included in all copies or substantial portions
+    of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
 [153]
 
-    Copyright (c) 2019 Carl Lerche
+    Copyright (c) 2017 tokio-jsonrpc developers
 
     Permission is hereby granted, free of charge, to any
     person obtaining a copy of this software and associated
@@ -11300,6 +11512,71 @@ zvariant_utils 4.2.0
 ------------------------------------------------------------------------------
 [154]
 
+    MIT License
+
+    Copyright (c) [2021] [Marvin Countryman]
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+------------------------------------------------------------------------------
+[155]
+
+    Copyright 2012-2016 The Rust Project Developers.
+    Copyright 2016-2026 Frank Denis.
+
+    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+    http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+    <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+    option.
+
+------------------------------------------------------------------------------
+[156]
+
+    Copyright (c) 2019 Carl Lerche
+
+    Permission is hereby granted, free of charge, to any
+    person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the
+    Software without restriction, including without
+    limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of
+    the Software, and to permit persons to whom the Software
+    is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice
+    shall be included in all copies or substantial portions
+    of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+    TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+    SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+    IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------------------------
+[157]
+
     Copyright (c) 2018 The Servo Project Developers
 
     Permission is hereby granted, free of charge, to any
@@ -11327,7 +11604,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[155]
+[158]
 
     Apache License
                                Version 2.0, January 2004
@@ -11532,7 +11809,7 @@ zvariant_utils 4.2.0
        limitations under the License.
 
 ------------------------------------------------------------------------------
-[156]
+[159]
 
     Copyright 2022 Kirill Chibisov
 
@@ -11555,7 +11832,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[157]
+[160]
 
     Copyright (c) 2017 Robert Grosse
 
@@ -11584,7 +11861,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[158]
+[161]
 
     The MIT License (MIT)
 
@@ -11611,7 +11888,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[159]
+[162]
 
                                      Apache License
                                Version 2.0, January 2004
@@ -11816,7 +12093,7 @@ zvariant_utils 4.2.0
        limitations under the License.
 
 ------------------------------------------------------------------------------
-[160]
+[163]
 
     Copyright (c) 2023 The swift-rs Developers
 
@@ -11839,7 +12116,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[161]
+[164]
 
     Copyright 2016 Nika Layzell
 
@@ -11850,7 +12127,7 @@ zvariant_utils 4.2.0
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[162]
+[165]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -11872,7 +12149,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[163]
+[166]
 
     MIT License
 
@@ -11897,7 +12174,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[164]
+[167]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -11920,7 +12197,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[165]
+[168]
 
     MIT License
 
@@ -11945,7 +12222,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[166]
+[169]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -11969,7 +12246,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[167]
+[170]
 
     Copyright (c) 2015 Steven Allen
 
@@ -11998,7 +12275,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[168]
+[171]
 
     Copyright (c) 2015 Keegan McAllister
 
@@ -12027,7 +12304,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[169]
+[172]
 
     Copyright (c) Jacob Pratt et al.
 
@@ -12050,7 +12327,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[170]
+[173]
 
     MIT License
 
@@ -12075,7 +12352,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[171]
+[174]
 
     Copyright (c) 2019 Tower Contributors
 
@@ -12104,7 +12381,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[172]
+[175]
 
     Copyright (c) 2019-2021 Tower Contributors
 
@@ -12133,7 +12410,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[173]
+[176]
 
     Copyright (c) 2019 Tokio Contributors
 
@@ -12162,7 +12439,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[174]
+[177]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -12185,7 +12462,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[175]
+[178]
 
     Copyright (c) 2018-2023 Sean McArthur
     Copyright (c) 2016 Alex Crichton
@@ -12209,12 +12486,12 @@ zvariant_utils 4.2.0
     THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[176]
+[179]
 
     MIT OR Apache-2.0
 
 ------------------------------------------------------------------------------
-[177]
+[180]
 
                                   Apache License
                             Version 2.0, January 2004
@@ -12419,7 +12696,7 @@ zvariant_utils 4.2.0
     limitations under the License.
 
 ------------------------------------------------------------------------------
-[178]
+[181]
 
     The MIT License (MIT)
 
@@ -12444,7 +12721,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[179]
+[182]
 
         MIT License
 
@@ -12469,7 +12746,7 @@ zvariant_utils 4.2.0
         SOFTWARE
 
 ------------------------------------------------------------------------------
-[180]
+[183]
 
     UNICODE LICENSE V3
 
@@ -12512,7 +12789,7 @@ zvariant_utils 4.2.0
     authorization of the copyright holder.
 
 ------------------------------------------------------------------------------
-[181]
+[184]
 
     MIT License
 
@@ -12537,7 +12814,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[182]
+[185]
 
     Copyright Mozilla Foundation
 
@@ -12583,7 +12860,7 @@ zvariant_utils 4.2.0
     <LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
 
 ------------------------------------------------------------------------------
-[183]
+[186]
 
     Copyright Mozilla Foundation
 
@@ -12612,7 +12889,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[184]
+[187]
 
     Copyright (c) 2014 The Rust Project Developers
     Copyright (c) 2018 Ashley Mannix, Christopher Armstrong, Dylan DPC, Hunar Roop Kahlon
@@ -12642,7 +12919,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[185]
+[188]
 
     Copyright (c) 2018-2019 Sean McArthur
 
@@ -12665,7 +12942,7 @@ zvariant_utils 4.2.0
     THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[186]
+[189]
 
                                      Apache License
                                Version 2.0, January 2004
@@ -12870,7 +13147,7 @@ zvariant_utils 4.2.0
        limitations under the License.
 
 ------------------------------------------------------------------------------
-[187]
+[190]
 
     MIT License
 
@@ -12895,7 +13172,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[188]
+[191]
 
     Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
     Copyright (c) 2017-2021, The Gtk-rs Project Developers.
@@ -12919,7 +13196,7 @@ zvariant_utils 4.2.0
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[189]
+[192]
 
     Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
 
@@ -12941,7 +13218,7 @@ zvariant_utils 4.2.0
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[190]
+[193]
 
     Copyright (c) 2015-2018 The winapi-rs Developers
 
@@ -12964,7 +13241,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[191]
+[194]
 
     MIT License
 
@@ -12989,7 +13266,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[192]
+[195]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -13012,7 +13289,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[193]
+[196]
 
                                      Apache License
                                Version 2.0, January 2004
@@ -13217,7 +13494,7 @@ zvariant_utils 4.2.0
        limitations under the License.
 
 ------------------------------------------------------------------------------
-[194]
+[197]
 
         MIT License
 
@@ -13242,7 +13519,7 @@ zvariant_utils 4.2.0
         SOFTWARE
 
 ------------------------------------------------------------------------------
-[195]
+[198]
 
     MIT License
 
@@ -13267,7 +13544,7 @@ zvariant_utils 4.2.0
     SOFTWARE.
 
 ------------------------------------------------------------------------------
-[196]
+[199]
 
     SPDXVersion: SPDX-2.1
     DataLicense: CC0-1.0
@@ -13291,7 +13568,7 @@ zvariant_utils 4.2.0
     Creator: Person: Daniel Thompson-Yvetot
 
 ------------------------------------------------------------------------------
-[197]
+[200]
 
     Copyright (c) 2024 Zeeshan Ali Khan & zbus contributors
 
@@ -13320,7 +13597,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[198]
+[201]
 
     Copyright (c) 2026 Zeeshan Ali Khan & zcheapstr contributors
 
@@ -13349,7 +13626,7 @@ zvariant_utils 4.2.0
     DEALINGS IN THE SOFTWARE.
 
 ------------------------------------------------------------------------------
-[199]
+[202]
 
     (C) 2024 Trifecta Tech Foundation
 

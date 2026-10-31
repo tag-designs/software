@@ -12,16 +12,17 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-#: The repository's cargo target directory for host/commandline-rs.
-_REPO_TARGET = Path(__file__).resolve().parents[2] / "host" / "commandline-rs" / "target"
+#: The repository's cargo target directory: the host Rust workspace's
+#: (host/Cargo.toml), where `cargo build --release` in host/ puts tag-flash.
+_REPO_TARGET = Path(__file__).resolve().parents[2] / "host" / "target"
 
 
 def find_tag_flash(explicit: Optional[str] = None) -> Optional[str]:
     """Return the tag-flash executable to run, or None when there is none.
 
     @details Looks, in order, at @p explicit, the `TAG_FLASH` environment
-             variable, PATH, and this repository's
-             `host/commandline-rs/target/release`.
+             variable, PATH, and this repository's `host/target/release`
+             (a `cargo build --release` of the host workspace).
 
     @param explicit A path given on the command line, or None.
     @return The path, or None when tag-flash was not found.

@@ -1,6 +1,3 @@
 # sensorViz in Rust, the port of the Qt sensorviz: a toolkit-free core (the
 # engine, over sensorViz's C++ core through sensorviz-session) and a thin
 # Tauri shell over the web front end in ui/.
-[workspace]
-resolver = "3"
-members = ["core", "app"]

@@ -34,9 +34,9 @@ carry it.
 The `sqlitelog` feature (of both `tagmonitor-core` and `tagmonitor`) brings in
 `taglogwriter`. Without it the crates build with cargo alone, and Download
 refuses with a message; with it, `TAGCORE_C_LIB_DIR` must name the
-directory holding the library. The CMake build always turns it on. The
-workspace root is `host/applications/tagmonitor-rs`; its `Cargo.lock` is
-committed and release builds use `--locked`.
+directory holding the library. The CMake build always turns it on. The crates
+belong to the host Rust workspace, `host/Cargo.toml`, whose `Cargo.lock` is
+committed; release builds use `--locked`.
 
 ## The CMake target
 
@@ -47,10 +47,11 @@ committed and release builds use `--locked`.
 - depends on the library target: `tagcore_c_static` on macOS,
   `tagcore_c` elsewhere;
 - runs `cargo build --release --locked -p tagmonitor --features sqlitelog`
-  every time, leaving the up-to-date decision to cargo;
-- sets `CARGO_TARGET_DIR` to `<build>/host/applications/tagmonitor-rs/cargo`,
-  and `TAGCORE_C_LIB_DIR` to `<build>/<Config>/lib`, where both library
-  targets put their output;
+  every time, through `host_rust_app()` in `cmake/HostRust.cmake`, leaving the
+  up-to-date decision to cargo;
+- sets `CARGO_TARGET_DIR` to `<build>/host/cargo`, shared by every cargo run
+  in the build tree, and `TAGCORE_C_LIB_DIR` to `<build>/<Config>/lib`, where
+  both library targets put their output;
 - on Linux, sets `TAGCORE_C_RPATH=$ORIGIN/../lib`, which `app/build.rs`
   makes the program's run-time search path, so the installed program finds
   the library the package installs beside the others;

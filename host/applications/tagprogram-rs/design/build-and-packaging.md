@@ -23,9 +23,10 @@ source tree.
 | `tagprobe` | `../../libraries/tagprobe-rs` | probe-rs programming (path dependency) |
 | `tagcore` | `../../libraries/tagcore-rs` | The monitor protocol over ST-LINK (path dependency) |
 
-The workspace root is `host/applications/tagprogram-rs`, and its `Cargo.lock`
-is committed. Release builds use `--locked`, so a build uses exactly the
-reviewed dependency versions.
+The crates belong to the host Rust workspace, `host/Cargo.toml`, whose
+`Cargo.lock` is committed ([decision 0041](../../../../docs/decisions/0041-host-one-cargo-workspace.md)).
+Release builds use `--locked`, so a build uses exactly the reviewed dependency
+versions.
 
 ### Vendored native dependencies
 
@@ -77,11 +78,13 @@ or the kit rebuilds the app.
 when cargo is found, and the release workflow turns it on explicitly. The
 target `tagprogram`:
 
-- runs `cargo build --release --locked -p tagprogram` every time and leaves
-  the up-to-date decision to cargo;
-- sets `CARGO_TARGET_DIR` to `<build>/host/applications/tagprogram-rs/cargo`,
-  so a CMake build never shares cargo's output with a developer's
-  `cargo build` in the source tree;
+- runs `cargo build --release --locked -p tagprogram` every time, through
+  `host_rust_app()` in `cmake/HostRust.cmake`, and leaves the up-to-date
+  decision to cargo;
+- sets `CARGO_TARGET_DIR` to `<build>/host/cargo`, shared by every cargo run
+  in the build tree, so a CMake build never shares cargo's output with a
+  developer's `cargo build` in the source tree and compiles the common crates
+  once;
 - passes `TAGPROGRAM_HOST_VERSION`, the host package version. The record's
   `host_version` column then reads `tagprogram-rs <package version>`, the
   number qtprogram writes. A plain `cargo build` uses the crate version;

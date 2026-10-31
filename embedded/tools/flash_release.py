@@ -470,7 +470,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--tag-flash",
         help="tag-flash path; otherwise TAG_FLASH, PATH, then this "
-        "repository's host/commandline-rs/target/release.",
+        "repository's host/target/release.",
     )
     parser.add_argument(
         "--base",

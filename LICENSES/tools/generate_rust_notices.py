@@ -14,8 +14,9 @@ its declared license and repository, and the license files it carries, then
 those files' texts, each distinct text once.
 
 The output is committed (``LICENSES/host/<app>-THIRD-PARTY-NOTICES.txt``)
-and installed into the packages. Regenerate it whenever the application's
-``Cargo.lock`` changes::
+and installed into the packages. The applications share one Cargo workspace
+and one lock file, ``host/Cargo.lock``; regenerate all four whenever it
+changes (the first argument may be any directory in the workspace)::
 
     LICENSES/tools/generate_rust_notices.py host/applications/tagprogram-rs \\
         tagprogram > LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt

@@ -47,27 +47,28 @@
 function(rust_flash_tools out_found)
   get_property(_done GLOBAL PROPERTY _RUST_FLASH_TOOLS_DONE)
   if(NOT _done)
-    find_program(FLASH_TOOLS_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
-    if(FLASH_TOOLS_CARGO)
-      set(_dir "${CMAKE_BINARY_DIR}/flash-tools")
-      set(_tag_flash "${_dir}/release/tag-flash${CMAKE_EXECUTABLE_SUFFIX}")
-      set(_base_flash "${_dir}/release/base-flash${CMAKE_EXECUTABLE_SUFFIX}")
-      set(_env "CARGO_TARGET_DIR=${_dir}")
+    # CARGO_EXECUTABLE and HOST_CARGO_TARGET_DIR: the host Rust workspace's
+    # cargo and output directory, shared with the Rust applications.
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/HostRust.cmake")
+    if(CARGO_EXECUTABLE)
+      set(_tag_flash "${HOST_CARGO_TARGET_DIR}/release/tag-flash${CMAKE_EXECUTABLE_SUFFIX}")
+      set(_base_flash "${HOST_CARGO_TARGET_DIR}/release/base-flash${CMAKE_EXECUTABLE_SUFFIX}")
+      set(_env "CARGO_TARGET_DIR=${HOST_CARGO_TARGET_DIR}")
       if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND _env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
       endif()
       # Always run: cargo decides what is out of date. --locked builds
-      # exactly the committed Cargo.lock. Both are then copied into bin/
+      # exactly the committed host/Cargo.lock. Both are then copied into bin/
       # beside the C++ tools.
       add_custom_target(
         flash_tools
         COMMAND ${CMAKE_COMMAND} -E env ${_env}
-                "${FLASH_TOOLS_CARGO}" build --release --locked
-                --bin tag-flash --bin base-flash
+                "${CARGO_EXECUTABLE}" build --release --locked
+                -p tag-tools --bin tag-flash --bin base-flash
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_tag_flash}" "${_base_flash}"
                 "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/host/commandline-rs"
+        WORKING_DIRECTORY "${HOST_RUST_WORKSPACE_DIR}"
         BYPRODUCTS "${_tag_flash}" "${_base_flash}"
         COMMENT "Building tag-flash and base-flash with cargo"
         USES_TERMINAL
