@@ -4,7 +4,7 @@
   (tagconfiguration/), starting, stopping and erasing it, and downloading its
   log.
 
-  Built only with BUILD_QT_APPS; if Qt6 Core and Widgets are not found the
+  Built only with BUILD_LEGACY_HOST; if Qt6 Core and Widgets are not found the
   directory is skipped with a message rather than failing the configure.
   Links tagcore for everything that talks to a tag and host_common for the
   shared header-only Qt helpers (user guide lookup, file dialogs).

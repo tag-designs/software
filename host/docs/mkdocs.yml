@@ -71,7 +71,6 @@ nav:
       - Tag Calibrator: apps/tagcalibrate.md
       - Qt Program: apps/qtprogram.md
       - Tag Programmer: apps/tagprogram.md
-      - Bit Tag Visualizer: apps/btdataviz.md
   - Command Line:
       - Overview: cli/index.md
       - tag-test: cli/tag-test.md

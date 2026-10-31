@@ -4,7 +4,7 @@
   Loads a log's streams into a columnar layout (shared double time axes,
   float values, min/max pyramids) and answers M4 view queries, exact
   value read-back and full-precision row passes. Depends only on sqlite3,
-  so it builds with BUILD_HOST alone, without BUILD_QT_APPS. See README.md.
+  so it builds with BUILD_HOST alone, without BUILD_LEGACY_HOST. See README.md.
 #]]
 cmake_minimum_required(VERSION 3.15)
 

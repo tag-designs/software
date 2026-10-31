@@ -99,7 +99,8 @@ def check_failed(importer: str, out: Path) -> None:
 def check_variant_a(importer: str, out: Path) -> None:
     """Variant A is translated with btviz's decode, checked here independently.
 
-    btviz (host/applications/btdataviz/mainwindow.cpp): for i = 5 .. 1, the
+    btviz (host/applications/btdataviz/mainwindow.cpp, removed in v4.0; see
+    git history): for i = 5 .. 1, the
     activity at epoch - i*60 is ((word >> (i-1)*6) & 63) / 0.6 percent. The
     fixture's tag clock had reset when it was read (read time in 1979), which
     must not make its 2019 records look implausible.

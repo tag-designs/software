@@ -10,8 +10,13 @@ Rust ports of the tools in [`../commandline`](../commandline/README.md),
 built on the Rust tag interface in
 [`../libraries/tagcore-rs`](../libraries/tagcore-rs/README.md). Each tool
 keeps its C++ name, options, messages and exit status, so scripts can use
-either. The ports are not wired into the CMake build; `tag-flash` and
-`base-flash` (below) are, and ship in the host tools package.
+either. From v4.0 they are the package's tag tools: CMake builds the whole
+crate once (the `rust_tools` target, with the `sqlitelog` feature), copies
+the shipped tools (`tag-info`, `tag-start`, `tag-stop`, `tag-reset`,
+`tag-test`, `tag-cal`, `tag-dwnld`, and `tag-flash` and `base-flash` below)
+to `<build>/<Config>/bin` and the developer and bench tools to
+`bin/internal`, and installs the shipped ones. The C++ tools they replace
+are built only by the legacy option (`BUILD_LEGACY_HOST`).
 
 ```sh
 cargo build --release -p tag-tools   # binaries in host/target/release/ (the workspace's)
@@ -45,8 +50,9 @@ connected. **Attaching resets the tag**, as with the C++ tools.
 | `tag-monitor-test` | `tag-monitor-test.cc` | Drive the L4 monitor handshake directly through `LinkAdapt` |
 | `qtmonitor-fixture-capture` | `qtmonitor-fixture-capture.cc` | Capture a tag's info, config and status as a qtmonitor test fixture |
 | `tag-dwnld` | `dwnld.cc` | Download a stopped tag's log to SQLite, through the C++ writer (below) |
+| `tag-log-import` | `tag-log-import.cc` | Write a `tagclient` JSONL download as a SQLite log, with no tag, through the C++ writer (below) |
 
-### tag-dwnld and the C++ writer
+### tag-dwnld, tag-log-import and the C++ writer
 
 `tag-dwnld` reads the tag with tagcore-rs but writes the database with the
 C++ `SqliteTagLogWriter`, through
@@ -68,6 +74,14 @@ directory, and finds it through an rpath to that directory. Messages and exit
 status follow the C++; the format check that names an unsupported tag type
 reports the writer's own message ("Could not open output: SQLite log output
 does not support tag type ...").
+
+`tag-log-import` makes the C++ tool's writer calls in the same order, so on
+the same input, given by the same path, the two databases are identical. It
+is a developer tool, used by [tagsim](../python/tagsim/README.md) to turn
+simulated pages into a log; packages do not install it. Build it as
+`tag-dwnld` above, with `--bin tag-log-import`. The C++ tool's
+[README section](../commandline/README.md#tag-log-import) describes the
+input format, which is the same.
 
 ## Programming without STM32CubeProgrammer
 
@@ -117,7 +131,7 @@ These need a library that the Rust crate does not have yet:
 
 - `tag-capture`, `tag-xflash`, `tag-sramcall` and `tag-rebuild`: the SWD
   capture and recovery library in `tagcore/recovery/`.
-- `tag-log-import` and `tag-txt-import`: `sqlitelog` and `txtlogs`.
+- `tag-txt-import`: the C++ text-log reader (`txtlogs`).
 - `dataprocessing`: the sensoranalysis core and SQLite.
 
 ## Differences from the C++
@@ -173,9 +187,39 @@ transport, firmware `8f1350da`), each tool again matched its C++ build:
 monitor_shared write guard and keep-alive across a 12 s idle),
 `tag-attach-cycle`, `qtmonitor-fixture-capture`, the start, stop and reset
 cycle, and `tag-cal`, which streamed samples and stopped on Ctrl-C.
+
+On 2026-10-31, `tag-log-import` and the C++ tool imported a tagsim IMUTag
+download (25 pages, a resync segment, NaN gaps) into byte-identical
+databases, with `tagcore_c` linked statically and as a shared library, and
+with and without `--info` rows. The header-only input and the failure cases
+(unreadable input, a malformed `--info` pair, a header without `config`, an
+unknown field in an Ack) gave the same messages and exit status, apart from
+the JSON parser's wording, and left no file behind. tagsim's tests passed
+with `TAG_LOG_IMPORT_BIN` naming the Rust tool.
 `tag-monitor-test` refuses an STM32U3, as the C++ now does.
 
-Not checked on hardware: `--config`/`--merge` (the merge itself is covered by
-tagcore-rs unit tests), the opt-in write, start and unplug checks of
-`tag-side-channel-check`, and `tag-test` on the IMUTag, whose
-external-flash test can write the NAND bad-block map.
+On 2026-10-31 the remaining hardware checks were run, on a BitTag V6
+(UUID 2039354D30315012005E0068, firmware eb003aee, bittag-base-v7) and the
+IMUTagNandBmp581 (UUID 00303143433650090059002E, firmware 33dfce16), all
+passing:
+
+- `tag-start --config`: the file was sent as written and read back after
+  `tag-stop` in the tag's own form (thresholds and inactive time rounded to
+  register steps, unused accelerometer fields not stored).
+- `tag-start --config --merge`, with a file setting two BitTag fields and
+  three it lacks (`period`, `start_delay`, `lsm6`): only the two were sent;
+  the stored log format and inactivity threshold were kept.
+- `tag-test` on the IMUTag: RUN_ALL, ALL_PASSED.
+- `tag-side-channel-check` on both tags: `--write-test` (at `0x2000BFF0` on
+  the L432 and `0x2003DFF0` on the U375, the top of free heap, restored
+  afterwards), `--unplug` (reported as a transport failure after 878 and 1101
+  good calls) and `--start-running` (Start refused with PERM, no transport
+  failure).
+
+Seen along the way, not failures: an attach seconds after another tool's
+detach sometimes fails on its first debug read (status 0x81; three times on
+the BitTag) and the tools do not retry it as Tag Programmer does; an unplug
+on the L432 logs about 2,500 `LIBUSB_ERROR_NO_DEVICE` lines in 2.5 s; a
+detach from a running U375 logs about 50 `error return 81` lines; and
+`tag-test` labels the external flash size, which is in bytes, "kb", as the
+C++ tool does.

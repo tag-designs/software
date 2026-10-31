@@ -72,8 +72,8 @@ The host software exists in C++ and, since October 2026, in Rust; both ship.
 `host/libraries/tagcore` is the C++ low-level host interface (USB, monitor,
 log writers, recovery), and `host/libraries/tagcore-rs` its Rust port of the
 tag interface. The Qt applications in `host/applications` are `qtmonitor`
-(monitor, configure, download), `qtprogram`, `qtcalibrate`, `sensorviz`
-(SQLite log visualization) and the legacy `btviz`; their Rust/Tauri ports are
+(monitor, configure, download), `qtprogram`, `qtcalibrate` and `sensorviz`
+(SQLite log visualization); their Rust/Tauri ports are
 `tagmonitor`, `tagprogram`, `tagcalibrate` and `tagview`, which reach the C++
 SQLite writer, calibration session and sensorViz core through the `tagcore_c`
 C interface ([applications README](../../host/applications/README.md)). The

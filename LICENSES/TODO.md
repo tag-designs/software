@@ -7,9 +7,9 @@ summary: Remaining licensing follow-ups from the 2026-10-06 inventory.
 # Licensing Worklist
 
 Follow-ups from the third-party inventory of 2026-10-06; see
-[README.md](README.md). One component ships with a known licensing gap, which
-its notice file states together with the one program it affects: SOLPOS in
-btviz (`host/third-party/nrel-solpos.txt`).
+[README.md](README.md). The one component that shipped with a known licensing
+gap, SOLPOS, was used only by btviz, which was removed for v4.0 with its
+notice.
 
 The MotionCal gap in qtcalibrate closed on 2026-10-10. `quality.c` went first,
 replaced by owned arithmetic in `host/libraries/sensoranalysis`; then

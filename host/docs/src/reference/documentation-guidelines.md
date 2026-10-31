@@ -89,16 +89,6 @@ Use short, stable names that identify the app and screen:
 - `qtmonitor-config-imutag.png`
 - `qtmonitor-config-prestag.png`
 - `qtmonitor-error-log.png`
-- `btdataviz-startup.png`
-- `btdataviz-plot-view.png`
-- `btdataviz-temperature.png`
-- `btdataviz-zoom-week.png`
-- `btdataviz-cursors.png`
-- `btdataviz-filtering.png`
-- `btdataviz-export.png`
-- `btdataviz-actogram.png`
-- `btdataviz-sun-elevation.png`
-- `btdataviz-tag-info.png`
 - `sensorviz-compass-view.png`
 
 When adding a new screenshot, add a name that remains correct if minor wording

@@ -49,7 +49,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 Build, from the repository root:
 
 ```bash
-cmake --preset linux-vcpkg -B ~/Build/tag-designs/tag-server-linux -DBUILD_TAG_SERVER=ON -DBUILD_QT_APPS=OFF
+cmake --preset linux-vcpkg -B ~/Build/tag-designs/tag-server-linux -DBUILD_TAG_SERVER=ON
 cmake --build ~/Build/tag-designs/tag-server-linux --target tag-server -j
 ```
 
@@ -72,7 +72,7 @@ driver the other host tools use. The server listens on loopback TCP
 PowerShell, from the repository root:
 
 ```powershell
-cmake --preset windows-vcpkg-static -B c:/software-build-tag-server -DBUILD_TAG_SERVER=ON -DBUILD_QT_APPS=OFF
+cmake --preset windows-vcpkg-static -B c:/software-build-tag-server -DBUILD_TAG_SERVER=ON
 cmake --build c:/software-build-tag-server --config Release --target tag-server
 ```
 

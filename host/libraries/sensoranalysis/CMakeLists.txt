@@ -34,9 +34,11 @@ if(TARGET protobuf::libprotobuf)
   target_link_libraries(sensoranalysis_core_json PUBLIC sensoranalysis_core protobuf::libprotobuf)
 endif()
 
-# Everything below is the Qt library and its checks. A host build without the
-# Qt applications still gets the core above, which dataprocessing needs.
-if(NOT BUILD_QT_APPS)
+# Everything below is the Qt library and its checks, the Qt-comparing ones
+# included, built only with the Qt applications (BUILD_LEGACY_HOST). A host
+# build without them still gets the core above, which dataprocessing and the
+# Rust applications (through tagcore_c) need.
+if(NOT BUILD_LEGACY_HOST)
   return()
 endif()
 

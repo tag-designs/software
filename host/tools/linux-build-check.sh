@@ -4,8 +4,12 @@
 # throwaway container.
 #
 # Follows the README's Linux instructions as a new user would: installs the
-# README's apt packages into a stock distribution image, configures with the
-# README's command, and builds. The point is to test a distribution Qt, which
+# README's apt packages into a stock distribution image, installs Rust with
+# rustup, configures with the README's command, and builds. By default that
+# is the release build, the Rust applications and tools and the C++ they use,
+# against the distribution's libraries. With --legacy it also installs the
+# distribution's Qt and builds the legacy Qt applications
+# (BUILD_LEGACY_HOST): the point there is to test a distribution Qt, which
 # splits its tree across /usr/lib/qt6 and /usr/lib/<arch>/qt6 in ways an
 # installer or aqt Qt never does.
 #
@@ -28,10 +32,13 @@
 #
 # Usage: host/tools/linux-build-check.sh [options]
 #   --image IMAGE      Debian-family image to build in (default debian:13)
-#   --target TARGET    Target to build (default qml_import_check_qtcalibrate);
-#                      "all" builds everything the host build has
-#   --without-quick3d  Leave out the Quick 3D packages; the QML import check
-#                      should then fail and name the QtQuick3D modules
+#   --target TARGET    Target to build (default all; with --legacy,
+#                      qml_import_check_qtcalibrate)
+#   --legacy           Install the distribution's Qt and configure with
+#                      -DBUILD_LEGACY_HOST=ON
+#   --without-quick3d  With --legacy, leave out the Quick 3D packages; the
+#                      QML import check should then fail and name the
+#                      QtQuick3D modules
 #   --rmi              Remove the base image afterwards
 #   --shell            Open a shell in the container after the build, kept
 #                      even when the build fails
@@ -53,7 +60,8 @@ die() { printf '%s: error: %s\n' "$PROGRAM" "$*" >&2; exit 1; }
 usage() { sed -n 's/^# \{0,1\}//; /^Usage:/,/^$/p' "$0" >&2; exit 2; }
 
 image=
-target=qml_import_check_qtcalibrate
+target=
+legacy=0
 package=
 out=linux-package-test
 quick3d=1
@@ -63,6 +71,7 @@ while [ $# -gt 0 ]; do
     case $1 in
         --image) [ $# -ge 2 ] || usage; image=$2; shift 2 ;;
         --target) [ $# -ge 2 ] || usage; target=$2; shift 2 ;;
+        --legacy) legacy=1; shift ;;
         --without-quick3d) quick3d=0; shift ;;
         --rmi) rmi=1; shift ;;
         --shell) shell=1; shift ;;
@@ -108,14 +117,22 @@ fi
 image=${image:-debian:13}
 
 # The README's Linux package lists, verbatim. Keep these in step with the
-# "Linux Prerequisites" section of README.md: testing them is half the point.
+# "With the distribution's packages instead" section of README.md: testing
+# them is half the point.
 packages="build-essential cmake git pkg-config \
   libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev \
-  qt6-base-dev qt6-svg-dev qt6-declarative-dev libwebkit2gtk-4.1-dev curl"
-if [ "$quick3d" = 1 ]; then
-    packages="$packages qt6-quick3d-dev \
+  libwebkit2gtk-4.1-dev curl"
+configure_args="-DBUILD_EMBEDDED=OFF -DBUILD_HOST_DOCS=OFF"
+if [ "$legacy" = 1 ]; then
+    packages="$packages qt6-base-dev qt6-svg-dev qt6-declarative-dev"
+    if [ "$quick3d" = 1 ]; then
+        packages="$packages qt6-quick3d-dev \
   qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers"
+    fi
+    configure_args="$configure_args -DBUILD_LEGACY_HOST=ON"
+    target=${target:-qml_import_check_qtcalibrate}
 fi
+target=${target:-all}
 
 # Runs inside the container. The checkout belongs to another uid there, so git
 # (used by the version helpers) has to be told it is safe.
@@ -131,7 +148,7 @@ curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q --pro
 git config --global --add safe.directory /src
 echo "==> configuring"
 status=0
-cmake -S /src -B /tmp/build -DBUILD_EMBEDDED=OFF -DBUILD_HOST_DOCS=OFF || status=$?
+cmake -S /src -B /tmp/build $CONFIGURE_ARGS || status=$?
 if [ $status = 0 ]; then
     echo "==> building $TARGET"
     cmake --build /tmp/build --target "$TARGET" --parallel "$(nproc)" || status=$?
@@ -147,12 +164,17 @@ exit $status
 tty_args=()
 [ "$shell" = 0 ] || tty_args=(-it)
 
-printf '==> %s, target %s, Quick 3D %s\n' "$image" "$target" \
-    "$([ "$quick3d" = 1 ] && echo installed || echo left out)"
+if [ "$legacy" = 1 ]; then
+    printf '==> %s, legacy Qt build, target %s, Quick 3D %s\n' "$image" "$target" \
+        "$([ "$quick3d" = 1 ] && echo installed || echo left out)"
+else
+    printf '==> %s, target %s\n' "$image" "$target"
+fi
 status=0
 "$docker" run --rm ${tty_args[@]+"${tty_args[@]}"} \
     -v "$source_dir:/src:ro" \
     -e PACKAGES="$packages" -e TARGET="$target" -e SHELL_AFTER="$shell" \
+    -e CONFIGURE_ARGS="$configure_args" \
     "$image" bash -c "$script" || status=$?
 
 if [ "$rmi" = 1 ]; then

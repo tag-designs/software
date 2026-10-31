@@ -12,11 +12,22 @@ Qt-free `sensoranalysis_core` and SQLite instead, and is built in any host
 build; like every tool here it uses no Qt.
 
 Rust ports of the tools that need only the tag interface are in
-[`../commandline-rs`](../commandline-rs/README.md).
+[`../commandline-rs`](../commandline-rs/README.md), and **from v4.0 they
+replace the C++ tools of the same names**: `tag-dwnld`, `tag-info`,
+`tag-reset`, `tag-start`, `tag-stop`, `tag-cal`, `tag-test`,
+`tag-test-example`, `tag-monitor-test`, `tag-attach-cycle`, `tag-peek`,
+`tag-side-channel-check`, `tag-cal-write`, `tag-log-import` and
+`qtmonitor-fixture-capture`. Those C++ tools are built only with
+`BUILD_LEGACY_HOST=ON`, into `<build>/<Config>/bin/legacy` when the Rust ones
+are built too, and are not released; they stay as the reference the ports
+are compared with. Always built here, because nothing replaces them:
+`dataprocessing`, `tag-txt-import` and the SWD capture and recovery tools
+(`tag-capture`, `tag-xflash`, `tag-sramcall`, `tag-rebuild`).
 
-Distributed tools -- these are the ones in `host_cli_install_targets` in
-`../CMakeLists.txt`, the ones documented in the user guide, and the ones that
-reach a release:
+Distributed tools -- the C++ ones in `host_cli_install_targets` in
+`../CMakeLists.txt` are `dataprocessing` and `tag-txt-import`; the others in
+this list ship as the Rust ports, and the C++ ones shipped until v3.5. The
+list is the tools documented in the user guide:
 
 - `dataprocessing`: copy SQLite logs and materialize derived/calibrated sensor
   streams. The initial implementation supports CompassTag calibrated vectors
@@ -200,6 +211,10 @@ to keep the decoders in step with the firmware, is in
 [decision 0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md).
 
 ## tag-log-import
+
+A Rust port with the same options, output and database is in
+[`../commandline-rs`](../commandline-rs/README.md#tag-dwnld-tag-log-import-and-the-c-writer);
+it replaces this one in the v4.0 release.
 
 Writes a download in the JSONL format of `tagclient`'s
 [`tag_dwnld.py`](../python/tagclient/examples/tag_dwnld.py) as a SQLite log,

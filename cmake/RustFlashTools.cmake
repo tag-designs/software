@@ -8,7 +8,8 @@
            together they replace STM32_Programmer_CLI (see
            host/commandline-rs/design/proposals/programming-without-cubeprogrammer.md).
            Two parts of the build need them: the host package installs them
-           (host/commandline-rs/CMakeLists.txt) and the embedded `-download`,
+           (host/commandline-rs/CMakeLists.txt, which builds them with every
+           other tool through host_rust_tools()) and the embedded `-download`,
            `-erase` and `-dfu` targets run them (embedded/CMakeLists.txt).
            Both call rust_flash_tools() here, so a tree that configures both
            compiles them once.
@@ -24,7 +25,10 @@
   @brief  Defines the flash_tools target and reports where the executables
           will be.
 
-  @details On the first call, with cargo found, adds the custom target
+  @details On the first call in a tree that builds the host tools (the
+           rust_tools target exists), adds `flash_tools` as a target that only
+           depends on rust_tools, which builds these two with the rest.
+           Otherwise, with cargo found, adds the custom target
            `flash_tools`, which runs
            `cargo build --release --locked --bin tag-flash --bin base-flash`
            in host/commandline-rs with its target directory in this build
@@ -50,7 +54,18 @@ function(rust_flash_tools out_found)
     # CARGO_EXECUTABLE and HOST_CARGO_TARGET_DIR: the host Rust workspace's
     # cargo and output directory, shared with the Rust applications.
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/HostRust.cmake")
-    if(CARGO_EXECUTABLE)
+    if(TARGET rust_tools)
+      # The host build already builds every tool of the crate, these two
+      # included, into the same target directory (host_rust_tools() in
+      # HostRust.cmake); a second cargo run with another feature set would
+      # rebuild the crate each time the two alternated.
+      add_custom_target(flash_tools)
+      add_dependencies(flash_tools rust_tools)
+      set(TAG_FLASH_EXECUTABLE "${HOST_CARGO_TARGET_DIR}/release/tag-flash${CMAKE_EXECUTABLE_SUFFIX}"
+          CACHE INTERNAL "tag-flash, built by rust_tools")
+      set(BASE_FLASH_EXECUTABLE "${HOST_CARGO_TARGET_DIR}/release/base-flash${CMAKE_EXECUTABLE_SUFFIX}"
+          CACHE INTERNAL "base-flash, built by rust_tools")
+    elseif(CARGO_EXECUTABLE)
       set(_tag_flash "${HOST_CARGO_TARGET_DIR}/release/tag-flash${CMAKE_EXECUTABLE_SUFFIX}")
       set(_base_flash "${HOST_CARGO_TARGET_DIR}/release/base-flash${CMAKE_EXECUTABLE_SUFFIX}")
       set(_env "CARGO_TARGET_DIR=${HOST_CARGO_TARGET_DIR}")

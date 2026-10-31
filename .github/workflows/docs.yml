@@ -60,7 +60,6 @@ jobs:
         run: >
           cmake -S . -B build-docs
           -DBUILD_HOST=OFF
-          -DBUILD_QT_APPS=OFF
           -DBUILD_EMBEDDED=OFF
           -DBUILD_HOST_DOCS=OFF
           -DBUILD_DEVELOPER_DOCS=OFF

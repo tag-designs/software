@@ -10,7 +10,7 @@ Five checks of `sensorviz_core`, the Qt-free half of sensorViz. They link
 only the core (and through it `sensordata` and sensoranalysis's Qt-free
 core; `catalog_check` also sqlite3), and are defined in
 [`core/CMakeLists.txt`](../core/CMakeLists.txt), so they build in a host build
-without `BUILD_QT_APPS` and prove the core needs no Qt. They open no window.
+without `BUILD_LEGACY_HOST` and prove the core needs no Qt. They open no window.
 
 Like the other checks in this tree they are plain `main()` programs with their
 own `CHECK()` macro, built behind an option and run by hand:

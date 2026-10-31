@@ -8,7 +8,6 @@ calibrate, and visualize Ultralight Tags.
 - [Qt Program](apps/qtprogram.md): configure and program supported tags.
 - [Qt Calibrate](apps/qtcalibrate.md): collect calibration data and generate calibration values.
 - [Tag Monitor](apps/qtmonitor.md): connect to tags and monitor live output.
-- [Bit Tag Visualizer](apps/btdataviz.md): inspect bit tag data files.
 - [SensorViz](apps/sensorviz.md): inspect SQLite pressure, activity, and CompassTag sensor logs.
 
 ## Common Workflows

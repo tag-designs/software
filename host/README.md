@@ -20,8 +20,8 @@ The host code exists in two implementations, and both ship today:
 
 - **C++**: the `tagcore` library (the original tag interface, the SQLite
   writer, the SWD recovery library), the sensor libraries, the Qt
-  applications (`qtmonitor`, `qtprogram`, `qtcalibrate`, `sensorviz`,
-  `btviz`) and most command-line tools.
+  applications (`qtmonitor`, `qtprogram`, `qtcalibrate`, `sensorviz`)
+  and most command-line tools.
 - **Rust**: ports made in October 2026. A Rust tag interface (`tagcore-rs`),
   programming through probe-rs (`tagprobe-rs`), the command-line tools that
   need only the tag interface (`commandline-rs`), and four Tauri applications
@@ -36,7 +36,7 @@ The host code exists in two implementations, and both ship today:
 | Directory | Role |
 | --- | --- |
 | `libraries/` | Reusable code, C++ and Rust: the tag interface, programming, log writing and reading, sensor maths, shared widgets, and the C interface between the two languages. See [libraries/README.md](libraries/README.md). |
-| `applications/` | The applications, Qt (`qtmon`, `qtprogram`, `qtcalibrate`, `sensorviz`, `btdataviz`) and Rust/Tauri (`*-rs`). See [applications/README.md](applications/README.md). |
+| `applications/` | The applications, Qt (`qtmon`, `qtprogram`, `qtcalibrate`, `sensorviz`) and Rust/Tauri (`*-rs`). See [applications/README.md](applications/README.md). |
 | `commandline/` | The C++ command-line tools (`tag-*`, `dataprocessing`), on `libraries/tagcore`. See [commandline/README.md](commandline/README.md). |
 | `commandline-rs/` | The Rust command-line tools: ports of the C++ `tag-*` tools, plus `tag-flash` and `base-flash`, which program tags and bases without STM32CubeProgrammer. See [commandline-rs/README.md](commandline-rs/README.md). |
 | `ui-kit/` | The web front ends' shared look and plumbing: CSS, Preact components, the engine connection, menus and dialogs. See [ui-kit/README.md](ui-kit/README.md). |
@@ -144,7 +144,6 @@ ship until the Qt one is retired.
 | Tag Calibrator | `tagcalibrate` | `applications/tagcalibrate-rs` | Rust/Tauri | The same, on the same C++ calibration session |
 | SensorViz | `sensorviz` | `applications/sensorviz` | C++/Qt | View downloaded SQLite logs |
 | Tag View | `tagview` | `applications/sensorviz-rs` | Rust/Tauri | The same, on the same C++ core |
-| Bit Tag Visualizer | `btviz` | `applications/btdataviz` | C++/Qt | Legacy BitTag viewer (deprecated) |
 
 The command-line tools keep one name in both languages: `tag-info` is
 `commandline/tag-info.cc` and `commandline-rs/src/bin/tag-info.rs`, with the
@@ -161,19 +160,25 @@ tools.
   tools are built (`BUILD_HOST`). The shipped command-line tools build into
   `<build>/<Config>/bin`; the developer and bench tools into `bin/internal`,
   and are never installed.
-- Qt support libraries and applications are added with `BUILD_QT_APPS=ON`.
+- The Qt libraries and applications, and the C++ tools the Rust tools
+  replace, are added with `BUILD_LEGACY_HOST=ON` (off; not released from
+  v4.0). Beside the Rust tools the replaced C++ ones build into
+  `<build>/<Config>/bin/legacy` and are not installed.
 - `libraries/tagcore-c` is added with `BUILD_TAGCORE_C=ON`, and always with
   `BUILD_RUST_APPS`, which needs it.
 - The Rust applications and `commandline-rs` are added with
-  `BUILD_RUST_APPS` (on by default where `cargo` is installed). Each is a
+  `BUILD_RUST_APPS` (on by default; a missing `cargo` stops the configure). Each is a
   custom target that runs `cargo build --release --locked` in the host
   workspace through `host_rust_app()` in
   [`cmake/HostRust.cmake`](../cmake/HostRust.cmake); every cargo run in a
   build tree shares one target directory, `<build>/host/cargo`, and the
   executables are copied to `<build>/<Config>/bin` beside the C++ programs.
-  `tag-flash` and `base-flash` are built by `flash_tools`
-  ([`cmake/RustFlashTools.cmake`](../cmake/RustFlashTools.cmake)), which the
-  embedded `-download`, `-erase` and `-dfu` targets also depend on.
+  The command-line tools are one cargo build of the whole `tag-tools` crate,
+  the `rust_tools` target (`host_rust_tools()`), which copies the shipped
+  tools to `bin/` and the developer tools to `bin/internal`; `flash_tools`
+  ([`cmake/RustFlashTools.cmake`](../cmake/RustFlashTools.cmake)), which
+  the embedded `-download`, `-erase` and `-dfu` targets depend on, depends on
+  it.
 - `tagserver` is added with `BUILD_TAG_SERVER=ON` (default `OFF`).
 - A small `host_common` interface target exposes `common/` headers to Qt apps.
 - The `docs` target builds the MkDocs user guide. `BUILD_HOST_DOCS` adds it to
@@ -181,7 +186,7 @@ tools.
 
 The CMake target names are stable: `tagcore`, `tagcore_c`, `tagcore_c_static`,
 `qcustomplot`, `sensoranalysis`, `sensordata`, `sensorui`, `qtmonitor`,
-`qtprogram`, `qtcalibrate`, `btviz`, `sensorviz`, `tagprogram`, `tagmonitor`,
+`qtprogram`, `qtcalibrate`, `sensorviz`, `tagprogram`, `tagmonitor`,
 `tagcalibrate`, `tagview`, `flash_tools`.
 
 ## Packaging notes

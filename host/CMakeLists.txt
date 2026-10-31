@@ -15,19 +15,6 @@ endif()
 add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x050F00)
 set(HOST_BUNDLE_INSTALL_DIR tag_tools)
 
-# host_common: header-only helpers shared by the Qt applications, in
-# host/common (qtuserguide.h, qtfiledialog.h, qthoststyle.h). Nothing is
-# compiled here; linking it adds the include path and the two definitions
-# below. sensorviz also uses TAG_DESIGNS_DOCS_SOURCE_DIR as its default
-# directory for documentation screenshots.
-add_library(host_common INTERFACE)
-target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
-# Where qtuserguide.h looks for the built user manual, after the places beside
-# the application: this build's site, then a site built in the source tree.
-target_compile_definitions(host_common INTERFACE
-  TAG_DESIGNS_DOCS_BUILD_DIR="${HOST_DOCS_BUILD_DIR}"
-  TAG_DESIGNS_DOCS_SOURCE_DIR="${HOST_DOCS_SOURCE_DIR}")
-
 add_subdirectory(libraries/tagcore)
 # Always added: its Qt-free core is what dataprocessing links. The Qt library
 # in it is built only with the Qt applications.
@@ -51,19 +38,33 @@ add_subdirectory(commandline)
 if(BUILD_TAG_SERVER)
   add_subdirectory(tagserver)
 endif()
-if(BUILD_QT_APPS)
+# The legacy host (BUILD_LEGACY_HOST, see the top-level CMakeLists.txt): the
+# Qt applications the Rust ones replace, and the Qt libraries only they use.
+if(BUILD_LEGACY_HOST)
+  # host_common: header-only helpers shared by the Qt applications, in
+  # host/common (qtuserguide.h, qtfiledialog.h, qthoststyle.h). Nothing is
+  # compiled here; linking it adds the include path and the two definitions
+  # below. sensorviz also uses TAG_DESIGNS_DOCS_SOURCE_DIR as its default
+  # directory for documentation screenshots.
+  add_library(host_common INTERFACE)
+  target_include_directories(host_common INTERFACE "${CMAKE_CURRENT_LIST_DIR}/common")
+  # Where qtuserguide.h looks for the built user manual, after the places
+  # beside the application: this build's site, then a site built in the
+  # source tree.
+  target_compile_definitions(host_common INTERFACE
+    TAG_DESIGNS_DOCS_BUILD_DIR="${HOST_DOCS_BUILD_DIR}"
+    TAG_DESIGNS_DOCS_SOURCE_DIR="${HOST_DOCS_SOURCE_DIR}")
   add_subdirectory(libraries/qcustomplot)
   add_subdirectory(libraries/sensorui)
   add_subdirectory(applications/qtmon)
   add_subdirectory(applications/qtprogram)
   add_subdirectory(applications/qtcalibrate)
-  add_subdirectory(applications/btdataviz)
   add_subdirectory(applications/sensorviz)
 endif()
 
 # The applications build against whatever Qt is found; HOST_QT_VERSION (see
 # the top-level CMakeLists.txt) says whether it is the one releases use.
-if(BUILD_QT_APPS AND HOST_QT_VERSION)
+if(BUILD_LEGACY_HOST AND HOST_QT_VERSION)
   find_package(Qt6 QUIET COMPONENTS Core)
   if(Qt6Core_VERSION AND NOT Qt6Core_VERSION VERSION_EQUAL HOST_QT_VERSION)
     reproducibility_problem(
@@ -286,24 +287,25 @@ function(add_qml_import_check target_name)
   add_dependencies(qml_import_check_${target_name} ${target_name})
 endfunction()
 
-# What ships. The developer and bench programs -- tag-attach-cycle,
-# tag-test-example, tag-monitor-test, tag-cal-write, tag-peek and
-# qtmonitor-fixture-capture -- are built but deliberately not installed; see
-# host/commandline/README.md. tag-test is a field tool and does ship despite
-# the name.
-set(host_cli_install_targets
-    tag-dwnld
-    tag-test
-    tag-info
-    tag-reset
-    tag-start
-    tag-stop
-    tag-cal
-    tag-txt-import)
+# What ships of the C++. From v4.0 the tag tools are the Rust ones
+# (host/commandline-rs, installed by its CMakeLists.txt); the C++ that ships is
+# what has no Rust equivalent. The developer and bench programs are built into
+# bin/internal and deliberately not installed; see host/commandline/README.md.
+set(host_cli_install_targets tag-txt-import)
 if(TARGET dataprocessing)
   list(APPEND host_cli_install_targets dataprocessing)
 endif()
-set(host_qt_install_targets btviz sensorviz qtmonitor qtprogram qtcalibrate)
+# The C++ tools the Rust ones replace, in a legacy build without the Rust
+# programs: then they ship as in v3.5 (tag-test is a field tool despite the
+# name). With the Rust programs they build into bin/legacy and do not ship.
+if(BUILD_LEGACY_HOST AND NOT BUILD_RUST_APPS)
+  list(APPEND host_cli_install_targets
+      tag-dwnld tag-test tag-info tag-reset tag-start tag-stop tag-cal)
+endif()
+set(host_qt_install_targets)
+if(BUILD_LEGACY_HOST)
+  set(host_qt_install_targets sensorviz qtmonitor qtprogram qtcalibrate)
+endif()
 # The targets that need Qt deployed beside them. Every command line tool,
 # dataprocessing included, is a plain executable that links no Qt.
 set(host_qt_runtime_install_targets ${host_qt_install_targets})
@@ -523,10 +525,21 @@ if(host_install_targets)
 
   # The license index, the MIT License, every third-party notice and the
   # license texts they name (see LICENSES/README.md). The directory is
-  # self-contained, so it is installed as it stands.
+  # self-contained, so it is installed as it stands, except that the notices
+  # that apply only to the legacy Qt applications (the index's "Legacy Qt
+  # applications" section) are left out of a build without them.
+  set(_legacy_only_notices)
+  if(NOT BUILD_LEGACY_HOST)
+    set(_legacy_only_notices
+        PATTERN "Qt-THIRD-PARTY-NOTICES.txt" EXCLUDE
+        PATTERN "qt.txt" EXCLUDE
+        PATTERN "qcustomplot.txt" EXCLUDE
+        PATTERN "qflightinstruments.txt" EXCLUDE)
+  endif()
   install(
     DIRECTORY "${CMAKE_SOURCE_DIR}/LICENSES/host/"
-    DESTINATION "${host_package_support_destination}/licenses")
+    DESTINATION "${host_package_support_destination}/licenses"
+    ${_legacy_only_notices})
 
   include(BuildReport)
   install_build_report(
@@ -535,17 +548,18 @@ if(host_install_targets)
 endif()
 
 # The Rust applications: Tag Programmer, Tag Monitor, Tag Calibrator and Tag
-# View (sensorViz in Rust), and the Rust programming tools. Added last so their install rules run after the
-# Qt deployment steps above, which scan the installed executables.
+# View (sensorViz in Rust), and the Rust command-line tools. Added last so
+# their install rules run after the Qt deployment steps of a legacy build
+# above, which scan the installed executables.
 if(BUILD_RUST_APPS)
   add_subdirectory(applications/tagprogram-rs)
   add_subdirectory(applications/tagmonitor-rs)
   add_subdirectory(applications/tagcalibrate-rs)
   add_subdirectory(applications/sensorviz-rs)
-  # tag-flash and base-flash, which program tags and bases without
-  # STM32CubeProgrammer.
+  # The tag tools, tag-flash and base-flash included.
   add_subdirectory(commandline-rs)
-  # The shared tagcore_c that Tag Monitor, Tag Calibrator and Tag View link
+  # The shared tagcore_c that Tag Monitor, Tag Calibrator, Tag View and
+  # tag-dwnld link
   # on Linux and Windows, installed once: beside the programs in
   # tag_tools/lib on Windows, where a program finds its DLLs only beside it;
   # in tag_tools/lib on Linux, where their rpath points. macOS links the

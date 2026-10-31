@@ -21,9 +21,9 @@
 # SOFTWARE.
 
 # Qt is needed only to deploy the Qt applications. A host build without them
-# (BUILD_QT_APPS=OFF) still includes this file on macOS for the code-signing
-# helpers below, which sign the command-line tools.
-if(BUILD_QT_APPS)
+# (BUILD_LEGACY_HOST=OFF, the release build) still includes this file on macOS
+# for the code-signing helpers below, which sign the command-line tools.
+if(BUILD_LEGACY_HOST)
 find_package(Qt6Core REQUIRED)
 
 # Retrieve the absolute path to qmake and then use that path to find

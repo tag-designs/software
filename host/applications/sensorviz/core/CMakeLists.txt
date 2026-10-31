@@ -9,7 +9,7 @@
   the sensorviz application, so it builds with BUILD_HOST alone; the Qt
   application and the C interface both link it. It links no Qt: a Qt include
   here fails to compile, and the checks below, which link only this library,
-  build in a host build without BUILD_QT_APPS.
+  build in a host build without BUILD_LEGACY_HOST.
 
   sqlite3 comes from vcpkg's unofficial-sqlite3 package when building with
   vcpkg and from the system otherwise, as for sensordata.

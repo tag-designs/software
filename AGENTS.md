@@ -78,7 +78,10 @@ Two conventions that are easy to miss and expensive to rediscover:
 The top-level CMake options are:
 
 - `BUILD_HOST`: build host libraries/tools.
-- `BUILD_QT_APPS`: build Qt GUI applications.
+- `BUILD_RUST_APPS`: build the Rust applications and tools (on by default;
+  needs cargo).
+- `BUILD_LEGACY_HOST`: build the Qt applications and the C++ tools the Rust
+  ones replace (off; not released from v4.0; needs Qt).
 - `BUILD_EMBEDDED`: build embedded firmware targets.
 - `BUILD_HOST_DOCS`: include MkDocs output in the default/package build.
 - `BUILD_DEVELOPER_DOCS`: include the developer documentation portal in the
@@ -87,8 +90,9 @@ The top-level CMake options are:
 Prefer focused verification:
 
 ```sh
-cmake --build <build-dir> --target sensorviz
-cmake --build <build-dir> --target qtmonitor
+cmake --build <build-dir> --target tagview
+cmake --build <build-dir> --target tagmonitor
+cmake --build <build-dir> --target rust_tools
 cmake --build <build-dir> --target docs
 cmake --build <build-dir> --target developer_docs
 cmake --build <build-dir> --target api_docs

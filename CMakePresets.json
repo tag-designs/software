@@ -13,7 +13,6 @@
         "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64",
         "CMAKE_INSTALL_PREFIX": "c:/software-build-external-qt/install",
         "BUILD_HOST": "ON",
-        "BUILD_QT_APPS": "ON",
         "BUILD_EMBEDDED": "OFF"
       }
     },
@@ -30,7 +29,6 @@
         "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64",
         "CMAKE_INSTALL_PREFIX": "c:/software-build-static-vcpkg-qt/install",
         "BUILD_HOST": "ON",
-        "BUILD_QT_APPS": "ON",
         "BUILD_EMBEDDED": "OFF"
       }
     },
@@ -46,7 +44,6 @@
         "CMAKE_PREFIX_PATH": "$env{HOME}/qt/6.10.3/macos",
         "CMAKE_INSTALL_PREFIX": "$env{HOME}/Build/tag-designs/software-vcpkg/install",
         "BUILD_HOST": "ON",
-        "BUILD_QT_APPS": "ON",
         "BUILD_EMBEDDED": "OFF",
         "MACOS_FIXUP_BUNDLE_DEPENDENCIES": "ON"
       }
@@ -81,7 +78,6 @@
         "VCPKG_HOST_TRIPLET": "x64-linux",
         "CMAKE_PREFIX_PATH": "$env{HOME}/Qt/6.10.3/gcc_64",
         "BUILD_HOST": "ON",
-        "BUILD_QT_APPS": "ON",
         "BUILD_EMBEDDED": "OFF"
       }
     },

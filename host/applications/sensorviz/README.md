@@ -60,7 +60,7 @@ sensorViz is two layers:
   [`sensordata`](../../libraries/sensordata/README.md). It has its own
   `core/CMakeLists.txt`, which `host/CMakeLists.txt` adds with the other
   Qt-free libraries, so it and its checks build in a host build without
-  `BUILD_QT_APPS`; a Qt include there fails to build. A non-Qt front end,
+  `BUILD_LEGACY_HOST`; a Qt include there fails to build. A non-Qt front end,
   such as a webview, could reuse it unchanged.
   - `stream_meta.*`: `StreamMeta`, one plottable stream (metadata only; the
     samples are its `dataId` in the backend), and the built-in per-stream

@@ -49,7 +49,7 @@ host/
 ├── commandline/                C++ tools: tag-*.cc, dwnld.cc, dataprocessing.cc, the recovery tools
 ├── commandline-rs/             Rust tools: src/bin/<tool>.rs, src/lib.rs (what they share)     (chapter 9)
 ├── applications/
-│   ├── qtmon/ qtprogram/ qtcalibrate/ sensorviz/ btdataviz/      the Qt applications
+│   ├── qtmon/ qtprogram/ qtcalibrate/ sensorviz/                the Qt applications
 │   ├── tagprogram-rs/          Tag Programmer   ┐  each: core/ (engine crate), app/ (Tauri shell crate),
 │   ├── tagmonitor-rs/          Tag Monitor      │        ui/ (the page), design/ (architecture, contract),
 │   ├── tagcalibrate-rs/        Tag Calibrator   │        CMakeLists.txt, cmake/Info.plist.in   (chapters 10, 11)

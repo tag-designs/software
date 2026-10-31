@@ -64,20 +64,41 @@ if(MSVC)
 endif()
 
 option(BUILD_HOST "Build host libraries and tools" ON)
-option(BUILD_QT_APPS "Build Qt host applications" ON)
-# The Rust applications (Tag Programmer, host/applications/tagprogram-rs, and
-# Tag Monitor, host/applications/tagmonitor-rs) are
-# built by cargo. On by default where cargo is installed, so a machine without
-# Rust still builds everything else; the release workflow turns it on, which
-# makes a missing cargo an error there.
-find_program(_cargo_for_default cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin")
-if(_cargo_for_default)
-  set(_build_rust_apps_default ON)
-else()
-  set(_build_rust_apps_default OFF)
+# The host programs are the Rust applications (Tag Programmer, Tag Monitor,
+# Tag Calibrator, Tag View) and the Rust command-line tools, built by cargo,
+# beside the C++ programs that have no Rust equivalent (dataprocessing,
+# tag-txt-import, the SWD recovery tools). A host build without Rust is not
+# a host build, so this is on whether or not cargo is installed, and a missing
+# cargo stops the configure with how to install it; a machine that builds
+# only firmware turns it off (or BUILD_HOST).
+option(BUILD_RUST_APPS "Build the Rust host applications and tools with cargo" ON)
+# The Qt applications (qtmonitor, qtprogram, qtcalibrate, sensorviz), their Qt
+# libraries, and the C++ command-line tools the Rust tools replace. Not
+# released from v4.0 (host/design/proposals/rust-default-release.md); kept
+# buildable as the reference the Rust ports are tested against (their oracle
+# files are regenerated with it), and for a fallback release. Needs Qt
+# HOST_QT_VERSION. With BUILD_RUST_APPS also on, the replaced C++ tools build
+# into bin/legacy and are not installed, since the Rust ones take their names;
+# with it off they build and install as in v3.5.
+option(BUILD_LEGACY_HOST "Build the Qt applications and the C++ tools the Rust programs replace" OFF)
+# BUILD_QT_APPS was the v3 name for the Qt part of BUILD_LEGACY_HOST. Honoured
+# for one release, so presets and scripts that set it keep working; remove it
+# from them.
+if(DEFINED BUILD_QT_APPS)
+  if(BUILD_QT_APPS AND NOT BUILD_LEGACY_HOST)
+    message(WARNING
+      "BUILD_QT_APPS is replaced by BUILD_LEGACY_HOST and will be removed; "
+      "treating BUILD_QT_APPS=ON as BUILD_LEGACY_HOST=ON. The Qt applications "
+      "are no longer released: configure with -UBUILD_QT_APPS for the release "
+      "build, or -DBUILD_LEGACY_HOST=ON -UBUILD_QT_APPS to keep them.")
+    set(BUILD_LEGACY_HOST ON)
+  elseif(NOT BUILD_QT_APPS)
+    message(WARNING
+      "BUILD_QT_APPS is replaced by BUILD_LEGACY_HOST and is ignored; "
+      "configure with -UBUILD_QT_APPS to silence this.")
+  endif()
 endif()
-option(BUILD_RUST_APPS "Build the Rust host applications with cargo" ${_build_rust_apps_default})
-option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ${BUILD_QT_APPS})
+option(BUILD_HOST_DOCS "Build host application user guides by default and install them with host packages" ON)
 option(BUILD_DEVELOPER_DOCS "Build developer architecture and API documentation by default" OFF)
 option(BUILD_EMBEDDED "Build embedded firmware targets" ${_build_embedded_default})
 option(REPRODUCIBLE_BUILD
@@ -154,8 +175,7 @@ set(DEVELOPER_DOXYGEN_TAGFILE "${CMAKE_BINARY_DIR}/docs/developer-api.tag")
 # Host applications with their own API reference, as name|source dir|title|
 # brief. Each is a separate Doxygen run (docs/developer/Doxyfile-app.in),
 # published at api/<name>/ and listed on the portal's API Reference page, which
-# has a placeholder docs/developer/src/api/<name>/index.md for each. btdataviz
-# is left out: it is being deprecated.
+# has a placeholder docs/developer/src/api/<name>/index.md for each.
 set(DEVELOPER_DOXYGEN_APPS
   "qtmonitor|host/applications/qtmon|Tag Monitor (qtmonitor)|Attach, configure, start and download tags"
   "qtprogram|host/applications/qtprogram|Tag Programmer (qtprogram)|Program, test and erase tag firmware"

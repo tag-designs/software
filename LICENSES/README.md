@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: The project's MIT license, which shipped programs and firmware are distributed under GPL-3.0 and why, the third-party inventory behind the notice files, and how to keep them current.
+summary: The project's MIT license, which programs and firmware are distributed under GPL-3.0 and why (from v4.0 only the firmware and the unreleased legacy Qt applications), the third-party inventory behind the notice files, and how to keep them current.
 ---
 
 # Licenses
@@ -14,13 +14,15 @@ are therefore distributed under the GNU GPL, version 3:
 | Distributed program | GPL component | Its license |
 | --- | --- | --- |
 | every tag and base-board firmware image | ChibiOS/RT kernel, OS library and Cortex-M ports | GPL-3.0-only |
-| `sensorviz`, `btviz` | QCustomPlot 2.1.1, statically linked | GPL-3.0-or-later |
-| `qtcalibrate` | Qt Quick 3D and Qt Quick Timeline | GPL-3.0-only |
+| `sensorviz`, legacy build only | QCustomPlot 2.1.1, statically linked | GPL-3.0-or-later |
+| `qtcalibrate`, legacy build only | Qt Quick 3D and Qt Quick Timeline | GPL-3.0-only |
 
 MIT is compatible with GPL-3.0, so the MIT code can be combined into those
 programs. Each program as a whole is conveyed under GPL-3.0, and the MIT
-grant still applies to the project's code taken on its own. The other host
-programs and the external flash loaders contain no GPL code.
+grant still applies to the project's code taken on its own. From v4.0 the host
+package contains no GPL code: `sensorviz` and `qtcalibrate` are built only by
+the legacy option (`-DBUILD_LEGACY_HOST=ON`) and are not released. The
+external flash loaders contain no GPL code either.
 
 Where something still needs fixing before a release is fully compliant, it is
 in [TODO.md](TODO.md).
@@ -38,13 +40,14 @@ links to that component's license:
 | --- | --- |
 | `../LICENSE` | The MIT License for the whole repository |
 | `host/`, `embedded/` | Each side's index (`README.md`), a copy of the MIT License (`LICENSE`), one notice file per third-party component (`third-party/`), and the full texts of the licenses those notices refer to (`texts/`) |
-| `host/Qt-THIRD-PARTY-NOTICES.txt` | The third-party code inside the Qt libraries, generated from Qt's `qt_attribution.json` files |
+| `host/Qt-THIRD-PARTY-NOTICES.txt` | The third-party code inside the Qt libraries, generated from Qt's `qt_attribution.json` files; installed only by a legacy build |
 | `tools/generate_qt_notices.py` | Regenerates `host/Qt-THIRD-PARTY-NOTICES.txt` |
 | `host/tagprogram-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Programmer (`tagprogram`), generated from the host workspace's `host/Cargo.lock` |
 | `host/tagmonitor-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Monitor in Rust (`tagmonitor`), generated from the host workspace's `host/Cargo.lock` |
 | `host/tagcalibrate-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag Calibrator in Rust (`tagcalibrate`), generated from the host workspace's `host/Cargo.lock` |
 | `host/tagview-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into Tag View, sensorViz in Rust (`tagview`), generated from the host workspace's `host/Cargo.lock` |
-| `tools/generate_rust_notices.py` | Regenerates a Rust notices file; run it for all four applications whenever `host/Cargo.lock` changes |
+| `host/tag-tools-THIRD-PARTY-NOTICES.txt` | The Rust crates compiled into the command-line tools (the `tag-tools` package: `tag-info`, `tag-dwnld`, `tag-flash` and the rest), generated from the host workspace's `host/Cargo.lock` |
+| `tools/generate_rust_notices.py` | Regenerates a Rust notices file; run it for the four applications and `tag-tools` whenever `host/Cargo.lock` changes |
 
 Each `host/` and `embedded/` directory is self-contained, with relative links,
 so it is installed into the packages as it stands.

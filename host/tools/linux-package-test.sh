@@ -17,17 +17,21 @@
 #   2. Command line tools: each answers --help; tag-info without a base exits
 #      1; dataprocessing processes a fixture log; tag-txt-import converts a
 #      legacy .txt fixture.
-#   3. Qt applications, under Wayland (mutter, GNOME's compositor, headless)
-#      and under X11 (Xvfb): each runs its documentation capture against the
-#      repository's fixtures -- fake tags for qtmonitor, a recorded session
-#      for qtcalibrate (its 3D orientation view included), logs for
-#      sensorviz -- and must exit 0 with its screenshots written and not
-#      blank, and nothing on stderr saying a plugin, library or QML module
-#      failed to load. btviz, qtprogram, tagprogram, tagmonitor,
-#      tagcalibrate and tagview (Tag Programmer, Tag Monitor, Tag Calibrator
-#      and sensorViz in Rust) have no capture mode; they must start and stay
-#      up. tagmonitor and tagcalibrate find no base in the container, say so,
-#      and stay up; tagview opens the IMUTag fixture.
+#   3. Applications, under Wayland (mutter, GNOME's compositor, headless)
+#      and under X11 (Xvfb). The Rust applications -- tagprogram,
+#      tagmonitor, tagcalibrate and tagview (Tag Programmer, Tag Monitor,
+#      Tag Calibrator and Tag View) -- have no capture mode; they must start
+#      and stay up. tagmonitor and tagcalibrate find no base in the
+#      container, say so, and stay up; tagview opens the IMUTag fixture.
+#      A package built with the legacy Qt applications (BUILD_LEGACY_HOST,
+#      not released from v4.0) also has each Qt application run its
+#      documentation capture against the repository's fixtures -- fake tags
+#      for qtmonitor, a recorded session for qtcalibrate (its 3D orientation
+#      view included), logs for sensorviz -- which must exit 0 with its
+#      screenshots written and not blank, and nothing on stderr saying a
+#      plugin, library or QML module failed to load; qtprogram must start
+#      and stay up, and the Qt TLS plugin it lists releases through must be
+#      present. The Qt checks run only for the Qt programs the package has.
 #
 # Usage: linux-package-test.sh TARBALL SOURCE_DIR OUT_DIR
 #   TARBALL     the package
@@ -89,19 +93,22 @@ for f in $elfs; do
     done
 done
 [ $missing = 0 ] && pass "$(echo "$elfs" | wc -l) ELF files resolve every library inside the package"
-# qtprogram lists firmware releases over HTTPS. The TLS backend is a plugin
-# that loads the system's libssl at run time, so neither ldd nor a start-up
-# shows it missing: only the first request would fail.
-if [ -f "$tt/plugins/tls/libqopensslbackend.so" ]; then
-    pass "the OpenSSL TLS backend plugin is in plugins/tls"
-else
-    fail "plugins/tls/libqopensslbackend.so is missing; qtprogram cannot reach GitHub"
+# A legacy package's qtprogram lists firmware releases over HTTPS. Qt's TLS
+# backend is a plugin that loads the system's libssl at run time, so neither
+# ldd nor a start-up shows it missing: only the first request would fail.
+if [ -x "$tt/bin/qtprogram" ]; then
+    if [ -f "$tt/plugins/tls/libqopensslbackend.so" ]; then
+        pass "the OpenSSL TLS backend plugin is in plugins/tls"
+    else
+        fail "plugins/tls/libqopensslbackend.so is missing; qtprogram cannot reach GitHub"
+    fi
 fi
 
 # --- 2. Command line tools -------------------------------------------------------
 
 step "command line tools"
-for tool in tag-info tag-dwnld tag-test tag-reset tag-start tag-stop tag-cal tag-txt-import dataprocessing; do
+for tool in tag-info tag-dwnld tag-test tag-reset tag-start tag-stop tag-cal tag-flash base-flash \
+            tag-txt-import dataprocessing; do
     if [ ! -x "$tt/bin/$tool" ]; then
         fail "$tool is not in bin"
     elif "$tt/bin/$tool" --help >"$out/$tool-help.txt" 2>&1; then
@@ -129,7 +136,7 @@ else
     fail "tag-txt-import on a legacy .txt log; see txt-import.txt"
 fi
 
-# --- 3. Qt applications ----------------------------------------------------------
+# --- 3. Applications -------------------------------------------------------------
 
 # Lines on stderr that mean the package is incomplete. Mesa's complaints about
 # the container having no GPU, before it falls back to software rendering,
@@ -182,39 +189,56 @@ run_stays_up() {
     fi
 }
 
+# run_legacy_qt_apps PLATFORM
+# The documentation captures of the Qt applications a legacy package carries
+# (BUILD_LEGACY_HOST); each runs only if its program is in the package.
+run_legacy_qt_apps() {
+    local p=$1 fixture name session
+    if [ -x "$tt/bin/qtmonitor" ]; then
+        run_capture "$p" qtmonitor-startup 1 -- "$tt/bin/qtmonitor" --capture-startup-screenshot
+        for fixture in "$fixtures"/qtmonitor/*.json; do
+            name=$(basename "$fixture" .json)
+            run_capture "$p" "qtmonitor-$name" 3 -- "$tt/bin/qtmonitor" \
+                --fake-fixture "$fixture" --capture-main-screenshots
+            run_capture "$p" "qtmonitor-$name-config" 1 -- "$tt/bin/qtmonitor" \
+                --fake-fixture "$fixture" --capture-config-screenshots
+        done
+    fi
+    if [ -x "$tt/bin/qtcalibrate" ]; then
+        session=$(ls "$fixtures"/qtcalibrate/*.json | head -1)
+        run_capture "$p" qtcalibrate-replay 1 -- "$tt/bin/qtcalibrate" \
+            --replay-capture "$session" --capture-replay-screenshots
+        run_capture "$p" qtcalibrate-orientation 1 -- "$tt/bin/qtcalibrate" \
+            --replay-capture "$session" --capture-orientation-screenshot
+    fi
+    if [ -x "$tt/bin/sensorviz" ]; then
+        for name in imutag compasstag; do
+            run_capture "$p" "sensorviz-$name" 1 -- "$tt/bin/sensorviz" \
+                --load-log "$fixtures/sensorviz/$name.db3" --capture-suite "$name" --no-user-prompts
+        done
+    fi
+    if [ -x "$tt/bin/qtprogram" ]; then
+        run_stays_up "$p" qtprogram -- "$tt/bin/qtprogram"
+    fi
+}
+
+# run_apps PLATFORM
+# Every application in the package: the four Rust ones, which a package must
+# have, then any legacy Qt ones.
 run_apps() {
-    local p=$1 fixture name
-    run_capture "$p" qtmonitor-startup 1 -- "$tt/bin/qtmonitor" --capture-startup-screenshot
-    for fixture in "$fixtures"/qtmonitor/*.json; do
-        name=$(basename "$fixture" .json)
-        run_capture "$p" "qtmonitor-$name" 3 -- "$tt/bin/qtmonitor" \
-            --fake-fixture "$fixture" --capture-main-screenshots
-        run_capture "$p" "qtmonitor-$name-config" 1 -- "$tt/bin/qtmonitor" \
-            --fake-fixture "$fixture" --capture-config-screenshots
-    done
-    local session
-    session=$(ls "$fixtures"/qtcalibrate/*.json | head -1)
-    run_capture "$p" qtcalibrate-replay 1 -- "$tt/bin/qtcalibrate" \
-        --replay-capture "$session" --capture-replay-screenshots
-    run_capture "$p" qtcalibrate-orientation 1 -- "$tt/bin/qtcalibrate" \
-        --replay-capture "$session" --capture-orientation-screenshot
-    for name in imutag compasstag; do
-        run_capture "$p" "sensorviz-$name" 1 -- "$tt/bin/sensorviz" \
-            --load-log "$fixtures/sensorviz/$name.db3" --capture-suite "$name" --no-user-prompts
-    done
-    run_stays_up "$p" btviz -- "$tt/bin/btviz"
-    run_stays_up "$p" qtprogram -- "$tt/bin/qtprogram"
+    local p=$1
     run_stays_up "$p" tagprogram -- "$tt/bin/tagprogram"
     run_stays_up "$p" tagmonitor -- "$tt/bin/tagmonitor"
     run_stays_up "$p" tagcalibrate -- "$tt/bin/tagcalibrate"
     run_stays_up "$p" tagview -- "$tt/bin/tagview" "$fixtures/sensorviz/imutag.db3"
+    run_legacy_qt_apps "$p"
 }
 
 export XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
 export LANG=C.UTF-8
 
-step "Qt applications under Wayland (mutter --headless)"
+step "applications under Wayland (mutter --headless)"
 dbus-run-session -- mutter --headless --wayland --no-x11 --virtual-monitor 1280x900 \
     >"$out/mutter.log" 2>&1 &
 mutter_pid=$!
@@ -226,7 +250,7 @@ else
 fi
 kill $mutter_pid 2>/dev/null; wait $mutter_pid 2>/dev/null
 
-step "Qt applications under X11 (Xvfb)"
+step "applications under X11 (Xvfb)"
 Xvfb :99 -screen 0 1280x900x24 -nolisten tcp >"$out/xvfb.log" 2>&1 &
 xvfb_pid=$!
 sleep 1

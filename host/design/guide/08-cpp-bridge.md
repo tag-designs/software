@@ -181,8 +181,8 @@ link directives.
 Each interface was checked against the C++ it wraps, not against a
 specification:
 
-- **Writer.** `taglogwriter`'s `log-import` example repeats `tag-log-import`
-  through the interface; on the same input the databases are byte-identical.
+- **Writer.** The Rust `tag-log-import` repeats the C++ one through the
+  interface; on the same input the databases are byte-identical.
   On hardware, a one-minute IMUTag run downloaded with the C++ `tag-dwnld`
   and the Rust one, linked both ways, gave three identical files.
 - **Calibration.** `calibsession`'s replay test runs qtcalibrate's reference

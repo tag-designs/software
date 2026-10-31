@@ -410,6 +410,7 @@ design document.
 
 - [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 - [Tag View (sensorViz in Rust): architecture and source map](../host/applications/sensorviz-rs/design/architecture.md) — How Tag View (sensorViz in Rust) is put together - one engine thread over sensorViz's C++ core through sensorviz-session, a page that draws the plot with uPlot from M4 envelopes, a map of every file and the Qt sensorviz code it follows, how a view change and a redraw travel, and where to make common changes.
+- [Tag View TODO](../host/applications/sensorviz-rs/TODO.md) *(worklist)* — Open Tag View work - features of the Qt sensorViz not carried into the v4.0 release, starting with the activity filter.
 
 ### Applications / tagcalibrate-rs
 
@@ -520,6 +521,7 @@ design document.
 
 - [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 - [Cost of a gRPC Server in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
+- [Rare L4 attach failure: SWD enter during the wake from Shutdown (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md) *(investigation, closed)* — Why about one attach in 150 to an idle STM32L432 tag failed with status 0x81 on its first debug read - the SWD enter sent just after nRST wakes the tag from Shutdown occasionally reaches the debug port before it is powered, and the host ignored the failed enter - and the retry that fixes it in both tagcore libraries.
 
 ### Libraries / tagcore / Proposals
 
@@ -559,7 +561,7 @@ design document.
 
 ### Libraries / taglogwriter-rs
 
-- [taglogwriter (Rust)](../host/libraries/taglogwriter-rs/README.md) — taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and the log-import check.
+- [taglogwriter (Rust)](../host/libraries/taglogwriter-rs/README.md) — taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and how it is checked against the C++ tools.
 
 ### Libraries / tagprobe-rs
 
@@ -638,5 +640,5 @@ design document.
 
 ### LICENSES
 
-- [Licenses](../LICENSES/README.md) — The project's MIT license, which shipped programs and firmware are distributed under GPL-3.0 and why, the third-party inventory behind the notice files, and how to keep them current.
+- [Licenses](../LICENSES/README.md) — The project's MIT license, which programs and firmware are distributed under GPL-3.0 and why (from v4.0 only the firmware and the unreleased legacy Qt applications), the third-party inventory behind the notice files, and how to keep them current.
 - [Licensing Worklist](../LICENSES/TODO.md) *(worklist)* — Remaining licensing follow-ups from the 2026-10-06 inventory.

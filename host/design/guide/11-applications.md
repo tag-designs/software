@@ -282,6 +282,5 @@ tag session on a worker thread, a window that draws), by design. `qtprogram`
 is the batch station, through `STM32_Programmer_CLI`. `qtcalibrate`'s
 `CompassData` is now an adapter over the C++ session the Rust application
 uses. `sensorviz`'s `core/` is the one Tag View runs; its Qt layer holds
-QCustomPlot, the activity filter and the screenshot hooks. `btdataviz` is a
-deprecated BitTag viewer. Each has a README; `qtmon/design/architecture.md`
+QCustomPlot, the activity filter and the screenshot hooks. Each has a README; `qtmon/design/architecture.md`
 is worth reading alongside Tag Monitor's.

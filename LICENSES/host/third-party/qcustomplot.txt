@@ -3,7 +3,7 @@ QCustomPlot 2.1.1
 
 License:    GPL-3.0-or-later (texts/GPL-3.0-only.txt)
 Copyright:  (C) 2011-2022 Emanuel Eichhammer
-Used in:    sensorviz, btviz (statically linked)
+Used in:    sensorviz (statically linked)
 Source:     https://www.qcustomplot.com; host/libraries/qcustomplot in the repository
 
 QCustomPlot, an easy to use, modern plotting widget for Qt

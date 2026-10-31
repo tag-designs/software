@@ -98,12 +98,11 @@ macOS, from the system on Linux, at the baseline in
 | SQLite | 3.53.1 | The log writer, `sensordata`, `dataprocessing` | Native API, never QtSql, in shared code |
 | libusb | 1.0.29 | The C++ `LinkAdapt` | The same library the Rust side vendors |
 | Qt | 6.10.3 | The Qt applications: Core, Gui, Widgets, Concurrent, PrintSupport, Svg, SvgWidgets, Qml, Quick, QuickWidgets, Quick 3D | Pinned everywhere with a macOS 13 floor ([decision 0026](../../../docs/decisions/0026-host-qt-6-10-3-and-macos-13-floor.md)); Quick 3D is GPL-only, which makes `qtcalibrate` GPL as distributed |
-| QCustomPlot | 2.1.1 | `sensorviz` and `btviz` plots | GPL-3.0; vendored in `libraries/qcustomplot` |
+| QCustomPlot | 2.1.1 | `sensorviz` plots | GPL-3.0; vendored in `libraries/qcustomplot` |
 | cxxopts | 3.0.0 | The C++ tools' options | |
 | rxi `log.c` | 0.1.0 | The C++ host logging, whose line format the Rust tools copy | |
 | stlink `commands.h` | | The ST-LINK command codes, in both the C++ and the Rust link layers | From the stlink-org project |
 | Freescale magnetic calibration | | The magcal solver inside `sensoranalysis/core` | |
-| Kiss FFT | 1.3.0 | `btviz` | |
 | grpcxx | fetched | `tag-server` only (`BUILD_TAG_SERVER=ON`) | Not in the release build |
 
 ## Tools
@@ -114,7 +113,7 @@ macOS, from the system on Linux, at the baseline in
 | CMake | The whole build, including running cargo | 3.20 or newer; `tag-server` needs 3.28 |
 | A C++20 compiler | The C++ libraries and `libtagcore_c` | MSVC on Windows, clang on macOS, gcc on Linux |
 | vcpkg | The C++ libraries on Windows and macOS | `VCPKG_ROOT`; the manifest is `vcpkg.json` |
-| Qt | The Qt applications (`BUILD_QT_APPS`) | 6.10.3 |
+| Qt | Only the legacy Qt applications (`BUILD_LEGACY_HOST`) | 6.10.3 |
 | `protoc` | The C++ protobuf code | From vcpkg or the system; the Rust side needs none |
 | Python 3 with MkDocs Material | The user manual and the developer portal | `host/docs/requirements.txt` |
 | Doxygen | The portal's C++ API reference (optional) | |
@@ -130,9 +129,9 @@ is [`docs/build/toolchain-inventory.md`](../../../docs/build/toolchain-inventory
   release builds use with `--locked`; a change to a dependency edits the
   lock once, for every crate.
 - **Regenerate the notices.** Whenever the lock changes, run
-  `LICENSES/tools/generate_rust_notices.py` for all four applications; the
-  files are installed into the packages, and most crate licences require
-  their notice to travel with a binary.
+  `LICENSES/tools/generate_rust_notices.py` for the four applications and
+  `tag-tools`; the files are installed into the packages, and most crate
+  licences require their notice to travel with a binary.
 - **Prefer what is already in the graph.** probe-rs brings tokio and
   tracing; Tauri brings `objc2`. A new direct dependency on something
   already there costs nothing; a new tree costs build time, binary size and

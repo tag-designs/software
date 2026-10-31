@@ -36,6 +36,7 @@ states for working with real tags, and are not repeated in full.
 | **Memory access is 32-bit** and word-aligned on the memory path; the RPC buffer is transferred in whole words | `rpc.rs`, `target.rs` |
 | **After probe-rs releases a field base, the monitor's first reads may fail** (`0x81`) while the tag boots; retry, and rate-limit the log | `target.rs`; the attach retry in Tag Programmer |
 | **An L432 call buffer may hold a request a failed call left pending**; wait for `MON_REQ` and `MON_PEND` to clear before writing it | `l4.rs` `wait_l4_idle`; the known firmware defect in `monitor-interface.md` |
+| **A sleeping tag's debug port is dead until nRST wakes it**; the SWD enter sent just after nRST can arrive first (about one attach in 150 to a BitTag in Shutdown), and the base then fails every read of the session, so a failed enter is retried with nRST held | `LinkAdapt::enter_swd`; the 2026-10 SWD-enter investigation in `host/libraries/tagcore/design/investigations/` |
 | **Debug access in Sleep must stay on** (`DBGMCU_CR.DBG_SLEEP`) during an L4 session, or polls fail in bursts | the 0x81 investigation; `l4.rs` |
 | **probe-rs probes are opened through `StLinkFactory`, never `Lister`** (hidapi is single-threaded on macOS) | `tagprobe`'s `open_probe` |
 | **The field-safe driver is not a general debugger**: byte writes patch whole words, which is unsafe for peripheral registers with read side effects | `fieldsafe.rs` |
@@ -100,7 +101,7 @@ states for working with real tags, and are not repeated in full.
 
 | Assumption | Where |
 | --- | --- |
-| **One workspace, one lock, `--locked` in every CMake and CI build**; a dependency change updates `host/Cargo.lock` and the four notices files | decision 0041 |
+| **One workspace, one lock, `--locked` in every CMake and CI build**; a dependency change updates `host/Cargo.lock` and the five notices files (four applications and `tag-tools`) | decision 0041 |
 | **A CMake build writes nothing into the source tree**; cargo's output goes to `<build>/host/cargo`, the page is staged under `OUT_DIR` | `HostRust.cmake`; the `app` build scripts |
 | **Crates that link `libtagcore_c` need `TAGCORE_C_LIB_DIR`**; `cargo check` and `cargo doc` need only an empty directory and `TAGCORE_C_LINK=dylib` | chapter 13 |
 | **libusb and protoc are vendored**; Linux needs `libudev` and WebKitGTK 4.1 | chapter 12 |

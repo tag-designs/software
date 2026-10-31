@@ -14,7 +14,7 @@ sample. A polyline through the envelope draws the same pixels as one through
 every sample, and has at most four points per column.
 
 It depends only on the sqlite3 C API and builds with `BUILD_HOST`, without
-`BUILD_QT_APPS`, so command-line tools and a non-Qt front end can use it as
+`BUILD_LEGACY_HOST`, so command-line tools and a non-Qt front end can use it as
 well as sensorviz. The API and its contracts are in
 [`sensordata.h`](sensordata.h); the design and the measurements behind it are
 in the sensorviz

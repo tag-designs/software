@@ -51,8 +51,8 @@ at `host/docs/site/`.
 
 The CMake `docs` target is available in top-level builds. The
 `BUILD_HOST_DOCS` option controls whether that target is part of the default
-build and whether generated docs are installed into packages. By default, that
-option follows `BUILD_QT_APPS`.
+build and whether generated docs are installed into packages. It is on by
+default.
 
 CMake first looks for `mkdocs` on `PATH`, then falls back to `Python3 -m
 mkdocs`. If your Python install works as a module but CMake cannot auto-detect
@@ -86,7 +86,6 @@ command-line options that load fixture data, put the window into a known state,
 and write PNGs into `src/images/` (override with `--screenshot-dir`). These images
 in `src/images/` are hand-made, and are redone by hand:
 
-- every `btdataviz-*.png`, because `btdataviz` has no capture options;
 - the `sensorviz` dialog and interaction images no hook produces
   (`sensorviz-cursors`, `-derived-views`, `-graph-title-dialog`,
   `-print-preview`, `-range-dialog`, `-utc-offset-dialog`,

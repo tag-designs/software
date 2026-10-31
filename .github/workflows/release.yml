@@ -1,11 +1,15 @@
 name: Release host tools
 
-# Builds the Windows, macOS and Linux host tool packages, Tag Programmer
-# (Rust, built by cargo) included. Pushing a version
-# tag (for example `v3.1`) builds all three and opens a *draft* GitHub release
-# with the Windows .zip and the Linux .tar.gz attached. `workflow_dispatch`
-# runs the same builds without publishing, so the pipeline can be exercised
-# without cutting a tag.
+# Builds the Windows, macOS and Linux host tool packages: from v4.0 the Rust
+# applications and command-line tools, built by cargo, and the C++ programs
+# with no Rust equivalent; no Qt (host/design/proposals/rust-default-release.md).
+# Pushing a version tag (for example `v4.0`) builds all three and opens a
+# *draft* GitHub release with the Windows .zip and the Linux .tar.gz attached.
+# `workflow_dispatch` runs the same builds without publishing, so the pipeline
+# can be exercised without cutting a tag; with its `legacy` input it builds
+# the legacy configuration instead (BUILD_LEGACY_HOST: Qt installed, the Qt
+# applications added), so that build is exercised before it rots. A legacy
+# run never publishes, and its artifacts are named *-legacy.
 #
 # The Linux tarball is tested before it is uploaded: host/tools/
 # linux-package-test.sh unpacks it into clean Ubuntu 24.04 and Debian 13
@@ -31,6 +35,11 @@ on:
       - "v[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
+    inputs:
+      legacy:
+        description: "Build the legacy configuration (Qt applications, BUILD_LEGACY_HOST=ON)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,11 +49,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Qt provisioned by aqt for the CI builds. Keep this equal to the Qt the
-  # local presets name in CMakePresets.json, so a released binary links the
-  # same Qt a developer builds against. Changing it means regenerating
-  # LICENSES/host/Qt-THIRD-PARTY-NOTICES.txt and updating the written source
-  # offer in LICENSES/host/README.md.
+  # Qt provisioned by aqt for a legacy build only; the release build has no
+  # Qt. Keep this equal to the Qt the local presets name in
+  # CMakePresets.json and to HOST_QT_VERSION.
   QT_VERSION: "6.10.3"
   # Must match the baseline in vcpkg-configuration.json so manifest-mode
   # version resolution finds the commit in this shallow clone.
@@ -129,16 +136,20 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install autoconf autoconf-archive automake libtool ninja
 
-      # Autotools and libudev for vcpkg's libusb port; OpenGL, EGL and
-      # xkbcommon headers for Qt's GUI modules.
+      # Autotools and libudev for vcpkg's libusb port; WebKitGTK for the Tauri
+      # applications; for a legacy build, OpenGL, EGL and xkbcommon headers
+      # for Qt's GUI modules.
       - name: Install Linux build tools
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          qt_headers=
+          if [ "${{ inputs.legacy }}" = true ]; then
+            qt_headers="libgl1-mesa-dev libegl-dev libxkbcommon-dev"
+          fi
           sudo apt-get install -y --no-install-recommends ninja-build \
             autoconf autoconf-archive automake libtool libudev-dev \
-            libgl1-mesa-dev libegl-dev libxkbcommon-dev \
-            libwebkit2gtk-4.1-dev
+            libwebkit2gtk-4.1-dev $qt_headers
 
       - name: Cache vcpkg binary packages
         uses: actions/cache@v4
@@ -179,7 +190,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r host/docs/requirements.txt
 
-      - name: Install Qt ${{ env.QT_VERSION }}
+      - name: Install Qt ${{ env.QT_VERSION }} (legacy build only)
+        if: inputs.legacy
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
@@ -206,10 +218,19 @@ jobs:
           else
             echo "SRC_DIR=$PWD" >> "$GITHUB_ENV"
           fi
-          echo "QT_CMAKE_PREFIX=$(printf '%s' "$QT_ROOT_DIR" | tr '\\' '/')" >> "$GITHUB_ENV"
+          # Empty unless Qt was installed (a legacy build).
+          echo "QT_CMAKE_PREFIX=$(printf '%s' "${QT_ROOT_DIR:-}" | tr '\\' '/')" >> "$GITHUB_ENV"
+          if [ "${{ inputs.legacy }}" = true ]; then
+            echo "LEGACY_HOST=ON" >> "$GITHUB_ENV"
+            echo "ARTIFACT_SUFFIX=-legacy" >> "$GITHUB_ENV"
+          else
+            echo "LEGACY_HOST=OFF" >> "$GITHUB_ENV"
+            echo "ARTIFACT_SUFFIX=" >> "$GITHUB_ENV"
+          fi
 
-      # REPRODUCIBLE_BUILD makes a Qt other than HOST_QT_VERSION (which must
-      # equal QT_VERSION above) a configure error rather than a warning.
+      # REPRODUCIBLE_BUILD makes reproducibility problems configure errors
+      # rather than warnings; in a legacy build that includes a Qt other than
+      # HOST_QT_VERSION (which must equal QT_VERSION above).
       - name: Configure
         shell: bash
         run: |
@@ -224,7 +245,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="$QT_CMAKE_PREFIX" \
             -DCMAKE_INSTALL_PREFIX="$SRC_DIR/build/install" \
             -DBUILD_HOST=ON \
-            -DBUILD_QT_APPS=ON \
+            -DBUILD_LEGACY_HOST=$LEGACY_HOST \
             -DBUILD_RUST_APPS=ON \
             -DBUILD_EMBEDDED=OFF \
             -DBUILD_HOST_DOCS=ON \
@@ -275,7 +296,7 @@ jobs:
         if: runner.os == 'Linux' && always()
         uses: actions/upload-artifact@v4
         with:
-          name: linux-package-test
+          name: linux-package-test${{ env.ARTIFACT_SUFFIX }}
           path: package-test
           if-no-files-found: ignore
           retention-days: 14
@@ -294,14 +315,16 @@ jobs:
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: ${{ matrix.artifact }}${{ env.ARTIFACT_SUFFIX }}
           path: ${{ matrix.package_glob }}
           if-no-files-found: error
           retention-days: 14
 
   release:
     name: Open the draft release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Only a tag push publishes; a tag push has no inputs, so it is never a
+    # legacy build.
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:

@@ -48,7 +48,7 @@ pip install -e host/python/tagclient -e "host/python/tagsim[test]"
 It needs numpy, scipy and [pygeomag](https://pypi.org/project/pygeomag/) (the
 World Magnetic Model, pure Python); no pymavlink, since it reads DataFlash
 itself. It also needs `tag-log-import`, built with the host tools
-(`cmake --build <build-dir> --target tag-log-import`), found through
+(`cmake --build <build-dir> --target rust_tools`), found through
 `TAG_LOG_IMPORT_BIN` or on `PATH`.
 
 ## Running
@@ -180,7 +180,7 @@ python3 -m venv ~/.venvs/tagsim
 ```
 
 ```bash
-cmake --build <build-dir> --target tag-log-import
+cmake --build <build-dir> --target rust_tools
 ```
 
 ```bash

@@ -20,7 +20,7 @@ C++:
 - `libraries/sensorui/`: reusable Qt/QML widgets and dialogs.
 - `libraries/qcustomplot/`: vendored plotting support.
 - `common/`: small Qt helper headers shared by the Qt applications.
-- `applications/{qtmon,qtprogram,qtcalibrate,sensorviz,btdataviz}/`: the Qt
+- `applications/{qtmon,qtprogram,qtcalibrate,sensorviz}/`: the Qt
   applications.
 - `commandline/`: the C++ CLI tools, mostly on `libraries/tagcore`.
 - `tagserver/`, `python/tagclient/`: the gRPC test server and its client
@@ -63,7 +63,7 @@ each format and algorithm.
 - In a Rust application, a new dialog is a prompt in the view state answered
   by id; a new rule goes in `core/`, never in `ui/app.js`. Keep
   `ui/mock-engine.js` and the contract in step with the view state.
-- `applications/qtprogram`, `btdataviz`, and related apps keep one-off
+- `applications/qtprogram` and related apps keep one-off
   behavior local until a second app genuinely needs it.
 
 ## sensorViz Conventions

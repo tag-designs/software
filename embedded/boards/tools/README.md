@@ -522,7 +522,6 @@ The usual reproducible setup is:
 git submodule update --init --recursive ChibiOS
 cmake -S . -B build-embedded \
   -DBUILD_HOST=OFF \
-  -DBUILD_QT_APPS=OFF \
   -DBUILD_EMBEDDED=ON
 ```
 
@@ -531,7 +530,6 @@ For an out-of-tree ChibiOS checkout, configure with:
 ```sh
 cmake -S . -B build-embedded \
   -DBUILD_HOST=OFF \
-  -DBUILD_QT_APPS=OFF \
   -DBUILD_EMBEDDED=ON \
   -DCHIBIOS_DIR=/path/to/ChibiOS
 ```

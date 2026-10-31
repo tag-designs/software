@@ -89,11 +89,17 @@ tag.
 | Runner | `windows-2022` | `macos-15` (arm64) | `ubuntu-24.04` (x86_64) |
 | Generator | Visual Studio 17 2022 | Ninja | Ninja |
 | vcpkg triplet | `x64-windows-static-md` | `arm64-osx-static` | `x64-linux` |
-| Qt | `QT_VERSION` in the workflow env, installed with aqt | same | same |
+| Qt | none; a manual run with the `legacy` input installs `QT_VERSION` with aqt for the legacy build | same | same |
 | Package | ZIP | DMG, re-signed locally | `UltralightTags-X.Y-linux-x86_64.tar.gz` |
 
-Every build configures with `-DREPRODUCIBLE_BUILD=ON`, which makes a Qt other
-than `HOST_QT_VERSION` a configure error; keep `QT_VERSION` and
+From v4.0 the packages hold the Rust applications and command-line tools and
+the C++ programs with no Rust equivalent, and no Qt
+([plan](../../host/design/proposals/rust-default-release.md)). A manual run
+with the `legacy` input builds the legacy configuration
+(`-DBUILD_LEGACY_HOST=ON`, the Qt applications added) so that it is
+exercised; it never publishes, and its artifacts end in `-legacy`. Every build
+configures with `-DREPRODUCIBLE_BUILD=ON`, which in a legacy build makes a Qt
+other than `HOST_QT_VERSION` a configure error; keep `QT_VERSION` and
 `HOST_QT_VERSION` equal.
 
 The workflow checks out vcpkg at the baseline commit recorded in
@@ -110,9 +116,10 @@ section 3 covers the local half.
 The Linux tarball is tested before it is uploaded.
 `host/tools/linux-build-check.sh --package` runs `linux-package-test.sh` in
 clean `ubuntu:24.04` and `debian:13` containers: every library of every binary
-must resolve inside the package, the command line tools must run, and each Qt
-application runs its documentation capture against the repository's fixtures
-under Wayland and under X11. A failure fails the job, so the package is never
+must resolve inside the package, the command line tools must run, and each
+application must start and stay up under Wayland and under X11 (a legacy
+package's Qt applications also run their documentation captures against the
+repository's fixtures). A failure fails the job, so the package is never
 uploaded; the screenshots and logs are kept as the `linux-package-test`
 workflow artifact either way. The same command tests a locally built tarball
 ([Linux packaging](../../host/design/linux-package.md)).
@@ -605,15 +612,15 @@ run the script directly: `host/tools/sign-ci-macos.sh v3.1`.
 
 The signed DMG is also kept in `<build-dir>/signed-release/`.
 
-Expect seven app lines, the five Qt apps, Tag Programmer (`tagprogram.app`)
-and Tag Monitor in Rust (`tagmonitor.app`), both built by cargo, then eight
-tool lines: the eight command
-line tools in `tag_tools/bin`, `dataprocessing` among them as a plain
-executable since it stopped linking Qt
+Expect four app lines, `tagprogram.app`, `tagmonitor.app`,
+`tagcalibrate.app` and `tagview.app`, all built by cargo (the check fails if
+one is missing), then eleven tool lines: the command line tools in
+`tag_tools/bin`, the nine Rust ones (`HOST_RUST_SHIPPED_TOOLS` in
+`cmake/HostRust.cmake`) and the two C++ ones, `dataprocessing` and
+`tag-txt-import` (`host_cli_install_targets`), all plain executables
 ([decision 0031](../decisions/0031-host-dataprocessing-plain-executable-without-qt.md)).
-Different counts mean
-the install set changed; check them against `host_cli_install_targets` before
-shipping. A tool also fails if it links anything outside `/usr/lib` and
+Different counts mean the install set changed; check them against those two
+lists before shipping. A tool also fails if it links anything outside `/usr/lib` and
 `/System`: it ships as a bare executable with nothing beside it, so such a
 library would be missing on a user's Mac
 ([decision 0028](../decisions/0028-host-macos-command-line-tools-plain-executables.md)).
@@ -633,7 +640,7 @@ the download test in step 4 does.
 **4. Install it from the release page on a Mac that has never seen the build,**
 and follow
 [Installing a macOS Release](../../README.md#installing-a-macos-release) as
-written. Launch every app, including `qtcalibrate`'s 3D view, and run
+written. Launch every app, including Tag Calibrator's 3D view, and run
 `tag_tools/bin/tag-info --help` and `tag_tools/bin/dataprocessing --help` from
 a terminal. This is the only
 step that tests what a user experiences, because it is the only copy that is

@@ -201,7 +201,7 @@ will settle them.
 You need:
 
 - **A build of the host tools,** for `tag-log-import` and `dataprocessing`,
-  and sensorviz if you want to look at the logs.
+  and Tag View (`tagview`) if you want to look at the logs.
 - **Python 3.10 or later.**
 - **Access to the private data repository,** checked out beside this
   repository as `data/`, for the flight logs.
@@ -215,7 +215,7 @@ python3 -m venv ~/.venvs/tagsim
 ```
 
 ```bash
-cmake --build <build-dir> --target tag-log-import dataprocessing
+cmake --build <build-dir> --target rust_tools dataprocessing
 ```
 
 ```bash

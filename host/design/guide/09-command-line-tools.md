@@ -76,6 +76,7 @@ procedures depend on them:
 | `tag-stop` | Stop a running tag and wait for a stopped state | ends the run |
 | `tag-reset` | Stop if needed, erase, wait for IDLE; `--set-rtc` once IDLE | erases the log |
 | `tag-dwnld` | Download a stopped tag's log to SQLite (below) | no (`--stop` ends a run first; `--rescue-exception` rewrites one backup word) |
+| `tag-log-import` | Write a `tagclient` JSONL download as a SQLite log, with no tag; how tagsim makes its logs | no tag involved |
 | `tag-test` | Run a firmware self test and report the result; exits 1 on a failed test | the test's side effects (the IMUTag's external-flash test can write the NAND bad-block map) |
 | `tag-test-example` | Set the RTC, wait, report the clock error: a worked example of the API | sets the clock |
 | `tag-cal` | Stream raw calibration samples from a tag in CALIBRATE | enters and leaves CALIBRATE |
@@ -87,23 +88,28 @@ procedures depend on them:
 | `qtmonitor-fixture-capture` | Capture a tag's info, config and status as a qtmonitor test fixture | no |
 | `tag-flash`, `base-flash` | Program, erase and read a tag; program a base over DFU (chapter 7) | rewrites flash |
 
-Only `tag-flash` and `base-flash` are installed; the ports are built for
-development and checking (the C++ tools of the same names still ship). The
-user manual's `cli/` pages describe the shipped tools. In a CMake build tree
-the shipped C++ tools land in `<build>/<Config>/bin` and the developer and
-bench tools in `bin/internal`, so the listing of `bin/` is the list of what a
-release carries.
+From v4.0 these are the tools the package installs: `tag-info`,
+`tag-start`, `tag-stop`, `tag-reset`, `tag-test`, `tag-cal`, `tag-dwnld`,
+`tag-flash` and `base-flash`. The C++ tools of the same names are built only
+by the legacy option (`BUILD_LEGACY_HOST`), as the reference the ports are
+held to. The user manual's `cli/` pages describe the shipped tools. CMake
+builds the whole crate once (the `rust_tools` target) and copies the shipped
+tools into `<build>/<Config>/bin`, beside the shipped C++ programs
+(`dataprocessing`, `tag-txt-import`), and the developer and bench tools,
+Rust and C++, into `bin/internal`, so the listing of `bin/` is the list of
+what a release carries.
 
 ### Not ported
 
 `tag-capture`, `tag-xflash`, `tag-sramcall` and `tag-rebuild` need the C++
-SWD capture and recovery library; `tag-log-import` and `tag-txt-import` need
-the writer's import paths; `dataprocessing` needs `sensoranalysis_core` and
+SWD capture and recovery library; `tag-txt-import` needs the C++ text-log
+reader; `dataprocessing` needs `sensoranalysis_core` and
 SQLite. All stay C++ in `host/commandline`, whose README describes them.
 
 ## tag-dwnld, line by line
 
-`src/bin/tag-dwnld.rs` is the one tool that crosses the C++ bridge, and
+`src/bin/tag-dwnld.rs` is one of the two tools that cross the C++ bridge
+(`tag-log-import`, which replays a download from a file, is the other), and
 it is the clearest expression of chapter 5's download loop. Its structure:
 
 1. **Options**, then `check_format()`: SQLite is the only format; the retired
@@ -129,8 +135,10 @@ it is the clearest expression of chapter 5's download loop. Its structure:
    link statistics from `tagcore`'s instrumentation.
 
 It is built only with the `sqlitelog` feature (`cargo build --features
-sqlitelog --bin tag-dwnld`), because it links `libtagcore_c`; the other
-tools build with cargo alone.
+sqlitelog --bin tag-dwnld`), because it links `libtagcore_c`, as is
+`tag-log-import`; the other tools build with cargo alone. The crate's
+`build.rs` gives every binary the run-time search path for a shared
+`libtagcore_c` (`TAGCORE_C_RPATH`, else the directory it was linked from).
 
 ## How the ports are held to the C++
 
@@ -150,8 +158,8 @@ comparison above and by `tagcore`'s own tests.
 ## Adding a tool
 
 1. Copy the skeleton above into `src/bin/<tool>.rs`; cargo finds binaries
-   in `src/bin/` without a manifest entry (`tag-dwnld` has one because of
-   its `required-features`).
+   in `src/bin/` without a manifest entry (`tag-dwnld` and `tag-log-import` have one because of
+   their `required-features`).
 2. Start the file with a `//!` block saying what the tool does, its options,
    its exit status, its **hardware side effects** (every tool has this
    section), and, for a port, the C++ file it follows and how it differs.

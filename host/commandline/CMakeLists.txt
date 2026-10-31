@@ -12,7 +12,9 @@ endif()
            it in <build>/<Config>/bin, or in bin/internal with INTERNAL: the
            developer and bench tools go there, so that bin/ holds only what
            the package installs (plus the test and check programs other
-           directories build). On macOS it is a plain executable, not an app
+           directories build). With LEGACY it goes to bin/legacy instead: a
+           tool the Rust tools replace, built by BUILD_LEGACY_HOST beside the
+           Rust tool of the same name. On macOS it is a plain executable, not an app
            bundle: its dependencies are linked statically, so there is nothing
            for a bundle to carry, and a plain executable runs from a terminal
            by its name. The package installs the shipped tools to
@@ -21,6 +23,7 @@ endif()
 
   @param  name      Target and executable name.
   @param  INTERNAL  A developer or bench tool: built into bin/internal.
+  @param  LEGACY    Built into bin/legacy, whatever INTERNAL says.
   @param  ARGN      Sources, optionally preceded by add_executable() keywords.
                     WIN32 is overridden: the tool is linked /SUBSYSTEM:CONSOLE.
 
@@ -29,9 +32,11 @@ endif()
     host_cli_tool(tag-peek INTERNAL WIN32 tag-peek.cc options.cc)
 #]]
 function(host_cli_tool name)
-  cmake_parse_arguments(ARG "INTERNAL" "" "" ${ARGN})
+  cmake_parse_arguments(ARG "INTERNAL;LEGACY" "" "" ${ARGN})
   set(_bin_dir "${CMAKE_BINARY_DIR}/$<CONFIG>/bin")
-  if(ARG_INTERNAL)
+  if(ARG_LEGACY)
+    set(_bin_dir "${_bin_dir}/legacy")
+  elseif(ARG_INTERNAL)
     set(_bin_dir "${_bin_dir}/internal")
   endif()
 
@@ -56,26 +61,40 @@ endfunction()
 # The shipped tools (host_cli_install_targets in host/CMakeLists.txt) build
 # into bin/; the developer and bench tools, marked INTERNAL, into
 # bin/internal. host/commandline/README.md says which is which and why.
-host_cli_tool(tag-dwnld WIN32 dwnld.cc options.cc)
-host_cli_tool(tag-test WIN32 test.cc options.cc)
-host_cli_tool(tag-test-example INTERNAL WIN32 test-example.cc options.cc)
-host_cli_tool(tag-info WIN32 tag-info.cc options.cc)
-host_cli_tool(tag-reset WIN32 tag-reset.cc options.cc)
-host_cli_tool(tag-cal-write INTERNAL WIN32 tag-cal-write.cc options.cc)
-host_cli_tool(tag-peek INTERNAL WIN32 tag-peek.cc options.cc)
-host_cli_tool(tag-side-channel-check INTERNAL WIN32 tag-side-channel-check.cc options.cc)
-host_cli_tool(tag-start WIN32 tag-start.cc options.cc)
-host_cli_tool(tag-stop WIN32 tag-stop.cc options.cc)
-host_cli_tool(tag-cal WIN32 tag-calibrate.cc options.cc)
-host_cli_tool(tag-monitor-test INTERNAL WIN32 tag-monitor-test.cc options.cc)
-host_cli_tool(tag-attach-cycle INTERNAL WIN32 tag-attach-cycle.cc options.cc)
+#
+# The tools with no Rust equivalent are always built: the SWD capture and
+# recovery tools and tag-txt-import.
 host_cli_tool(tag-capture INTERNAL WIN32 tag-capture.cc)
 host_cli_tool(tag-xflash INTERNAL WIN32 tag-xflash.cc)
 host_cli_tool(tag-sramcall INTERNAL WIN32 tag-sramcall.cc)
 host_cli_tool(tag-rebuild INTERNAL WIN32 tag-rebuild.cc)
-host_cli_tool(tag-log-import INTERNAL WIN32 tag-log-import.cc)
 host_cli_tool(tag-txt-import WIN32 tag-txt-import.cc)
-host_cli_tool(qtmonitor-fixture-capture INTERNAL WIN32 qtmonitor-fixture-capture.cc)
+
+# The tools the Rust tools in host/commandline-rs replace from v4.0, built
+# only by BUILD_LEGACY_HOST. Beside the Rust tools (BUILD_RUST_APPS) they go
+# to bin/legacy, since the Rust ones take their names; without them they
+# build, and the shipped ones install, as in v3.5.
+if(BUILD_LEGACY_HOST)
+  set(_legacy)
+  if(BUILD_RUST_APPS)
+    set(_legacy LEGACY)
+  endif()
+  host_cli_tool(tag-dwnld ${_legacy} WIN32 dwnld.cc options.cc)
+  host_cli_tool(tag-test ${_legacy} WIN32 test.cc options.cc)
+  host_cli_tool(tag-test-example ${_legacy} INTERNAL WIN32 test-example.cc options.cc)
+  host_cli_tool(tag-info ${_legacy} WIN32 tag-info.cc options.cc)
+  host_cli_tool(tag-reset ${_legacy} WIN32 tag-reset.cc options.cc)
+  host_cli_tool(tag-cal-write ${_legacy} INTERNAL WIN32 tag-cal-write.cc options.cc)
+  host_cli_tool(tag-peek ${_legacy} INTERNAL WIN32 tag-peek.cc options.cc)
+  host_cli_tool(tag-side-channel-check ${_legacy} INTERNAL WIN32 tag-side-channel-check.cc options.cc)
+  host_cli_tool(tag-start ${_legacy} WIN32 tag-start.cc options.cc)
+  host_cli_tool(tag-stop ${_legacy} WIN32 tag-stop.cc options.cc)
+  host_cli_tool(tag-cal ${_legacy} WIN32 tag-calibrate.cc options.cc)
+  host_cli_tool(tag-monitor-test ${_legacy} INTERNAL WIN32 tag-monitor-test.cc options.cc)
+  host_cli_tool(tag-attach-cycle ${_legacy} INTERNAL WIN32 tag-attach-cycle.cc options.cc)
+  host_cli_tool(tag-log-import ${_legacy} INTERNAL WIN32 tag-log-import.cc)
+  host_cli_tool(qtmonitor-fixture-capture ${_legacy} INTERNAL WIN32 qtmonitor-fixture-capture.cc)
+endif()
 
 # dataprocessing does not use Qt. Its compass math is the Qt-free sensoranalysis
 # core, bit-identical to the Qt classes the applications use, and its calibration

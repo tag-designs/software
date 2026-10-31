@@ -8,7 +8,7 @@ name: External link check
 # breaks for reasons outside this repository, so a dead one is news rather
 # than a reason to block a merge or a release.
 #
-# The docs build proper needs CMake, Doxygen, protobuf and Qt, so this reads
+# The docs build proper needs CMake, Doxygen, protobuf and Rust, so this reads
 # the Markdown sources and the two MkDocs configs instead of a built site.
 # That is where the links are written, and it keeps a weekly job cheap.
 

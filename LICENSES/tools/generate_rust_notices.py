@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
-"""Generate the notices for the Rust crates compiled into a Rust application.
+"""Generate the notices for the Rust crates compiled into a Rust program.
 
 Tag Programmer (``host/applications/tagprogram-rs``), Tag Monitor
 (``host/applications/tagmonitor-rs``), Tag Calibrator
-(``host/applications/tagcalibrate-rs``) and Tag View
-(``host/applications/sensorviz-rs``) are each one executable with
-every crate it depends on compiled in, and most of those licenses (MIT, BSD,
-ISC, Zlib, Apache-2.0's NOTICE clause) require their notice to accompany a
-binary distribution. This script asks cargo for the application's dependency
-graph, follows the normal (shipped) dependencies -- not build scripts' or
-tests' -- and writes one plain-text notices file: for each crate its version,
-its declared license and repository, and the license files it carries, then
-those files' texts, each distinct text once.
+(``host/applications/tagcalibrate-rs``), Tag View
+(``host/applications/sensorviz-rs``) and the command-line tools
+(``host/commandline-rs``, the ``tag-tools`` package, one notices file for all
+of its executables) each have every crate they depend on compiled in, and
+most of those licenses (MIT, BSD, ISC, Zlib, Apache-2.0's NOTICE clause)
+require their notice to accompany a binary distribution. This script asks
+cargo for the package's dependency graph, follows the normal (shipped)
+dependencies -- not build scripts' or tests' -- and writes one plain-text
+notices file: for each crate its version, its declared license and
+repository, and the license files it carries, then those files' texts, each
+distinct text once.
 
-The output is committed (``LICENSES/host/<app>-THIRD-PARTY-NOTICES.txt``)
-and installed into the packages. The applications share one Cargo workspace
-and one lock file, ``host/Cargo.lock``; regenerate all four whenever it
-changes (the first argument may be any directory in the workspace)::
+The output is committed (``LICENSES/host/<package>-THIRD-PARTY-NOTICES.txt``)
+and installed into the packages. The programs share one Cargo workspace and
+one lock file, ``host/Cargo.lock``; regenerate all five whenever it changes
+(the first argument is the workspace, ``host``, or any package directory in
+it)::
 
-    LICENSES/tools/generate_rust_notices.py host/applications/tagprogram-rs \\
-        tagprogram > LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt
-    LICENSES/tools/generate_rust_notices.py host/applications/tagmonitor-rs \\
-        tagmonitor > LICENSES/host/tagmonitor-THIRD-PARTY-NOTICES.txt
-    LICENSES/tools/generate_rust_notices.py host/applications/tagcalibrate-rs \\
-        tagcalibrate > LICENSES/host/tagcalibrate-THIRD-PARTY-NOTICES.txt
-    LICENSES/tools/generate_rust_notices.py host/applications/sensorviz-rs \\
-        tagview > LICENSES/host/tagview-THIRD-PARTY-NOTICES.txt
+    for p in tagprogram tagmonitor tagcalibrate tagview tag-tools; do
+        LICENSES/tools/generate_rust_notices.py host $p \\
+            > LICENSES/host/$p-THIRD-PARTY-NOTICES.txt
+    done
 
 Like the Qt notices it errs towards listing too much: dependencies for every
 target platform are included, though a given package compiles only its own.

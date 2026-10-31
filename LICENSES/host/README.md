@@ -8,27 +8,19 @@ license. Every component has a notice file linked in the first column. That
 file gives its copyright, where it is used and where its source is, and holds
 its full license text or names the shared text in [texts/](texts/).
 
-## Programs distributed under the GNU GPL, version 3
-
-Three programs contain components licensed only under the GPL, so as
-distributed they are licensed under the
-[GNU General Public License, version 3](texts/GPL-3.0-only.txt):
-
-| Program | Because it contains |
-| --- | --- |
-| sensorviz, btviz | [QCustomPlot](third-party/qcustomplot.txt) (GPL-3.0-or-later) |
-| qtcalibrate | Qt Quick 3D and Qt Quick Timeline from [Qt](third-party/qt.txt) (GPL-3.0-only) |
-
-The project's own code in them remains available under the MIT License.
+From v4.0 no program in the package contains GPL-licensed code: the Qt
+applications that did (sensorviz, through QCustomPlot, and qtcalibrate,
+through Qt Quick 3D) are no longer released. They can still be built from the
+repository (`-DBUILD_LEGACY_HOST=ON`); see
+[Legacy Qt applications](#legacy-qt-applications) below.
 
 **Source code.** The complete corresponding source of every program is the
 Tag Designs software repository, https://github.com/tag-designs/software, at
 the release tag the package was built from (`vX.Y`). It includes the
 third-party sources it names: vcpkg ports at the baseline in
-`vcpkg-configuration.json`, and Qt 6.10.3 from
-https://download.qt.io/archive/qt/6.10/6.10.3/single/. This offer is valid for
-at least three years from the release date, for anyone who receives the
-programs.
+`vcpkg-configuration.json`, and the Rust crates pinned by `host/Cargo.lock`.
+This offer is valid for at least three years from the release date, for
+anyone who receives the programs.
 
 ## Third-party software
 
@@ -36,18 +28,16 @@ programs.
 
 | Component | Version | License | Used in |
 | --- | --- | --- | --- |
-| [Qt](third-party/qt.txt) | 6.10.3 | [LGPL-3.0-only](texts/LGPL-3.0-only.txt); Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard [GPL-3.0-only](texts/GPL-3.0-only.txt) | Qt applications (shared libraries) |
-| [Third-party code inside Qt](Qt-THIRD-PARTY-NOTICES.txt) | — | various, listed in the file | Qt applications |
 | [Rust crates in Tag Programmer](tagprogram-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tagprogram |
 | [Rust crates in Tag Monitor](tagmonitor-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tagmonitor |
 | [Rust crates in Tag Calibrator](tagcalibrate-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tagcalibrate |
 | [Rust crates in Tag View](tagview-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tagview |
+| [Rust crates in the command-line tools](tag-tools-THIRD-PARTY-NOTICES.txt) | — | MIT, Apache-2.0, BSD, ISC, Zlib, Unicode-3.0, MPL-2.0 and others, listed in the file | tag-info, tag-start, tag-stop, tag-reset, tag-test, tag-cal, tag-dwnld, tag-flash, base-flash |
 | [Preact](third-party/preact.txt) | 10.29.8 | MIT | tagprogram, tagmonitor, tagcalibrate, tagview (their windows) |
 | [htm](third-party/htm.txt) | 3.1.1 | [Apache-2.0](texts/Apache-2.0.txt) | tagprogram, tagmonitor, tagcalibrate, tagview (their windows) |
 | [three.js](third-party/three.txt) | r159 | MIT | tagcalibrate (its 3D views) |
 | [uPlot](third-party/uplot.txt) | 1.6.32 | MIT | tagview (its plot) |
 | [jsPDF](third-party/jspdf.txt) | 2.5.2 | MIT | tagview (Export PDF) |
-| [QCustomPlot](third-party/qcustomplot.txt) | 2.1.1 | [GPL-3.0-or-later](texts/GPL-3.0-only.txt) | sensorviz, btviz |
 | [libusb](third-party/libusb.txt) | 1.0.29 | [LGPL-2.1-or-later](texts/LGPL-2.1-or-later.txt) | programs that talk to a tag |
 | [Protocol Buffers](third-party/protobuf.txt) | 6.33.4 | BSD-3-Clause | all programs |
 | [Abseil](third-party/abseil.txt) | 20260107.1 | [Apache-2.0](texts/Apache-2.0.txt) | all programs |
@@ -56,11 +46,7 @@ programs.
 | [cxxopts](third-party/cxxopts.txt) | 3.0.0 | MIT | command line tools |
 | [log.c (rxi)](third-party/rxi-log.txt) | 0.1.0 | MIT | all programs |
 | [stlink commands.h](third-party/stlink-commands.txt) | — | BSD-3-Clause | programs that talk to a tag |
-| [Freescale magnetic calibration](third-party/freescale-magcal.txt) | — | BSD-3-Clause | qtcalibrate |
-| [Kiss FFT](third-party/kissfft.txt) | 1.3.0 | BSD-3-Clause | btviz |
-| [FastFIR](third-party/fastfir.txt) | — | MIT | btviz |
-| [SOLPOS (NLR, formerly NREL)](third-party/nrel-solpos.txt) | 2.0 | NLR data and software notice | btviz |
-| [QFlightInstruments artwork](third-party/qflightinstruments.txt) | — | MIT | sensorviz, qtcalibrate |
+| [Freescale magnetic calibration](third-party/freescale-magcal.txt) | — | BSD-3-Clause | tagcalibrate (the calibration session, through tagcore_c) |
 
 ### User manual (`docs/`)
 
@@ -90,6 +76,26 @@ programs.
 The external flash loaders installed with some builds of the tools are
 firmware. Their licenses are listed in the firmware license directory,
 installed beside the loaders in the `licenses/` directory next to `loaders/`.
+
+## Legacy Qt applications
+
+The Qt applications (qtmonitor, qtprogram, qtcalibrate, sensorviz) were
+released until v3.5 and are no longer in the package. A build that adds them
+(`-DBUILD_LEGACY_HOST=ON`) also installs these notices, which apply only to
+them. In such a build sensorviz contains [QCustomPlot](third-party/qcustomplot.txt)
+(GPL-3.0-or-later) and qtcalibrate contains Qt Quick 3D and Qt Quick Timeline
+from [Qt](third-party/qt.txt) (GPL-3.0-only), so as distributed those two are
+licensed under the [GNU General Public License, version 3](texts/GPL-3.0-only.txt);
+the project's own code in them remains available under the MIT License. Their
+source includes Qt 6.10.3 from
+https://download.qt.io/archive/qt/6.10/6.10.3/single/.
+
+| Component | Version | License | Used in |
+| --- | --- | --- | --- |
+| [Qt](third-party/qt.txt) | 6.10.3 | [LGPL-3.0-only](texts/LGPL-3.0-only.txt); Quick 3D, Quick 3D Physics, Quick Timeline, Virtual Keyboard [GPL-3.0-only](texts/GPL-3.0-only.txt) | Qt applications (shared libraries) |
+| [Third-party code inside Qt](Qt-THIRD-PARTY-NOTICES.txt) | — | various, listed in the file | Qt applications |
+| [QCustomPlot](third-party/qcustomplot.txt) | 2.1.1 | [GPL-3.0-or-later](texts/GPL-3.0-only.txt) | sensorviz |
+| [QFlightInstruments artwork](third-party/qflightinstruments.txt) | — | MIT | sensorviz, qtcalibrate |
 
 ## License texts
 

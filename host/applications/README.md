@@ -20,7 +20,6 @@ described in the [guide](../design/guide/10-application-pattern.md).
 | `qtprogram/` | `qtprogram` | Tag Programmer | Program and test a batch of tags, through STM32CubeProgrammer. |
 | `qtcalibrate/` | `qtcalibrate` | Tag Calibrator | Magnetometer and accelerometer calibration, with a live compass view. |
 | `sensorviz/` | `sensorviz` | SensorViz | View SQLite sensor logs of every tag family. Its Qt-free `core/` is what `tagview` runs. |
-| `btdataviz/` | `btviz` | Bit Tag Visualizer | Legacy BitTag visualization (deprecated). |
 
 ## Rust / Tauri
 

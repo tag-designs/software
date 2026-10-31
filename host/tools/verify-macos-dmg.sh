@@ -5,10 +5,12 @@
 # Mounts the image read-only and checks every .app bundle in it and every
 # command line tool in its bin directory: each must pass `codesign --verify
 # --strict` and its leaf authority must be the expected identity, and a tool
-# may link only system libraries. Each Qt bundle must also carry Qt's
-# SecureTransport TLS plugin, whose absence no signature check would catch;
-# Tag Programmer (Rust) has no Qt and carries its own TLS. Verifying inside the mounted image, not a build tree, is
-# the point: it is what a user receives, whoever built and signed it.
+# may link only system libraries. The four Rust applications (tagprogram,
+# tagmonitor, tagcalibrate, tagview) must all be there. A Qt bundle, found
+# only in a legacy build, must also carry Qt's SecureTransport TLS plugin,
+# whose absence no signature check would catch; the Rust applications have no
+# Qt and carry their own TLS. Verifying inside the mounted image, not a build
+# tree, is the point: it is what a user receives, whoever built and signed it.
 #
 # Shared by both release paths: release-macos.sh (built and signed locally)
 # and sign-ci-macos.sh (built by CI, re-signed locally).
@@ -54,6 +56,15 @@ APPS=$(find "$MOUNT_POINT" -maxdepth 3 -name '*.app' -prune -print)
 [ -n "$APPS" ] || die "no .app bundles found in $DMG"
 
 FAILED=0
+# The applications every package carries from v4.0. A legacy build
+# (BUILD_LEGACY_HOST) adds the Qt ones, which are checked like any bundle
+# found but not required.
+for expected in tagprogram tagmonitor tagcalibrate tagview; do
+  if ! printf '%s\n' "$APPS" | grep -q "/$expected\.app$"; then
+    printf '  %-24s MISSING from the image\n' "$expected.app"
+    FAILED=1
+  fi
+done
 while IFS= read -r app; do
   name=${app##*/}
   if ! codesign --verify --strict --verbose=1 "$app" >/dev/null 2>&1; then

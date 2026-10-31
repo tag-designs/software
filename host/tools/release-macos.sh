@@ -180,7 +180,8 @@ cmake --build --preset "$PACKAGE_PRESET"
 
 # ---------------------------------------------------------------- verify
 
-# The apps are signed by the install rules in cmake/DeployQt.cmake, but CPack's
+# The apps and tools are signed by the install rules (cmake/MacosCodesignBundle.cmake
+# through each Rust application's and the tools' CMakeLists.txt), but CPack's
 # DragNDrop generator gets CPACK_BUNDLE_APPLE_CERT_APP as well and can re-sign
 # the bundle inside the image. What matters is the signature a user gets, so
 # verify inside the mounted DMG rather than in the build tree.

@@ -58,7 +58,7 @@ the portal's `rust_docs` target does exactly that.
 
 | Name | Where | Effect |
 | --- | --- | --- |
-| feature `sqlitelog` | `tag-tools` (for `tag-dwnld`), `tagmonitor-core`, `tagmonitor` | Brings in `taglogwriter` and so the C++ writer; off by default so the other binaries build with cargo alone. CMake always turns it on for Tag Monitor |
+| feature `sqlitelog` | `tag-tools` (for `tag-dwnld` and `tag-log-import`), `tagmonitor-core`, `tagmonitor` | Brings in `taglogwriter` and so the C++ writer; off by default so the other binaries build with cargo alone. CMake always turns it on for Tag Monitor |
 | feature `instrumentation` | `tagcore` (default on) | Counts and times USB transfers, ST-LINK commands and RPCs |
 | `TAGCORE_C_LIB_DIR` | `tagcore-c-sys` build script | The directory holding `libtagcore_c` |
 | `TAGCORE_C_LINK` | `tagcore-c-sys` build script | `static` (macOS default) or `dylib` (Linux and Windows default) |
@@ -78,17 +78,16 @@ The top-level options that matter to the host:
 | Option | Default | Builds |
 | --- | --- | --- |
 | `BUILD_HOST` | on | The C++ libraries and tools; `host/` is not entered without it |
-| `BUILD_QT_APPS` | on | The Qt applications and `sensorui` |
-| `BUILD_RUST_APPS` | on where `cargo` is found | The four Rust applications, `tag-flash` and `base-flash`, and `libtagcore_c` |
+| `BUILD_RUST_APPS` | on; a missing `cargo` stops the configure | The four Rust applications, the command-line tools (`rust_tools`), and `libtagcore_c` |
+| `BUILD_LEGACY_HOST` | off | The Qt applications, `sensorui`, `qcustomplot` and the C++ tools the Rust ones replace (into `bin/legacy`); not released, kept as the reference the oracles come from. `BUILD_QT_APPS` is its old name, honoured with a warning |
 | `BUILD_TAGCORE_C` | off | `libtagcore_c` alone, for developing against it |
-| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` | The user manual in the default build and the package |
+| `BUILD_HOST_DOCS` | on | The user manual in the default build and the package |
 | `BUILD_DEVELOPER_DOCS` | off | The developer portal (`developer_docs`), with Doxygen and rustdoc |
 | `BUILD_TAG_SERVER` | off | `tag-server` (needs CMake 3.28 and a network fetch) |
 | `EMBEDDED_PROGRAMMER` | `TAG_FLASH` where available | Which programmer the embedded `-download` targets run |
 
-Focused targets: `tagcore`, `tagcore_c_static`, `tagcore_c`, `qtmonitor`,
-`sensorviz`, `tagprogram`, `tagmonitor`, `tagcalibrate`, `tagview`,
-`flash_tools`, `docs`, `developer_docs`, `rust_docs`, `api_docs`, `package`.
+Focused targets: `tagcore`, `tagcore_c_static`, `tagcore_c`, `tagprogram`,
+`tagmonitor`, `tagcalibrate`, `tagview`, `rust_tools`, `flash_tools`, `docs`, `developer_docs`, `rust_docs`, `api_docs`, `package`.
 A Rust target always runs cargo (cargo decides what is stale) with
 `--locked`, in the host workspace, through `host_rust_app()` in
 `cmake/HostRust.cmake`, and copies the executable to `<build>/<Config>/bin`.
@@ -137,7 +136,7 @@ The Rust side has four kinds of check, from cheapest to dearest:
    `applications/qtmon/test/README.md`.
 3. **Byte-identical outputs.** The Rust `tag-dwnld` and the C++ one, on the
    same tag or the same import, must write identical databases (`cmp`);
-   the `log-import` example exists for this. The screenshots of a page
+   the Rust `tag-log-import` exists for this. The screenshots of a page
    before and after a change are compared pixel for pixel.
 4. **Hardware tests**, marked `#[ignore]` so `cargo test` skips them:
    `tagcore`'s `tests/hardware.rs` (attaches, read-only requests, one

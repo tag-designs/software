@@ -25,19 +25,20 @@ The top-level CMake build is controlled with cache options:
 | Option | Default | Description |
 | --- | --- | --- |
 | `BUILD_HOST` | `ON` | Build host-side libraries, command-line tools, and support code. |
-| `BUILD_QT_APPS` | `ON` | Build Qt GUI applications under `host`. |
+| `BUILD_RUST_APPS` | `ON` | Build the Rust applications and command-line tools with cargo; a missing cargo stops the configure. |
+| `BUILD_LEGACY_HOST` | `OFF` | Build the Qt applications and the C++ tools the Rust programs replace, which are no longer released; needs Qt. Replaces `BUILD_QT_APPS`, which is honoured with a warning for one release. |
 | `BUILD_EMBEDDED` | `OFF` on Windows, `ON` elsewhere | Build embedded firmware targets. |
-| `BUILD_HOST_DOCS` | `BUILD_QT_APPS` value | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
+| `BUILD_HOST_DOCS` | `ON` | Build the host application user guide as part of the default build and install it with host packages. The manual `docs` target is available in top-level builds either way. |
 | `BUILD_DEVELOPER_DOCS` | `OFF` | Build the developer documentation portal and API references by default. |
 
 Useful configure combinations:
 
 ```
-# Host tools and Qt apps only
+# Host tools and applications only
 cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
 
 # Embedded firmware only
-cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF
+cmake -S . -B build-embedded -DBUILD_HOST=OFF
 
 # Everything
 cmake -S . -B build-all
@@ -49,24 +50,23 @@ cmake -S . -B build-all
 Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git,
 SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
-Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
-required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
-Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds the Rust
+Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds the
 applications (Tag Programmer, Tag Monitor, Tag Calibrator and Tag View) and the
-`tag-flash` and `base-flash` programming tools, all from the one Cargo
-workspace at `host/Cargo.toml`; where `cargo` is not installed they are
-skipped (`BUILD_RUST_APPS`), and on Linux they also need the WebKitGTK 4.1
-development files. See [host/README.md](host/README.md).
+command-line tools, all from the one Cargo workspace at `host/Cargo.toml`; on
+Linux they also need the WebKitGTK 4.1 development files. Python 3 with MkDocs
+Material is required when `BUILD_HOST_DOCS=ON` or when manually building the
+`docs` target. Qt 6 is required only for the legacy Qt applications
+(`BUILD_LEGACY_HOST=ON`). See [host/README.md](host/README.md).
 
-The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
+The legacy Qt applications use these Qt 6 modules: Core, Gui, Widgets,
 Concurrent, PrintSupport, Svg, SvgWidgets, Qml, Quick, QuickWidgets, and
 Quick 3D. Quick 3D is imported from QML rather than linked, so CMake does not
 ask for it at configure time. Instead each Qt application's build ends with a
 check, `qml_import_check_<app>`, that fails if the Qt install lacks a module the
 app's QML imports. Where that check cannot find `qmlimportscanner` it warns and
 is skipped, and a missing module then shows up only when the view loads.
-A minimal CLI-only
-host build can disable Qt applications with `-DBUILD_QT_APPS=OFF`.
+The default
+host build looks for no Qt.
 
 ## Windows Prerequisites
 
@@ -252,7 +252,6 @@ directories explicitly:
 
 ```
 cmake -S . -B build-package \
-  -DBUILD_QT_APPS=ON \
   -DMACOS_CODE_SIGN_IDENTITY="Indiana University (5J69S77A7G)"
 ```
 
@@ -293,11 +292,9 @@ To override or disable signing:
 
 ```
 cmake -S . -B build-package \
-  -DBUILD_QT_APPS=ON \
   -DMACOS_CODE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
 
 cmake -S . -B build-package \
-  -DBUILD_QT_APPS=ON \
   -DMACOS_SIGN_APPS=OFF
 ```
 
@@ -415,26 +412,28 @@ set `QT_QPA_PLATFORM=xcb`.
 
 ## Linux Prerequisites
 
-The preferred Linux build is the one releases are made with: Qt 6.10.3 from
-the Qt installer, and vcpkg for static non-Qt libraries, like the Windows and
-macOS presets. It runs on x86_64 Ubuntu 24.04, Debian 13 or newer.
+The preferred Linux build is the one releases are made with: vcpkg for static
+C++ libraries, like the Windows and macOS presets, and Rust from rustup. It runs
+on x86_64 Ubuntu 24.04, Debian 13 or newer. No Qt is needed unless you build the
+legacy Qt applications (`-DBUILD_LEGACY_HOST=ON`), which need Qt 6.10.3 from
+the Qt installer or `aqt install-qt linux desktop 6.10.3 linux_gcc_64 -m
+qtquick3d qtshadertools qtquicktimeline` at `$HOME/Qt/6.10.3/gcc_64`, where the
+`linux-vcpkg` preset looks, and Qt's build headers
+(`libgl1-mesa-dev libegl-dev libxkbcommon-dev`).
 
 | Requirement | Notes |
 | --- | --- |
 | C++20 compiler, `make`, CMake 3.20 or newer, Git | `build-essential cmake git` |
-| Qt 6.10.3 | From the Qt online installer, or `aqt install-qt linux desktop 6.10.3 linux_gcc_64 -m qtquick3d qtshadertools qtquicktimeline`. The `linux-vcpkg` preset expects it at `$HOME/Qt/6.10.3/gcc_64`. A different version builds with a warning; see `HOST_QT_VERSION` below. |
 | vcpkg | Clone and bootstrap it at `$HOME/Software/vcpkg`, as the preset expects. The repository manifest installs `libusb`, `protobuf`, `sqlite3` and host `pkgconf`. |
 | vcpkg's build needs | `curl zip unzip tar pkg-config`, and autotools and the libudev headers for its `libusb` port: `autoconf autoconf-archive automake libtool libudev-dev`. |
-| Qt's build headers and the libraries it links | `libgl1-mesa-dev libegl-dev libxkbcommon-dev`, and `libglib2.0-0t64 libdbus-1-3 libfontconfig1`, which a desktop already has |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
-| Rust 1.85 or newer, and WebKitGTK 4.1 | For Tag Programmer: Rust from [rustup](https://rustup.rs) (the distributions' `cargo` is too old on Ubuntu 24.04), and `libwebkit2gtk-4.1-dev`. Without `cargo` Tag Programmer is skipped. |
+| Rust 1.85 or newer, and WebKitGTK 4.1 | For the applications and tools: Rust from [rustup](https://rustup.rs) (the distributions' `cargo` is too old on Ubuntu 24.04), and `libwebkit2gtk-4.1-dev`. |
 
 On Debian or Ubuntu:
 
 ```
 sudo apt install build-essential cmake git pkg-config curl zip unzip tar \
   autoconf autoconf-archive automake libtool libudev-dev \
-  libgl1-mesa-dev libegl-dev libxkbcommon-dev libglib2.0-0t64 libdbus-1-3 libfontconfig1 \
   libwebkit2gtk-4.1-dev
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 git clone https://github.com/microsoft/vcpkg ~/Software/vcpkg
@@ -459,36 +458,43 @@ host/tools/linux-build-check.sh --package \
 ```
 
 `cmake --install` writes the same relocatable `tag_tools` directory the
-package holds, carrying its own Qt.
+package holds.
 
 ### With the distribution's packages instead
 
-The host tools also build against a distribution's own Qt and libraries. This
-is quicker to set up, but it is not how releases are built: the Qt is the
-distribution's (6.8 on Debian 13, 6.4 on Ubuntu 24.04, which is untested), so
-configure warns that it is not `HOST_QT_VERSION`, and an install uses that Qt
-in place rather than carrying its own.
+The host tools also build against a distribution's own libraries. This is
+quicker to set up, but it is not how releases are built: the libraries are
+shared rather than static.
 
 ```
 sudo apt install build-essential cmake git pkg-config \
   libusb-1.0-0-dev libprotobuf-dev protobuf-compiler libsqlite3-dev \
-  qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
-  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers \
   libwebkit2gtk-4.1-dev curl
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 cmake -S . -B build-host -DBUILD_EMBEDDED=OFF
 cmake --build build-host --parallel
 ```
 
-Package names vary between releases. If one of the Quick 3D QML modules is
-missing, the build's `qml_import_check_qtcalibrate` step fails and names it.
+The legacy Qt applications (`-DBUILD_LEGACY_HOST=ON`) build against the
+distribution's Qt too, with these packages added. That Qt is the
+distribution's (6.8 on Debian 13, 6.4 on Ubuntu 24.04, which is untested), so
+configure warns that it is not `HOST_QT_VERSION`, and an install uses it in
+place rather than carrying its own. Package names vary between releases; if
+one of the Quick 3D QML modules is missing, the build's
+`qml_import_check_qtcalibrate` step fails and names it.
+
+```
+sudo apt install qt6-base-dev qt6-svg-dev qt6-declarative-dev qt6-quick3d-dev \
+  qml6-module-qtquick3d qml6-module-qtquick3d-assetutils qml6-module-qtquick3d-helpers
+```
 
 To check these instructions without a Linux machine, or against a distribution
 other than your own, `host/tools/linux-build-check.sh` runs them in a throwaway
 Docker container (OrbStack or Docker Desktop): it installs the packages above
-into a stock Debian image, builds against the distribution's Qt, and leaves
-nothing behind but the base image. `--image ubuntu:24.04` picks another
-distribution; `--help` lists the rest.
+into a stock Debian image, builds, and leaves nothing behind but the base
+image. `--legacy` adds the Qt packages and builds against the distribution's
+Qt; `--image ubuntu:24.04` picks another distribution; `--help` lists the
+rest.
 
 ## Host Cache Variables
 
@@ -497,9 +503,9 @@ distribution; `--help` lists the rest.
 | `CMAKE_INSTALL_PREFIX` | build `install` directory | Install and package staging location. |
 | `CMAKE_OSX_DEPLOYMENT_TARGET` | `13.0` | Minimum macOS version for host software. Qt 6.10 is built for macOS 13. |
 | `HOST_MKDOCS_COMMAND` | auto-detected | Command used to run MkDocs. Use a semicolon-separated CMake command list such as `python;-m;mkdocs` or `C:/Path/To/python.exe;-m;mkdocs` when `mkdocs` is not directly on `PATH`. |
-| `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically. |
-| `BUILD_RUST_APPS` | `ON` where `cargo` is found | Build Tag Programmer (`host/applications/tagprogram-rs`) and Tag Monitor (`host/applications/tagmonitor-rs`) with cargo and install them beside the Qt applications, with `tagcore_c`, through which Tag Monitor writes its downloads. The release workflow sets it, so a missing `cargo` fails there. |
-| `HOST_QT_VERSION` | `6.10.3` | The Qt releases are built with. Configuring against another Qt warns, and fails under `-DREPRODUCIBLE_BUILD=ON`, which the release workflow sets. Empty skips the check. |
+| `Qt6_DIR` or `CMAKE_PREFIX_PATH` | platform dependent | Use when CMake cannot find Qt automatically; only the legacy build (`BUILD_LEGACY_HOST=ON`) looks for Qt. |
+| `BUILD_RUST_APPS` | `ON` | Build the four Rust applications (`host/applications/*-rs`) and the Rust command-line tools (`host/commandline-rs`, target `rust_tools`) with cargo and install them, with `tagcore_c`, through which Tag Monitor, Tag Calibrator, Tag View and `tag-dwnld` reach the C++ libraries. A missing `cargo` stops the configure. |
+| `HOST_QT_VERSION` | `6.10.3` | The Qt the legacy Qt applications are built with. Configuring against another Qt warns, and fails under `-DREPRODUCIBLE_BUILD=ON`, which the release workflow sets. Empty skips the check. |
 | `MACOS_CODE_SIGN_IDENTITY` | `Developer ID Application: Indiana University (5J69S77A7G)` | Signing identity used for macOS bundles. |
 | `MACOS_CODE_SIGN_ENTITLEMENTS` | empty | Optional entitlements plist used when signing app bundles. |
 | `MACOS_MACDEPLOYQT_EXTRA_OPTIONS` | empty | Extra options passed to `macdeployqt`. |
@@ -557,7 +563,7 @@ PATH=/path/to/gcc-arm/bin:/path/to/fmpp/bin:$PATH
 Configure embedded-only:
 
 ```
-cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF -DBUILD_EMBEDDED=ON
+cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_EMBEDDED=ON
 ```
 
 This default configure (`REGENERATE_SOURCES=AUTO`) needs every generator in the
@@ -567,7 +573,7 @@ without them, build the distributed tags from their committed generated sources
 instead:
 
 ```
-cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_QT_APPS=OFF -DBUILD_EMBEDDED=ON \
+cmake -S . -B build-embedded -DBUILD_HOST=OFF -DBUILD_EMBEDDED=ON \
   -DREGENERATE_SOURCES=OFF
 cmake --build build-embedded --target distributed_firmware
 ```
@@ -690,7 +696,7 @@ The project's own code is licensed under the [MIT License](LICENSE), Copyright
 GPL-licensed components and are therefore distributed under the GNU GPL,
 version 3:
 - **The tag and base-board firmware:** ChibiOS/RT.
-- **`sensorviz` and `btviz`:** QCustomPlot.
+- **`sensorviz`:** QCustomPlot.
 - **`qtcalibrate`:** Qt Quick 3D.
 
 [LICENSES/](LICENSES/README.md) explains this, and lists every third-party

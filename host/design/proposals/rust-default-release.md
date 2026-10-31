@@ -140,6 +140,69 @@ Each is small; together they are the first phase.
   legacy option.
 - Run the recorded hardware checks (item 2) on the bench, per
   `docs/bench/`, and record the results in the READMEs' status sections.
+  The checklist is below.
+
+**Progress, 2026-10-31.** The two code items are done. `build.rs` now gives
+every `tag-tools` binary the rpath (`TAGCORE_C_RPATH`, else the link
+directory). The Rust `tag-log-import` writes databases byte-identical to the
+C++ tool's on a tagsim download, linked both ways, and tagsim's tests pass
+with it; `taglogwriter`'s `log-import` example, which it supersedes, is
+removed. Retiring the C++ tool waits for `BUILD_LEGACY_HOST` in phase 2, as
+does building the Rust one into `bin/internal`. The activity filter is
+recorded in `host/applications/sensorviz-rs/TODO.md` and the Tag View manual
+page. Bench checks 1 to 4 below passed the same day on a BitTag V6 and the
+IMUTagNandBmp581; the results are in `host/commandline-rs/README.md` and
+Tag Programmer's README, and check 5 waits for the phase 2 packages.
+
+Found on the bench, none blocking the release, to fix before or after it:
+
+- An attach seconds after another tool's detach sometimes fails on its
+  first debug read (status 0x81). **Fixed 2026-10-31:** the SWD enter sent
+  just after nRST can reach a tag waking from Shutdown before its debug port
+  is powered, and both libraries now retry a failed enter
+  (`host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md`).
+- An unplug during an L432 session logs about 2,500 identical USB errors in
+  2.5 s, and a detach from a running U375 about 50; the rate limit added for
+  the 0x81 reads does not cover them.
+- `tag-test` labels the external flash size, which is in bytes, "kb" (the
+  C++ tool does too).
+- After Program, Tag Programmer's Tag row names the old firmware until the
+  next attach.
+
+#### Bench checklist
+
+Each check follows the bench rules in the root `AGENTS.md`: the Joulescope
+app and qtmonitor detached, the supply checked for the target (2.5 V for an
+L432 tag, 3.7 V for an IMUTag) and recorded, the board UUID read and
+recorded, and no re-attach to a running tag. Run the tools from a
+`--features sqlitelog` release build of `tag-tools`.
+
+1. **`tag-start --config` and `--merge`, on a BitTag** (IDLE): program a
+   configuration file with `tag-start --config FILE`, read it back with
+   `tag-info --json` and compare; repeat with `--merge` and a file holding
+   fields the BitTag lacks, and confirm only its own fields changed. Stop
+   and erase with `tag-reset` afterwards.
+2. **`tag-test` on an IMUTag**, after a fresh `tag-info`: the self-tests,
+   including the external-flash test, which can write the NAND bad-block
+   map; record the result and the bad-block count before and after.
+3. **`tag-side-channel-check`'s opt-in checks**, on one L432 tag and the
+   IMUTag: `--write-test ADDR` with a word-aligned SRAM address outside
+   monitor_shared (on the L432, below `0x2000_C000`, which the tool's range
+   check does not enforce); `--unplug N`, unplugging the base when told; and
+   `--start-running`, which needs a tag already RUNNING and so attaches to
+   one. That is a permission test, one of the two reasons the bench rules
+   allow; the attach ends the run, so use a run whose data is not wanted,
+   then `tag-reset` to stop and erase.
+4. **Programming a U375 through Tag Programmer's engine**:
+   `cargo run -p tagprogram-core --example bench -- <scratch-dir> <release>
+   <label>` on the IMUTagNandBmp581, then `--retest`; erase stored data
+   first if the tag is FINISHED or ABORTED, and run `tag-test` after.
+   Record the image in the IMUTag flash log.
+5. **The packaged applications on Windows and Linux**: Tag Calibrator
+   streaming from a CompassTag, and Tag View opening a CompassTag and an
+   IMUTag log, beyond the "starts and stays up" check. This needs the
+   phase 2 packages, so it moves to the phase 5 checklist if phase 2 is not
+   done first.
 
 ### Phase 2: CMake
 
@@ -187,6 +250,40 @@ Each is small; together they are the first phase.
 - `cmake/CheckQmlImports.cmake`, `DeployQt*.cmake`, `PruneMacosQml.cmake`:
   unchanged, used only under the option.
 
+**Progress, 2026-10-31.** Done as described, with these choices made on
+the way:
+
+- `BUILD_QT_APPS` is no longer an option. Set to ON it is treated as
+  `BUILD_LEGACY_HOST=ON` with a warning; set to OFF it is ignored with a
+  warning. The presets no longer set it.
+- In a legacy build with the Rust programs, the replaced C++ tools build into
+  `bin/legacy` and are not installed, since the Rust tools take their names;
+  in a legacy build without them (`BUILD_RUST_APPS=OFF`) they build and
+  install as in v3.5, which is the fallback release.
+- The tools are one `cargo build -p tag-tools --features sqlitelog --bins`,
+  target `rust_tools` (`host_rust_tools()` in `cmake/HostRust.cmake`), with
+  the Linux run-time search path `$ORIGIN/../lib:$ORIGIN/../../lib` so the
+  internal tools find `libtagcore_c.so` from `bin/internal` too.
+  `flash_tools` depends on it in a host tree, and builds the two flash tools
+  alone in a tree without the host tools.
+- On Windows the ported tools install as the C++ ones did, the program in
+  `tag_tools/lib` beside `tagcore_c.dll` and the console launcher under its
+  name; `tag-flash` and `base-flash` stay where they were.
+- The build report looks for Qt only in a legacy build.
+- `btviz` is deleted with its manual page, images, the three notices only it
+  needed (Kiss FFT, FastFIR, SOLPOS) and its rows in the licence indexes.
+
+Checked on macOS: a fresh default configure looks for no Qt and builds the
+four applications, the nine shipped tools, `dataprocessing` and
+`tag-txt-import` into `bin/`, and the developer tools into `bin/internal`; the
+install has the four application bundles and those eleven tools in
+`tag_tools/bin`; the installed `tag-info` attached to a BitTag; the
+CMake-built `tag-log-import` wrote a database identical to the C++ tool's; a
+legacy configure through `-DBUILD_QT_APPS=ON` warned, put the replaced C++
+tools in `bin/legacy`, and built and deployed `qtmonitor` and `qtcalibrate`.
+Not yet checked: a Linux or Windows build (phase 3's CI runs both), and the
+licence folder, which still installs the Qt notices (phase 3).
+
 ### Phase 3: CI and release tooling
 
 - `.github/workflows/release.yml`: remove the Qt install step and
@@ -210,6 +307,38 @@ Each is small; together they are the first phase.
   Quick 3D in the default packages); the Qt and QCustomPlot rows move to a
   "legacy build only" note or go; `Qt-THIRD-PARTY-NOTICES.txt` is no longer
   installed by default. The Rust notices are regenerated as usual.
+
+**Progress, 2026-10-31.** Done, with these choices:
+
+- `release.yml` installs no Qt and configures with `BUILD_LEGACY_HOST=OFF`.
+  Rather than a second job, `workflow_dispatch` has a `legacy` input that
+  installs Qt (and, on Linux, Qt's build headers) and builds the legacy
+  configuration; such a run never publishes, and its artifacts end in
+  `-legacy`. The release job runs only on a tag push. `docs.yml` no longer
+  passes the old option.
+- `linux-package-test.sh` checks the nine Rust tools and the two C++ ones,
+  starts the four Rust applications under Wayland and X11, and runs the Qt
+  captures and the Qt TLS check only for the Qt programs a (legacy) package
+  carries. `linux-build-check.sh` builds the Qt-free host against the
+  distribution's libraries by default; `--legacy` adds the distribution's Qt
+  and the QML import check, as before. The README's Linux section changed with
+  it, since the script runs its commands.
+- `verify-macos-dmg.sh` fails an image missing any of the four Rust
+  application bundles. `release-macos.sh` and `sign-ci-macos.sh` sign
+  whatever the image holds and needed only a comment.
+- The licence folder: the index has no GPL programs, and a "Legacy Qt
+  applications" section holds Qt, the Qt third-party notices, QCustomPlot
+  and the QFlightInstruments artwork, which a default install leaves out. The
+  Freescale calibration notice now names Tag Calibrator, which contains it
+  through `tagcore_c`. The Rust tools, which had shipped without a notices
+  file since `tag-flash` (v3.5), now have one,
+  `tag-tools-THIRD-PARTY-NOTICES.txt` (300 crates); the four applications'
+  files were regenerated and had not changed.
+- The application directories' comment-only `Cargo.toml` files, left by the
+  workspace change, made cargo fail inside an application; they are deleted.
+
+Not yet run: the workflow itself and the Linux package test, which need a
+push (a `workflow_dispatch` run, then one with `legacy`).
 
 ### Phase 4: documentation
 

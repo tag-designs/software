@@ -127,7 +127,8 @@ Also installed: Qt 6.8.2, Qt Creator, Qt Design Studio, Maintenance Tool. Only
 presets.
 
 Modules required: Core, Gui, Widgets, Concurrent, PrintSupport, Svg,
-SvgWidgets, Qml, Quick, QuickWidgets. `-DBUILD_QT_APPS=OFF` avoids all of it.
+SvgWidgets, Qml, Quick, QuickWidgets. Only the legacy Qt applications need
+it (`-DBUILD_LEGACY_HOST=ON`); the default host build looks for no Qt.
 
 ## Embedded toolchain and generators
 
