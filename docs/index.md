@@ -84,6 +84,7 @@ design document.
 - [0038. Host: the UI kit renders with Preact](decisions/0038-host-ui-kit-preact.md) *(decision)* — The host web front ends (Tag Programmer, Tag Monitor) render with Preact and htm, vendored as classic scripts in host/ui-kit with shared components, keeping the kit's macOS look and the no-build, open-from-disk workflow; Pico CSS was declined, and the user manual's pictures of both apps are captured from their mocks.
 - [0039. Host: Tag Calibrator in Rust (tagcalibrate-rs)](decisions/0039-host-tagcalibrate-rs.md) *(decision)* — qtcalibrate was ported to Rust as tagcalibrate-rs on Tag Monitor's pattern, with its calibration not ported but moved into sensoranalysis's Qt-free C++ core - shown bit-identical to the Qt code at each step - and reached from Rust through tagcore_c and calibsession-rs; the engine reproduces qtcalibrate's replay log line for line.
 - [0040. Host: compass display angles are computed in the Qt-free core](decisions/0040-host-compass-display-angles-in-core.md) *(decision)* — Compass heading, pitch and roll are computed by compasscore::displayAngles() in sensoranalysis's Qt-free core - a bit-identical copy of Qt's toEulerAngles() and the historical relabelling - instead of by Qt at each display, so the sensorViz compass transform and non-Qt front ends show the same angles; this replaces only that part of 0030, whose quaternion-only storage stands.
+- [0041. Host: one Cargo workspace for the Rust code](decisions/0041-host-one-cargo-workspace.md) *(decision)* — All of the host's Rust crates form one Cargo workspace at host/Cargo.toml with one Cargo.lock and, in a CMake build, one shared cargo target directory, replacing six independent lock files and four application workspaces; the crates' directories and names are unchanged.
 
 ### Investigations
 
@@ -127,8 +128,8 @@ design document.
 
 ### Bases / Investigations
 
-- [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
 - [SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)](../embedded/bases/design/investigations/2026-06-swd-bitbang-optimization.md) *(investigation, closed)* — The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1: about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
+- [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
 
 ### Boards
 
@@ -201,9 +202,9 @@ design document.
 
 ### Tags / Common Firmware / core / Investigations
 
-- [2026-09-u375-standby-forum-post](../embedded/tags/common/core/design/investigations/2026-09-u375-standby-forum-post.md) *(investigation, closed)* — Forum post draft describing the layout-dependent STM32U375 Standby entry fault, register state at the WFI, and every mechanism excluded.
 - [Boot Cleanup Claimed IDLE Over a Non-Empty Log](../embedded/tags/common/core/design/investigations/2026-09-boot-cleanup-claimed-idle.md) *(investigation, closed)* — How boot cleanup asserting IDLE over a non-empty marker log made every second IMUTag collection fail, and the two defects fixed on 2026-09-02.
 - [Latched Flash Error Flags and STM32U3 Low-Power Entry](../embedded/tags/common/core/design/investigations/2026-09-u3-latched-flash-error-flags.md) *(investigation, closed)* — The 995 uA STM32U3 idle fault attributed to a latched flash ECC flag on 2026-09-02, how the flag gets latched, and why the clear was later found not to be on the cause.
+- [2026-09-u375-standby-forum-post](../embedded/tags/common/core/design/investigations/2026-09-u375-standby-forum-post.md) *(investigation, closed)* — Forum post draft describing the layout-dependent STM32U375 Standby entry fault, register state at the WFI, and every mechanism excluded.
 - [STM32U375 Standby Entry Depends on Image Layout](../embedded/tags/common/core/design/investigations/2026-09-u375-standby-layout-dependence.md) *(investigation, closed)* — Why STM32U375 Standby entry depended on image layout -- every perturbation, compiler setting and register comparison tried, the flash-flag and SRAM2 retention side findings, and the reverted page-skip commit.
 
 ### Tags / Common Firmware / core / Proposals
@@ -276,10 +277,10 @@ design document.
 
 ### Tags / Families / IMUTag / Investigations
 
+- [IMUTagNandBmp581 First Breakout Bring-Up (2026-08)](../embedded/tags/families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md) *(investigation, closed)* — First bench validation of the IMUTagNandBmp581 target on the BMP581 breakout -- NAND and BMP581 self-tests and a short 400 Hz collection.
+- [IMUTagNand Regulator and Sleep-Mode Sweeps (2026-09)](../embedded/tags/families/IMUTag/design/investigations/2026-09-imutag-regulator-and-sleep-sweeps.md) *(investigation, closed)* — Superseded IMUTagNand power history -- datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at 2.5 V and 3.3 V (2026-09) that produced the 3.7 V projection.
 - [IMUTag Orientation Error Budget (2026-10)](../embedded/tags/families/IMUTag/design/investigations/2026-10-imutag-orientation-error-budget.md) *(investigation, open)* — Datasheet error budget for BMM350 and LSM6DSV dip, heading and field-strength estimates after qtcalibrate, 2026-10-12 -- magnetometer offset drift with temperature dominates, and calibrating at bird temperature or re-fitting the offset at the release site removes most of it.
 - [IMUTag Start Aborts: Evidence and a Proposal for Persistent Failure Detail](../embedded/tags/families/IMUTag/design/investigations/start-abort-diagnostics.md) *(investigation, closed)* — The intermittent IMUTag abort at start -- evidence, the marker detail word added to diagnose it, and its two probable causes (a wedged I2C bus, a latched flash ECC flag), both now fixed.
-- [IMUTagNand Regulator and Sleep-Mode Sweeps (2026-09)](../embedded/tags/families/IMUTag/design/investigations/2026-09-imutag-regulator-and-sleep-sweeps.md) *(investigation, closed)* — Superseded IMUTagNand power history -- datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at 2.5 V and 3.3 V (2026-09) that produced the 3.7 V projection.
-- [IMUTagNandBmp581 First Breakout Bring-Up (2026-08)](../embedded/tags/families/IMUTag/design/investigations/2026-08-imutagnandbmp581-first-breakout-bringup.md) *(investigation, closed)* — First bench validation of the IMUTagNandBmp581 target on the BMP581 breakout -- NAND and BMP581 self-tests and a short 400 Hz collection.
 
 ### Tags / Families / IMUTag / Proposals
 
@@ -312,10 +313,10 @@ design document.
 
 ### Tags / Investigations
 
-- [A Non-Failure Reset During RUNNING Aborted the Run](../embedded/tags/design/investigations/2026-10-reset-during-running-aborts.md) *(investigation, closed)* — A non-failure reset during RUNNING aborted PresTag runs under 10 s and every IMUTag run; fixed 2026-10-02 by treating an external reset with valid retained state as a reattach.
 - [Attach-Storm Failures, September 2026](../embedded/tags/design/investigations/2026-09-attach-storm-failures.md) *(investigation, closed)* — Four attach-storm failures chased in September 2026 -- non-monotonic timestamps, refused downloads, STATE_UNSPECIFIED after reset, and an unserviced stop -- three host-tool faults and one firmware fix.
-- [Next-Release Fixes: Specification and Verification](../embedded/tags/design/investigations/2026-10-next-release-fixes-verified.md) *(investigation, closed)* — How the post-fw-v0.0.3 defect fixes (A1-A3, A7) and the identity record and session facts (B1, B2) were specified and verified, on hardware and in host simulation, October 2026.
 - [The internal ADC, and PresTag's resting floor](../embedded/tags/design/investigations/2026-10-adc-and-the-power-floor.md) *(investigation, closed)* — Two ADC defects dating to the initial commit, found because one breakout reported 3.9 V and 100 C; the sweep that sized the fix; its verification on three tags; and a 2.2x drop in PresTag's resting floor that is measured, bounded, and still unexplained.
+- [Next-Release Fixes: Specification and Verification](../embedded/tags/design/investigations/2026-10-next-release-fixes-verified.md) *(investigation, closed)* — How the post-fw-v0.0.3 defect fixes (A1-A3, A7) and the identity record and session facts (B1, B2) were specified and verified, on hardware and in host simulation, October 2026.
+- [A Non-Failure Reset During RUNNING Aborted the Run](../embedded/tags/design/investigations/2026-10-reset-during-running-aborts.md) *(investigation, closed)* — A non-failure reset during RUNNING aborted PresTag runs under 10 s and every IMUTag run; fixed 2026-10-02 by treating an external reset with valid retained state as a reattach.
 
 ### Tags / Proposals
 
@@ -345,12 +346,12 @@ design document.
 
 ## Host
 
-- [Host Software](../host/README.md) — Host tree layout by role, dependency direction, CMake entry points, packaging notes and maintenance guidelines.
+- [Host Software](../host/README.md) — Map of the host tree - the C++ libraries and Qt applications, the Rust crates and Tauri applications that are replacing them, how the two are joined, the names each program goes by, dependency direction, the CMake and cargo entry points, packaging notes and maintenance rules.
 - [Linux Packaging](../host/design/linux-package.md) — How the Linux x86_64 host tools package is laid out, built, deployed and tested -- a relocatable tag_tools tarball carrying Qt 6.10.3, made on CI from the linux-vcpkg configuration and tested in clean containers under Wayland and X11.
 
 ### Applications
 
-- [Host Applications](../host/applications/README.md) — Table of the Qt host applications and their targets.
+- [Host Applications](../host/applications/README.md) — Table of the host applications - the Qt ones and their Rust/Tauri ports - with the executable and product name of each, and the rule for where application behaviour lives.
 
 ### Applications / qtcalibrate
 
@@ -408,10 +409,12 @@ design document.
 ### Applications / sensorviz-rs
 
 - [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
+- [Tag View (sensorViz in Rust): architecture and source map](../host/applications/sensorviz-rs/design/architecture.md) — How Tag View (sensorViz in Rust) is put together - one engine thread over sensorViz's C++ core through sensorviz-session, a page that draws the plot with uPlot from M4 envelopes, a map of every file and the Qt sensorviz code it follows, how a view change and a redraw travel, and where to make common changes.
 
 ### Applications / tagcalibrate-rs
 
 - [Tag Calibrator (Rust)](../host/applications/tagcalibrate-rs/README.md) — Tag Calibrator in Rust, the port of qtcalibrate, shipped as tagcalibrate - its window on the host UI kit, the engine over the C++ calibration session, the Tauri shell, how to run it, how it is packaged, and how it is checked against qtcalibrate.
+- [Tag Calibrator (Rust): architecture and source map](../host/applications/tagcalibrate-rs/design/architecture.md) — How Tag Calibrator in Rust is put together - the engine and tag threads, where the calibration arithmetic runs (the C++ session, through calibsession), a map of every file and the qtcalibrate code it follows, how a sample and a command travel, and where to make common changes.
 - [Tag Calibrator (Rust): UI/engine contract](../host/applications/tagcalibrate-rs/design/ui-engine-contract.md) — The contract between Tag Calibrator's Rust engine and its web UI - the threads, where the calibration runs, the view state the engine publishes, the prompts that replace qtcalibrate's dialogs, and the commands and queries the UI sends.
 
 ### Applications / tagmonitor-rs
@@ -456,9 +459,28 @@ design document.
 
 - [Host Common Qt Helpers](../host/common/README.md) — Small shared Qt helpers used by host applications through the host_common target.
 
+### Host Software Guide
+
+- [Host Software Guide](../host/design/guide/README.md) — The Host Software Guide - a book-length orientation to the host side of the tag system for a software engineer new to the project, from the system and its communication and storage models down to the architecture and code structure of each component, with the reading order.
+- [1. The system](../host/design/guide/01-system-overview.md) — Chapter 1 of the Host Software Guide - what tags, bases and the host are, a tag's life cycle, the jobs the host software does, the two implementations of it and what they share, and the vocabulary the rest of the guide uses.
+- [2. The source tree](../host/design/guide/02-source-tree.md) — Chapter 2 of the Host Software Guide - the layout of the host tree and the places outside it the host depends on, what every directory, crate, executable and program is called, the shape of a crate and of an application directory, how CMake and cargo divide the build, and where to look things up.
+- [3. The communication model](../host/design/guide/03-communication-model.md) — Chapter 3 of the Host Software Guide - how a host reaches a tag, layer by layer (USB, the ST-LINK protocol, SWD, the monitor), the attach handshake and why it resets the tag, the two monitor transports, how a protobuf RPC is framed, the timeouts and keep-alive, the exclusive ownership of a base, and the second path to a tag that programming takes.
+- [4. What host and firmware share](../host/design/guide/04-shared-contract.md) — Chapter 4 of the Host Software Guide - everything the host and the tag firmware both compile or both must agree on (the protobuf messages, the state machine and which requests each state permits, the configuration model and the default configurations, the monitor ABI header, the packed binary log formats, the identity record, the loader service block, the base identity string) and how each is changed without breaking tags in the field.
+- [5. Data and storage](../host/design/guide/05-data-and-storage.md) — Chapter 5 of the Host Software Guide - the storage model end to end (what a tag keeps in internal flash, external flash and its backup registers, how a download walks the log one page at a time and why the writer decides where it ends, the SQLite file's layout and who writes it, the other files the host reads and writes, and the offline route from a capture to a download).
+- [6. tagcore: the tag interface](../host/design/guide/06-tagcore.md) — Chapter 6 of the Host Software Guide - the Rust tagcore crate that every tool and application uses to talk to a tag, its three layers and the ownership between them, the concurrency model, how failures are reported and logged, the code generated at build time, how to use it, and how it is kept in step with the C++ it ports.
+- [7. Programming tags and bases](../host/design/guide/07-programming-and-flash-tools.md) — Chapter 7 of the Host Software Guide - how the host programs a tag's firmware and a base's (tagprobe over probe-rs, the two ST-LINK drivers and how a base's identity chooses between them, the erase plan and the program sequence, programming a base through its ROM bootloader over USB DFU) and the two command-line tools, tag-flash and base-flash, that expose it.
+- [8. The bridge to the C++ libraries](../host/design/guide/08-cpp-bridge.md) — Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its three parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
+- [9. The command-line tools](../host/design/guide/09-command-line-tools.md) — Chapter 9 of the Host Software Guide - the Rust command-line tools in commandline-rs (the shape every tool follows, the shared crate behind them, what each tool does, a walk through tag-dwnld, how they are held to the C++ tools, and how to add one) and the C++ tools that have no port.
+- [10. The application pattern](../host/design/guide/10-application-pattern.md) — Chapter 10 of the Host Software Guide - the pattern all four Rust applications share (a toolkit-free engine that owns every rule and all state, a tag thread, a whole view state published after every change, dialogs as prompts, a Tauri shell with two commands and two events, a web page on the shared UI kit that draws and never decides), why it was chosen, how a command and a redraw travel, and how such an application is read, run without hardware and tested.
+- [11. The applications](../host/design/guide/11-applications.md) — Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View): what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
+- [12. External dependencies](../host/design/guide/12-external-dependencies.md) — Chapter 12 of the Host Software Guide - every external module the host software depends on (the Rust crates, the vendored JavaScript libraries, the C++ libraries and Qt, and the tools), what each is for, why it was chosen or what it replaced, where its version is pinned, and the rules for adding or updating one.
+- [13. Building and testing](../host/design/guide/13-building-and-testing.md) — Chapter 13 of the Host Software Guide - the toolchains, the cargo and CMake commands, the features and environment variables that change what is built, how the packages are assembled per platform, the test strategy (unit tests, oracles against the Qt applications, hardware tests, byte-identical downloads), the documentation checks, and what CI does.
+- [14. Rust in this code base](../host/design/guide/14-rust-for-this-codebase.md) — Chapter 14 of the Host Software Guide - the Rust the host code relies on, explained for an engineer who knows C++ (ownership and borrowing as the replacement for the C++ mutexes, Result and Option, enums with data and match, traits, threads and channels, Send and Sync, Drop, closures, features and build scripts, the generated protobuf types, the FFI rules, the documentation lints), each with where it appears in this tree.
+- [15. Assumptions and invariants](../host/design/guide/15-assumptions-and-invariants.md) — Chapter 15 of the Host Software Guide - the assumptions and invariants the host code depends on, collected in one place and grouped by subject (the tag and its firmware, the link, the shared contract, data and files, the C++ bridge, the applications, the build), each with where it is enforced or documented, so a change can be checked against them.
+
 ### Libraries
 
-- [Host Libraries](../host/libraries/README.md) — Table of host libraries and their dependency direction.
+- [Host Libraries](../host/libraries/README.md) — Table of the host libraries, C++ and Rust, the C interface that joins them, and their dependency direction.
 
 ### Libraries / calibsession-rs
 
@@ -496,8 +518,8 @@ design document.
 
 ### Libraries / tagcore / Investigations
 
-- [Cost of a gRPC Server in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
 - [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
+- [Cost of a gRPC Server in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
 
 ### Libraries / tagcore / Proposals
 
