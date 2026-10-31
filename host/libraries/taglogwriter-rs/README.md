@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and the log-import check.
+summary: taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and how it is checked against the C++ tools.
 ---
 
 # taglogwriter (Rust)
@@ -53,12 +53,15 @@ has the details.
 
 ## Checking
 
-`examples/log-import.rs` repeats `tag-log-import` through the wrapper, with
-the same calls in the same order:
+The Rust `tag-log-import` in [`tag-tools`](../../commandline-rs/README.md)
+makes the C++ tool's calls through this wrapper, in the same order, so the
+two can be compared on any JSONL download:
 
 ```sh
-cargo run --release --example log-import -- download.jsonl rust.db3
-tag-log-import download.jsonl -o cpp.db3
+TAGCORE_C_LIB_DIR=<build-dir>/Release/lib \
+    cargo build --release -p tag-tools --features sqlitelog --bin tag-log-import
+target/release/tag-log-import download.jsonl -o rust.db3
+<build-dir>/Release/bin/internal/tag-log-import download.jsonl -o cpp.db3
 cmp rust.db3 cpp.db3            # identical, given the same input path
 ```
 

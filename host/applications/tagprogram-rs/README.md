@@ -93,7 +93,10 @@ probe-rs's progress goes to the log pane.
   removed), and the flash read back matching the image.
 - Retest has passed on an IMUTagNandBmp581 (U375, tag-breakout-base-l432-u375-1v8,
   stock driver): the flash read back matching fw-v0.6, and ALL_PASSED.
-  Programming a U375 through the engine has not been run yet.
+  Program has passed on the same IMUTagNandBmp581 (2026-10-31, bench
+  runner, firmware 33dfce16 to fw-v0.7): program only, verify, ALL_PASSED in
+  15 s, and Retest read the flash back matching the image. After Program the
+  station's Tag row still named the old firmware until the next attach.
 - Program has passed on a UIUCTag (STM32L432KB) through a field base with
   the field-safe driver. The tagcore monitor's debug-register reads failed
   in a burst (status 0x81) while reconnecting after probe-rs, then

@@ -10,6 +10,8 @@ ctrlc = "3.5.2"
 env_logger = "0.11.11"
 log = "0.4.34"
 prost-reflect = "0.16.5"
+# tag-log-import reads the download's header object generically.
+serde_json = "1.0.154"
 tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
 # tag-flash programs through probe-rs, and plans its erase as Tag Programmer does.
 tagprobe = { version = "0.1.0", path = "../libraries/tagprobe-rs" }
@@ -19,13 +21,17 @@ taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optio
 tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }
 
 [features]
-# tag-dwnld writes its log through the C++ writer, so it needs libtagcore_c
+# tag-dwnld and tag-log-import write their logs through the C++ writer, so it needs libtagcore_c
 # built by CMake (-DBUILD_TAGCORE_C=ON) and TAGCORE_C_LIB_DIR naming it. Off
 # by default so the other tools still build with cargo alone.
 sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]
 
 [[bin]]
 name = "tag-dwnld"
+required-features = ["sqlitelog"]
+
+[[bin]]
+name = "tag-log-import"
 required-features = ["sqlitelog"]
 
 # Every item is documented, private ones included (AGENTS.md,

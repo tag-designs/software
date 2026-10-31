@@ -16,10 +16,6 @@ tagcore-c-sys = { version = "0.1.0", path = "../tagcore-c-sys" }
 prost = "0.14.4"
 tagcore = { version = "0.1.0", path = "../tagcore-rs" }
 
-[dev-dependencies]
-prost-reflect = "0.16.5"
-serde_json = "1.0.154"
-
 # Every item is documented, private ones included (AGENTS.md,
 # "Checking documentation coverage"); keep it that way.
 [lints.rust]

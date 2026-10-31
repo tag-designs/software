@@ -67,7 +67,8 @@ How it differs from the Qt app:
 - **Printing** is File ▸ Export PDF (below), not the system print dialog.
 - **The x axis title** is one line; uPlot draws one.
 - **No activity filter**: it stays in the Qt app
-  ([toolkit-neutral core](../sensorviz/design/proposals/toolkit-neutral-core.md), revised 2026-10-28).
+  ([toolkit-neutral core](../sensorviz/design/proposals/toolkit-neutral-core.md), revised 2026-10-28),
+  and v4.0 releases without it ([TODO](TODO.md)).
 - **Axis Sides** lists streams, not axis groups.
 
 For a compass log the Plot page has the Qt app's compass panel beside the

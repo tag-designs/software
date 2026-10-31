@@ -233,8 +233,8 @@ Hazards:
 
 ## Checking
 
-- **Offline.** `taglogwriter-rs/examples/log-import.rs` makes the same
-  calls as `tag-log-import`. On the same JSONL input, given by the same path,
+- **Offline.** The Rust `tag-log-import` (`commandline-rs`) makes the same
+  calls as the C++ one. On the same JSONL input, given by the same path,
   the two databases are byte-identical (`cmp`).
 - **On hardware.** Download one finished tag with the C++ `tag-dwnld` and the
   Rust one, and compare the files. Downloading does not change the tag. The

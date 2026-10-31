@@ -34,8 +34,9 @@ The two programs are installed side by side, as `sensorviz` and `tagview`.
     a tall axis; in Tag View it fills the axis.
 
 - **No activity filter.** **Configuration ▸ Activity Filter** is not in Tag
-    View. The activity stream itself is plotted as in SensorViz; use SensorViz
-    for the filtered view.
+    View. The activity stream itself is plotted as in SensorViz. From v4.0
+    SensorViz is no longer in the packages, so the filtered view is not
+    available in this release.
 
 - **Visible Streams** lists each magnitude first, with its X, Y and Z
     channels indented beneath it.

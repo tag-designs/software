@@ -75,7 +75,7 @@ writer's files would remove libusb from both builds.
 
 ## Checking
 
-The `log-import` example in `taglogwriter-rs` repeats `tag-log-import`
+The Rust `tag-log-import` (in `commandline-rs`) repeats the C++ one
 through this interface. On a tagsim IMUTag download (25 pages, a resync
 segment and NaN gaps), the database it writes is byte-identical to
 `tag-log-import`'s, with both the shared and the static build.

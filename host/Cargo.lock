@@ -4467,6 +4467,7 @@ dependencies = [
  "env_logger",
  "log",
  "prost-reflect",
+ "serde_json",
  "tagcore",
  "tagcore-c-sys",
  "taglogwriter",
@@ -4523,8 +4524,6 @@ name = "taglogwriter"
 version = "0.1.0"
 dependencies = [
  "prost",
- "prost-reflect",
- "serde_json",
  "tagcore",
  "tagcore-c-sys",
 ]
