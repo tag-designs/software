@@ -68,14 +68,21 @@ read the external flash, `tag-capture` stores the tag's state, and
 
 ## Host tools
 
-`host/libraries/tagcore` is the low-level host interface (USB, monitor, log
-writers, recovery). The Qt applications in `host/applications` are
-`qtmonitor` (monitor, configure, download), `qtprogram`, `qtcalibrate`,
-`sensorviz` (SQLite log visualization) and the legacy `btviz`
-([applications README](../../host/applications/README.md)). The command-line
-tools in `host/commandline` (`tag-info`, `tag-start`, `tag-stop`, `tag-reset`,
-`tag-capture`, `tag-xflash`, `tag-rebuild`, and others) script the same
-operations. User manuals are in `host/docs/`.
+The host software exists in C++ and, since October 2026, in Rust; both ship.
+`host/libraries/tagcore` is the C++ low-level host interface (USB, monitor,
+log writers, recovery), and `host/libraries/tagcore-rs` its Rust port of the
+tag interface. The Qt applications in `host/applications` are `qtmonitor`
+(monitor, configure, download), `qtprogram`, `qtcalibrate`, `sensorviz`
+(SQLite log visualization) and the legacy `btviz`; their Rust/Tauri ports are
+`tagmonitor`, `tagprogram`, `tagcalibrate` and `tagview`, which reach the C++
+SQLite writer, calibration session and sensorViz core through the `tagcore_c`
+C interface ([applications README](../../host/applications/README.md)). The
+command-line tools in `host/commandline` (`tag-info`, `tag-start`, `tag-stop`,
+`tag-reset`, `tag-capture`, `tag-xflash`, `tag-rebuild`, and others) script the
+same operations, with Rust ports of the tag-interface tools and the
+programming tools `tag-flash` and `base-flash` in `host/commandline-rs`. User
+manuals are in `host/docs/`. The [Host Software Guide](../../host/design/guide/README.md)
+explains the host side for a newcomer.
 
 ## Building and releasing
 

@@ -51,11 +51,12 @@ SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
 Qt 6 is required when `BUILD_QT_APPS=ON`. Python 3 with MkDocs Material is
 required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target.
-Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds Tag Programmer,
-`host/applications/tagprogram-rs`, and Tag Monitor,
-`host/applications/tagmonitor-rs`; where `cargo` is not installed they are
+Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds the Rust
+applications (Tag Programmer, Tag Monitor, Tag Calibrator and Tag View) and the
+`tag-flash` and `base-flash` programming tools, all from the one Cargo
+workspace at `host/Cargo.toml`; where `cargo` is not installed they are
 skipped (`BUILD_RUST_APPS`), and on Linux they also need the WebKitGTK 4.1
-development files.
+development files. See [host/README.md](host/README.md).
 
 The Qt host applications use these Qt 6 modules: Core, Gui, Widgets,
 Concurrent, PrintSupport, Svg, SvgWidgets, Qml, Quick, QuickWidgets, and

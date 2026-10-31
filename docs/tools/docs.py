@@ -265,6 +265,7 @@ SECTION_TITLES = {
     "commandline": "Command Line",
     "docs": "User Guide Tooling",
     "tools": "Tools",
+    "guide": "Host Software Guide",
 }
 
 
@@ -280,8 +281,10 @@ def section_path(sub: tuple) -> list[str]:
 
 def sort_key(d: Doc):
     name = Path(d.path).name
-    # README first in its directory, then by title; decisions by number.
-    return (0 if name == "README.md" else 1, d.path if d.type == "decision" else d.title.lower())
+    # README first in its directory, then by title; decisions and numbered
+    # chapters (01-..., 02-...) by file name, so they keep their order.
+    by_path = d.type == "decision" or name[:1].isdigit()
+    return (0 if name == "README.md" else 1, d.path if by_path else d.title.lower())
 
 
 def tree(docs: list[Doc]):

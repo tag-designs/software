@@ -1,0 +1,37 @@
+# The one Cargo workspace for the host's Rust code.
+#
+# Every Rust crate under host/ is a member, so `cargo build`, `cargo test`,
+# `cargo doc` and `cargo clippy` run over all of them from this directory,
+# rust-analyzer sees them as one project, and there is one Cargo.lock (this
+# directory's) that every build, the CMake targets included, resolves against.
+# Crates that are experiments, not shipped code, are excluded and build on
+# their own. See README.md ("Rust crates") and design/guide/ for how the
+# crates fit together; decision 0041 for why one workspace.
+[workspace]
+resolver = "3"
+members = [
+  # Libraries: the tag interface, programming, and the bridge to the C++ host
+  # libraries through tagcore_c.
+  "libraries/tagcore-rs",
+  "libraries/tagprobe-rs",
+  "libraries/tagcore-c-sys",
+  "libraries/taglogwriter-rs",
+  "libraries/calibsession-rs",
+  "libraries/sensorviz-session-rs",
+  # The command-line tools (crate tag-tools: one binary per tool).
+  "commandline-rs",
+  # The applications: a toolkit-free core crate and a Tauri shell crate each.
+  "applications/tagprogram-rs/core",
+  "applications/tagprogram-rs/app",
+  "applications/tagmonitor-rs/core",
+  "applications/tagmonitor-rs/app",
+  "applications/tagcalibrate-rs/core",
+  "applications/tagcalibrate-rs/app",
+  "applications/sensorviz-rs/core",
+  "applications/sensorviz-rs/app",
+]
+exclude = [
+  # Experiments with their own dependencies; not built with the host.
+  "spikes/probe-rs-spike",
+  "applications/sensorviz-rs/tools/print-spike",
+]

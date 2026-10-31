@@ -1,0 +1,3 @@
+# cargo's output for the host workspace (Cargo.toml here), and any stale
+# per-crate target/ left from before the crates shared one workspace.
+target/
