@@ -62,7 +62,45 @@ _Static_assert(sizeof(((PresTagRawLog *)0)->samples.bytes) >= sizeof(t_PresTagRa
 #endif
 
 /**
+ * @brief Ratio of the download MSI range to the normal one: range 9 (24 MHz)
+ *        over range 5 (2 MHz).
+ */
+#define PRESTAG_DOWNLOAD_MSI_RATIO 12U
+
+/**
+ * @brief Load a new prescaler into the ChibiOS system-tick timer now.
+ *
+ * @details @c PSC is preloaded and takes effect only at an update event, which
+ *          ChibiOS's free-running 32-bit TIM2 generates once, at init. Writing
+ *          @c PSC alone therefore did nothing, and the tick ran 12x fast for
+ *          every page formatted at the raised MSI clock -- shortening every
+ *          RTOS sleep in that window, the external flash's wake delay among
+ *          them. Forcing the update with @c UG also zeroes the counter, which
+ *          is ChibiOS's system time, so the counter is saved and restored
+ *          around it. The cost is under one tick (100 us) per call: the
+ *          prescaler's own count restarts.
+ *
+ * @param[in] psc Prescaler value; the timer counts at TIMCLK / (psc + 1).
+ *
+ * @note    Leaves @c UIF clear. ChibiOS enables only the compare interrupt,
+ *          so the forced update raises no interrupt.
+ */
+static void st_load_prescaler(uint32_t psc)
+{
+  syssts_t sts = chSysGetStatusAndLockX();
+  const uint32_t cnt = STM32_ST_TIM->CNT;
+
+  STM32_ST_TIM->PSC = psc;
+  STM32_ST_TIM->EGR = TIM_EGR_UG;
+  STM32_ST_TIM->CNT = cnt;
+  STM32_ST_TIM->SR = ~TIM_SR_UIF;
+  chSysRestoreStatusX(sts);
+}
+
+/**
  * @brief Raise MSI clock speed while formatting large monitor log responses.
+ *
+ * @post  The system tick still counts at @c OSAL_ST_FREQUENCY.
  */
 static void fast_msi(void){
   // change to 24Mhz doesn't require VOS change
@@ -74,15 +112,17 @@ static void fast_msi(void){
 
   RCC->CR = (RCC->CR & ~(15<<4)) | (9<<4);
 
-  // Change TIM2 Prescaler
+  // Scale the tick timer's prescaler with its clock
 
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC * 12;
+  st_load_prescaler(((STM32_ST_TIM->PSC + 1U) * PRESTAG_DOWNLOAD_MSI_RATIO) - 1U);
 
 }
 
 
 /**
  * @brief Restore the normal low-power MSI clock after monitor log export.
+ *
+ * @post  The system tick still counts at @c OSAL_ST_FREQUENCY.
  */
 static void slow_msi(void){
 
@@ -95,9 +135,9 @@ static void slow_msi(void){
 
   FLASH->ACR = FLASH->ACR & ~(7);
 
-  // Restore TIM2 Prescaler
+  // Restore the tick timer's prescaler
 
-  STM32_ST_TIM->PSC = STM32_ST_TIM->PSC/12;
+  st_load_prescaler(((STM32_ST_TIM->PSC + 1U) / PRESTAG_DOWNLOAD_MSI_RATIO) - 1U);
 
 }
 

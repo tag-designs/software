@@ -45,7 +45,9 @@ static BackupState backup;
 volatile BackupState *const pState = &backup;
 stub_flash_t stub_flash;
 stub_rcc_t stub_rcc;
-stub_tim_t stub_tim = {1};
+/* The PresTag system-tick prescaler: 2 MHz / 10 kHz - 1. */
+#define SIM_TICK_PSC 199U
+stub_tim_t stub_tim = {.PSC = SIM_TICK_PSC};
 const TagStorageDevice tagExternalFlash;
 const TagRegisterDevice tagPressureDevice;
 
@@ -210,6 +212,8 @@ static int download(int index, Page *pages, int max_pages)
     static Ack ack;
     memset(&ack, 0, sizeof(ack));
     data_logAck(index, &ack);
+    /* The clock switch around a page must leave the tick prescaler as found. */
+    assert(stub_tim.PSC == SIM_TICK_PSC);
     if (ack.which_payload == 0)
         return 0;
     assert(ack.which_payload == Ack_prestag_raw_data_log_tag);
@@ -240,6 +244,8 @@ static int download(int index, Page *pages, int max_pages)
     assert(max_pages >= 1);
     memset(&ack, 0, sizeof(ack));
     data_logAck(index, &ack);
+    /* The clock switch around a page must leave the tick prescaler as found. */
+    assert(stub_tim.PSC == SIM_TICK_PSC);
     if (ack.which_payload == 0)
         return 0;
     assert(ack.which_payload == Ack_prestag_data_log_tag);

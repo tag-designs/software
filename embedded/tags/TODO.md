@@ -78,16 +78,20 @@ not been reproduced on a tag.
     (`WaitL4MonitorIdle()`, and `wait_l4_idle()` in tagcore-rs),
     so a request a failed call left pending is no longer overwritten; qtmonitor pauses its polls for 1.5 s after
     Synchronize Clock and Self-Test.
-- **The download clock switch's TIM2 prescaler writes do nothing.**
-  `fast_msi()`/`slow_msi()` in the PresTag, BitPresTag and UIUCTag
-  `datalog.c` raise MSI 12x around one page of `data_logAck()` and write
+- **The download clock switch's TIM2 prescaler writes do nothing** in the
+  BitPresTag, UIUCTag and CompassTag `datalog.c`. `fast_msi()`/`slow_msi()`
+  raise MSI 12x around one page of `data_logAck()` and write
   `STM32_ST_TIM->PSC` to compensate. The prescaler is buffered until an update
   event, which ChibiOS's free-running 32-bit TIM2 does not reach, so the tick
-  runs 12x fast for each page and system time jumps ahead by the excess. Harmless
-  for a download so far; the same pattern in the monitor session made the 60 s
-  watchdog fire after 5 s on UIUCTag (removed 2026-10-26, see
-  `docs/shared/monitor-interface.md`). Either drop the `PSC` lines or make the
-  change take effect without disturbing ChibiOS's counter.
+  runs 12x fast for each page: every RTOS sleep in that window, the external
+  flash's wake delay included, is cut to a twelfth. The same pattern in the
+  monitor session made the 60 s watchdog fire after 5 s on UIUCTag (removed
+  2026-10-26, see `docs/shared/monitor-interface.md`). PresTag is fixed on
+  branch `bittag-prestag-fixes` by `st_load_prescaler()` in
+  `families/PresTag/src/datalog.c`, which forces the update and restores the
+  counter; port it to the other three once a PresTag download has been checked
+  on hardware (full download identical to the previous image's, and the
+  download time, which grows by the now-honest flash wake delays).
 - **PresTag SetRtc hang after a start: fixed, not yet verified on a PresTag.**
   On PresTag and PresTagRaw (`TAG_STOP_RTC_TICKER`) the stop-mode RTC ticker
   relocked the RTC (`WPR = 0xFF`) after `tagStopRtcTickerInit()` and every
