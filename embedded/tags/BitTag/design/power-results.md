@@ -354,3 +354,6 @@ show; and STM32U375 tags.
   - Earlier the same day a second BitTag, `2039354D30315012005E0068` on
     `bittag-base-v7`, read about 55 uA idle on all three images. It had been
     dropped in coffee that morning; the reading is leakage, not firmware.
+    After a wash in 99.9% isopropyl alcohol it read 0.1180 / 0.1181 uA
+    untouched and 0.1181 / 0.1180 uA after `tag-reset --set-rtc`, on the same
+    base, image and supply.
