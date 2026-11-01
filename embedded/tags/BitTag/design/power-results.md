@@ -301,3 +301,56 @@ procedure's note that on the L432 debug state affects Stop modes, not
 Shutdown or Standby. **Not covered:** RUNNING (Standby between minute
 wakes) and any Stop-mode state, where a debug domain left powered would
 show; and STM32U375 tags.
+
+### 2026-11-01  RTC-lock, INITF-bound and L4 monitor fixes — no measurable power cost
+
+- **build**: branch `bittag-prestag-fixes` at `12bb1fe7` (BitTag.bin sha256
+  `9aeda15c104a84db0be0543c71c3e33ed1857ac513f1de0effb2bfc46c67c312`), against
+  `main` at `afa3a6f8` built the same way (sha256
+  `0ee4317038741c42f5412f4cf028b73f70d13f1a93aa650ba514b5ab0abd7969`). For
+  BitTag the branch changes the L4 DebugMonitor handler (a request in flight is
+  no longer dropped; status answered from cache while the main thread is busy)
+  and bounds `rtc_enter_init()`'s `INITF` wait. Development builds: a
+  comparison, not a qualification. Both images report repo hash `12bb1fe7`; the
+  sha256 identifies them.
+- **board**: BitTag V6, UUID `2035374D303150190059002F`, the qualification
+  unit. Base: programmer base `0037001A5556431520303537`, reflashed that day to
+  `bittag-base-v7` at `4c79551a` (its pre-July firmware had started stalling its
+  command endpoint).
+- **conditions**: supply 2.4960 V on every window, 120 s resting windows,
+  `joulescope_server.py --use-server`, Tag Monitor and the desktop app
+  detached. Untouched before any attach: 0.1179, 0.1181 uA; after the base
+  reflash, 0.1187, 0.1185 uA.
+- **result**, `IDLE` after `tag-reset --set-rtc` and a 16 s settle:
+
+  | Image | `IDLE` | `tag-test` |
+  | --- | ---: | --- |
+  | `fw-v0.6`, outgoing | 0.1183 / 0.1182 uA | not run |
+  | `main` `afa3a6f8` | 0.1181 / 0.1180 uA | `ALL_PASSED` |
+  | branch `12bb1fe7` | 0.1180 / 0.1179 uA | `ALL_PASSED` |
+
+  Then `tag_lifecycle_check.py` on the branch image, `bittag-bitpersec.json`,
+  1200 s run:
+
+  | Point | Current |
+  | --- | ---: |
+  | `IDLE`, clock set | 0.1178 uA |
+  | `RUNNING` | **0.5081 uA** |
+  | `FINISHED` | 0.1182 uA |
+  | `IDLE` after a full cycle | 0.1181 uA |
+
+  Download: 22 pages, 1320 activity rows, every delta 1 s; states
+  `CONFIGURED`, `RUNNING`, `FINISHED`.
+- **verdict**: no power change. Idle is the same to 0.4 nA across all three
+  images; running is within 0.25% of the 2026-10-07 `BITPERSEC` figures
+  (0.5073, 0.5068 uA).
+- **notes**:
+  - The check reported FAIL on `RUNNING` only because it was run with
+    `--idle-max-ua 5`, which also serves as the floor a run must clear. The
+    plan now uses 0.3 uA.
+  - It is the first time `tag_lifecycle_check.py` drove a BitTag: every attach
+    to the sleeping tag succeeded first time, after the host's SWD enter retry
+    (`aad262c4`).
+  - Earlier the same day a second BitTag, `2039354D30315012005E0068` on
+    `bittag-base-v7`, read about 55 uA idle on all three images. It had been
+    dropped in coffee that morning; the reading is leakage, not firmware.

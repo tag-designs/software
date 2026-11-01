@@ -169,17 +169,16 @@ for that case is commented out in `bt_state_run.c`, so the tag records the
 condition but does not stop on it — worth knowing before reading a run that
 ended near the floor.
 
-### The first attach to a sleeping BitTag fails
+### The first attach to a sleeping BitTag
 
-With the tag asleep (~0.12 uA), the first monitor attach fails with
-`Monitor attach failed: initial DEMCR read failed`. **That failed attach wakes
-the part**, which then sits at ~376 uA, and the next attach succeeds. So issue
-every host command **twice** against a sleeping BitTag. The first wakes it and
-reports failure; the second does the work.
+With host tools from before 2026-10-31, the first monitor attach to a sleeping
+BitTag (~0.12 uA) failed with
+`Monitor attach failed: initial DEMCR read failed`. **That failed attach woke
+the part**, which then sat at ~376 uA, and the next attach succeeded, so every
+host command had to be issued twice. The host now retries a failed SWD enter
+(`aad262c4`), and on 2026-11-01 every attach to a sleeping BitTag succeeded
+first time, including all of `tag_lifecycle_check.py`'s.
 
-- **`tag_lifecycle_check.py` cannot drive a BitTag** until it retries the
-  attach ([TODO](../TODO.md)). It fails at `[1/5] reset to idle` and leaves the
-  tag awake, so run Phase A by hand.
 - **A tag found at ~376 uA has probably just had a failed attach**, not a sleep
   fault. Reset it, let it settle, and measure again: a real failure to sleep
   survives that, and this does not.
@@ -259,17 +258,19 @@ run**.
 ## 5. Phase A — resting states
 
 The question: do `IDLE` and `FINISHED` both reach the Shutdown floor, after an
-attach, repeatably? Until the life-cycle check retries its attach (§2), take
-these four points by hand with `tag-reset`, `tag-start`, `tag-stop` and
-`joulescope_measure.py`, retrying each attach. The command below is what the
-check will run once it can:
+attach, repeatably? The life-cycle check takes all four points:
 
 ```sh
 embedded/tools/tag_lifecycle_check.py \
     --config "$CFG" \
     --run-duration 1200 --rest-duration 120 --settle 75 \
-    --idle-max-ua 5 --use-server --verbose
+    --idle-max-ua 0.3 --run-max-ua 0.584 --use-server --verbose
 ```
+
+`--idle-max-ua` is also the floor a run must clear, so it has to sit between
+BitTag's idle (~0.12 uA) and running (~0.5 uA) currents. At 5 uA a healthy run
+is failed as "not collecting"; that happened on 2026-11-01. `--run-max-ua` is
+1.15x the 0.508 uA `BITPERSEC` run current that two sessions agree on.
 
 `--rest-duration 120` rather than the 30 s default: a resting L432 draws
 sub-microamp, and a longer window is needed before the charge integration is

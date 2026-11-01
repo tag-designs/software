@@ -334,8 +334,9 @@ and [0017](../../docs/decisions/0017-offline-rebuild-build-time-layout-descripto
     `Monitor attach failed: initial DEMCR read failed`; those were qualified
     by running the phases by hand. That is the harness aborting, not the tag.
     The SWD enter retry of 2026-10-31 (`aad262c4`, `4c79551a`) fixed a
-    first-attach failure of the same shape on L4; retest the harness on these
-    three before building a workaround;
+    first-attach failure of the same shape on L4: `tag_lifecycle_check.py`
+    drove a BitTag through a whole cycle on 2026-11-01. Retest it on PresTag
+    and UIUCTag before building a workaround;
   - it checks neither calibration nor `tag-test`, so both are closed by hand.
 
 ### Host counterparts
