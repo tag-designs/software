@@ -763,6 +763,19 @@ int32_t SWD_Close()
   return 0;
 }
 
+/**
+ * @def     SWD_CONNECT_TRIES
+ * @brief   Attempts SWD_Open() makes to connect before it gives up.
+ *
+ * @details A tag asleep in Shutdown has no debug port until nRST wakes it
+ *          (about 250 us on the STM32L432), and a host can send its SWD
+ *          enter sooner than that. The attempts are 1 ms apart, so a port
+ *          that answers at once costs nothing and a tag still waking is
+ *          covered by any host, in any order of commands.
+ * @see     host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md
+ */
+#define SWD_CONNECT_TRIES 5
+
 int32_t SWD_Open()
 {
   uint32_t tmp;
@@ -770,16 +783,17 @@ int32_t SWD_Open()
 
   EPRINTF("SWD_Open start\r\n");
 
-  //
-  if (SWD_Connect(&CoreID) != SW_ACK_OK)
+  // A tag still waking from Shutdown does not answer yet; retry.
+  for (tries = 1; SWD_Connect(&CoreID) != SW_ACK_OK; tries++)
   {
-    EPRINTF("SWD_Connect retry\r\n");
-    SW_ShiftReset();
-    if (SWD_Connect(&CoreID) != SW_ACK_OK)
+    if (tries == SWD_CONNECT_TRIES)
     {
       EPRINTF("SWD_Connect failed\r\n");
       return 1;
     }
+    EPRINTF("SWD_Connect retry\r\n");
+    SW_ShiftReset();
+    chThdSleepMilliseconds(1);
   }
   EPRINTF("SWD CoreID %08x\r\n", CoreID);
 

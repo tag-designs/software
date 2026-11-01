@@ -8,21 +8,6 @@ summary: Open work on the base and programmer firmware: SWD fault diagnostics fo
 
 Delete an item when it is done.
 
-- **Retry the SWD connect in `SWD_Open()`.** A tag asleep in Shutdown has
-  no debug port until nRST wakes it (about 250 us on the L432), and the host's
-  SWD enter, sent about a millisecond after it asserts nRST, sometimes arrives
-  first: `SWD_Connect()` gets no answer, `SWD_Open()` fails, and since a plain
-  debug-register read never reopens the port, every read of the session
-  fails with 0x81. The tagcore libraries now retry the enter
-  (`host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md`),
-  but probe-rs's own ST-LINK driver, which Tag Programmer and `tag-flash` use
-  on bases with the ST-LINK fixes, and any other host software, do not. Retry
-  the first connect a few times about 1 ms apart inside `SWD_Open()`, so it
-  costs nothing when the port answers at once and covers any host and any
-  order of commands. Apply it to every `ll_swd.c` a target builds (the
-  common one and the local copies that replace it), then reflash the bench
-  bases and check with an attach loop on a BitTag in Shutdown. Keep the host
-  retry for bases in the field on older firmware.
 - **SWD fault diagnostics on field bases.** `bittag-base-v7` and
   `tag-breakout-base-l432-v1` log SWD faults on a USB serial port (branch
   `base-0x81`), which found the 0x81 cause
