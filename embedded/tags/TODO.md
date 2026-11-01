@@ -6,74 +6,19 @@ summary: Open tag firmware work -- defects found by reading code, low-power and 
 
 # Tag Firmware TODO
 
-## Before the next release (opened 2026-10-04/05)
+## Release follow-ups
 
 Background:
 [the ADC and power-floor investigation](design/investigations/2026-10-adc-and-the-power-floor.md).
 
-- ~~**Requalify all five distributed targets.**~~ **Done 2026-10-08: all five
-  PASS against the `fw-v0.6` release image**, each measured from the published
-  image rather than a local rebuild, each with its session logs attached to the
-  release.
-
-  | Target | Result | Supply | Idle | Running |
-  | --- | --- | ---: | ---: | ---: |
-  | `IMUTagNandBmp581` | **PASS** 10-07, storms included ([results](families/IMUTag/design/power.md)) | 3.693 V | 6.43 µA | 665.41 µA @ 400 Hz |
-  | `CompassTagAT25` | **PASS** 10-06 ([results](families/CompassTag/design/power-results.md)) | 2.496 V | 0.21 µA | 1.95 / 1.9478 µA @ 30 s |
-  | `UIUCTag` | **PASS** 10-08 ([results](UIUCTag/design/power-results.md)) | 2.496 V | 0.1572 µA | 0.5620 µA @ 300 s |
-  | `BitTag` | **PASS** 10-07, both log formats ([results](BitTag/design/power-results.md)) | 2.496 V | 0.1185 µA | 0.4941 µA default |
-  | `PresTag` | **PASS** 10-07, first ever ([results](families/PresTag/design/power-results.md)) | 2.496 V | 0.1118 µA | 0.3894 / 0.3908 µA @ 60 s |
-
-  **No power regression.** Running current moved +0.5% on IMUTagNandBmp581,
-  −0.5% on CompassTagAT25 and −0.14% on BitTag against their previous qualified
-  figures, on the same boards and supplies. IMUTag is the one that matters: it
-  draws three orders of magnitude more than the rest, so it alone sets whether
-  a deployment makes its battery life, and it is the part where image layout has
-  moved idle current by 150x before. Its firmware contribution is isolated
-  because the outgoing image was measured on the same board in the same session
-  before flashing.
-
-  **What the next requalification needs to know**, learned doing this one:
-
-  - **Pass the bounds for every target but IMUTag.** `tag_release_check.py`
-    defaults to a 100 µA sleep threshold, which is also the floor the run must
-    clear, so a sub-100 µA run is failed as "not collecting". `630ce14e` lets
-    the bounds through; the defaults stay because IMUTag needs them.
-  - **The harness cannot drive BitTag, PresTag or UIUCTag**, aborting on
-    `Monitor attach failed: initial DEMCR read failed`. Those were qualified by
-    running the phases by hand. **That is the harness aborting, not the tag**:
-    no run in any session reached `ABORTED`.
-  - **The harness checks neither calibration nor `tag-test`.** Close both by
-    hand. Only CompassTag carries calibration, but no target's qualification
-    includes a self-test unless one is run.
-  - **Measure the outgoing image before flashing.** One 120 s window separates
-    the firmware's contribution from the board's, and without it IMUTag would
-    have looked like a 16% idle regression that belonged to the board.
-
-- ~~**Find what lowered PresTag's resting floor.**~~ **Closed 2026-10-05: the
-  firmware did not lower it.** The September build `890a11b` was rebuilt and
-  flashed to PresTag board B, which measured **0.1267 µA** idle against
-  **0.1341 µA** for the same board on `d41b5357` -- a 5.8% spread, with the
-  dearer figure on the *current* firmware. One board, two builds, no
-  firmware effect. The bisection of `890a11b..d41b5357` is cancelled.
-
-  What remains is that September's **0.2810 µA** is unreproducible on either
-  board under any build tried. It was anomalous when it was taken: BitTag
-  carries strictly more parts in sleep -- an ADXL362 in shutdown on top of
-  PresTag's RV-3028 and L432 -- and reads **0.1169 µA**, so PresTag could not
-  legitimately rest at 2.4x BitTag. The remaining explanations are board
-  condition (surface leakage from flux residue, which is humidity- and
-  temperature-dependent; the session was taken on a hot day) and the session
-  itself. Neither is now worth chasing: **treat 0.2810 µA as suspect data, not
-  as a superseded result.** The lesson is the recording checklist, which now
-  demands a board UUID -- the September entry has none, so it cannot be
-  attributed to a board even in principle.
-- **Verify the stored-configuration write**, at least part 1 of
-  [the proposal](design/proposals/stored-config-write-is-unchecked.md) --
-  verify and report, which is safe on a shared page. A qualification taken
-  against an unverified config write can report a pass for a tag running a
-  configuration nobody chose, which is worse than a failure because it looks
-  fine.
+- **Give the stored configuration its own page (part 2).** Part 1 of
+  [the proposal](design/proposals/stored-config-write-is-unchecked.md) landed
+  in `dee8654d` and shipped in `fw-v0.6`: every target reads the write back with
+  `storedConfigVerify()` and aborts the start on a mismatch. That makes a
+  refused write loud; it does not make it succeed, because `sconfig` shares its
+  page and cannot be erased first. Part 2 places it on its own page and erases
+  before programming, as IMUTag does. It is a linker change per target and needs
+  measuring afterwards.
 - **Explain the 11% gap** between PresTag's fitted `I_rest` (0.1122 µA) and its
   measured `IDLE` (0.1261 µA). September had the two within 1.1%.
 - **Test `flash_release.py`'s PEMPTY clearing on hardware.** The conditional
@@ -313,20 +258,12 @@ not been reproduced on a tag.
 - Add host-side checks that distinguish an absent map, a bad NAND ID, an
   unreadable page, and erased or no-data cases.
 
-## Next release
+## Offline reconstruction and release tooling
 
-The release after `fw-v0.0.3`. The fixes already landed, and how each was
-verified, are in
+The fixes landed after `fw-v0.0.3`, and how each was verified, are in
 [the next-release investigation](design/investigations/2026-10-next-release-fixes-verified.md).
-
-### Remaining measurements for landed fixes
-
-- PresTag run and idle current against its flash-log entry 0
-  (`captures/2026-10-02-prestag-d1/flash-log.md`), for the mid-page halt fix.
-- CompassTag run and idle current against its entry 0
-  (`captures/2026-10-02-compasstag-d1`), for the same fix.
-- IMUTagNandBmp581 currents for the external-reset-is-a-reattach image
-  (entry 2 of `captures/2026-10-02-imutag-nand-bmp581/flash-log.md`).
+All five distributed targets passed qualification against the `fw-v0.6`
+image on 2026-10-06/08; each target's results log has the figures.
 
 ### Offline reconstruction layout
 
@@ -364,25 +301,6 @@ and [0017](../../docs/decisions/0017-offline-rebuild-build-time-layout-descripto
 
 ### Release qualification
 
-Every item above changes a tag image, so this release needs measurement, not
-argument. The procedure is
-[the release procedure](../../docs/release/release-procedure.md).
-
-- **The current checks are the gate for this release.** For each shipped
-  target, measure idle, running and finished current from a clean build of the
-  release commit, and record the numbers as the next release's baseline.
-  IMUTagNandBmp581 is still a prototype, with boards out for fab, so it is not
-  gated on `tag_release_check.py` for this release. Run that check when the
-  target ships.
-- **Qualify the never-qualified targets first, then redo IMUTagNandBmp581**
-  (agreed 2026-10-03). PresTag, CompassTagAT25 and UIUCTag have no power
-  qualification. BitTag's first was committed in 009bc134 against
-  [its plan](BitTag/design/power-test-plan.md). IMUTagNandBmp581's
-  `fw-v0.5`-era measurement was of a locally built image and needs redoing
-  against the release.
-- **Each qualification updates the release notes**, per *Publishing the
-  qualification* in the release procedure: correct the "not bench-tested"
-  sentence for each target as it is cleared.
 - **Functional checks beyond the gate:** the CompassTag resume test, the
   full-flash download test, and a `tag-capture` of each target to confirm the
   identity record and session facts read back from the capture.
@@ -402,38 +320,22 @@ argument. The procedure is
     taken from a known-good measurement;
   - a run long enough to fill a downloadable page;
   - a per-tag sample-count check.
-- Tag the release and publish the package.
+
+  Found qualifying `fw-v0.6`:
+  - its 100 µA sleep threshold is also the floor a run must clear, so every
+    target but IMUTag needs its bounds passed explicitly (`630ce14e` lets them
+    through) or a sub-100 µA run is failed as "not collecting";
+  - it cannot drive BitTag, PresTag or UIUCTag, aborting on
+    `Monitor attach failed: initial DEMCR read failed`; those were qualified
+    by running the phases by hand. That is the harness aborting, not the tag.
+    The SWD enter retry of 2026-10-31 (`aad262c4`, `4c79551a`) fixed a
+    first-attach failure of the same shape on L4; retest the harness on these
+    three before building a workaround;
+  - it checks neither calibration nor `tag-test`, so both are closed by hand.
 
 ### Host counterparts
 
 These ship separately but are needed for the firmware changes to be useful.
-
-- **`tag-start --start-timeout` does not wait.** Its help says "seconds to wait
-  for the tag to leave IDLE after the start is accepted", but the poll loop in
-  `host/commandline/tag-start.cc` breaks on the **first** failed status read:
-
-  ```c
-  read_ok = tag.GetStatus(status);
-  if (!read_ok) break;          /* gives up; the remaining tries are not used */
-  ```
-
-  A tag that sleeps straight after a start -- the normal case -- drops the
-  debug link, so the first read fails and `--start-timeout 90` waits about zero
-  seconds. The flag is inoperative in exactly the situation it was added for,
-  and the tool reports `State: not confirmed (last read: IDLE)`.
-
-  **At minimum the help text is wrong.** Whether the loop should instead keep
-  trying for the remaining timeout depends on something untested: whether the
-  monitor link recovers when the tag next wakes, without a re-attach. If it
-  does not -- hotplug does not work on this rig -- the current behaviour is
-  right and only the documentation needs fixing. Test that before changing the
-  loop. `tag-stop` has the same shape and exits 1 on a failed read.
-
-  This matters beyond tidiness: **there is currently no command-line way to
-  confirm a tag reached RUNNING.** Re-attaching to check resets the run, and
-  holding the link keeps `isMonitorEnabled()` true so the tag never sleeps.
-  That gap is what makes a UIUCTag run hard to qualify, because a download with
-  no samples cannot be distinguished from a run that never started.
 
 - **D1, offline rebuild:** decoders exist for all five distributed targets
   ([0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md)).

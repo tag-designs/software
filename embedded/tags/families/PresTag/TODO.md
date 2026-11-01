@@ -1,18 +1,20 @@
 ---
 type: worklist
 status: current
-summary: Open PresTag items -- the unchecked config write (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
+summary: Open PresTag items -- the config write that can still be refused (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
 ---
 
 # PresTag TODO
 
-- **F3: check the flash status on the config write.** `writeStoredConfig()`
-  (`src/config.c`) ignores `FLASH_Program_Array()`'s result, and
-  `erasePersistent()` never checks that its erase happened. On an L4 a program
-  into a double word that has not been erased is refused, so a stale `sconfig`
-  can survive a reset-and-start. It was seen once: `tag-start` printed
-  `period: 10` while the tag ran at 9 s. This is the reason the 2026-09
-  campaign is not a release qualification.
+- **F3: the config write can still be refused.** Part 1 of
+  [the proposal](../../design/proposals/stored-config-write-is-unchecked.md)
+  landed in `dee8654d` (`fw-v0.6`): `writeStoredConfig()` (`src/config.c`)
+  now reads the write back with `storedConfigVerify()` and the start aborts on
+  a mismatch, so a stale `sconfig` is a loud refusal rather than a tag running
+  9 s when `tag-start` printed `period: 10`. The write itself can still fail:
+  `sconfig` shares its page, so it cannot be erased first. Part 2, its own
+  page, is tracked in [the firmware worklist](../../TODO.md). Still open here:
+  `erasePersistent()` does not check that its erase happened.
 - **F2: make `godown(STOP2)` sleep or refuse.** On the L432,
   `tagPowerEnterTerminalSleep()` handles only Standby and Shutdown and returns
   silently for anything else. So a period under 10 s, where `Running()` returns

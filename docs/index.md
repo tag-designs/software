@@ -293,7 +293,7 @@ design document.
 - [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, with links to the power test plan, results, open items and host simulation.
 - [PresTag Power and Schedule Test Plan](../embedded/tags/families/PresTag/design/power-test-plan.md) *(procedure)* — PresTag power and schedule test plan -- what the firmware does in each state, the configs, the resting-state, period-sweep, schedule and data phases, the power model and the gates.
 - [PresTag Power Measurement Log](../embedded/tags/families/PresTag/design/power-results.md) *(results)* — Append-only log of every PresTag power measurement with build and conditions, plus the campaign's fit, lifetime, schedule and data verdicts -- the source for figures quoted elsewhere.
-- [PresTag TODO](../embedded/tags/families/PresTag/TODO.md) *(worklist)* — Open PresTag items -- the unchecked config write (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
+- [PresTag TODO](../embedded/tags/families/PresTag/TODO.md) *(worklist)* — Open PresTag items -- the config write that can still be refused (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
 
 ### Tags / Families / PresTag / Investigations
 
@@ -331,10 +331,11 @@ design document.
 - [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states measured and good; the 2026-10-06 run verdict was retracted after the apparent fault proved to be the measurement.
 - [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
-- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items from the 2026-10-04 bench session -- a run that stored nothing, a self-test that fails, and the internal-ADC fix that came out of it.
+- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- external_pages clobbered by every reset, an intermittent tag-test link failure, and confirming the internal-ADC fix.
 
 ### Tags / UIUCTag / Investigations
 
+- [UIUCTag Wake Fault, Retracted (2026-10)](../embedded/tags/UIUCTag/design/investigations/2026-10-uiuctag-wake-fault-retracted.md) *(investigation, closed)* — The 2026-10-04/06 UIUCTag "never wakes" and "tag-test fails" reports -- how three polled runs reached the same wrong answer, and the current trace that showed the tag was healthy.
 - [UIUCTag Bring-Up Report](../embedded/tags/UIUCTag/design/investigations/bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
 
 ### Tags / UIUCTag / Proposals
@@ -516,7 +517,7 @@ design document.
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
 - [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
-- [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - taking btviz out of the standard build, hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
+- [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 
 ### Libraries / tagcore / Investigations
 
