@@ -32,6 +32,8 @@ it. It would have failed step 1 here on the first run.
 Examples:
     tag_lifecycle_check.py --config cfg/imutag-400.json --run-duration 60
     tag_lifecycle_check.py --config cfg/imutag-100.json --idle-max-ua 50
+    tag_lifecycle_check.py --config power-configs/bittag-bitpersec.json \
+        --idle-max-ua 0.3 --run-min-ua 0.3 --run-max-ua 0.584
 """
 
 from __future__ import annotations
@@ -144,13 +146,20 @@ def settle_and_measure(python: str, settle: float, duration: float,
 
 
 def judge(point: Point, idle_max_ua: float,
-          run_max_ua: float | None = None) -> None:
+          run_max_ua: float | None = None,
+          run_min_ua: float | None = None) -> None:
     """Decide whether a measured point matches the state it was taken in.
 
     Sets @p point.verdict to "pass", "FAIL" or "unmeasured". A resting state
-    must be at or below @p idle_max_ua; the running state must be above it,
-    because a run that draws idle current collected nothing, and at or below
-    @p run_max_ua when one is given.
+    must be at or below @p idle_max_ua. The running state must be above
+    @p run_min_ua, because a run that draws idle current collected nothing,
+    and at or below @p run_max_ua when one is given.
+
+    The two lower bounds are separate because one value cannot serve both on
+    a sub-microamp tag. IMUTag rests at ~6 uA and runs at ~665 uA, so 100 uA
+    separates them; BitTag rests at 0.12 uA and runs at 0.51 uA, so a sleep
+    threshold loose enough to be safe (5 uA) also declares a healthy run
+    "not collecting" -- which a BitTag check did on 2026-11-01.
 
     An upper bound on the run exists because run current is what sets battery
     life during a deployment, and it has twice moved by ~200 uA between builds
@@ -160,17 +169,18 @@ def judge(point: Point, idle_max_ua: float,
     docs/decisions/0007-u375-run-sleep-is-stop-2.md.
 
     @param point       The point to judge, with current_ua already filled in.
-    @param idle_max_ua Threshold separating asleep from awake, in uA.
+    @param idle_max_ua Upper bound for a resting state, in uA.
     @param run_max_ua  Upper bound for the running state, or None to only
                        report it.
+    @param run_min_ua  Floor the running state must exceed, in uA, or None to
+                       use @p idle_max_ua.
     """
     if point.current_ua is None:
         point.verdict = "unmeasured"
         return
-    asleep = point.current_ua <= idle_max_ua
     if point.expect_asleep:
-        point.verdict = "pass" if asleep else "FAIL"
-    elif asleep:
+        point.verdict = "pass" if point.current_ua <= idle_max_ua else "FAIL"
+    elif point.current_ua <= (idle_max_ua if run_min_ua is None else run_min_ua):
         point.verdict = "FAIL"
     elif run_max_ua is not None and point.current_ua > run_max_ua:
         point.verdict = "FAIL"
@@ -205,7 +215,13 @@ def main() -> int:
                         "differing only in layout; without a bound that is "
                         "reported and passed")
     p.add_argument("--idle-max-ua", type=float, default=DEFAULT_IDLE_MAX_UA,
-                   help="current at or below which a state counts as asleep")
+                   help="current at or below which a resting state counts as "
+                        "asleep, in uA")
+    p.add_argument("--run-min-ua", type=float, default=None,
+                   help="the running state must draw more than this, in uA, "
+                        "or it is failed as not collecting. Defaults to "
+                        "--idle-max-ua, which suits IMUTag; a sub-uA tag needs "
+                        "its own, between its rest and run currents")
     p.add_argument("--timeout", type=float, default=180.0,
                    help="per-command timeout in seconds")
     p.add_argument("--download-timeout", type=float, default=900.0,
@@ -237,7 +253,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua, args.run_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua, args.run_min_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -250,7 +266,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.run_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua, args.run_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua, args.run_min_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -261,7 +277,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua, args.run_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua, args.run_min_ua)
         cyc.points.append(pt)
         print(f"      state {pt.state}, {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -301,7 +317,7 @@ def main() -> int:
         m = settle_and_measure(python, args.settle, args.rest_duration,
                                args.window, args.verbose)
         pt.current_ua = m.current_ua
-        judge(pt, args.idle_max_ua, args.run_max_ua)
+        judge(pt, args.idle_max_ua, args.run_max_ua, args.run_min_ua)
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
@@ -320,14 +336,20 @@ def main() -> int:
         if pt.verdict == "FAIL":
             if pt.expect_asleep:
                 cyc.failures.append(
-                    f"{pt.name}: {pt.current_ua:.2f} uA, above the "
-                    f"{args.idle_max_ua:.0f} uA sleep threshold -- the tag "
+                    f"{pt.name}: {pt.current_ua:.4g} uA, above the "
+                    f"{args.idle_max_ua:g} uA sleep threshold -- the tag "
                     f"reports {pt.state} but is not sleeping")
-            else:
+            elif (args.run_max_ua is not None
+                  and pt.current_ua > args.run_max_ua):
                 cyc.failures.append(
-                    f"{pt.name}: {pt.current_ua:.2f} uA, at or below the "
-                    f"{args.idle_max_ua:.0f} uA sleep threshold -- the tag "
-                    "was not collecting")
+                    f"{pt.name}: {pt.current_ua:.4g} uA, above the "
+                    f"{args.run_max_ua:g} uA run bound")
+            else:
+                floor = (args.idle_max_ua if args.run_min_ua is None
+                         else args.run_min_ua)
+                cyc.failures.append(
+                    f"{pt.name}: {pt.current_ua:.4g} uA, at or below the "
+                    f"{floor:g} uA run floor -- the tag was not collecting")
         elif pt.verdict == "unmeasured":
             cyc.failures.append(f"{pt.name}: no current figure produced")
 

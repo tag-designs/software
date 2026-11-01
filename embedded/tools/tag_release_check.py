@@ -112,7 +112,12 @@ def main() -> int:
                         "orders of magnitude apart. It fails every sub-uA "
                         "L432 tag: CompassTagAT25 rests at 0.23 uA and runs "
                         "at 1.96 uA, so 100 uA declares the run asleep. Pass "
-                        "1 for CompassTag -- above the floor, below the run")
+                        "1 for CompassTag -- above the floor, below the run. "
+                        "Or pass --run-min-ua to set the run's floor apart")
+    p.add_argument("--run-min-ua", type=float, default=None,
+                   help="the life-cycle run must draw more than this, in uA; "
+                        "defaults to --idle-max-ua. Forwarded to "
+                        "tag_lifecycle_check.py")
     p.add_argument("--run-duration", type=float, default=60.0,
                    help="life-cycle run window in seconds. Must span enough "
                         "sample periods to integrate: 60 s at CompassTag's "
@@ -224,6 +229,7 @@ def main() -> int:
     # keeps the life-cycle check's own defaults rather than this tool's idea
     # of them.
     for flag, value in (("--idle-max-ua", args.idle_max_ua),
+                        ("--run-min-ua", args.run_min_ua),
                         ("--rest-duration", args.rest_duration),
                         ("--settle", args.settle)):
         if value is not None:
@@ -246,6 +252,8 @@ def main() -> int:
     results["checks"]["run_duration_s"] = args.run_duration
     if args.idle_max_ua is not None:
         results["checks"]["idle_max_ua"] = args.idle_max_ua
+    if args.run_min_ua is not None:
+        results["checks"]["run_min_ua"] = args.run_min_ua
     if args.rest_duration is not None:
         results["checks"]["rest_duration_s"] = args.rest_duration
     print(f"  {'passed' if rc == 0 else 'FAILED'}")
