@@ -4,12 +4,13 @@
 streams to the copy. The original database is left unchanged so the downloaded
 log remains the record of what came from the tag.
 
-The first processors support CompassTag logs:
+The processors support CompassTag and IMUTag logs:
 
-| Processor | Added table | Function |
-| --- | --- | --- |
-| `compass-calibrated` | `CompassCalibrated` | Copies accelerometer samples and writes calibrated magnetometer x/y/z values. |
-| `compass-orientation` | `CompassOrientation` | Writes the orientation quaternion (`qw`, `qx`, `qy`, `qz`), dip, field strength, and acceleration magnitude columns. |
+| Processor | Tag | Added table | Function |
+| --- | --- | --- | --- |
+| `compass-calibrated` | CompassTag | `CompassCalibrated` | Copies accelerometer samples and writes calibrated magnetometer x/y/z values. |
+| `compass-orientation` | CompassTag | `CompassOrientation` | Writes the orientation quaternion (`qw`, `qx`, `qy`, `qz`), dip, field strength, and acceleration magnitude columns. |
+| `imu-compass-orientation` | IMUTag | `ImuCompassOrientation` | Writes the same orientation columns, one row per magnetometer sample. |
 
 ## Usage
 
@@ -55,6 +56,16 @@ dataprocessing \
   --print-summary
 ```
 
+Create an IMUTag orientation database:
+
+```sh
+dataprocessing \
+  --input imutag.db3 \
+  --output imutag-processed.db3 \
+  --processor imu-compass-orientation \
+  --print-summary
+```
+
 ## Output
 
 Each processor writes a new table, registers its columns in the stream metadata,
@@ -68,8 +79,21 @@ the quaternion, then applies its own declination and battery-direction
 convention. Files written before version 2 of the processors also have `yaw`,
 `pitch` and `roll` columns.
 
+An IMUTag samples its magnetometer once for every ten IMU samples, so
+`imu-compass-orientation` pairs each magnetometer row with the mean of the
+accelerometer rows logged in the same span. Its rows keep the magnetometer
+row's segment, sample index and time, so they line up with the raw IMUTag
+tables, and an `AccelSamples` column records how many accelerometer rows each
+mean used. A magnetometer row with no accelerometer rows beside it, or one the
+solver cannot use, is skipped and counted rather than ending the run;
+`--print-summary` and `--dry-run` report the counts. Tag View plots the result
+when it opens the processed file.
+
 ## Troubleshooting
 
 Use `--list-processors` first if a processor reports missing input tables or
-calibration data. Compass processors require a `Compass` table and a
-`Calibration` row containing magnetometer calibration parameters.
+calibration data. The CompassTag processors require a `Compass` table, and
+`imu-compass-orientation` requires `ImuMag` and `ImuAccel` tables. All of them
+require a `Calibration` row containing magnetometer calibration parameters,
+which an IMUTag gets from [Tag Calibrator](../apps/tagcalibrate.md) or
+[`tag-cal`](tag-cal.md).

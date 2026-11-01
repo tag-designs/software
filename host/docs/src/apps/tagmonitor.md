@@ -187,6 +187,13 @@ panels for the settings its firmware accepts, and nothing else.
     windows. Its **Activity Wakeup** panel shows the wake and activity fields
     that apply to its firmware; as with BitTag LE, the firmware fixes the
     other accelerometer parameters.
+- **BitTag NG** and **UIUCTag** carry the ADXL367 accelerometer. Both use
+    the schedule for the deployment interval and hibernation windows, and
+    their **Activity Wakeup** panel sets two fields: the **Wakeup Threshold**,
+    0.20 to 0.70 g in steps of 0.05 g, and the **Inactivity Samples**, 3 to
+    12. Inactivity is counted at the accelerometer's 6.25 Hz wake rate, so
+    one sample is about 160 ms and 12 samples about 1.9 s. The firmware fixes
+    the range, rate and filter.
 - **PresTag** shows the schedule with one more setting, the sampling
     **Period** in seconds. It has no separate sensor controls.
 - **IMUTag**'s schedule is a **Start Delay** in minutes: logging begins that

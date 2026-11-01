@@ -163,11 +163,26 @@ Found on the bench, none blocking the release, to fix before or after it:
   (`host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md`).
 - An unplug during an L432 session logs about 2,500 identical USB errors in
   2.5 s, and a detach from a running U375 about 50; the rate limit added for
-  the 0x81 reads does not cover them.
+  the 0x81 reads does not cover them. **Fixed 2026-11-01:** the rate limit
+  now covers every link failure (USB transfers and memory accesses as well
+  as debug-register reads), and `LIBUSB_ERROR_NO_DEVICE` closes the probe so
+  the monitor stops polling it (`host/libraries/tagcore-rs/design/architecture.md`,
+  Logging), and Tag Monitor shows itself detached when a poll loses the
+  probe. On the bench the same day, `tag-side-channel-check --unplug` on the
+  BitTag V6 (bittag-base-v7) and on the IMUTagNandBmp581 each logged 5 lines
+  and still reported a transport failure, and an unplug while the IMUTag was
+  RUNNING logged 5 lines, its detach stop included. Tag Monitor showed itself
+  detached after an unplug, and a detach from a running U375 with the base
+  still plugged in passed as well.
 - `tag-test` labels the external flash size, which is in bytes, "kb" (the
-  C++ tool does too).
+  C++ tool does too). **Fixed 2026-11-01:** both tools print KB for the
+  internal flash and bytes for the external.
 - After Program, Tag Programmer's Tag row names the old firmware until the
-  next attach.
+  next attach. **Fixed 2026-11-01:** the read of `TagInfo` after a session
+  updated the tag panel but not the Tag row, which was set only at attach;
+  every `TagInfo` read now sets both, and a tag that does not answer after
+  programming is forgotten rather than shown with its old firmware. Checked
+  on the bench the same day.
 
 #### Bench checklist
 
