@@ -568,6 +568,7 @@ design document.
 
 - [tagprobe (Rust)](../host/libraries/tagprobe-rs/README.md) — tagprobe - programming, connect checks and flash read-back for tags through a base, on probe-rs, with a field-safe ST-LINK driver for bases whose firmware predates the identify command.
 - [tagprobe design](../host/libraries/tagprobe-rs/design/architecture.md) — How tagprobe programs tags through probe-rs - choosing a driver from the base's identity, how the field-safe driver maps probe-rs's DAP model onto the commands every base supports, one session per operation under reset, the program sequence (erase plan, verify, PEMPTY, start), and the threading and base-sharing rules callers must keep.
+- [tagprobe TODO](../host/libraries/tagprobe-rs/TODO.md) *(worklist)* — Open work in tagprobe - setting the boot option bytes of a virgin STM32U375 so it boots from flash after programming.
 
 ### Proposals
 
