@@ -1003,3 +1003,48 @@ was open; `fw-v0.6` fixes it.
   driving BitTag and UIUCTag. No measurement failed and no run failed. Note the
   irony: the power cycle restored proper deep sleep, and a more deeply sleeping
   tag is harder to attach to.
+
+### 2026-11-01  RTC relock, download prescaler and L4 monitor fixes — set_rtc hang reproduced and fixed
+
+- **build**: branch `bittag-prestag-fixes` at `aba5d2ad`, against `main` at
+  `afa3a6f8` built the same way (the five shared firmware sources and
+  `src/datalog.c` checked out at `afa3a6f8`). Both images report repo hash
+  `aba5d2ad`, the `HEAD` at build time. Checked in the listings: the baseline
+  writes `RTC_WPR = 0xFF` in `tagStopRtcTickerInit()` and `stopMilliseconds()`
+  and waits for `INITF` without bound; the branch does neither. Development
+  builds: a comparison, not a qualification.
+- **board**: PresTagv3, UUID `20333050364150040063005F`, found on `fw-v0.6`,
+  IDLE, empty state log. Base `bittag-base-v7`.
+- **conditions**: supply 2.4960-2.4961 V, 120 s windows,
+  `joulescope_server.py --use-server`, Tag Monitor and the desktop app closed
+  for every window.
+- **idle**, after `tag-reset --set-rtc` and a 16 s settle:
+
+  | Image | `IDLE` | `tag-test` |
+  | --- | ---: | --- |
+  | untouched, before any attach | 0.1124 / 0.1114 uA | |
+  | `fw-v0.6`, outgoing | 0.1104 / 0.1102 uA | not run |
+  | `main` `afa3a6f8` | 0.1101 / 0.1098 uA | `ALL_PASSED` |
+  | branch | 0.1100 / 0.1098 uA | `ALL_PASSED` |
+
+- **the set_rtc hang**: in one Tag Monitor session, Start, ~20 s, Stop, Erase,
+  Synchronize Clock.
+  - Baseline: Tag Monitor showed `IDLE (no ans...)` and could not be quit (it
+    was killed; see the Tag Monitor TODO). The tag then drew **326.9 uA**
+    untouched until the next attach reset it: stuck in `rtc_enter_init()`.
+  - Branch: the clock set completed and Tag Monitor stayed live; untouched
+    afterwards **0.1104 / 0.1105 uA**.
+
+  The same steps through separate command-line tools (`tag-start`, then
+  `tag-reset --set-rtc` on the running tag) did **not** hang the baseline: the
+  reattach reboots the tag, and ChibiOS unlocks the RTC at boot. The hang needs
+  the start and the clock set in one session. Nor did the baseline keep waking
+  in IDLE after a run stopped and erased in a reattach session: 0.1100 uA.
+- **download** (`src/datalog.c` clock switch): a 12-minute run at 10 s on the
+  branch, 68 samples on 2 pages, every gap 10 s, downloaded with the branch,
+  then with the baseline flashed over the same log, then with the branch
+  again. Pressure, Temperature, Voltage and states tables identical by hash
+  across all of them. Wall time 0.30-0.37 s branch, 0.29-0.31 s baseline: two
+  pages are too few to show the restored flash wake delay.
+- **verdict**: the RTC relock caused the 2026-10-26 hang, and the branch fixes
+  it; no image moved idle current; the download is unchanged.

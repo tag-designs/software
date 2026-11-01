@@ -37,8 +37,10 @@ not been reproduced on a tag.
   is on branch `bittag-prestag-fixes`: a request that arrives while one is in
   flight leaves `MON_REQ` alone, and a plain `get_status` while the main thread
   is in its guarded region is answered from cached state in the handler.
-  Still to verify on hardware, per the proposal: `tag-test` on each L4 target,
-  `qtmon_session_check` on a UIUCTag, and resting current unchanged. Step 2
+  On 2026-11-01 BitTag and PresTag passed `tag-test` with resting current
+  unchanged, and a PresTag Tag Monitor session stayed live through Start, Stop,
+  Erase and Synchronize Clock. Still to verify, per the proposal: `tag-test` on
+  CompassTag and UIUCTag, and `qtmon_session_check` on a UIUCTag. Step 2
   (the mailbox) waits on whether bursts remain.
   Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
   session-clock fix), reading `common/core/src/handlersL4.c` and `monitor.c`
@@ -94,29 +96,9 @@ not been reproduced on a tag.
   2026-10-26, see `docs/shared/monitor-interface.md`). PresTag is fixed on
   branch `bittag-prestag-fixes` by `st_load_prescaler()` in
   `families/PresTag/src/datalog.c`, which forces the update and restores the
-  counter; port it to the other three once a PresTag download has been checked
-  on hardware (full download identical to the previous image's, and the
-  download time, which grows by the now-honest flash wake delays).
-- **PresTag SetRtc hang after a start: fixed, not yet verified on a PresTag.**
-  On PresTag and PresTagRaw (`TAG_STOP_RTC_TICKER`) the stop-mode RTC ticker
-  relocked the RTC (`WPR = 0xFF`) after `tagStopRtcTickerInit()` and every
-  `stopMilliseconds()`. ChibiOS unlocks it once in `rtc_lld_init()` and
-  assumes it stays unlocked, so after a start every ChibiOS RTC write was
-  ignored until reset: a later `set_rtc` spun forever on `INITF` with BASEPRI
-  raised (PresTag 92, UID 2033305036415004003C0061, fw-v0.6, 2026-10-26,
-  `captures/2026-10-26-prestag92-rtc-lock/`), and `disableTicker()` /
-  `disableAllAlarms()` after a run did nothing, leaving `RTC_CR` 0x4524 --
-  wakeup timer and alarm A still enabled -- in IDLE.
-
-  Fixed on branch `bittag-prestag-fixes`: the relock is gone, and
-  `rtc_enter_init()` in `common/rtc/src/hal_rtc_lld.c` gives up after a
-  bounded wait. With the RTC unlocked, `set_rtc` after a start-stop-erase is
-  legitimate, so it is not refused. **Still to do on a PresTag:** reproduce
-  the 2026-10-26 sequence (start, stop, erase, `tag-start --set-rtc`) and
-  confirm it completes; capture after stop and erase and confirm `RTC_CR` has
-  `WUTE` and `ALRAE` clear; measure IDLE after a run without a reset against
-  IDLE after a reset; then `tag_lifecycle_check.py`, since this is the
-  stop-mode path.
+  counter, and a PresTag download was identical to the previous image's on
+  hardware (2026-11-01, [results](families/PresTag/design/power-results.md)).
+  Port it to the other three.
 - **The state-marker log stops silently when full.** `recordState()`
   (`common/core/src/persistent.c`) stops writing once `sEpoch[]` is full: 24
   entries on L4, 20 on U3. The only notice is a scratchpad `ESLF` record, and
