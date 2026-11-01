@@ -13,8 +13,10 @@ summary: Open BitTag power-qualification work -- tool support, unmeasured phases
   The SWD enter retry of 2026-10-31 (`aad262c4`, `4c79551a`) may already fix
   this: it recovers a failed enter on a BitTag waking from Shutdown. Retest
   before adding a retry to the tool.
-- **Run Phase B2 (format independence, `bittag-default.json`) and Phase D
-  (activity sensitivity).** Neither was run in the first qualification.
+- **Run Phase D (activity sensitivity).** It has never been run in any
+  qualification: start a run, move the tag for a known period, and confirm the
+  activity counts respond. Phase B2 (format independence) closed on
+  2026-10-07 ([results](design/power-results.md)).
 - **Set a run-current bound and add BitTag to `tag_release_check.py`** once a
   second board or session agrees with the first. About 0.584 uA (1.15x the
   measured 0.5082 uA) would match IMUTag's margin. Release-check coverage for
