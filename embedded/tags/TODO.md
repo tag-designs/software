@@ -32,9 +32,14 @@ not been reproduced on a tag.
 ## Defects
 
 - **The L4 DebugMonitor handler can clear the MON_REQ of a request still
-  pending.** The fix, and a move to the U3 mailbox if bursts remain, is
-  proposed in
-  [l4-monitor-robustness.md](common/core/design/proposals/l4-monitor-robustness.md).
+  pending.** Step 1 of
+  [l4-monitor-robustness.md](common/core/design/proposals/l4-monitor-robustness.md)
+  is on branch `bittag-prestag-fixes`: a request that arrives while one is in
+  flight leaves `MON_REQ` alone, and a plain `get_status` while the main thread
+  is in its guarded region is answered from cached state in the handler.
+  Still to verify on hardware, per the proposal: `tag-test` on each L4 target,
+  `qtmon_session_check` on a UIUCTag, and resting current unchanged. Step 2
+  (the mailbox) waits on whether bursts remain.
   Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
   session-clock fix), reading `common/core/src/handlersL4.c` and `monitor.c`
   after bursts of base 0x81 errors during Synchronize Clock and Self-Test:

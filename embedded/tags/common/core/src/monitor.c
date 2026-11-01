@@ -671,7 +671,7 @@ static bool monitor_is_fast_status_request(int len)
 /**
  * @brief Encode a cached status ACK without blocking on sensors or RTC.
  *
- * @details The STM32U3 monitor interrupt uses this while the main thread has
+ * @details The monitor interrupt (STM32U3 and STM32L4) uses this while the main thread has
  *          marked @c pState->safe false. It reports retained runtime state,
  *          the last voltage/temperature values captured by the normal status
  *          path, and the last timestamp captured by the main loop, avoiding
@@ -680,7 +680,8 @@ static bool monitor_is_fast_status_request(int len)
  *          therefore appear stale while a long operation is running, which is
  *          preferable to blocking the host monitor until that operation yields.
  *
- * @warning Intended only for the U3 IRQ fast path. Do not add hardware access,
+ * @warning Intended only for the monitor IRQ fast path, called when no other
+ *          request is in flight. Do not add hardware access,
  *          blocking calls, debug-log drains, or state-machine side effects.
  *
  * @param[in] len Number of request bytes in ProtoBuf.

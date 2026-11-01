@@ -61,7 +61,8 @@ extern int proto_eval(int, uint32_t *);
 /**
  * @brief Try to answer a monitor status request from cached runtime state.
  *
- * @details Used by the STM32U3 shared-memory path when the main state-machine
+ * @details Used by both monitor interrupts, the STM32U3 shared-memory path and
+ *          the STM32L4 DebugMonitor handler, when the main state-machine
  *          thread is inside a non-preemptible operation. Returns zero for all
  *          non-status requests so the caller can keep the normal cooperative
  *          monitor path.
