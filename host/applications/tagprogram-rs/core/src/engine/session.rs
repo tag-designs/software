@@ -48,7 +48,7 @@ use tagcore::proto::{TagState, TagType, TestReq, TestResult};
 use tagprobe::Progress;
 
 use super::Msg;
-use super::station::{Check, Station, state_name, test_name};
+use super::station::{Check, Level, Station, state_name, test_name};
 use crate::model::flashplan::Erase;
 use crate::model::image::{FirmwareImage, compare_image_flash, image_flash_range, same_commit};
 use crate::model::record::ProgramRecord;
@@ -904,8 +904,14 @@ impl Station {
     /// qtprogram's `Station::writeRecord`.
     ///
     /// First reattaches if need be -- resetting the tag -- to refresh its info
-    /// and status, and resumes the status poll. A program session that never
-    /// reached the programmer writes no row: it alerts with its message. Otherwise
+    /// and status, and resumes the status poll. The refreshed info also sets
+    /// the Tag row ([`Station::set_tag_info`]) and re-checks the firmware, so
+    /// after programming both name the new image. If a session that reached
+    /// the programmer cannot read the info back, the tag is forgotten and the
+    /// Tag row asks for an attach, rather than keep naming the old firmware.
+    ///
+    /// A program session that never reached the programmer writes no row: it
+    /// alerts with its message. Otherwise
     /// it appends a row (for a retest, image fields only when the flash was
     /// compared), counts it in the batch, sets the result line, and alerts for
     /// anything but a written OK. A row that cannot be written is logged in full
@@ -919,10 +925,28 @@ impl Station {
         if (self.attached() || self.reattach())
             && let Ok(info) = self.tag.tag_info()
         {
-            self.info = Some(info);
+            self.set_tag_info(info);
             self.read_status();
             self.check_tag_state();
             self.resume_status_poll();
+            self.check_firmware();
+        } else if self.session.as_ref().is_some_and(|s| s.programmed) {
+            // The flash was written (or partly written), so the info read
+            // before programming no longer describes the tag. Forget it
+            // rather than name the old firmware until the next attach.
+            self.forget_tag();
+            self.set(
+                Check::Tag,
+                Level::Warn,
+                "Programmed, but the firmware did not answer afterwards. Press Attach to read it.",
+            );
+            self.set(Check::TagState, Level::Pending, "");
+            self.set(
+                Check::Swd,
+                Level::Pending,
+                "Press Attach to connect (this resets the tag).",
+            );
+            self.check_firmware();
         }
         let s = self.session.as_ref().expect("a session");
         let mut message = s.message.clone();

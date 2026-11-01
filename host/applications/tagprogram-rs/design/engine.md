@@ -257,8 +257,12 @@ write-protected until reset, so a later SetRtc hangs the firmware
 (`embedded/tags/TODO.md`).
 
 `finish` writes the record row, reads the tag's info again, and resumes the
-status poll. Anything but OK raises a warning alert. Cancel is accepted while
-the session is stopping, erasing or waiting for a power cycle. It is refused
+status poll. The info read again sets the Tag row and re-checks the firmware,
+so after programming both name the new image. If the tag does not answer
+after programming, the tag is forgotten and the Tag row asks for an attach;
+the old firmware is never shown as current. Anything but OK raises a
+warning alert. Cancel is accepted while the session is stopping, erasing or
+waiting for a power cycle. It is refused
 while the programmer runs, because an interrupted flash write is worse than
 any wait.
 

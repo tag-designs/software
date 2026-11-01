@@ -1017,12 +1017,7 @@ impl Station {
         if self.tag.attach(&base)
             && let Ok(info) = self.tag.tag_info()
         {
-            self.set(
-                Check::Tag,
-                Level::Ok,
-                format!("{}, {}", info.board_desc, info.githash),
-            );
-            self.info = Some(info);
+            self.set_tag_info(info);
             self.read_status();
             self.check_tag_state();
             self.detect_target();
@@ -1043,6 +1038,21 @@ impl Station {
         );
         self.set(Check::TagState, Level::Pending, "");
         self.check_firmware();
+    }
+
+    /// Takes `info` as the attached tag's `TagInfo`: stores it and sets the
+    /// Tag row to its board and commit.
+    ///
+    /// Every read of `TagInfo` that replaces [`Station::info`] goes through
+    /// here, so the Tag row and the tag panel always name the same firmware
+    /// -- after programming, the new image rather than the one it replaced.
+    pub(crate) fn set_tag_info(&mut self, info: TagInfo) {
+        self.set(
+            Check::Tag,
+            Level::Ok,
+            format!("{}, {}", info.board_desc, info.githash),
+        );
+        self.info = Some(info);
     }
 
     /// Re-attaches to the base after programming or a read-back; true if the
@@ -1110,7 +1120,7 @@ impl Station {
         }
         match self.tag.tag_info() {
             Ok(info) => {
-                self.info = Some(info);
+                self.set_tag_info(info);
                 self.read_status();
                 self.check_tag_state();
                 true
