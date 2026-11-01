@@ -11,6 +11,13 @@ summary: Open tag firmware work -- defects found by reading code, low-power and 
 Background:
 [the ADC and power-floor investigation](design/investigations/2026-10-adc-and-the-power-floor.md).
 
+**Firmware changes go in as one batch (decided 2026-11-01).** Most items in
+this worklist change the image of most tags, and every changed image needs
+requalifying. Collect them -- including the TIM2 prescaler port, the stored
+configuration's own page, the state-marker overflow and reset markers, PresTag
+F2/F3 and the L4 monitor's remaining checks -- and qualify once, rather than
+landing and measuring them one at a time. Host tool fixes are not held back.
+
 - **Give the stored configuration its own page (part 2).** Part 1 of
   [the proposal](design/proposals/stored-config-write-is-unchecked.md) landed
   in `dee8654d` and shipped in `fw-v0.6`: every target reads the write back with
