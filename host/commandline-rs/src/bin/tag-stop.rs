@@ -87,6 +87,7 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<(), String> {
 
 /// Attaches, settles, stops the tag and polls for FINISHED or ABORTED.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

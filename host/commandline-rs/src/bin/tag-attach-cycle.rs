@@ -89,6 +89,7 @@ fn print_status(cycle: u32, status: &Status) {
 
 /// Installs the Ctrl-C handler, then runs the attach/detach cycles.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let _ = ctrlc::set_handler(|| STOP_REQUESTED.store(true, Ordering::SeqCst));
     let cli = Cli::parse();
     init_logging(&cli.base);

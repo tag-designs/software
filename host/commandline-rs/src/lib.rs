@@ -119,6 +119,25 @@ pub fn exit_on_interrupt() {
     let _ = ctrlc::set_handler(|| std::process::exit(1));
 }
 
+/// Lets a closed stdout end the tool quietly, as it ends the C++ tools.
+///
+/// Rust ignores SIGPIPE, so a write to a closed pipe (`tag-info | head`)
+/// fails, and `println!` panics on the failure and exits with status 101.
+/// Restoring the default action makes such a write end the process with
+/// SIGPIPE instead, without a message. Call it first in `main`. Like
+/// Ctrl-C (see [`exit_on_interrupt`]), it ends the process without
+/// running destructors, so no detach is sent to the base.
+///
+/// On Windows, which has no SIGPIPE, it does nothing.
+pub fn restore_sigpipe() {
+    #[cfg(unix)]
+    // SAFETY: called at the start of `main`, before any other thread exists;
+    // SIG_DFL is a valid disposition for SIGPIPE.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+}
+
 /// Finds the ST-LINK the arguments select, or exits.
 ///
 /// With one base connected and no `--base`, that base is used. Otherwise

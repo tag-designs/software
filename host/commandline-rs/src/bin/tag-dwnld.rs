@@ -61,7 +61,7 @@
 //! To check a change, download the same finished tag with both tools and
 //! `cmp` the databases; downloading does not change the tag.
 
-use std::io::Write as _;
+use std::io::{IsTerminal as _, Write as _};
 use std::process::ExitCode;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -230,8 +230,15 @@ fn read_header(tag: &Tag) -> Result<LogHeader, String> {
 }
 
 /// Draws the 40-column progress bar on stdout, as the C++ does.
+///
+/// The bar redraws in place with a carriage return, which only a terminal
+/// honours. When stdout is a file or a pipe each redraw would become a line
+/// of its own, one per request, so there only the completed bar is drawn.
 fn print_progress(current: usize, total: usize) {
     const WIDTH: usize = 40;
+    if current < total && !std::io::stdout().is_terminal() {
+        return;
+    }
     let ratio = if total > 0 {
         (current as f64 / total as f64).min(1.0)
     } else {
@@ -341,6 +348,7 @@ fn print_profile(
 
 /// Attaches, brings the tag to a downloadable state, and writes the log.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
     taglogwriter::set_debug(cli.base.debug);

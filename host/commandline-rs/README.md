@@ -216,10 +216,11 @@ passing:
   good calls) and `--start-running` (Start refused with PERM, no transport
   failure).
 
-Seen along the way, not failures: an attach seconds after another tool's
-detach sometimes fails on its first debug read (status 0x81; three times on
-the BitTag) and the tools do not retry it as Tag Programmer does; an unplug
-on the L432 logs about 2,500 `LIBUSB_ERROR_NO_DEVICE` lines in 2.5 s; a
-detach from a running U375 logs about 50 `error return 81` lines; and
-`tag-test` labels the external flash size, which is in bytes, "kb", as the
-C++ tool does.
+Seen along the way, not failures, and fixed since: an attach seconds after
+another tool's detach sometimes failed on its first debug read (status 0x81;
+three times on the BitTag; tagcore now retries the SWD enter); an unplug on
+the L432 logged about 2,500 `LIBUSB_ERROR_NO_DEVICE` lines in 2.5 s and a
+detach from a running U375 about 50 `error return 81` lines (tagcore now
+logs the first failure of a run and a count, and closes a probe that has
+gone); and `tag-test` labelled the external flash size, which is in bytes,
+"kb" (it now prints KB for internal flash and bytes for external).

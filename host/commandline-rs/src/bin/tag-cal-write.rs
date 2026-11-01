@@ -55,6 +55,7 @@ fn identity_constants() -> CalibrationConstants {
 
 /// Attaches (resetting the tag) and writes [`identity_constants`].
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

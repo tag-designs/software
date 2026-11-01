@@ -492,6 +492,7 @@ fn print_summary(capture: &Capture, info: &TagInfo, status: &Status, voltage: f3
 /// Selects a base, attaches, reads the four responses and writes the
 /// fixture.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let capture = Capture::from(Cli::parse());
     // Quiet unless --debug.
     init_logging_at(if capture.debug {

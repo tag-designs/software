@@ -104,6 +104,7 @@ fn rtc_drift(tag: &Tag) -> Option<f32> {
 /// Attaches, prints the tag's information and clock drift, sets the clock,
 /// prints the state log, runs the self-test and reports its result.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 
@@ -132,8 +133,8 @@ fn main() -> ExitCode {
     println!("Tag Type: {}", info.tag_type);
     println!("Board name: {}", info.board_desc);
     println!("Build time and date: {}", info.build_time);
-    println!("Internal Flash size: {}kb", info.intflashsz);
-    println!("External Flash size: {}kb", info.extflashsz);
+    println!("Internal Flash size: {} KB", info.intflashsz);
+    println!("External Flash size: {} bytes", info.extflashsz);
     println!("Repo: {}", info.gitrepo);
     println!("Repo hash: {}", info.githash);
     println!("UUID: {}", info.uuid);

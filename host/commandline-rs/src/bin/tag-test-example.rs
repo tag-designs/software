@@ -39,6 +39,7 @@ struct Cli {
 /// Attaches, sets the clock, waits 2 s and prints the clock error in
 /// seconds.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

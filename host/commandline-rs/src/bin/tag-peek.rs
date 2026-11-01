@@ -65,6 +65,7 @@ fn parse_address(text: &str) -> Option<u32> {
 /// Attaches once and reads every address given, in order (`--addr` values
 /// first, then positional ones).
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

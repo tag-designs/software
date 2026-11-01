@@ -348,6 +348,7 @@ fn select_device(link: &LinkAdapt, args: &BaseArgs) -> UsbDev {
 /// Attaches through the raw handshake, prints what it read and ends the
 /// session with MONITORSTOP.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

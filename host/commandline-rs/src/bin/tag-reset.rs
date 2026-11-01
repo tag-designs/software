@@ -99,6 +99,7 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<Status, String> {
 /// Attaches, settles, stops an acquiring tag, erases a stopped one, checks
 /// it ended IDLE and optionally sets its clock.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

@@ -398,6 +398,7 @@ fn finish() -> ExitCode {
 /// Validates the options, attaches and runs the checks in order, ending with
 /// the detach check.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

@@ -134,6 +134,7 @@ fn fail(message: impl std::fmt::Display) -> ExitCode {
 /// Attaches, settles, optionally sets the clock, starts an IDLE tag with the
 /// chosen configuration and polls until it leaves IDLE.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

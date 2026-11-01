@@ -273,6 +273,7 @@ fn print_fields(info: &TagInfo) {
 /// Parses the options, attaches (resetting the tag) and prints the report
 /// or, with `--json`, the JSON object.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
     exit_on_interrupt();

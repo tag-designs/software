@@ -89,6 +89,7 @@ fn stream_samples(tag: &Tag) {
 /// Attaches, checks the tag is IDLE, syncs its clock, starts calibration,
 /// streams until Ctrl-C and stops the tag.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
 

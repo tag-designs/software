@@ -196,6 +196,7 @@ fn import(
 /// Parses the options, reads the header and imports, reporting as the C++
 /// tool does.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     let fail = |error: String| {
         eprintln!("tag-log-import: {error}");

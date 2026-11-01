@@ -20,6 +20,10 @@ taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optio
 # Named directly only so build.rs receives DEP_TAGCORE_C_LIB_DIR for the rpath.
 tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }
 
+[target.'cfg(unix)'.dependencies]
+# Restores the default SIGPIPE action, so `tag-info | head` ends quietly.
+libc = "0.2.191"
+
 [features]
 # tag-dwnld and tag-log-import write their logs through the C++ writer, so it needs libtagcore_c
 # built by CMake (-DBUILD_TAGCORE_C=ON) and TAGCORE_C_LIB_DIR naming it. Off

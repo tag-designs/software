@@ -344,6 +344,7 @@ fn read(
 /// Parses the command line, runs the command and reports a failure on
 /// stderr.
 fn main() -> ExitCode {
+    tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging_at(if cli.debug {
         LevelFilter::Debug
