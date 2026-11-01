@@ -185,6 +185,12 @@ with a short timeout and treats anything else as "unidentified". tagcore's
 `LinkAdapt::BaseIdentity()` does this, and `tag-info` prints the result as
 its first line. The command touches no target state.
 
+## Labels on Bases vs Boards:
+
+- BitTag Base V5C -- bittag-base-jlcpcb-v2
+- BitTag Base V6  -- bittag-base-jlcpcb-v3
+- BitTag Base V7  -- bittag-base-v7
+
 ## Maintenance Notes
 
 - Update this README when adding, removing, or renaming a base target.
