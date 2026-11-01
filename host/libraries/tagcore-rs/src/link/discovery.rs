@@ -245,6 +245,9 @@ impl LinkAdapt {
             );
 
             self.handle = Some(handle);
+            // A new probe starts a new session: no failure run, not lost.
+            self.failure_run = 0;
+            self.probe_lost = false;
             return true;
         }
         debug!("No matching devices found");

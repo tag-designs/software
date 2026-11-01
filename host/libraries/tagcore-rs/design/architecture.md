@@ -104,17 +104,31 @@ code, and its message). A caller that retries should retry only the first.
 All messages go through the `log` facade, at the levels the C++ uses. Tools
 install `env_logger`; Tag Programmer forwards them to its log pane.
 
-Failed debug-register reads are rate-limited (`link/target.rs`):
+Link failures are rate-limited (`link/mod.rs`, `note_failure`). One run
+counts every failed USB transfer and every target access the probe reports
+failed (debug-register status, memory last-R/W status):
 
 1. the first failure in a run is an ERROR;
 2. the rest are DEBUG;
-3. the first success after two or more failures logs a WARN with the count.
+3. the next successful memory or debug-register access, or the detach, logs
+   a WARN with the count if the run was two or more long.
 
 A tag that is booting or held in reset fails every poll. After probe-rs
 releases a field base, a burst of reads failing with ST-LINK status `0x81`
-is normal. Without the limit, one reconnect wrote hundreds of identical errors.
-The C++ does not rate-limit; this is a deliberate difference in logging only.
-The calls and their results are the same.
+is normal, and a U375 that drops into standby on a detach fails the rest of
+the MONITORSTOP poll. Without the limit, one reconnect wrote hundreds of
+identical errors, and a U375 detach about 50.
+
+`LIBUSB_ERROR_NO_DEVICE` (the base unplugged) closes the probe at once, with
+one ERROR, and `is_attached()` turns false. The monitor's poll loops check
+it after a failed read and give up, so a call in progress ends instead of
+polling a missing device to its timeout; that wrote about 2,500 identical
+errors in 2.5 s on an L432. Every later request fails as not attached until
+the caller attaches again.
+
+The C++ neither rate-limits nor closes the probe on `NO_DEVICE`; these are
+deliberate differences in logging and in how soon an unplug ends a call. The
+calls and their results are otherwise the same.
 
 ### Instrumentation
 

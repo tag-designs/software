@@ -53,8 +53,10 @@ impl TagMonitor {
     /// `TagMonitor::WaitL4MonitorIdle`.
     ///
     /// Returns `false`, with an error logged, when a request is still
-    /// pending after `timeout_ms`; a failed DEMCR read is retried within the
-    /// timeout. Blocks for up to `timeout_ms`.
+    /// pending after `timeout_ms`, or at once when the probe has gone (see
+    /// [`LinkAdapt::is_attached`](crate::LinkAdapt::is_attached)); any other
+    /// failed DEMCR read is retried within the timeout. Blocks for up to
+    /// `timeout_ms`.
     pub(super) fn wait_l4_idle(&mut self, timeout_ms: u32) -> bool {
         let mut last = None;
         for i in 0..=timeout_ms {
@@ -66,6 +68,10 @@ impl TagMonitor {
                     debug!("previous monitor request finished after {i} ms");
                 }
                 return true;
+            }
+            if !self.is_attached() {
+                error!("probe lost while waiting for the previous monitor request");
+                return false;
             }
             sleep(ms(1));
         }
@@ -93,7 +99,9 @@ impl TagMonitor {
     /// limit is about 120 s in practice, sized for the slowest firmware
     /// requests. Failed DEMCR reads during the wait are not
     /// fatal (the link rate-limits their logging) and use up polls like any
-    /// other. On a timeout [`report_l4_timeout`](Self::report_l4_timeout)
+    /// other, unless the probe has gone (`LIBUSB_ERROR_NO_DEVICE`, which
+    /// closes it): then the call returns `None` at once, without the timeout
+    /// report. On a timeout [`report_l4_timeout`](Self::report_l4_timeout)
     /// runs, which can halt and resume the core or drop the session.
     ///
     /// Side effects: writes DCRDR and DEMCR (setting MON_EN, MON_PEND,
@@ -156,6 +164,12 @@ impl TagMonitor {
         let mut answered = false;
         for _ in 0..call_timeout_ms {
             match self.link.read_debug32(DEMCR) {
+                // The probe has gone (unplugged): nothing can answer, and
+                // the timeout report could read nothing either.
+                None if !self.is_attached() => {
+                    error!("probe lost during monitor call op={name}(0x{operation:x})");
+                    return None;
+                }
                 // read_debug32 logs the failure; keep polling.
                 None => {}
                 Some(d) => {
@@ -177,6 +191,10 @@ impl TagMonitor {
         for _ in 0..MONITOR_RESULT_TIMEOUT_MS {
             if let Some(result) = self.link.read_debug32(DCRDR) {
                 return Some(result);
+            }
+            if !self.is_attached() {
+                error!("probe lost reading monitor result op={name}(0x{operation:x})");
+                return None;
             }
             sleep(ms(1));
         }

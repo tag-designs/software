@@ -15,7 +15,7 @@
 
 use std::time::{Duration, Instant};
 
-use log::{debug, error};
+use log::{debug, error, log};
 
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns, libusb_name};
 
@@ -155,18 +155,21 @@ impl LinkAdapt {
     ///
     /// Blocks for up to [`USB_TRANSFER_TIMEOUT`]. Returns false, with the
     /// libusb error or the short count logged, if no probe is open, the
-    /// transfer fails, or fewer bytes arrive than asked for. Half of the C++
+    /// transfer fails, or fewer bytes arrive than asked for. A failure is
+    /// logged through the failure run (see [`LinkAdapt::note_failure`]),
+    /// and `LIBUSB_ERROR_NO_DEVICE` closes the probe (see
+    /// [`transfer_failed`](Self::transfer_failed)). Half of the C++
     /// `usb_xfer`.
     fn usb_in(&mut self, buf: &mut [u8]) -> bool {
         let Some(handle) = &self.handle else {
-            error!("USB transfer with no device open");
+            self.no_device_open();
             return false;
         };
         let start = Instant::now();
         let res = match handle.read_bulk(self.ep_in, buf, USB_TRANSFER_TIMEOUT) {
             Ok(n) => n,
             Err(e) => {
-                error!("{}", libusb_name(&e));
+                self.transfer_failed(&e);
                 return false;
             }
         };
@@ -176,7 +179,8 @@ impl LinkAdapt {
             self.stats.usb_in_ns += elapsed_ns(start);
         }
         if res != buf.len() {
-            error!("Transferred {res} bytes instead of {}", buf.len());
+            let level = self.note_failure();
+            log!(level, "Transferred {res} bytes instead of {}", buf.len());
             return false;
         }
         true
@@ -186,17 +190,18 @@ impl LinkAdapt {
     ///
     /// Blocks for up to [`USB_TRANSFER_TIMEOUT`]. Returns false, with the
     /// reason logged, if no probe is open, the transfer fails, or it is
-    /// short. The other half of the C++ `usb_xfer`.
+    /// short. Failures are logged and handled as in
+    /// [`usb_in`](Self::usb_in). The other half of the C++ `usb_xfer`.
     fn usb_out(&mut self, buf: &[u8]) -> bool {
         let Some(handle) = &self.handle else {
-            error!("USB transfer with no device open");
+            self.no_device_open();
             return false;
         };
         let start = Instant::now();
         let res = match handle.write_bulk(self.ep_out, buf, USB_TRANSFER_TIMEOUT) {
             Ok(n) => n,
             Err(e) => {
-                error!("{}", libusb_name(&e));
+                self.transfer_failed(&e);
                 return false;
             }
         };
@@ -206,25 +211,69 @@ impl LinkAdapt {
             self.stats.usb_out_ns += elapsed_ns(start);
         }
         if res != buf.len() {
-            error!("Transferred {res} bytes instead of {}", buf.len());
+            let level = self.note_failure();
+            log!(level, "Transferred {res} bytes instead of {}", buf.len());
             return false;
         }
         true
     }
 
+    /// Logs a failed bulk transfer, under libusb's name for `e`, as one
+    /// failure of the run.
+    ///
+    /// `LIBUSB_ERROR_NO_DEVICE` means the probe has gone (unplugged, or
+    /// re-enumerated after a reset), and no later transfer on this handle
+    /// can succeed: the probe is closed at once, without the exit-debug
+    /// command it can no longer receive, and an ERROR saying so is logged
+    /// whatever the run's length. [`is_attached`](LinkAdapt::is_attached)
+    /// then reports false, which the monitor's poll loops check, so a call
+    /// in progress ends instead of polling a missing device until it times
+    /// out; every later call fails as "not attached" until a new attach.
+    /// Any other error leaves the probe open: a timeout or a stall can be
+    /// transient.
+    fn transfer_failed(&mut self, e: &rusb::Error) {
+        let level = self.note_failure();
+        if *e == rusb::Error::NoDevice {
+            error!(
+                "{}: the probe has gone; closing it, attach again to continue",
+                libusb_name(e)
+            );
+            self.handle = None;
+            self.probe_lost = true;
+        } else {
+            log!(level, "{}", libusb_name(e));
+        }
+    }
+
+    /// Logs a transfer attempted with no probe open.
+    ///
+    /// After the probe was lost (see [`transfer_failed`](Self::transfer_failed))
+    /// this is the expected result of every later command in the same call,
+    /// so it is counted in the failure run; otherwise it is a caller error
+    /// and always logged at ERROR.
+    fn no_device_open(&mut self) {
+        if self.probe_lost {
+            let level = self.note_failure();
+            log!(level, "USB transfer with no device open (the probe was disconnected)");
+        } else {
+            error!("USB transfer with no device open");
+        }
+    }
+
     /// Sends a command block, then reads `buf.len()` bytes if non-empty.
     ///
     /// The C++ `cmd_eval` with `ReadnWrite` true. Returns false, with the
-    /// failing phase logged, if either transfer fails; `buf` is then
+    /// failing phase logged at the failure run's level (see
+    /// [`LinkAdapt::failure_level`]), if either transfer fails; `buf` is then
     /// unspecified. Does not interpret any status bytes in the reply.
     pub(super) fn cmd_read(&mut self, cmd: &[u8; 16], buf: &mut [u8]) -> bool {
         let start = Instant::now();
         if !self.usb_out(cmd) {
-            error!("cmd_eval request failed");
+            log!(self.failure_level(), "cmd_eval request failed");
             return false;
         }
         if !buf.is_empty() && !self.usb_in(buf) {
-            error!("cmd_eval response failed");
+            log!(self.failure_level(), "cmd_eval response failed");
             return false;
         }
         self.count_cmd(start);
@@ -239,11 +288,11 @@ impl LinkAdapt {
     pub(super) fn cmd_write(&mut self, cmd: &[u8; 16], buf: &[u8]) -> bool {
         let start = Instant::now();
         if !self.usb_out(cmd) {
-            error!("cmd_eval request failed");
+            log!(self.failure_level(), "cmd_eval request failed");
             return false;
         }
         if !buf.is_empty() && !self.usb_out(buf) {
-            error!("cmd_eval response failed");
+            log!(self.failure_level(), "cmd_eval response failed");
             return false;
         }
         self.count_cmd(start);

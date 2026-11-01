@@ -147,13 +147,24 @@ impl TagThread {
     }
 
     /// Reads and reports the status, when attached; a failed read is skipped.
+    ///
+    /// When the read loses the probe (the base was unplugged), polling stops
+    /// and [`Report::Detached`] is sent instead.
     fn poll(&mut self) {
         if !self.tag.is_attached() {
             self.next_poll = None;
             return;
         }
         let voltage = self.tag.voltage().unwrap_or(0.0);
-        if let Ok(status) = self.tag.status() {
+        let status = self.tag.status();
+        // A base unplugged during the poll closes the session in tagcore;
+        // show the window detached rather than attached to nothing.
+        if !self.tag.is_attached() {
+            self.next_poll = None;
+            self.report(Report::Detached);
+            return;
+        }
+        if let Ok(status) = status {
             self.report(Report::Status(Box::new(status), voltage, now_ms()));
         }
         self.next_poll = Some(Instant::now() + Duration::from_millis(STATUS_POLL_MS));

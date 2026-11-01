@@ -24,6 +24,12 @@
 //! - All calls block the calling thread on libusb bulk transfers, each with
 //!   a 1.5 s timeout (300 ms for the base-identify reply). Nothing here
 //!   retries; retry and polling policy belongs to the monitor layer.
+//! - A transfer failing with `LIBUSB_ERROR_NO_DEVICE` closes the probe
+//!   (`handle` becomes `None`), so an unplug ends the session at once; the
+//!   monitor's poll loops check [`LinkAdapt::is_attached`] and stop.
+//! - Failures are logged as runs: the first of a run at ERROR, the rest at
+//!   DEBUG, and a WARN with the count when an access succeeds again or the
+//!   probe is detached (`note_failure`, `end_failure_run`).
 //! - Errors are reported the way the C++ `LinkAdapt` reports them: the call
 //!   returns `false`/`None` and the reason goes to the [`log`] facade,
 //!   spelled with libusb's own error names so logs read the same as the C++
@@ -47,7 +53,7 @@
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use log::{debug, error, warn};
+use log::{Level, debug, error, warn};
 use rusb::{Context, DeviceHandle};
 
 pub mod discovery;
@@ -219,13 +225,23 @@ pub struct LinkAdapt {
     ep_out: u8,
     /// Counters for [`LinkAdapt::link_stats`].
     stats: LinkAdaptStats,
-    /// Debug-register reads failed in a row, so a burst is logged once.
+    /// Link operations failed in a row, so a burst is logged once.
     ///
-    /// [`LinkAdapt::read_debug32`] logs the first failure of a run at ERROR,
-    /// the rest at DEBUG, and a WARN with the count when a read succeeds
-    /// again; callers poll DEMCR/DHCSR thousands of times per RPC, and a
-    /// base can fail a burst of reads and then recover.
-    debug_read_failures: u32,
+    /// Counts every failed USB transfer and every target access the probe
+    /// reported failed (debug-register status, memory last-R/W status). The
+    /// first failure of a run is logged at ERROR and the rest at DEBUG (see
+    /// [`LinkAdapt::note_failure`]); the next successful target access, or
+    /// the detach, logs a WARN with the length of the run. Callers poll
+    /// DEMCR/DHCSR or the U3 shared block once per millisecond, a base can
+    /// fail a burst of reads and then recover, and a tag that drops into
+    /// standby after a detach request fails every read until it is released.
+    failure_run: u32,
+    /// True once a transfer has failed with `LIBUSB_ERROR_NO_DEVICE` and the
+    /// probe was closed because of it; cleared when a probe is opened.
+    ///
+    /// Lets the "no device open" failures that follow an unplug be counted
+    /// in the run (logged at DEBUG) rather than each logged as an error.
+    probe_lost: bool,
 }
 
 /// Same as [`LinkAdapt::new`].
@@ -250,7 +266,8 @@ impl LinkAdapt {
             ep_in: 0,
             ep_out: 0,
             stats: LinkAdaptStats::default(),
-            debug_read_failures: 0,
+            failure_run: 0,
+            probe_lost: false,
         }
     }
 
@@ -445,11 +462,63 @@ impl LinkAdapt {
     /// [`crate::TagMonitor::detach`]'s job, and calling this directly on a
     /// tag with an open session leaves the firmware waiting for the host to
     /// go quiet before it ends the session itself.
+    ///
+    /// Ends the current failure run: if more than one link operation had
+    /// failed in a row, a WARN with the count is logged here, so a run cut
+    /// short by a detach or an unplug is still summarised.
     pub fn detach(&mut self) {
         if self.handle.is_some() {
             self.exit_debug_mode();
         }
         self.handle = None;
+        self.end_failure_run(format_args!("detach"));
+    }
+
+    /// Counts one failed link operation and returns the level to log it at:
+    /// [`Level::Error`] for the first failure of a run, [`Level::Debug`]
+    /// for the rest.
+    ///
+    /// Every failure the link logs goes through this, so a poll loop that
+    /// fails thousands of times (a probe unplugged mid-call, a tag that
+    /// stopped answering) writes one error, not thousands. Lines that only
+    /// add context to the same failure use
+    /// [`failure_level`](Self::failure_level) instead, so they are not
+    /// counted twice.
+    pub(super) fn note_failure(&mut self) -> Level {
+        self.failure_run = self.failure_run.saturating_add(1);
+        self.failure_level()
+    }
+
+    /// The level for a further line about the failure just counted:
+    /// [`Level::Error`] while the run is one failure long, [`Level::Debug`]
+    /// after.
+    pub(super) fn failure_level(&self) -> Level {
+        if self.failure_run <= 1 {
+            Level::Error
+        } else {
+            Level::Debug
+        }
+    }
+
+    /// Ends a run of failures because of a successful target access (or a
+    /// detach), described by `what`; logs a WARN with the count if the run
+    /// was longer than one failure.
+    ///
+    /// `what` is formatting arguments rather than a string so the success
+    /// path, which runs once per poll, allocates nothing.
+    pub(super) fn end_failure_run(&mut self, what: std::fmt::Arguments<'_>) {
+        if self.failure_run > 1 {
+            warn!(
+                "{} link operations failed in a row before {what}{}",
+                self.failure_run,
+                if self.probe_lost {
+                    " (the probe was disconnected)"
+                } else {
+                    ""
+                }
+            );
+        }
+        self.failure_run = 0;
     }
 
     /// True while a probe is open.
@@ -472,5 +541,96 @@ impl LinkAdapt {
 impl Drop for LinkAdapt {
     fn drop(&mut self) {
         self.detach();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! Hardware-free checks of the failure-run logging: no probe is opened,
+    //! so they drive the "no device open" path a lost probe leaves behind.
+
+    use super::*;
+    use std::cell::RefCell;
+    use std::sync::Once;
+
+    thread_local! {
+        /// Levels of the records this test thread logged from this module.
+        static RECORDS: RefCell<Vec<Level>> = const { RefCell::new(Vec::new()) };
+    }
+
+    /// A logger that keeps each thread's records apart, so tests running in
+    /// parallel see only their own.
+    struct Capture;
+
+    impl log::Log for Capture {
+        fn enabled(&self, _: &log::Metadata<'_>) -> bool {
+            true
+        }
+        fn log(&self, record: &log::Record<'_>) {
+            if record.target().starts_with("tagcore::link") {
+                RECORDS.with(|r| r.borrow_mut().push(record.level()));
+            }
+        }
+        fn flush(&self) {}
+    }
+
+    /// Installs [`Capture`] once per process and clears this thread's
+    /// records.
+    fn capture() {
+        static INIT: Once = Once::new();
+        INIT.call_once(|| {
+            log::set_boxed_logger(Box::new(Capture)).expect("no other logger in unit tests");
+            log::set_max_level(log::LevelFilter::Trace);
+        });
+        RECORDS.with(|r| r.borrow_mut().clear());
+    }
+
+    /// How many of this thread's records were at `level`.
+    fn count(level: Level) -> usize {
+        RECORDS.with(|r| r.borrow().iter().filter(|&&l| l == level).count())
+    }
+
+    #[test]
+    fn a_failure_run_logs_one_error_then_a_summary() {
+        let mut link = LinkAdapt::new();
+        assert_eq!(link.note_failure(), Level::Error);
+        assert_eq!(link.failure_level(), Level::Error);
+        assert_eq!(link.note_failure(), Level::Debug);
+        assert_eq!(link.failure_level(), Level::Debug);
+        link.end_failure_run(format_args!("a test read"));
+        assert_eq!(link.note_failure(), Level::Error);
+    }
+
+    #[test]
+    fn polling_a_lost_probe_logs_a_bounded_handful() {
+        capture();
+        let mut link = LinkAdapt::new();
+        // The state transfer_failed leaves after LIBUSB_ERROR_NO_DEVICE: the
+        // handle dropped and that error already counted.
+        link.probe_lost = true;
+        link.failure_run = 1;
+        // An L4 call polls DEMCR up to 2500 times; the bench saw one error
+        // line per poll.
+        for _ in 0..2500 {
+            assert_eq!(link.read_debug32(0xE000_EDFC), None);
+            assert!(!link.read_mem32(0x2000_0000, &mut [0u8; 4]));
+        }
+        link.detach();
+        assert_eq!(count(Level::Error), 0, "the loss itself was the error");
+        assert_eq!(count(Level::Warn), 1, "one summary at detach");
+        assert_eq!(link.failure_run, 0);
+    }
+
+    #[test]
+    fn no_device_open_without_a_loss_is_still_an_error_every_time() {
+        capture();
+        let mut link = LinkAdapt::new();
+        for _ in 0..3 {
+            assert_eq!(link.read_debug32(0xE000_EDFC), None);
+        }
+        // "USB transfer with no device open" each time, and the first
+        // "cmd_eval request failed" (the run is not advanced by caller
+        // errors, so it stays at ERROR).
+        assert_eq!(count(Level::Error), 6);
     }
 }

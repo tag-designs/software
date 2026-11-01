@@ -105,12 +105,15 @@ is reported as "Tag reply carried no status" and so on.
 
 All messages go through the `log` facade at the levels the C++ uses. Tools
 install `env_logger` (`RUST_LOG=debug` shows the attach detail); the
-applications forward the records to their log panes. One deliberate
-difference from the C++: failed debug-register reads are rate-limited. A tag
-that is booting or held in reset fails every poll, and after probe-rs
-releases a field base a burst of ST-LINK status `0x81` failures is normal, so
-the first failure in a run is an `ERROR`, the rest are `DEBUG`, and the first
-success after two or more failures logs a `WARN` with the count.
+applications forward the records to their log panes. Two deliberate
+differences from the C++. Link failures (USB transfers, debug-register and
+memory accesses) are rate-limited: a tag that is booting or held in reset
+fails every poll, after probe-rs releases a field base a burst of ST-LINK
+status `0x81` failures is normal, and a U375 in standby after a detach fails
+every read, so the first failure in a run is an `ERROR`, the rest are
+`DEBUG`, and the next success (or the detach) logs a `WARN` with the count.
+And `LIBUSB_ERROR_NO_DEVICE`, an unplugged base, closes the probe at once, so
+the monitor stops polling it rather than failing every poll to a timeout.
 
 The `instrumentation` feature (on by default) counts and times every USB
 transfer, ST-LINK command and RPC for `LinkAdaptStats` and `TagMonitorStats`,

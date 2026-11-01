@@ -20,11 +20,15 @@
 //! Every call blocks on USB (see [`super`]) and returns `false`/`None` with
 //! the reason logged on failure; none retries. Callers that poll (the
 //! monitor polls DEMCR or the shared block once per millisecond) rely on
-//! the rate-limited logging in [`LinkAdapt::read_debug32`].
+//! the link's rate-limited logging: failures of the memory and
+//! debug-register calls, and of the USB transfers under them, count
+//! towards one run, logged once at ERROR (see [`LinkAdapt::note_failure`]),
+//! and a success of any of the four ends the run with a WARN giving its
+//! length.
 
 use std::time::Instant;
 
-use log::{debug, error, warn};
+use log::{error, log};
 
 use super::stlink::{self, debug_cmd, unpack16, unpack32};
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns};
@@ -59,7 +63,9 @@ impl LinkAdapt {
     /// Returns false, with the reason logged, if the length does not fit
     /// the command's 16-bit count, the USB exchange fails, or the probe's
     /// last-R/W status is not OK (an access fault, for example to an
-    /// unclocked peripheral or unmapped address). On failure `buf` may be
+    /// unclocked peripheral or unmapped address, or a U375 that has dropped
+    /// into standby). Transfer and status failures are rate-limited as for
+    /// [`read_debug32`](Self::read_debug32). On failure `buf` may be
     /// partly or wholly overwritten with whatever the probe returned.
     /// Reading some peripheral registers has side effects on the target
     /// (clearing flags, popping FIFOs). Port of `LinkAdapt::ReadMem32`,
@@ -78,10 +84,12 @@ impl LinkAdapt {
         match self.get_rw_status() {
             Some(stlink::DEBUG_ERR_OK) => {}
             status => {
-                error!("error return {:x}", status.unwrap_or(0));
+                let level = self.note_failure();
+                log!(level, "error return {:x}", status.unwrap_or(0));
                 return false;
             }
         }
+        self.end_failure_run(format_args!("a memory read"));
         if INSTRUMENTED {
             self.stats.read_mem_calls += 1;
             self.stats.read_mem_bytes += u64::from(count);
@@ -112,10 +120,12 @@ impl LinkAdapt {
         match self.get_rw_status() {
             Some(stlink::DEBUG_ERR_OK) => {}
             status => {
-                error!("error return {:x}", status.unwrap_or(0));
+                let level = self.note_failure();
+                log!(level, "error return {:x}", status.unwrap_or(0));
                 return false;
             }
         }
+        self.end_failure_run(format_args!("a memory write"));
         if INSTRUMENTED {
             self.stats.write_mem_calls += 1;
             self.stats.write_mem_bytes += u64::from(count);
@@ -131,12 +141,15 @@ impl LinkAdapt {
     /// exchange fails (logged by the transfer layer) or the probe's status
     /// is not OK (`0x80`).
     ///
-    /// Status failures are rate-limited in the log because callers poll
-    /// this in tight loops and a base can fail a burst of reads (status
-    /// 0x81) and then recover: the first failure of a run is logged at
-    /// ERROR, the rest at DEBUG, and the next success logs a WARN with the
-    /// length of the run if it was longer than one. Only successful reads
-    /// are counted in the statistics. Port of `LinkAdapt::ReadDebug32`.
+    /// Failures are rate-limited in the log because callers poll this in
+    /// tight loops and a base can fail a burst of reads (status 0x81) and
+    /// then recover: the first failure of a run is logged at ERROR, the rest
+    /// at DEBUG, and the next success logs a WARN with the length of the run
+    /// if it was longer than one. The run is shared with the memory calls
+    /// and the USB transfers under them, so one burst is one ERROR whatever
+    /// mix of calls failed. Only successful reads are counted in the
+    /// statistics. Port of
+    /// `LinkAdapt::ReadDebug32`.
     pub fn read_debug32(&mut self, addr: u32) -> Option<u32> {
         let start = Instant::now();
         let mut result = [0u8; 8];
@@ -150,21 +163,11 @@ impl LinkAdapt {
         if status != stlink::DEBUG_ERR_OK {
             // Callers poll; a base can fail a burst of reads (status 0x81)
             // and then recover, so only the first of a run is an error.
-            self.debug_read_failures += 1;
-            if self.debug_read_failures == 1 {
-                error!("read debug register 0x{addr:x} failed status=0x{status:x}");
-            } else {
-                debug!("read debug register 0x{addr:x} failed status=0x{status:x}");
-            }
+            let level = self.note_failure();
+            log!(level, "read debug register 0x{addr:x} failed status=0x{status:x}");
             return None;
         }
-        if self.debug_read_failures > 1 {
-            warn!(
-                "{} debug register reads failed in a row before 0x{addr:x} read",
-                self.debug_read_failures
-            );
-        }
-        self.debug_read_failures = 0;
+        self.end_failure_run(format_args!("debug register 0x{addr:x} read"));
         if INSTRUMENTED {
             self.stats.read_debug_calls += 1;
             self.stats.read_debug_ns += elapsed_ns(start);
@@ -174,7 +177,8 @@ impl LinkAdapt {
 
     /// Writes one 32-bit word through the debug-register path.
     ///
-    /// Returns false, with the reason logged, if the USB exchange fails or
+    /// Returns false, with the reason logged (rate-limited as for
+    /// [`read_debug32`](Self::read_debug32)), if the USB exchange fails or
     /// the probe's status is not OK. Writes to DHCSR, DEMCR or the SCB can
     /// halt, resume or reset the core; this function does not care. Port of
     /// `LinkAdapt::WriteDebug32`.
@@ -188,9 +192,11 @@ impl LinkAdapt {
         }
         let status = unpack16(&result);
         if status != stlink::DEBUG_ERR_OK {
-            error!("write debug register 0x{addr:x} failed status=0x{status:x}");
+            let level = self.note_failure();
+            log!(level, "write debug register 0x{addr:x} failed status=0x{status:x}");
             return false;
         }
+        self.end_failure_run(format_args!("debug register 0x{addr:x} write"));
         if INSTRUMENTED {
             self.stats.write_debug_calls += 1;
             self.stats.write_debug_ns += elapsed_ns(start);

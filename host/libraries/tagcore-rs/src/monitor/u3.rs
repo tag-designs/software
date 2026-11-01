@@ -97,9 +97,12 @@ impl TagMonitor {
     /// MONITORSTOP always returns `Some`: the result if the firmware reports
     /// DONE, 1 once it has cleared the block (request, flags and command all
     /// zero), and 1 with a warning if the poll runs out, because the tag may
-    /// already be in standby and unreadable. Any other timeout logs a
+    /// already be in standby and unreadable; the reads that fail meanwhile
+    /// are rate-limited by the link to one ERROR. Any other timeout logs a
     /// report via [`report_u3_timeout`](Self::report_u3_timeout) and returns
-    /// `None`. The 2500-poll limit applies to protobuf calls too, as in the
+    /// `None`. If the probe goes (`LIBUSB_ERROR_NO_DEVICE`, which closes it)
+    /// the poll stops at once, returning 1 for MONITORSTOP, as there is no
+    /// session left to stop, and `None` otherwise. The 2500-poll limit applies to protobuf calls too, as in the
     /// C++, unlike the L4 transport's 65000.
     pub(super) fn call_u3(&mut self, operation: u8, operand: i32) -> Option<u32> {
         const TIMEOUT_MS: u32 = 2500;
@@ -181,6 +184,14 @@ impl TagMonitor {
                     );
                     return None;
                 }
+            } else if !self.is_attached() {
+                // The probe has gone (unplugged): stop polling it.
+                error!("probe lost during U3 monitor call op={name}(0x{operation:x})");
+                return if operation == op::MONITORSTOP {
+                    Some(1)
+                } else {
+                    None
+                };
             }
             sleep(ms(1));
         }
@@ -368,6 +379,9 @@ impl TagMonitor {
                     connected = true;
                     break;
                 }
+            } else if !self.is_attached() {
+                error!("U3 monitor attach failed: the probe has gone");
+                return false;
             }
             sleep(ms(1));
         }
