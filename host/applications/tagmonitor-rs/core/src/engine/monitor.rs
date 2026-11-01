@@ -38,6 +38,15 @@ pub(crate) const VERSION: f32 = 2.1;
 /// stopped answering is noticed (qtmonitor's silence timer).
 const TICK: Duration = Duration::from_secs(1);
 
+/// How long Quit waits for the tag thread to detach before exiting anyway.
+///
+/// A healthy detach takes well under a second, but a hung tag answers
+/// nothing: the tag thread then sits in its status poll's timeouts and in a
+/// detach the tag never acknowledges, and a quit that waited for it could not
+/// quit at all (a PresTag hung in its RTC init, 2026-11-01). Exiting closes
+/// the base's USB handle, which leaves the tag as a killed process would.
+const QUIT_DETACH_WAIT: Duration = Duration::from_secs(5);
+
 /// The settings key of the recent configuration files, as qtmonitor's.
 const RECENT_KEY: &str = "recentConfigurationFiles";
 /// Most recent configuration files remembered.
@@ -137,8 +146,10 @@ pub(crate) struct Monitor {
     next_tick: Option<Instant>,
     /// Quit was confirmed; the loop sends [`super::Event::Exit`].
     exit: bool,
-    /// Quit was confirmed and the tag is being detached first.
-    quitting: bool,
+    /// Quit was confirmed and the tag is being detached first: the exit
+    /// follows the tag thread's `Detached`, or this deadline, whichever comes
+    /// first (see [`QUIT_DETACH_WAIT`]).
+    quitting: Option<Instant>,
     /// `ready` has been received once.
     started: bool,
     /// The page asked for the whole state again.
@@ -179,7 +190,7 @@ impl Monitor {
             silence_s: 0,
             next_tick: None,
             exit: false,
-            quitting: false,
+            quitting: None,
             started: false,
             republish: false,
         }
@@ -253,13 +264,28 @@ impl Monitor {
 
     // ---- Timers ----
 
-    /// The nearest deadline: the tick, while attached.
+    /// The nearest deadline: the tick, while attached, and the quit
+    /// deadline, while detaching to quit.
     pub(crate) fn next_deadline(&self) -> Option<Instant> {
-        self.next_tick
+        match (self.next_tick, self.quitting) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
     }
 
-    /// Fires the tick if due: recomputes how long the tag has been silent.
+    /// Fires the timers that are due: the quit deadline, which exits without
+    /// waiting any longer for the detach, and the tick, which recomputes how
+    /// long the tag has been silent.
     pub(crate) fn fire_timers(&mut self, now: Instant) {
+        if self.quitting.is_some_and(|deadline| now >= deadline) {
+            warn!(
+                "The tag did not detach within {} s; quitting anyway. \
+                 A tag that has stopped answering is reset by the next attach.",
+                QUIT_DETACH_WAIT.as_secs()
+            );
+            self.quitting = None;
+            self.exit = true;
+        }
         if !self.model.attached() {
             self.next_tick = None;
             self.silence_s = 0;
@@ -335,7 +361,7 @@ impl Monitor {
             // Detach first, as qtmonitor's session does when it closes; the
             // exit follows the tag thread's Detached.
             After::Quit if self.model.attached() || self.attaching => {
-                self.quitting = true;
+                self.quitting = Some(Instant::now() + QUIT_DETACH_WAIT);
                 self.cancel.store(true, Ordering::Relaxed);
                 self.send(TagCmd::Detach);
             }
@@ -730,7 +756,7 @@ impl Monitor {
                 self.erase_shown = false;
                 self.download = None;
                 self.silence_s = 0;
-                self.exit |= std::mem::take(&mut self.quitting);
+                self.exit |= self.quitting.take().is_some();
             }
             Report::Status(status, voltage, host_ms) => {
                 self.editor.state_update(status.state());
@@ -878,4 +904,52 @@ pub(super) fn file_name(path: &str) -> String {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc::{self, Receiver};
+
+    /// A monitor whose tag thread is a channel the test holds, with settings
+    /// in a path that does not exist (so none are read).
+    fn monitor() -> (Monitor, Receiver<TagCmd>) {
+        let (tx, rx) = mpsc::channel();
+        let config = EngineConfig {
+            settings_path: PathBuf::from("/nonexistent/tagmonitor-test/settings.json"),
+            home_dir: std::env::temp_dir(),
+            user_guide_url: None,
+            auto_attach: false,
+        };
+        (Monitor::new(config, tx, Arc::new(AtomicBool::new(false))), rx)
+    }
+
+    /// A quit whose detach never comes back exits at the deadline.
+    #[test]
+    fn quit_exits_when_the_detach_never_returns() {
+        let (mut m, _rx) = monitor();
+        let start = Instant::now();
+        m.quitting = Some(start + QUIT_DETACH_WAIT);
+        assert_eq!(m.next_deadline(), m.quitting, "the loop must wake for it");
+        m.fire_timers(start);
+        assert!(!m.take_exit(), "no exit before the deadline");
+        m.fire_timers(start + QUIT_DETACH_WAIT);
+        assert!(m.take_exit(), "exit at the deadline");
+        assert!(m.quitting.is_none());
+        m.report(Report::Detached);
+        assert!(!m.take_exit(), "a late Detached does not exit twice");
+    }
+
+    /// A detach that returns in time exits at once, and the deadline is
+    /// cleared.
+    #[test]
+    fn quit_exits_on_a_timely_detach() {
+        let (mut m, _rx) = monitor();
+        let start = Instant::now();
+        m.quitting = Some(start + QUIT_DETACH_WAIT);
+        m.report(Report::Detached);
+        assert!(m.take_exit());
+        m.fire_timers(start + QUIT_DETACH_WAIT);
+        assert!(!m.take_exit(), "the cleared deadline does not fire");
+    }
 }

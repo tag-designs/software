@@ -8,7 +8,8 @@
 //! Closing the window is the engine's decision, since the configuration may
 //! have unsaved changes: a close request is turned into the `quit` command,
 //! and the window closes only when the engine sends [`Event::Exit`], after
-//! the user has saved or discarded them and the tag has been detached.
+//! the user has saved or discarded them and the tag has been detached -- or
+//! after a few seconds without the detach, for a tag that no longer answers.
 //!
 //! The settings (the recent configuration files) are `settings.json` under
 //! the platform app config directory. The shell is Tag Programmer's
