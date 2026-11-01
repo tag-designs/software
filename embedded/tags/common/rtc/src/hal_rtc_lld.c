@@ -72,14 +72,29 @@ RTCDriver RTCD1;
 /*===========================================================================*/
 
 /**
+ * @brief   Bound on the @c INITF wait in rtc_enter_init(), in polls.
+ *
+ * @details @c INITF normally sets within two RTCCLK cycles, a few hundred
+ *          polls at the slowest system clock. It never sets if @c INIT was not
+ *          written, which is what happens when the RTC is write-protected.
+ */
+#define RTC_INITF_SPIN_LIMIT 100000U
+
+/**
  * @brief   Beginning of configuration procedure.
+ *
+ * @details Waits for @c INITF, but not forever: the caller holds the system
+ *          lock, so an unbounded wait would mask the monitor and keep the tag
+ *          awake until reset. On timeout the caller's calendar writes are
+ *          ignored by the hardware and the clock keeps its old value.
  *
  * @notapi
  */
 static void rtc_enter_init(void) {
+  uint32_t limit = RTC_INITF_SPIN_LIMIT;
 
   RTCD1.rtc->ISR |= RTC_ISR_INIT;
-  while ((RTCD1.rtc->ISR & RTC_ISR_INITF) == 0)
+  while (((RTCD1.rtc->ISR & RTC_ISR_INITF) == 0) && (limit-- > 0U))
     ;
 }
 

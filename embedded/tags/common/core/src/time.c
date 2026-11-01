@@ -571,9 +571,20 @@ void disableTicker(void)
  */
 #if TAG_STOP_RTC_TICKER
 
-/** @brief RTC write-protection key sequence. */
+/**
+ * @brief RTC write-protection unlock key sequence.
+ *
+ * @details Writing the keys is harmless when the RTC is already unlocked, so
+ *          this is asserted before every write here. There is deliberately no
+ *          matching relock: ChibiOS unlocks the RTC once, in rtc_lld_init(),
+ *          and every later driver call assumes it still is. Relocking
+ *          (@c WPR = 0xFF) made the driver's writes silently ignored until the
+ *          next reset -- disableTicker() and disableAllAlarms() after a run
+ *          did nothing, leaving the wakeup timer armed in IDLE -- and made
+ *          rtc_lld_set_time() wait forever for @c INITF, which hung a PresTag
+ *          that was sent set_rtc after a start-stop-erase.
+ */
 static inline void tagRtcWriteUnlock(void) { RTC->WPR = 0xCAU; RTC->WPR = 0x53U; }
-static inline void tagRtcWriteLock(void)   { RTC->WPR = 0xFFU; }
 
 /** @brief EXTI bit for the RTC alarm line, shared by Alarm A and Alarm B. */
 #define TAG_RTC_ALARM_EXTI_BIT (1U << STM32_RTC_ALARM_EXTI)
@@ -593,7 +604,6 @@ void tagStopRtcTickerInit(void)
   RTC->ALRMASSR = ((uint32_t)TAG_STOP_RTC_MASKSS) << RTC_ALRMASSR_MASKSS_Pos;
   RTC->CR |= RTC_CR_ALRAE;
   RTC->CR &= ~RTC_CR_ALRAIE;      /* silent until a delay arms it */
-  tagRtcWriteLock();
 
   EXTI->RTSR1 |= TAG_RTC_ALARM_EXTI_BIT;
   EXTI->EMR1 &= ~TAG_RTC_ALARM_EXTI_BIT;
@@ -704,7 +714,6 @@ void stopMilliseconds(unsigned int ms)
 
   CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
   RTC->CR &= ~RTC_CR_ALRAIE;
-  tagRtcWriteLock();
 
   EXTI->EMR1 &= ~TAG_RTC_ALARM_EXTI_BIT;
   EXTI->PR1 = TAG_RTC_ALARM_EXTI_BIT;
