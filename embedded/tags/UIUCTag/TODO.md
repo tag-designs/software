@@ -72,6 +72,10 @@ Delete an item when it is done.
     reply is written.
   - **Not Stop mode.** `stopMilliseconds()` falls back to the RTOS sleep while
     the monitor is attached, and `SCB_SCR` = 0.
+  - **The idle `__WFI()` is the necessary condition.** With the BitPresTag
+    idle hook changed to skip `__WFI()` while `DEMCR.VC_CORERESET` is set, a
+    1.5 s sleep-only test and the real ADXL367 test passed 6 of 6 with every
+    request read back intact; with the hook as shipped, every one failed.
   - **Contradicts 2026-10-27.** That investigation read `PWR_CR1 = 0x500`
     and made 48 clean status reads across sleeps with `DBG_SLEEP` set, on the
     same base model (`../../bases/design/investigations/2026-10-0x81-dbg-sleep.md`).
@@ -79,7 +83,13 @@ Delete an item when it is done.
     bus, and why the base answers OK. One candidate for the second: a posted
     AHB-AP access that faults sets `STICKYERR` while its own ACK is OK.
 
-  Any request that lands in the window is lost. The harness's one `Info
+  Skipping WFI during a session is a candidate firmware fix (the main loop
+  already never blocks during one), at the cost of session current, which
+  should be measured; finding why `DBG_SLEEP` no longer keeps the bus is the
+  better answer. The next step there is the same test on another base
+  (`bittag-base-v7`, or a clean `tag-breakout-base-l432-v1` build), which
+  separates the base from the tag. Any request that lands in the window is
+  lost. The harness's one `Info
   failed` after `tag-start` in the 2026-11-02 release check may be the same.
   The host can at least detect it by reading the request back before
   triggering; the cause is a base or firmware item.
