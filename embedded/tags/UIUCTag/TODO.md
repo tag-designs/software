@@ -125,23 +125,23 @@ Delete an item when it is done.
     open and disable it when the session closes. This is the shipped
     equivalent of the probe. Skipping the idle `__WFI()` during a session
     also worked (6 of 6), at the cost of run current instead of Sleep.
-  - **Host:** set `DMA1EN` next to `DBG_SLEEP` after MONITORSTART. That
-    fixes tags already in the field without new firmware. But unlike
-    `DBG_SLEEP`, which the tag clears when the session ends, nothing would
-    clear `DMA1EN` until a reset or Standby, so a tag started from a session
-    would carry it into its run. Measure that before shipping it. The host
-    should also read the request back and fail loudly on a mismatch, since
-    the base cannot detect this.
+  - **Host (done 2026-11-02):**
+    `l4.rs` `keep_bus_matrix_in_sleep()` sets `DMA1EN` after
+    MONITORSTART if it is clear, and `release_l4_dma_clock()` clears it
+    again before MONITORSTOP. `tag-test` then passed 6 of 6 with no NANOPB,
+    and `tag_release_check.py` passed with the run at 0.55 µA and rest at
+    0.15 µA, unchanged from the morning's check, so the clock does not
+    outlive the session.
+    The C++ `tagcore` library, not released since v4.0, is unchanged.
   - **Base:** nothing to fix for this fault. The access port reports success,
     so a `STICKYERR` check would not have caught it.
 
   The L4 mailbox in
   [the monitor proposal](../common/core/design/proposals/l4-monitor-robustness.md)
-  would not avoid this: its block is in SRAM too. Any request that lands in
-  the window is lost. The harness's one `Info
-  failed` after `tag-start` in the 2026-11-02 release check may be the same.
-  The host can at least detect it by reading the request back before
-  triggering; the cause is a base or firmware item.
+  would not avoid this on its own, since its block is in SRAM too; it needs
+  the bus matrix kept up the same way. The harness's one `Info failed`
+  after `tag-start` is **not** this fault: it still appears with
+  `DMA1EN` set. Delete this item once the firmware change is in the batch.
 
 - **`external_pages` is wrong after any reset, and reports nothing collected.**
   Confirmed on hardware 2026-10-06: a run that stored **5 pressure samples, 5

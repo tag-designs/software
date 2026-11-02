@@ -24,8 +24,8 @@ use log::{debug, error, warn};
 use super::abi::{command_word, info, op, operation_name};
 use super::cortex_m::*;
 use super::{
-    STM32L4_DBGMCU_CR, STM32L4_DBGMCU_CR_DBG_SLEEP, STM32L4_DBGMCU_IDCODE, TagMonitor,
-    TargetFamily, ms,
+    STM32L4_DBGMCU_CR, STM32L4_DBGMCU_CR_DBG_SLEEP, STM32L4_DBGMCU_IDCODE,
+    STM32L4_RCC_AHB1ENR, STM32L4_RCC_AHB1ENR_DMA1EN, TagMonitor, TargetFamily, ms,
 };
 
 // The flash empty check is an STM32L4 feature. On the STM32U3 FLASH_SR is at
@@ -514,6 +514,7 @@ impl TagMonitor {
             return false;
         }
         self.keep_debug_in_sleep();
+        self.keep_bus_matrix_in_sleep();
         true
     }
 
@@ -536,6 +537,60 @@ impl TagMonitor {
         let value = cr.unwrap_or(0) | STM32L4_DBGMCU_CR_DBG_SLEEP;
         if !self.link.write_debug32(STM32L4_DBGMCU_CR, value) {
             warn!("could not set DBGMCU_CR.DBG_SLEEP; debug accesses wait while the tag idles");
+        }
+    }
+
+    /// Turns on DMA1's clock for the session, so the bus matrix stays
+    /// clocked while the tag sleeps.
+    ///
+    /// DBG_SLEEP keeps the core's clock in Sleep, but with the CPU the only
+    /// enabled bus master the matrix still stops: every debug access beyond
+    /// the core's private bus (flash, SRAM, peripherals) then reads zero
+    /// with an OK status and every write is dropped, so a request written
+    /// while a self-test sleeps is lost and the tag answers NANOPB. Enabling
+    /// a DMA clock keeps the matrix running (`DMA1SMEN` is set from reset).
+    /// Found on UIUCTag, which enables no DMA, 2026-11-02
+    /// (`embedded/tags/UIUCTag/TODO.md`).
+    ///
+    /// Set only when clear, and recorded, so that
+    /// [`release_l4_dma_clock`](Self::release_l4_dma_clock) clears only what
+    /// the host set. The firmware's own DMA use, the AT25 CompassTag block
+    /// transfers, frees the clock when its last stream is released, which
+    /// can end the protection mid-session; that path keeps the clock on
+    /// while it is busy. A failure is logged and the attach goes on.
+    pub(super) fn keep_bus_matrix_in_sleep(&mut self) {
+        let Some(enr) = self.read_word(STM32L4_RCC_AHB1ENR) else {
+            warn!("could not read RCC_AHB1ENR; requests may be lost while the tag sleeps");
+            return;
+        };
+        if enr & STM32L4_RCC_AHB1ENR_DMA1EN != 0 {
+            return;
+        }
+        if self.write_word(STM32L4_RCC_AHB1ENR, enr | STM32L4_RCC_AHB1ENR_DMA1EN) {
+            self.l4_dma_clock_set = true;
+        } else {
+            warn!("could not set RCC_AHB1ENR.DMA1EN; requests may be lost while the tag sleeps");
+        }
+    }
+
+    /// Clears DMA1's clock if this session set it, and forgets that it did.
+    ///
+    /// Called before MONITORSTOP, while the tag is still in its session
+    /// loop, so the read-modify-write cannot race a firmware change to the
+    /// register. Does nothing on other families or when the host did not
+    /// set the bit. A failed write is logged; the clock then stays on until
+    /// the tag next resets or enters Standby.
+    pub(super) fn release_l4_dma_clock(&mut self) {
+        if !std::mem::take(&mut self.l4_dma_clock_set) {
+            return;
+        }
+        let cleared = self
+            .read_word(STM32L4_RCC_AHB1ENR)
+            .is_some_and(|enr| {
+                self.write_word(STM32L4_RCC_AHB1ENR, enr & !STM32L4_RCC_AHB1ENR_DMA1EN)
+            });
+        if !cleared {
+            warn!("could not clear RCC_AHB1ENR.DMA1EN; it stays on until the tag resets");
         }
     }
 }

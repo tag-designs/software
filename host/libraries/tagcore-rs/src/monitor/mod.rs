@@ -97,6 +97,12 @@ const STM32L4_DBGMCU_CR: u32 = 0xE004_2004;
 /// DBGMCU_CR.DBG_SLEEP: keep HCLK running in Sleep mode, so debug accesses
 /// are not held off while the core idles in WFI.
 const STM32L4_DBGMCU_CR_DBG_SLEEP: u32 = 1 << 0;
+/// STM32L4 RCC_AHB1ENR (RM0394): AHB1 peripheral clock enables.
+const STM32L4_RCC_AHB1ENR: u32 = 0x4002_1048;
+/// RCC_AHB1ENR.DMA1EN. With no DMA clock enabled, the bus matrix stops in
+/// Sleep even with DBG_SLEEP set, and debug reads beyond the core's private
+/// bus return zeros as successes while writes are dropped.
+const STM32L4_RCC_AHB1ENR_DMA1EN: u32 = 1 << 0;
 /// STM32L4 RCC_CSR: reset-cause flags, logged in L4 timeout reports so a
 /// reset during a session can be told apart from a hung handler.
 const STM32L4_RCC_CSR: u32 = 0x4002_1094;
@@ -291,6 +297,9 @@ pub struct TagMonitor {
     target_idcode: u32,
     /// Counters for [`TagMonitor::monitor_stats`].
     monitor_stats: TagMonitorStats,
+    /// True when this session set RCC_AHB1ENR.DMA1EN on an STM32L4, so
+    /// [`detach`](TagMonitor::detach) clears it again.
+    l4_dma_clock_set: bool,
 }
 
 /// Same as [`TagMonitor::new`].
@@ -328,6 +337,7 @@ impl TagMonitor {
             target_family: TargetFamily::Unknown,
             target_idcode: 0,
             monitor_stats: TagMonitorStats::default(),
+            l4_dma_clock_set: false,
         }
     }
 
@@ -391,6 +401,7 @@ impl TagMonitor {
         self.maxpacket = 0;
         self.sha_str = [0; 48];
         self.version = 0;
+        self.l4_dma_clock_set = false;
     }
 
     /// Forgets the session metadata and the detected family and IDCODE.
@@ -627,6 +638,9 @@ impl TagMonitor {
             return;
         }
 
+        // Before MONITORSTOP, which ends the session: the tag may then sleep
+        // or start a run, and the clock is not the host's to leave on.
+        self.release_l4_dma_clock();
         let stop = self.call(op::MONITORSTOP, 0);
         if self.target_family == TargetFamily::Stm32U3 {
             if let Some(s) = self.read_monitor_shared() {
