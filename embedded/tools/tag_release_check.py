@@ -14,8 +14,8 @@
          current. The only way to know is to measure the image being shipped.
 
          Defaults come from the target's profile ([PROFILES]): IMUTag at
-         400 Hz from 3.7 V, BitTag and PresTag at their qualification
-         settings from 2.5 V. Every one can be overridden on the command line,
+         400 Hz from 3.7 V, BitTag, PresTag and UIUCTag at their
+         qualification settings from 2.5 V. Every one can be overridden on the command line,
          and a target with no profile needs --config.
 
 @warning Detach the Joulescope desktop app and Tag Monitor first. Both invalidate
@@ -53,6 +53,10 @@ from power_experiment import DEFAULT_BIN, resolve_measure_python  # noqa: E402
 #:   shipped 60 s period; bound 1.15x the highest. A 1800 s run is the 30
 #:   samples of the fw-v0.6 qualification
 #:   (embedded/tags/families/PresTag/design/power-results.md).
+#: - UIUCTag: idle 0.15-0.16 uA, run 0.562 uA with the shipped config
+#:   (fw-v0.6 qualification); bound 1.15x. The run floor also catches a run
+#:   that wakes but does not collect, which read 0.24 uA on 2026-10-06
+#:   (embedded/tags/UIUCTag/design/power-results.md).
 #:
 #: The sub-uA tags also need 120 s windows: less charge than that does not
 #: integrate against their floor.
@@ -65,6 +69,9 @@ PROFILES: dict[str, dict] = {
                    rest_duration=120.0, settle=75.0, storm_sets=0),
     "PresTag": dict(config="prestag-60.json", idle_max_ua=0.22, idle_window_s=120.0,
                     run_min_ua=0.22, run_max_ua=0.47, run_duration=1800.0,
+                    rest_duration=120.0, settle=75.0, storm_sets=0),
+    "UIUCTag": dict(config="uiuctag-default.json", idle_max_ua=0.3, idle_window_s=120.0,
+                    run_min_ua=0.3, run_max_ua=0.646, run_duration=1800.0,
                     rest_duration=120.0, settle=75.0, storm_sets=0),
 }
 

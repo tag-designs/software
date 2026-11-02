@@ -467,6 +467,12 @@ BITTAG_BUCKET_S = {
     "BITTAG_BITSPERFIVEMIN": 300.0,
 }
 
+#: Seconds per UIUCTag Activity row: fixed in firmware, not configured
+#: (UIUCTAG_ACTIVITY_BUCKET_SECONDS; embedded/tags/UIUCTag/design/data-collection.md).
+#: Rows are written five at a time with each 300 s sample, so a run's last
+#: partial sample is missing from the count.
+UIUCTAG_BUCKET_S = 60.0
+
 
 def config_odr_hz(cfg: dict | None) -> float | None:
     """Extract, from a recorded configuration, the rate in Hz at which rows
@@ -477,7 +483,9 @@ def config_odr_hz(cfg: dict | None) -> float | None:
              - IMUTag: lsm6.odr, as "S400", for the IMU table;
              - BitTag (BITTAG, BITTAG_LE): one Activity row per bucket of
                bittag_log ([BITTAG_BUCKET_S]);
-             - PresTag: one Pressure row per `period` seconds.
+             - PresTag: one Pressure row per `period` seconds;
+             - UIUCTag: one Activity row per [UIUCTAG_BUCKET_S], whatever
+               the configuration says.
 
     @param cfg Configuration as recorded in the download, or None.
     @return Rate in Hz when the configuration names one in a recognised form,
@@ -499,6 +507,8 @@ def config_odr_hz(cfg: dict | None) -> float | None:
         period = cfg.get("period")
         if isinstance(period, (int, float)) and period > 0:
             return 1.0 / period
+    if tag_type == "UIUCTAG":
+        return 1.0 / UIUCTAG_BUCKET_S
     return None
 
 

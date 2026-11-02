@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a marker in the vector table - with what each step needs, what it would and would not fix, and how to check it on the bench.
+summary: Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a monitor info call behind a version bump - with what each step needs, what it would and would not fix, and how to check it on the bench.
 ---
 
 # A more robust monitor for the STM32L4 tags
@@ -140,45 +140,51 @@ verified per [Verifying a firmware change](../../../../../../docs/bench/verifyin
   and reset details and the persistent-state hooks. The proposal is one
   mailbox handler built for both families, selected at build time, with
   `handlersL4.c` kept for images that must stay compatible.
-- **A marker in flash** (see below).
+- **A protocol info call** (see below).
 
 ### How the host tells the protocols apart
 
-Attaching is done under reset, so the host must choose the protocol before
-the firmware runs; trying one and falling back would cost a second reset.
-The marker therefore has to be in flash, readable while the core is held at
-the reset vector.
+**Owner's direction (2026-11-02): ask the firmware, over the DebugMonitor
+info calls, after the existing attach.** STM32U375 images are all on the
+mailbox and stay routed by `DBGMCU_IDCODE`; only STM32L4 needs the question.
 
-- **Proposed: a reserved vector-table word.** Entries 8 to 10 of the
-  Cortex-M vector table (offsets 0x20 to 0x28) are reserved by the
-  architecture. ChibiOS fills them with the weak symbols `Vector20`,
-  `Vector24` and `Vector28` (`os/common/startup/ARMCMx/compilers/GCC/vectors.S`;
-  entry 7 is `SecureFault_Handler`). A tag image can define one of them as
-  an absolute value in its linker script, such as
-  `Vector28 = 0x4D4F4E31;` ("MON1"), so the word holds a magic and protocol
-  version instead of a handler address. Nothing in `ChibiOS/` changes. Still
-  to confirm: that a linker-script assignment overrides the weak definition
-  in every target's link, and that no code calls these handlers.
-- **Fallback, if that does not work: a descriptor at a fixed flash offset**
-  after the vector table, holding the magic, the version and the block's
-  address. It costs a linker-script section per target.
+- **Bump `DEBUGVERSION`** (`include/monitor.h`) to 0x21 and add a
+  `TAG_MONITORINFO` operand that answers which protocol carries requests:
+  legacy DebugMonitor or mailbox.
+- **The host asks only when the version is 0x21 or later.** Today's handler
+  has no default case in its info switch: an unknown operand clears the
+  request with DCRDR still holding the host's command word, which would read
+  back as an answer. A separate call, rather than inferring the protocol from
+  the version, lets an image built from newer common code stay on the legacy
+  protocol.
+- **No second reset.** The L4 attach already lets the firmware boot and then
+  reads `MONITORVERSION` over DCRDR, so the question costs one more call in
+  the same session.
+- **Mailbox images keep a minimal `DebugMon_Handler`** for the info calls
+  (version, protocol, buffer, size, SHA). Protobuf requests move to the
+  mailbox.
+- **The L4 mailbox accepts a late session request.** The U3 attach posts its
+  request while the core is halted at the reset vector; on L4 the host only
+  knows the protocol after boot, so the handler must accept a request posted
+  later and signalled by the kick interrupt.
 
-The host reads the word after halting at the reset vector, and uses the
-mailbox path when the magic is present and the DebugMonitor path otherwise.
-Once the session is up, `path_magic` in the block confirms it.
+This replaces the flash marker considered earlier (a reserved vector-table
+word, or a descriptor at a fixed flash offset): either would have needed a
+linker-script change per target, and the info call needs none.
 
 ### What the host needs
 
 - **tagcore and tagcore-rs** already have `AttachU3()` and `CallU3()`
-  (`attach_u3`, `call_u3`). They become the mailbox path, chosen by the
-  marker rather than by `DBGMCU_IDCODE`. Chip-specific registers are already
+  (`attach_u3`, `call_u3`). They become the mailbox path: always on U3,
+  and on L4 when the protocol call says so. Chip-specific registers are already
   separated by family detection: the IDCODE address, `RCC_CSR`, the flash
   empty check.
 - **The heartbeat.** Every tool must keep the session alive. Tag Programmer
   and qtmonitor poll every 400 ms, and the command-line tools that wait poll
   every 1 to 2 s. A tool that sits idle for 10 s or more would need to call
   `KeepAlive()`, as the U3 tools already must.
-- **The old path stays,** for every image without the marker.
+- **The old path stays,** for every image below version 0x21 or reporting
+  the legacy protocol.
 
 ### What it would show
 
@@ -193,7 +199,7 @@ The mailbox still uses SWD, for SRAM reads and NVIC writes. So:
 
 - the linker scripts for every L4 target;
 - the shared handler;
-- the marker;
+- the version bump and the protocol call;
 - host routing in tagcore and tagcore-rs;
 - `docs/shared/monitor-interface.md`.
 
@@ -207,7 +213,9 @@ measuring again.
 - **Step 1 first, as proposed, or straight to the mailbox?** Step 1 is
   smaller and keeps one protocol; the mailbox is the end state if bursts
   remain.
-- **Should new L4 images drop the DebugMonitor path entirely** once they
-  carry the marker, or keep both in firmware for a release?
-- **Is a reserved vector-table word acceptable as the marker,** or would you
-  rather have an explicit descriptor section?
+- **Should new L4 images drop DebugMonitor protobuf requests entirely** once
+  they report the mailbox, or keep both in firmware for a release? (They keep
+  the info calls either way.)
+- ~~Is a reserved vector-table word acceptable as the marker?~~ Answered
+  2026-11-02: no marker; a `TAG_MONITORINFO` protocol call behind a version
+  bump (above). UIUCTag, not yet fabricated, is the first target.

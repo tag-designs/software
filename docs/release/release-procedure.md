@@ -142,12 +142,13 @@ Qualify **per target**, not per tag. Five distributed targets flying means at
 most five runs, on one board each -- not one run per physical tag.
 
 `tag_release_check.py` takes its config, bounds and window lengths from a
-profile for the target: IMUTag (the default target), BitTag and PresTag, each
-from that target's qualified figures. Every value can still be overridden, and
-a target with no profile -- CompassTag and UIUCTag today -- must be given
+profile for the target: IMUTag (the default target), BitTag, PresTag and
+UIUCTag, each from that target's qualified figures. Every value can still be
+overridden, and a target with no profile -- CompassTag today -- must be given
 `--config` and its bounds, or qualified by hand following its power test plan.
-The BitTag and PresTag profiles date from 2026-11-01; the life-cycle walk now
-attaches to a sleeping L432 tag, since the host retries a failed SWD enter.
+The BitTag and PresTag profiles date from 2026-11-01 and UIUCTag's from
+2026-11-02; the life-cycle walk now attaches to a sleeping L432 tag, since the
+host retries a failed SWD enter.
 
 ### Qualify the released image, not a rebuild
 
@@ -426,7 +427,7 @@ hash is recorded regardless.
 4. **Qualify, once per target that will fly.** Attach a board of that type,
    flash it from the release with `flash_release.py`, then
    `tag_release_check.py --skip-build --target <Tag> --bin-dir <tools>`
-   (CompassTag and UIUCTag with `--config` and bounds, as above). Keep the
+   (CompassTag with `--config` and bounds, as above). Keep the
    output directory and write the
    release tag and image SHA-256 into it.
 5. **Write the result into the release.** The release page is where someone

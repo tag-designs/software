@@ -184,3 +184,34 @@ _No measurements recorded yet._
   returned no result on the first attempt here and `ALL_PASSED` on the second,
   matching the 4-of-6 pass rate measured then. The failures are host-side link
   timeouts at the first transaction, not device-test failures.
+
+### 2026-11-02  `tag_release_check.py` end to end, main `12af820d` — **PASS**
+
+- **image**: main `12af820d` (the L4 monitor fix and the RTC relock removal on
+  top of `fe7e35b5`), built locally; the check ran with `--skip-build` on the
+  flashed image.
+- **board**: `2036354B3032500800520028` (the breakout), on a `bittag-base-v7`
+  base.
+- **conditions**: supply 2.4961 V, checked before the first attach. Shipped
+  default config (`embedded/tools/power-configs/uiuctag-default.json`).
+- **result**: the new UIUCTag profile, with no hand steps:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | `IDLE`, four 120 s trials | ≤ 0.3 µA | 0.1512 / 0.1508 / 0.1516 / 0.1516 µA | **pass** |
+  | `RUNNING`, 1800 s | 0.3–0.646 µA | 0.55 µA | **pass** |
+  | `FINISHED` | ≤ 0.3 µA | 0.15 µA | **pass** |
+  | `IDLE` after a full cycle | ≤ 0.3 µA | 0.15 µA | **pass** |
+  | download, activity | 1/60 Hz, ≥ 0.75x | 30 rows, 1.00x | **pass** |
+
+- **A/B against the previous image**: resting current 0.1521 µA on `fe7e35b5`
+  and 0.1507 µA on `12af820d`, 120 s each, so the two firmware changes cost
+  nothing at rest. Running current is within 2% of the 0.5620 µA qualification.
+- **Monitor checks**: `tag-test` passed six times out of six with no base
+  0x81, and Tag Monitor's `session_check` passed every step; see the L4
+  monitor item in `../../TODO.md`.
+- **notes**: the profile's run floor (0.3 µA) also fails the "wakes but does
+  not collect" run of 2026-10-06, which read 0.24 µA. The harness's first
+  `tag-info` after start printed `Info failed` once and the retry read
+  `RUNNING`; possibly the same system-bus loss as the self-test poll below,
+  not investigated.

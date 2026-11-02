@@ -46,9 +46,13 @@ not been reproduced on a tag.
   is in its guarded region is answered from cached state in the handler.
   On 2026-11-01 BitTag and PresTag passed `tag-test` with resting current
   unchanged, and a PresTag Tag Monitor session stayed live through Start, Stop,
-  Erase and Synchronize Clock. Still to verify, per the proposal: `tag-test` on
-  CompassTag and UIUCTag, and `qtmon_session_check` on a UIUCTag. Step 2
-  (the mailbox) waits on whether bursts remain.
+  Erase and Synchronize Clock. On 2026-11-02 the UIUCTag breakout (main
+  `12af820d`, on a `bittag-base-v7` base) passed `tag-test` six times out of
+  six with no 0x81 burst, and Tag Monitor's `session_check` passed every step
+  with a clean log; resting current 0.1507 µA against 0.1521 µA before
+  ([UIUCTag power results](UIUCTag/design/power-results.md)). Still to verify,
+  per the proposal: `tag-test` on CompassTag. Step 2 (the mailbox) waits on
+  whether bursts remain; none have been seen since.
   Observed 2026-10-27 on a UIUCTag breakout (fw `7c508f46` plus the
   session-clock fix), reading `common/core/src/handlersL4.c` and `monitor.c`
   after bursts of base 0x81 errors during Synchronize Clock and Self-Test:
@@ -299,15 +303,16 @@ and [0017](../../docs/decisions/0017-offline-rebuild-build-time-layout-descripto
   full-flash download test, and a `tag-capture` of each target to confirm the
   identity record and session facts read back from the capture.
 - **Make `tag_release_check.py` cover every tag.** It has profiles for
-  IMUTag, BitTag and PresTag (2026-11-01): config, sleep bound, run floor and
+  IMUTag, BitTag, PresTag and UIUCTag: config, sleep bound, run floor and
   bound, run, rest and idle windows, settle and storms, from each target's
-  qualified figures, and a sample-count check for all three through
-  `config_odr_hz()`. Still to do:
-  - the BitTag and PresTag profiles passed end to end on 2026-11-01, with no
-    hand steps ([BitTag](BitTag/design/power-results.md),
-    [PresTag](families/PresTag/design/power-results.md)). BitTag's run bound
-    rests on one board; a second ran 13% lower, inside it;
-  - CompassTag and UIUCTag: a config, a profile and a rate for each;
+  qualified figures, and a sample-count check for each through
+  `config_odr_hz()`. BitTag, PresTag (2026-11-01) and UIUCTag (2026-11-02)
+  passed end to end with no hand steps
+  ([BitTag](BitTag/design/power-results.md),
+  [PresTag](families/PresTag/design/power-results.md),
+  [UIUCTag](UIUCTag/design/power-results.md)). Still to do:
+  - BitTag's run bound rests on one board; a second ran 13% lower, inside it;
+  - CompassTag: a config, a profile and a rate;
   - it checks neither calibration nor `tag-test`, so both are closed by hand.
 
 ### Host counterparts

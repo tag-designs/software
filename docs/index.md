@@ -209,7 +209,7 @@ design document.
 
 ### Tags / Common Firmware / core / Proposals
 
-- [A more robust monitor for the STM32L4 tags](../embedded/tags/common/core/design/proposals/l4-monitor-robustness.md) *(proposal, proposed)* — Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a marker in the vector table - with what each step needs, what it would and would not fix, and how to check it on the bench.
+- [A more robust monitor for the STM32L4 tags](../embedded/tags/common/core/design/proposals/l4-monitor-robustness.md) *(proposal, proposed)* — Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a monitor info call behind a version bump - with what each step needs, what it would and would not fix, and how to check it on the bench.
 
 ### Tags / Common Firmware / modules
 
@@ -330,7 +330,7 @@ design document.
 - [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states measured and good; the 2026-10-06 run verdict was retracted after the apparent fault proved to be the measurement.
 - [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
-- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- external_pages clobbered by every reset, an intermittent tag-test link failure, and confirming the internal-ADC fix.
+- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the system bus during the ADXL367 self-test, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
 
 ### Tags / UIUCTag / Investigations
 
