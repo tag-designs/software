@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the system bus while the core sleeps in a session, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
+summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
 ---
 
 # UIUCTag TODO
@@ -43,7 +43,7 @@ Delete an item when it is done.
   rather than at the tag.
 
 - **While the core sleeps during a monitor session, the debug port cannot
-  reach the system bus, and the base reports the failed accesses as
+  reach the bus matrix unless a DMA clock is on, and reads return zeros as
   successes.** Every `tag-test` prints `GetStatus failed: Tag returned
   NANOPB` once, then finishes `ALL_PASSED`. Traced on 2026-11-02 with
   throwaway probes (none committed), on `tag-breakout-base-l432-v1`:
@@ -79,14 +79,10 @@ Delete an item when it is done.
   - **Contradicts 2026-10-27.** That investigation read `PWR_CR1 = 0x500`
     and made 48 clean status reads across sleeps with `DBG_SLEEP` set, on the
     same base model (`../../bases/design/investigations/2026-10-0x81-dbg-sleep.md`).
-    Still to find: why plain Sleep with `DBG_SLEEP` now cuts off the system
-    bus, and why the base answers OK. One candidate for the second: a posted
-    AHB-AP access that faults sets `STICKYERR` while its own ACK is OK.
+    The cause is below.
 
   **Not the base build:** a clean `tag-breakout-base-l432-v1` (`5c6ddaf6`,
-  flashed 2026-11-02) fails identically, with one 0x81 in six runs, which
-  fits a posted AHB-AP access faulting on the target bus: the access's own
-  ACK is OK, `STICKYERR` is set, and the next AP access gets the FAULT. Also
+  flashed 2026-11-02) fails identically. Also
   ruled out: the Sleep clock gates (`RCC_AHB1SMENR` = `0x00011303` and
   `RCC_AHB2SMENR` = `0x0005229F`, both reset values, so SRAM1, SRAM2 and
   flash are clocked in Sleep; `APB1SMENR1` = `0xF7E6CE31`, PWR clocked;
@@ -100,15 +96,44 @@ Delete an item when it is done.
   difference from 2026-10-27 is the supply: 3.28 V then, 2.496 V now. 2.5 V
   is this tag's operating voltage, so the tag must work there.
 
-  Fixes, separable, none needing the cause:
-  - **Firmware (batch):** skip the idle `__WFI()` while a monitor session is
-    open, as the probe build did. On L4 the main loop already never blocks
-    during a session, so the core only idles there while a test or delay
-    sleeps; the cost is that time at run current instead of Sleep.
-  - **Host:** read the request back after writing it and retry or fail
-    loudly, rather than trigger on zeros.
-  - **Base:** check `CTRL/STAT.STICKYERR` after a memory transfer, so a
-    faulted access reports 0x81 instead of OK with zeros.
+  **Cause found: the bus matrix stops in Sleep when no DMA clock is on.**
+  Probed 2026-11-02 with a throwaway host build:
+  - **No bus fault.** `CTRL/STAT` read straight after a lost request is
+    `0xF0000F40`: `READOK` set, `STICKYERR`, `WDATAERR` and `STICKYORUN`
+    clear. The access port reports the zeros as successful reads. `CSW` is
+    `0x23000052` (`DeviceEn` set) inside and outside the window. So the base
+    is not hiding a fault; there is none to report.
+  - **Everything beyond the core's private bus reads zero.** That covers flash
+    at `0x08000000` and its alias at `0`, SRAM2 by both its code-bus
+    (`0x10000000`) and system-bus (`0x2000C000`) addresses, SRAM1, and
+    `RCC`. Only `DBGMCU` and `SCB` answer. It is the whole path to the STM32
+    bus matrix, not the system bus alone.
+  - **Turning on DMA1's clock removes it.** With the host setting
+    `RCC_AHB1ENR.DMA1EN` (`0x100` → `0x101`) at the first call, 6 of 6
+    `tag-test` runs had no lost request and no NANOPB; the two controls run
+    with the same build lost one each. `DMA1SMEN` is set at reset, so DMA1 is
+    then a bus master clocked in Sleep, and the matrix stays up for the debug
+    port. Plain `DBG_SLEEP` keeps the core's clock but evidently not the
+    matrix's when the CPU is its only enabled master. This tag never enables
+    a DMA (`RCC_AHB1ENR` = `0x100`, flash only). What the 2026-10-27 image
+    had enabled was not recorded.
+  - **The flash Sleep clock is not it.** `FLASHSMEN` is already set
+    (`RCC_AHB1SMENR` bit 8).
+
+  Fixes, separable:
+  - **Firmware (batch):** enable DMA1's clock while a monitor session is
+    open and disable it when the session closes. This is the shipped
+    equivalent of the probe. Skipping the idle `__WFI()` during a session
+    also worked (6 of 6), at the cost of run current instead of Sleep.
+  - **Host:** set `DMA1EN` next to `DBG_SLEEP` after MONITORSTART. That
+    fixes tags already in the field without new firmware. But unlike
+    `DBG_SLEEP`, which the tag clears when the session ends, nothing would
+    clear `DMA1EN` until a reset or Standby, so a tag started from a session
+    would carry it into its run. Measure that before shipping it. The host
+    should also read the request back and fail loudly on a mismatch, since
+    the base cannot detect this.
+  - **Base:** nothing to fix for this fault. The access port reports success,
+    so a `STICKYERR` check would not have caught it.
 
   The L4 mailbox in
   [the monitor proposal](../common/core/design/proposals/l4-monitor-robustness.md)
