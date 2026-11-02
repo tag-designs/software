@@ -361,3 +361,34 @@ show; and STM32U375 tags.
     After a wash in 99.9% isopropyl alcohol it read 0.1180 / 0.1181 uA
     untouched and 0.1181 / 0.1180 uA after `tag-reset --set-rtc`, on the same
     base, image and supply.
+
+### 2026-11-01  `tag_release_check.py --target BitTag` end to end — **PASS**
+
+- **tool**: `tag_release_check.py --target BitTag --skip-build --bin-dir
+  <Release/bin>` at `5bd7d997`, tree clean, with the BitTag profile:
+  `bittag-bitpersec.json`, idle bound 0.3 uA, run 0.3-0.584 uA, 1200 s run,
+  120 s rest and idle windows, 75 s settle, no storms. The first harness run on
+  a BitTag needing no hand steps.
+- **image**: `12bb1fe7` (the BitTag firmware of the day's `main`); not a
+  release.
+- **board**: `2039354D30315012005E0068` (the board washed that afternoon), base
+  `bittag-base-v7`, 2.4960 V; untouched before the check, 0.1227 uA.
+- **result**:
+
+  | Point | Bound | Measured |
+  | --- | --- | ---: |
+  | `IDLE`, 4 trials of 120 s | ≤ 0.3 uA | 0.1210 / 0.1196 / 0.1188 / 0.1183 uA |
+  | `IDLE`, clock set | ≤ 0.3 uA | 0.12 uA |
+  | `RUNNING`, 1200 s at `BITPERSEC` | 0.3-0.584 uA | 0.44 uA |
+  | `FINISHED` | ≤ 0.3 uA | 0.12 uA |
+  | `IDLE` after a full cycle | ≤ 0.3 uA | 0.12 uA |
+  | download | count | `Activity` 1260 rows, 1.05x the 1200 expected |
+
+  Artifacts: `release-BitTag-20261101-221818` (kept off the repository).
+- **verdict**: **PASS**.
+- **board-to-board spread**: this board runs at 0.44 uA, the qualification
+  board `2035374D303150190059002F` at 0.508 uA the same afternoon, same image
+  family, config and supply: about 13% apart, the first second-board figure for
+  BitTag. The 0.584 uA bound came from the qualification board alone; both
+  boards sit inside 0.3-0.584 uA, but a third with a higher run current would
+  test it.

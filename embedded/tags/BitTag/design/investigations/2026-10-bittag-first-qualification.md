@@ -11,7 +11,7 @@ introduction, section 1 and section 2) and from the session report that
 preceded [`../power-results.md`](../power-results.md). The session itself, run
 on 2026-10-03 against `fw-v0.5`, passed; its numbers and their interpretation
 are in [`../power-results.md`](../power-results.md). Open follow-ups are in
-[`../../TODO.md`](../../TODO.md).
+the [firmware worklist](../../../TODO.md).
 
 ## Before this plan
 

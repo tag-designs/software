@@ -17,7 +17,7 @@ and what went wrong getting them is in
 This plan covers only what is BitTag-specific. The rig, the Joulescope server,
 flashing, and what to record are in the shared
 [power testing procedure](../../../../docs/bench/power-testing.md). Open work
-is in [`../TODO.md`](../TODO.md).
+is in the [firmware worklist](../../TODO.md).
 
 ## 0. Inputs
 

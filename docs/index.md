@@ -181,7 +181,6 @@ design document.
 
 - [BitTag Power Measurement Log](../embedded/tags/BitTag/design/power-results.md) *(results)* — Append-only log of BitTag power measurements -- build, board, supply, config, numbers and interpretation per session.
 - [BitTag Power Test Plan — Idle, Running and Finished Currents](../embedded/tags/BitTag/design/power-test-plan.md) *(procedure)* — BitTag power qualification -- what the firmware draws in each state, the configs, the phases and the pass/fail gates for IDLE, RUNNING and FINISHED at 2.5 V.
-- [BitTag TODO](../embedded/tags/BitTag/TODO.md) *(worklist)* — Open BitTag power-qualification work -- a first end-to-end release check.
 
 ### Tags / BitTag / Investigations
 
