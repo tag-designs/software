@@ -450,23 +450,7 @@ fn main() -> ExitCode {
             ));
         }
     };
-    let output = cli.output.unwrap_or_else(|| "tag-download.db3".into());
-    // The writer refuses a tag type it has no schema for before creating
-    // the file.
-    let mut writer = match LogWriter::create(output.as_ref(), &config, true) {
-        Ok(writer) => writer,
-        Err(error) => return fail(format!("Could not open output: {error}")),
-    };
-    println!("Writing sqlite log to {output}");
-
-    let header = match read_header(&tag) {
-        Ok(header) => header,
-        Err(message) => return fail(format!("Could not write log header: {message}")),
-    };
-    if let Err(error) = writer.write_header(&header) {
-        return fail(format!("Could not write log header: {error}"));
-    }
-
+    // Decided before the output file is created, so a refusal leaves none.
     let bittag_rescue = rescue
         && (config.tag_type == TagType::Bittag as i32
             || config.tag_type == TagType::BittagLe as i32);
@@ -489,6 +473,23 @@ fn main() -> ExitCode {
             if elf_layout.is_some() { "from --elf" } else { "original field firmware's layout" }
         );
     }
+    let output = cli.output.unwrap_or_else(|| "tag-download.db3".into());
+    // The writer refuses a tag type it has no schema for before creating
+    // the file.
+    let mut writer = match LogWriter::create(output.as_ref(), &config, true) {
+        Ok(writer) => writer,
+        Err(error) => return fail(format!("Could not open output: {error}")),
+    };
+    println!("Writing sqlite log to {output}");
+
+    let header = match read_header(&tag) {
+        Ok(header) => header,
+        Err(message) => return fail(format!("Could not write log header: {message}")),
+    };
+    if let Err(error) = writer.write_header(&header) {
+        return fail(format!("Could not write log header: {error}"));
+    }
+
     let mut max_count = if status.external_data_count > 0 {
         status.external_data_count as usize
     } else {

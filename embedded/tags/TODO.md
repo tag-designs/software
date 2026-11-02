@@ -343,12 +343,6 @@ These ship separately but are needed for the firmware changes to be useful.
 - **D3, capture additions:** the EEOffset over I2C for tags already deployed;
   NAND pages read through on-die ECC, with their status; internal-flash ECC
   faults.
-- **D4, on hardware:** `tag-dwnld --rescue-exception --elf <image>` reads a
-  BitTag's records at the image's `vddHeader`..`__persistent_end__` and
-  accepts `BITTAG_LE` (tagcore-rs `BitTagFlashLog`). Not yet run on a tag:
-  download a FINISHED BitTag both normally and with the rescue, and compare
-  the databases. The C++ `legacy_bittag_rescue.cc` is legacy host code and
-  keeps the hard-coded address.
 - **D5:** decoders should read CompassTag `temp10` as signed for fw-v0.0.3
   offline decoding, and read the new `sconfig` members by layout version.
 
