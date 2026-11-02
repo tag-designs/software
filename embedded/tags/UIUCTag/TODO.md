@@ -87,8 +87,11 @@ Delete an item when it is done.
   flashed 2026-11-02) fails identically, with one 0x81 in six runs, which
   fits a posted AHB-AP access faulting on the target bus: the access's own
   ACK is OK, `STICKYERR` is set, and the next AP access gets the FAULT. Also
-  ruled out: the Sleep clock gates (`RCC_AHB1SMENR` = `0x00011303`, the reset
-  value, SRAM1 and flash clocked in Sleep), how `DBG_SLEEP` is set (the
+  ruled out: the Sleep clock gates (`RCC_AHB1SMENR` = `0x00011303` and
+  `RCC_AHB2SMENR` = `0x0005229F`, both reset values, so SRAM1, SRAM2 and
+  flash are clocked in Sleep; `APB1SMENR1` = `0xF7E6CE31`, PWR clocked;
+  `ProtoBuf` is in SRAM1 at `0x20001738`; and `RCC_CR`, which no Sleep
+  gate turns off, reads 0 in the same window), how `DBG_SLEEP` is set (the
   host and the 2026-10-27 tool write the same bit), and a missing barrier
   after the `WFI`: an idle hook of `__WFI(); __ISB();` (idle thread
   `wfi; isb sy`) still failed 6 of 6 with the sleep-only test. As expected,
