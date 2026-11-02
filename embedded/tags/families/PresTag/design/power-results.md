@@ -1048,3 +1048,34 @@ was open; `fw-v0.6` fixes it.
   pages are too few to show the restored flash wake delay.
 - **verdict**: the RTC relock caused the 2026-10-26 hang, and the branch fixes
   it; no image moved idle current; the download is unchanged.
+
+### 2026-11-01  `tag_release_check.py --target PresTag` end to end — **PASS**
+
+The first run of the harness on a PresTag that needed no hand steps: on
+2026-10-07 it aborted on the attach (`initial DEMCR read failed`, 41 times)
+and the target was qualified by hand. The host's SWD enter retry fixed that.
+
+- **tool**: `tag_release_check.py --target PresTag --skip-build --bin-dir
+  <Release/bin>` at `81e312c5`, tree clean, with the PresTag profile:
+  `prestag-60.json` (shipped 60 s period), idle bound 0.22 uA, run 0.22-0.47
+  uA, 1800 s run, 120 s rest and idle windows, 75 s settle, no storms.
+- **image**: the `main` image of 2026-11-01 (the RTC relock and download
+  prescaler fixes), already on the tag; not a release, so this proves the
+  harness, not an image.
+- **board**: UUID `20333050364150040063005F`, base `bittag-base-v7`. Supply
+  2.4961 V; untouched before the check, 0.1103 uA.
+- **result**:
+
+  | Point | Bound | Measured |
+  | --- | --- | ---: |
+  | `IDLE`, 4 trials of 120 s | ≤ 0.22 uA | 0.1111 / 0.1113 / 0.1114 / 0.1115 uA |
+  | `IDLE`, clock set | ≤ 0.22 uA | 0.11 uA |
+  | `RUNNING`, 1800 s | 0.22-0.47 uA | 0.37 uA |
+  | `FINISHED` | ≤ 0.22 uA | 0.11 uA |
+  | `IDLE` after a full cycle | ≤ 0.22 uA | 0.11 uA |
+  | download | count | `Pressure` 31 rows, 1.03x the 30 expected |
+
+  The life-cycle figures are as the check prints them, to 0.01 uA. Artifacts:
+  `release-PresTag-20261101-210014` (kept off the repository).
+- **verdict**: **PASS**. Running 0.37 uA sits with this board family's
+  0.37-0.41 uA at 60 s from 2026-10-05 and 2026-10-07.

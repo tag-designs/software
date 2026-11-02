@@ -303,8 +303,10 @@ and [0017](../../docs/decisions/0017-offline-rebuild-build-time-layout-descripto
   bound, run, rest and idle windows, settle and storms, from each target's
   qualified figures, and a sample-count check for all three through
   `config_odr_hz()`. Still to do:
-  - run the BitTag and PresTag profiles end to end on hardware (the pieces
-    have each run: the BitTag life cycle, PresTag attaches from sleep);
+  - run the BitTag profile end to end on hardware (its life cycle has run).
+    The PresTag profile passed end to end on 2026-11-01
+    ([results](families/PresTag/design/power-results.md)), with no hand
+    steps: the attach that stopped it on 2026-10-07 now works;
   - CompassTag and UIUCTag: a config, a profile and a rate for each;
   - it checks neither calibration nor `tag-test`, so both are closed by hand.
 
