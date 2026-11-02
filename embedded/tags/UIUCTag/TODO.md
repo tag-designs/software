@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
+summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, an unreproduced Info failure in the release check, and confirming the internal-ADC fix.
 ---
 
 # UIUCTag TODO
@@ -133,15 +133,34 @@ Delete an item when it is done.
     0.15 µA, unchanged from the morning's check, so the clock does not
     outlive the session.
     The C++ `tagcore` library, not released since v4.0, is unchanged.
+    `rpc.rs` `write_request()` also reads every L4 request back, rewrites it
+    up to twice, and otherwise fails with "RPC request did not reach the
+    tag". Checked with the DMA fix disabled: the lost request is reported
+    in those words instead of as NANOPB.
   - **Base:** nothing to fix for this fault. The access port reports success,
     so a `STICKYERR` check would not have caught it.
 
   The L4 mailbox in
   [the monitor proposal](../common/core/design/proposals/l4-monitor-robustness.md)
   would not avoid this on its own, since its block is in SRAM too; it needs
-  the bus matrix kept up the same way. The harness's one `Info failed`
-  after `tag-start` is **not** this fault: it still appears with
-  `DMA1EN` set. Delete this item once the firmware change is in the batch.
+  the bus matrix kept up the same way. Delete this item once the firmware
+  change is in the batch.
+
+- **One `Info failed` in every UIUCTag release check, not reproduced by
+  hand.** Both `tag_release_check.py` runs of 2026-11-02 log one
+  `[state-check stderr] Info failed`, with and without the host's `DMA1EN`
+  fix, so it is not the bus-matrix fault. It comes from the
+  wait-for-RUNNING poll after `tag-start` (`power_experiment.py`
+  `start()`), the only `state-check` that ran (`tag-stop` succeeded).
+  `lifecycle.log` appends stderr after stdout, so its position in the file
+  says nothing. The next poll succeeded and the runs passed. By hand,
+  eleven start-then-poll cycles never failed: seven straight after a reset,
+  and four after the harness's `tag-reset --set-rtc` and 75 s of sleep.
+  None of the BitTag or PresTag checks shows it. The one harness condition
+  not reproduced is the Joulescope server, which was running for both
+  failures and stopped for the hand cycles. Next: run the check with
+  `tag-info -d` in the poll, or the server running, and keep the failing
+  attempt's log.
 
 - **`external_pages` is wrong after any reset, and reports nothing collected.**
   Confirmed on hardware 2026-10-06: a run that stored **5 pressure samples, 5

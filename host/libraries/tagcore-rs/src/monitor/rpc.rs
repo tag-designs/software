@@ -9,13 +9,14 @@
 //! only; the padding bytes are whatever was in the host staging buffer and
 //! are ignored by the decoder, which is given the exact length.
 
+use std::thread::sleep;
 use std::time::Instant;
 
-use log::error;
+use log::{error, warn};
 use prost::Message;
 
 use super::abi::op;
-use super::{INSTRUMENTED, TagMonitor, TargetFamily};
+use super::{INSTRUMENTED, TagMonitor, TargetFamily, ms};
 use crate::link::elapsed_ns;
 use crate::proto::{Ack, Req};
 
@@ -25,6 +26,56 @@ fn round4(n: usize) -> usize {
 }
 
 impl TagMonitor {
+    /// Writes the first `len` bytes of the staging buffer (a whole number of
+    /// words) into the firmware's call buffer, and on an STM32L4 confirms
+    /// they arrived.
+    ///
+    /// The ST-LINK is faster for word-aligned access, and the call buffer is
+    /// word aligned, so whole words are transferred. On an STM32L4 a write
+    /// can be dropped with an OK status while the debug port cannot reach
+    /// the bus matrix (a sleeping tag with no DMA clock on; see
+    /// [`keep_bus_matrix_in_sleep`](Self::keep_bus_matrix_in_sleep)), and
+    /// the tag would then decode whatever the buffer held. So the request is
+    /// read back and, on a mismatch, written again after a short wait, up to
+    /// three attempts in all. Costs one extra read per call. The U3 mailbox
+    /// is not checked: its handshake already confirms what the tag saw.
+    ///
+    /// Returns false, with the reason logged, if a write fails or the request
+    /// still does not read back intact.
+    fn write_request(&mut self, len: usize) -> bool {
+        const ATTEMPTS: u32 = 3;
+        const RETRY_WAIT_MS: u64 = 100;
+        let mut back = vec![0u8; len];
+        for attempt in 1..=ATTEMPTS {
+            if !self.link.write_mem32(self.call_buf, &self.rpcbuf[..len]) {
+                error!("RPC buffer write failed");
+                return false;
+            }
+            if self.target_family != TargetFamily::Stm32L4 {
+                return true;
+            }
+            if !self.link.read_mem32(self.call_buf, &mut back) {
+                error!("RPC buffer read-back failed");
+                return false;
+            }
+            if back[..] == self.rpcbuf[..len] {
+                if attempt > 1 {
+                    warn!("RPC request reached the tag on attempt {attempt}");
+                }
+                return true;
+            }
+            if attempt < ATTEMPTS {
+                sleep(ms(RETRY_WAIT_MS));
+            }
+        }
+        error!(
+            "RPC request did not reach the tag after {ATTEMPTS} attempts: the call buffer \
+             reads back {:02x?}; the tag's bus matrix may be stopped in Sleep",
+            &back[..len.min(16)]
+        );
+        false
+    }
+
     /// Sends `req` to the firmware and returns its reply.
     ///
     /// Serialises the request into the firmware's call buffer, runs the
@@ -78,17 +129,12 @@ impl TagMonitor {
             return None;
         }
 
-        // The ST-LINK is faster for word-aligned access, and the firmware's
-        // call buffer is word aligned, so whole words are transferred.
         let step = Instant::now();
-        let write_ok = self
-            .link
-            .write_mem32(self.call_buf, &self.rpcbuf[..round4(size)]);
+        let write_ok = self.write_request(round4(size));
         if INSTRUMENTED {
             self.monitor_stats.write_request_ns += elapsed_ns(step);
         }
         if !write_ok {
-            error!("RPC buffer write failed");
             return None;
         }
 
