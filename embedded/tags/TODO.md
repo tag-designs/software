@@ -298,34 +298,14 @@ and [0017](../../docs/decisions/0017-offline-rebuild-build-time-layout-descripto
 - **Functional checks beyond the gate:** the CompassTag resume test, the
   full-flash download test, and a `tag-capture` of each target to confirm the
   identity record and session facts read back from the capture.
-- **Make `tag_release_check.py` cover every tag.** Today it is a full gate only
-  for IMUTagNandBmp581:
-  - `power-configs/` holds configs only for IMUTag and BitTag;
-  - `--run-max-ua 760` is sized for IMUTag at 400 Hz from 3.7 V;
-  - the sample-count check reads only IMUTag's `lsm6.odr`;
-  - the life-cycle run is a fixed 60 s.
-
-  For other tags the life-cycle step is not meaningful. Its run bound is too
-  high for PresTag and BitTag to catch anything. CompassTag and UIUCTag
-  probably produce no downloadable row in 60 s, so they would fail on an
-  empty table. The fix needs:
-  - a config per tag (PresTag, CompassTag and UIUCTag have none);
-  - per-target defaults, chosen by `--target`, for the run-current bound,
-    taken from a known-good measurement;
-  - a run long enough to fill a downloadable page;
-  - a per-tag sample-count check.
-
-  Found qualifying `fw-v0.6`:
-  - its 100 µA sleep threshold is also the floor a run must clear, so every
-    target but IMUTag needs its bounds passed explicitly (`630ce14e` lets them
-    through) or a sub-100 µA run is failed as "not collecting";
-  - it cannot drive BitTag, PresTag or UIUCTag, aborting on
-    `Monitor attach failed: initial DEMCR read failed`; those were qualified
-    by running the phases by hand. That is the harness aborting, not the tag.
-    The SWD enter retry of 2026-10-31 (`aad262c4`, `4c79551a`) fixed a
-    first-attach failure of the same shape on L4: `tag_lifecycle_check.py`
-    drove a BitTag through a whole cycle on 2026-11-01. Retest it on PresTag
-    and UIUCTag before building a workaround;
+- **Make `tag_release_check.py` cover every tag.** It has profiles for
+  IMUTag, BitTag and PresTag (2026-11-01): config, sleep bound, run floor and
+  bound, run, rest and idle windows, settle and storms, from each target's
+  qualified figures, and a sample-count check for all three through
+  `config_odr_hz()`. Still to do:
+  - run the BitTag and PresTag profiles end to end on hardware (the pieces
+    have each run: the BitTag life cycle, PresTag attaches from sleep);
+  - CompassTag and UIUCTag: a config, a profile and a rate for each;
   - it checks neither calibration nor `tag-test`, so both are closed by hand.
 
 ### Host counterparts

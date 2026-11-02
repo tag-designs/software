@@ -49,8 +49,10 @@ from dataclasses import dataclass, field, asdict
 #: Tools are located relative to this file so the script works from any cwd.
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-#: Default host tool directory produced by the build-host preset.
-DEFAULT_BIN = os.path.join(REPO_ROOT, "build-host", "bin")
+#: Default host tool directory: $TAG_BIN_DIR when set, else the old
+#: build-host preset's output. The Rust tools now build into a host build
+#: tree's Release/bin, so point TAG_BIN_DIR (or --bin-dir) there.
+DEFAULT_BIN = os.environ.get("TAG_BIN_DIR") or os.path.join(REPO_ROOT, "build-host", "bin")
 
 #: The measurement tool lives beside this script.
 MEASURE_TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -456,12 +458,30 @@ def recorded_config(db_path: str) -> dict | None:
         con.close()
 
 
+#: Seconds per Activity row for each BitTag log format: one row per bucket,
+#: from the bucket table in embedded/tags/BitTag/src/bt_state_run.c.
+BITTAG_BUCKET_S = {
+    "BITTAG_BITPERSEC": 1.0,
+    "BITTAG_BITSPERMIN": 60.0,
+    "BITTAG_BITSPERFOURMIN": 240.0,
+    "BITTAG_BITSPERFIVEMIN": 300.0,
+}
+
+
 def config_odr_hz(cfg: dict | None) -> float | None:
-    """Extract a sample rate in Hz from a recorded configuration.
+    """Extract, from a recorded configuration, the rate in Hz at which rows
+    arrive in the download's largest sample table.
+
+    @details That table is what check_download() counts, so this is the rate
+             its sample-count check needs:
+             - IMUTag: lsm6.odr, as "S400", for the IMU table;
+             - BitTag (BITTAG, BITTAG_LE): one Activity row per bucket of
+               bittag_log ([BITTAG_BUCKET_S]);
+             - PresTag: one Pressure row per `period` seconds.
 
     @param cfg Configuration as recorded in the download, or None.
     @return Rate in Hz when the configuration names one in a recognised form,
-            else None. IMUTag encodes it as lsm6.odr = "S400".
+            else None.
     """
     if not cfg:
         return None
@@ -471,6 +491,14 @@ def config_odr_hz(cfg: dict | None) -> float | None:
             return float(odr[1:].replace("_", "."))
         except ValueError:
             return None
+    tag_type = cfg.get("tag_type")
+    if tag_type in ("BITTAG", "BITTAG_LE"):
+        bucket = BITTAG_BUCKET_S.get(cfg.get("bittag_log"))
+        return 1.0 / bucket if bucket else None
+    if tag_type == "PRESTAG":
+        period = cfg.get("period")
+        if isinstance(period, (int, float)) and period > 0:
+            return 1.0 / period
     return None
 
 

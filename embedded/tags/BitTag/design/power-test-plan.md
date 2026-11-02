@@ -369,16 +369,18 @@ up for one, and BitTag figures hold only at the voltage they were taken at
 The baseline is the first qualification: resting **0.1220 uA**, running
 **0.5082 uA**, at 2.4960 V on `fw-v0.5`
 ([results](power-results.md)). It is one board on one day, not a spread, so the
-gates below are sanity bounds rather than regression bounds. A run-current
-bound waits for a second session ([TODO](../TODO.md)).
+gates below began as sanity bounds. A second session on 2026-11-01 (same board,
+idle 0.118 uA, run 0.5081 uA) agreed with the first to 0.25%, so `RUNNING` is
+now gated at 1.15x and `IDLE` at 0.3 uA: these are the BitTag profile of
+`tag_release_check.py`.
 
 | Point | Gate | Rationale |
 | --- | --- | --- |
 | supply, every measurement | 2.45-2.55 V | no regulator; a figure at another voltage is not comparable |
-| `IDLE` | ≤ 5 µA | "did it sleep" bound; CompassTag on the same `pwr-l432.c` reaches 0.38 µA |
-| `FINISHED` | ≤ 5 µA, and within 20% of `IDLE` | same code path; a difference is a finding |
+| `IDLE` | ≤ 0.3 µA | 2.5x the 0.118 uA floor, and below the 0.508 uA run, so one bound tells asleep from collecting |
+| `FINISHED` | ≤ 0.3 µA, and within 20% of `IDLE` | same code path; a difference is a finding |
 | `IDLE` repeatability | 4 of 4 trials below the bound | the fault class is layout-sensitive |
-| `RUNNING` | recorded, not gated; two runs within 5% | one session is not a spread |
+| `RUNNING` | 0.3-0.584 µA at `BITPERSEC`; two runs within 5% | 1.15x the 0.508 uA two sessions agree on, IMUTag's margin |
 | state during the run | `RUNNING`, confirmed, not `CONFIGURED` | hard; see §1 |
 | `tag-test` | `ALL_PASSED` | hard |
 | download | table present, timestamps monotonic | hard, for B1 |
@@ -391,12 +393,9 @@ bound waits for a second session ([TODO](../TODO.md)).
   true cold number needs all power removed and no probe ever connected.
 - **Board-to-board spread.** One board, one UUID. Record the UUID; do not
   generalise.
-- **`tag_release_check.py` integration.** Its defaults are IMUTag's -- the
-  config, the 60 s run and the sample-count check all assume IMUTag. Adding
-  BitTag means parameterising the run duration and the resting-window length
-  ([TODO](../TODO.md)).
 - **Any supply but 2.5 V.** There is no regulator, so nothing here transfers to
-  another rail voltage, and no scaling recovers it ([TODO](../TODO.md)).
+  another rail voltage, and no scaling recovers it. The bench is not set up
+  to sweep supply voltage, so none is planned.
 - **Low-battery behaviour.** The stop-on-low-battery branch is commented out,
   so what the tag does as a cell collapses is untested and out of scope.
 
