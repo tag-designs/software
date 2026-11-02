@@ -15,7 +15,7 @@
 
 use std::time::{Duration, Instant};
 
-use log::{debug, error, log};
+use log::{debug, error, log, warn};
 
 use super::{INSTRUMENTED, LinkAdapt, elapsed_ns, libusb_name};
 
@@ -150,6 +150,34 @@ pub(super) fn debug_cmd(sub: u8, addr: u32) -> [u8; 16] {
     cmd
 }
 
+/// Clears a halt on a bulk endpoint that has just answered a transfer with a
+/// stall (`LIBUSB_ERROR_PIPE`), so the caller can try the transfer once more.
+///
+/// A base whose firmware predates the identify command (`F6 99`; a 2022
+/// bittag-base-v7 build) was seen to leave its endpoint stalled after that
+/// command: every later command failed with `LIBUSB_ERROR_PIPE` until the
+/// base was unplugged, since nothing cleared the halt. Clearing it is done
+/// only after a stall, never on open, because a `CLEAR_FEATURE` resets the
+/// data toggle and a healthy base's USB stack is not relied on to follow.
+///
+/// Returns true if the halt was cleared. Logs a warning either way, so a base
+/// that stalls is visible in the log.
+fn clear_stall(handle: &rusb::DeviceHandle<rusb::Context>, endpoint: u8, dir: &str) -> bool {
+    match handle.clear_halt(endpoint) {
+        Ok(()) => {
+            warn!("bulk {dir} endpoint {endpoint:#04x} stalled; cleared the halt, retrying once");
+            true
+        }
+        Err(e) => {
+            warn!(
+                "bulk {dir} endpoint {endpoint:#04x} stalled, and clearing it failed: {}",
+                libusb_name(&e)
+            );
+            false
+        }
+    }
+}
+
 impl LinkAdapt {
     /// Reads exactly `buf.len()` bytes from the bulk IN endpoint.
     ///
@@ -158,15 +186,20 @@ impl LinkAdapt {
     /// transfer fails, or fewer bytes arrive than asked for. A failure is
     /// logged through the failure run (see [`LinkAdapt::note_failure`]),
     /// and `LIBUSB_ERROR_NO_DEVICE` closes the probe (see
-    /// [`transfer_failed`](Self::transfer_failed)). Half of the C++
-    /// `usb_xfer`.
+    /// [`transfer_failed`](Self::transfer_failed)). A stalled endpoint
+    /// (`LIBUSB_ERROR_PIPE`) is cleared and the transfer tried once more;
+    /// see [`clear_stall`]. Half of the C++ `usb_xfer`.
     fn usb_in(&mut self, buf: &mut [u8]) -> bool {
         let Some(handle) = &self.handle else {
             self.no_device_open();
             return false;
         };
         let start = Instant::now();
-        let res = match handle.read_bulk(self.ep_in, buf, USB_TRANSFER_TIMEOUT) {
+        let mut result = handle.read_bulk(self.ep_in, buf, USB_TRANSFER_TIMEOUT);
+        if matches!(result, Err(rusb::Error::Pipe)) && clear_stall(handle, self.ep_in, "IN") {
+            result = handle.read_bulk(self.ep_in, buf, USB_TRANSFER_TIMEOUT);
+        }
+        let res = match result {
             Ok(n) => n,
             Err(e) => {
                 self.transfer_failed(&e);
@@ -190,15 +223,19 @@ impl LinkAdapt {
     ///
     /// Blocks for up to [`USB_TRANSFER_TIMEOUT`]. Returns false, with the
     /// reason logged, if no probe is open, the transfer fails, or it is
-    /// short. Failures are logged and handled as in
-    /// [`usb_in`](Self::usb_in). The other half of the C++ `usb_xfer`.
+    /// short. Failures, a stalled endpoint included, are logged and handled
+    /// as in [`usb_in`](Self::usb_in). The other half of the C++ `usb_xfer`.
     fn usb_out(&mut self, buf: &[u8]) -> bool {
         let Some(handle) = &self.handle else {
             self.no_device_open();
             return false;
         };
         let start = Instant::now();
-        let res = match handle.write_bulk(self.ep_out, buf, USB_TRANSFER_TIMEOUT) {
+        let mut result = handle.write_bulk(self.ep_out, buf, USB_TRANSFER_TIMEOUT);
+        if matches!(result, Err(rusb::Error::Pipe)) && clear_stall(handle, self.ep_out, "OUT") {
+            result = handle.write_bulk(self.ep_out, buf, USB_TRANSFER_TIMEOUT);
+        }
+        let res = match result {
             Ok(n) => n,
             Err(e) => {
                 self.transfer_failed(&e);
