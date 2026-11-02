@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, an unreproduced Info failure in the release check, and confirming the internal-ADC fix.
+summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, a rare Info failure in the release check (now reported with its reason), and confirming the internal-ADC fix.
 ---
 
 # UIUCTag TODO
@@ -146,21 +146,22 @@ Delete an item when it is done.
   the bus matrix kept up the same way. Delete this item once the firmware
   change is in the batch.
 
-- **One `Info failed` in every UIUCTag release check, not reproduced by
-  hand.** Both `tag_release_check.py` runs of 2026-11-02 log one
-  `[state-check stderr] Info failed`, with and without the host's `DMA1EN`
-  fix, so it is not the bus-matrix fault. It comes from the
-  wait-for-RUNNING poll after `tag-start` (`power_experiment.py`
-  `start()`), the only `state-check` that ran (`tag-stop` succeeded).
-  `lifecycle.log` appends stderr after stdout, so its position in the file
-  says nothing. The next poll succeeded and the runs passed. By hand,
-  eleven start-then-poll cycles never failed: seven straight after a reset,
-  and four after the harness's `tag-reset --set-rtc` and 75 s of sleep.
-  None of the BitTag or PresTag checks shows it. The one harness condition
-  not reproduced is the Joulescope server, which was running for both
-  failures and stopped for the hand cycles. Next: run the check with
-  `tag-info -d` in the poll, or the server running, and keep the failing
-  attempt's log.
+- **One `Info failed` in two of three UIUCTag release checks, not reproduced
+  by hand.** The `tag_release_check.py` runs of 2026-11-02 at 07:14 and 10:55
+  each log one `[state-check stderr] Info failed`, with and without the
+  host's `DMA1EN` fix, so it is not the bus-matrix fault. It comes from the
+  wait-for-RUNNING poll after `tag-start` (`power_experiment.py` `start()`):
+  attach succeeded and `GetTagInfo` failed. The next poll succeeded and the
+  runs passed. A third check at 14:35 did not show it, and 61 replays did not
+  either: 11 by hand, then 5 with `-d` and 5 without, both with the
+  Joulescope server running and the harness's reset, 75 s settle and 120 s
+  measurement, then 40 fast cycles. So it is rare, not tied to the server or
+  to debug logging.
+
+  `tag-info` used to print a bare "Info failed"; it now adds the reason, as
+  `tag-test` does, so the next check that hits it says why. It lands in the
+  same place as the lost stop in [the shared TODO](../TODO.md) -- the first
+  session after a start -- which may or may not be a coincidence.
 
 - **`external_pages` is wrong after any reset, and reports nothing collected.**
   Confirmed on hardware 2026-10-06: a run that stored **5 pressure samples, 5

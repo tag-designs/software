@@ -38,6 +38,34 @@ not been reproduced on a tag.
 
 ## Defects
 
+- **An L4 tag accepts a stop sent early in the first session after a start,
+  and never acts on it.** Found on UIUCTag, 2026-11-02 (breakout base, 2.50 V,
+  `98fee9ec`). `tag-start --start-now`, then `tag-stop` at once: the tag
+  answers the stop OK, was RUNNING when it was sent, and is still RUNNING 30 s
+  of polls later, in 20 of 20 cycles. In the same session, with no reset
+  between, a stop resent 4 s later stops it at the next poll (5 of 5), and one
+  sent after a 2 s wait works first time (5 of 5). A stop from any later
+  session works: with a `tag-info` attach between the start and the stop, 38 of
+  40. Not yet tried on BitTag, PresTag or CompassTag, which share the code.
+
+  The likely cause, *inferred from the code, not observed*: each attach resets
+  the tag, and the first `StateMachine()` pass after that boot takes the reset
+  recovery branch, which returns before the `MON_WORK_*` checks. `main()` has
+  already cleared the events it passed in, so a stop evaluated by
+  `monitorServicePending()` in that pass is dropped. Fix in the batch: re-post
+  `events & MON_WORK_ALL` with `chEvtAddEvents()` before the recovery branch
+  returns, so the next pass acts on them, then repeat the start-then-stop loop
+  above (the cycle script is short; the 2026-11-02 runs are under
+  `Claude-tmp/uiuc-20261102/stopnow`). If the first-pass theory is wrong, the
+  loop will still fail and say so.
+
+  The host works around it: `Tag::stop_confirmed()` in `tagcore-rs` resends a
+  stop while the tag is still acquiring, and `tag-stop`, `tag-reset`,
+  `tag-dwnld`, Tag Monitor and Tag Programmer all resend. With it, 10 of 10
+  start-then-`tag-stop` and 5 of 5 start-then-`tag-reset` cycles stopped, 9 of
+  the 10 on the resend. Hosts that send one stop and wait, including the legacy
+  C++ tools, still see the fault.
+
 - **The L4 DebugMonitor handler can clear the MON_REQ of a request still
   pending.** Step 1 of
   [l4-monitor-robustness.md](common/core/design/proposals/l4-monitor-robustness.md)

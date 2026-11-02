@@ -191,33 +191,17 @@ fn settle(tag: &Tag, timeout_s: u64) -> Result<Status, String> {
     ))
 }
 
-/// Stops a running tag and polls every 2 s, at least once, until it reaches
-/// FINISHED or ABORTED; returns the final status.
+/// Stops a running tag and waits until it reaches FINISHED or ABORTED,
+/// resending a stop the tag accepted and has not acted on; returns the final
+/// status. See [`Tag::stop_confirmed`].
 ///
 /// # Errors
 ///
 /// When the stop or a status read fails, or the tag has not stopped after
 /// `timeout_s`.
 fn stop(tag: &Tag, timeout_s: u64) -> Result<Status, String> {
-    tag.stop()
-        .map_err(|_| format!("Could not stop running tag: {}", tag.debug_message()))?;
-    let mut status = Status::default();
-    for _ in 0..timeout_s.div_ceil(2).max(1) {
-        status = tag.status().map_err(|_| {
-            format!(
-                "Could not read tag status after stop: {}",
-                tag.debug_message()
-            )
-        })?;
-        if status.state == TagState::Finished as i32 || status.state == TagState::Aborted as i32 {
-            return Ok(status);
-        }
-        sleep(Duration::from_secs(2));
-    }
-    Err(format!(
-        "Tag did not reach a stopped state within {timeout_s} s; last state {}",
-        state_name(status.state)
-    ))
+    tag.stop_confirmed(Duration::from_secs(timeout_s))
+        .map_err(|failure| format!("Could not stop running tag: {failure}"))
 }
 
 /// Whether a download may run in `state`. EXCEPTION counts: collection is

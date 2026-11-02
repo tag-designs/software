@@ -45,6 +45,7 @@ use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::json;
 use tagcore::proto::{TagState, TagType, TestReq, TestResult};
+use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring};
 use tagprobe::Progress;
 
 use super::Msg;
@@ -57,6 +58,9 @@ use crate::model::settings as key;
 /// Ticks (seconds) the tag may take to reach IDLE after the stop before
 /// the session fails.
 const STOP_TICKS: u32 = 30;
+/// Ticks between resends of a stop the tag accepted and has not acted on:
+/// [`STOP_RESEND_AFTER`] in whole ticks.
+const RESEND_TICKS: u32 = STOP_RESEND_AFTER.as_secs() as u32;
 /// Ticks (seconds) of reattach attempts after programming or a read-back
 /// before the session asks the user to power-cycle the tag.
 const CONNECT_TICKS: u32 = 6;
@@ -436,7 +440,8 @@ impl Station {
     /// IDLE starts the programmer. FINISHED or ABORTED: asks the tag's own
     /// firmware to erase its log and moves to Erasing. Any other state: sends
     /// one stop on the first tick (not during TEST or SRESET, which end on
-    /// their own) and waits up to [`STOP_TICKS`]. A tag that stops answering
+    /// their own), resends it every [`RESEND_TICKS`] while the tag is still
+    /// acquiring, and waits up to [`STOP_TICKS`]. A tag that stops answering
     /// or refuses the erase fails the session.
     fn tick_stopping(&mut self) {
         let status = self.tag.status();
@@ -463,7 +468,16 @@ impl Station {
             }
             TagState::Idle => self.run_programmer(),
             _ => {
-                if self.sess().ticks == 0 && !matches!(state, TagState::Test | TagState::SReset) {
+                let ticks = self.sess().ticks;
+                if ticks == 0 && !matches!(state, TagState::Test | TagState::SReset) {
+                    let _ = self.tag.stop();
+                } else if ticks.is_multiple_of(RESEND_TICKS) && is_acquiring(status.state) {
+                    // An L4 tag can accept a stop and lose it; resend while
+                    // it is still acquiring (STOP_RESEND_AFTER).
+                    debug!(
+                        "tag still {} after the stop; sending it again",
+                        state_name(status.state)
+                    );
                     let _ = self.tag.stop();
                 }
                 self.sess().ticks += 1;

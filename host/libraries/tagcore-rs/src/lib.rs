@@ -52,4 +52,4 @@ pub mod textformat;
 
 pub use link::{LinkAdapt, LinkAdaptStats, UsbDev};
 pub use monitor::{BitTagFlashLog, MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
-pub use tag::{Tag, TagError};
+pub use tag::{StopFailure, Tag, TagError};

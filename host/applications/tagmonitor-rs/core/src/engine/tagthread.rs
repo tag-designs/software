@@ -13,8 +13,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use log::debug;
+use log::{debug, warn};
 use tagcore::proto::{Config, Status, TagInfo, TestReq};
+use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring};
 use tagcore::{LinkAdapt, Tag, UsbDev};
 
 use super::Msg;
@@ -24,6 +25,12 @@ use crate::model::monitormodel::STATUS_POLL_MS;
 /// Delay before the status read that follows Stop: the state machine acts on
 /// a stop after acknowledging it.
 const AFTER_STOP: Duration = Duration::from_millis(250);
+
+/// How long after Stop the polls keep resending it while the tag is still
+/// acquiring. An STM32L4 tag can accept a stop and lose it (see
+/// [`STOP_RESEND_AFTER`]); past this window the model's own judgement of the
+/// state stands.
+const STOP_RESEND_FOR: Duration = Duration::from_secs(30);
 
 /// How long the polls pause after Synchronize Clock or Self-Test is accepted.
 ///
@@ -128,6 +135,9 @@ struct TagThread {
     cancel: Arc<AtomicBool>,
     /// When the next status read is due, while attached.
     next_poll: Option<Instant>,
+    /// When an accepted Stop was first sent and when it was last sent, while
+    /// the polls are still waiting for the tag to leave acquisition.
+    stop_sent: Option<(Instant, Instant)>,
 }
 
 impl TagThread {
@@ -165,9 +175,34 @@ impl TagThread {
             return;
         }
         if let Ok(status) = status {
+            self.resend_stop(&status);
             self.report(Report::Status(Box::new(status), voltage, now_ms()));
         }
         self.next_poll = Some(Instant::now() + Duration::from_millis(STATUS_POLL_MS));
+    }
+
+    /// Sends the stop again when `status` shows the tag still acquiring
+    /// [`STOP_RESEND_AFTER`] after it was last sent, for up to
+    /// [`STOP_RESEND_FOR`]; forgets it once the tag has left acquisition.
+    /// A resend that fails is only logged: the next poll decides.
+    fn resend_stop(&mut self, status: &Status) {
+        let Some((first, last)) = self.stop_sent else {
+            return;
+        };
+        if !is_acquiring(status.state) || first.elapsed() >= STOP_RESEND_FOR {
+            self.stop_sent = None;
+            return;
+        }
+        if last.elapsed() >= STOP_RESEND_AFTER {
+            warn!(
+                "tag still acquiring {:.0} s after the stop was accepted; sending it again",
+                last.elapsed().as_secs_f32()
+            );
+            if self.tag.stop().is_err() {
+                warn!("resent stop failed: {}", self.tag.debug_message());
+            }
+            self.stop_sent = Some((first, Instant::now()));
+        }
     }
 
     /// Runs one command.
@@ -193,6 +228,8 @@ impl TagThread {
                 } else if !self.tag.attach(&base) {
                     self.report(Report::AttachFailed("Could not attach to tag".into()));
                 } else {
+                    // A stop from an earlier session ended with it.
+                    self.stop_sent = None;
                     let info = self.tag.tag_info().unwrap_or_default();
                     let config = self.tag.config().unwrap_or_default();
                     self.report(Report::Attached(Box::new(info), Box::new(config)));
@@ -204,6 +241,7 @@ impl TagThread {
                     self.tag.detach();
                 }
                 self.next_poll = None;
+                self.stop_sent = None;
                 self.report(Report::Detached);
             }
             _ if !attached => {}
@@ -230,7 +268,11 @@ impl TagThread {
                 self.poll();
             }
             TagCmd::Stop => match self.tag.stop() {
-                Ok(()) => self.next_poll = Some(Instant::now() + AFTER_STOP),
+                Ok(()) => {
+                    let now = Instant::now();
+                    self.stop_sent = Some((now, now));
+                    self.next_poll = Some(now + AFTER_STOP);
+                }
                 Err(_) => self.report(Report::CommandFailed(
                     Command::Stop,
                     "The tag did not accept the stop command.".into(),
@@ -284,6 +326,7 @@ pub(crate) fn run(rx: Receiver<TagCmd>, out: Sender<Msg>, cancel: Arc<AtomicBool
         out,
         cancel,
         next_poll: None,
+        stop_sent: None,
     };
     loop {
         let wait = t

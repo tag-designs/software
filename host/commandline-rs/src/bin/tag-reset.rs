@@ -119,47 +119,16 @@ fn main() -> ExitCode {
     report_debug(&status);
     println!("{}", proto::debug_string(&status));
 
-    // The states in which the firmware accepts a stop as ending an
-    // acquisition (monitor_acquisition_active() in monitor.c).
-    let acquiring = [
-        TagState::Running,
-        TagState::Hibernating,
-        TagState::Configured,
-    ];
-    if acquiring.iter().any(|s| status.state == *s as i32) {
-        if tag.stop().is_err() {
-            return fail(format!("Stop failed: {}", tag.debug_message()));
-        }
-        // Stop is posted, not performed: poll for the stopped state as
-        // tag-stop does, rather than trust one read straight afterwards.
-        const STOP_POLL: Duration = Duration::from_secs(2);
-        let tries = cli.stop_timeout.div_ceil(2).max(1);
-        let mut stopped = false;
-        for _ in 0..tries {
-            status = match tag.status() {
-                Ok(status) => status,
-                Err(_) => {
-                    return fail(format!(
-                        "GetStatus after stop failed: {}",
-                        tag.debug_message()
-                    ));
-                }
-            };
-            if status.state == TagState::Finished as i32 || status.state == TagState::Aborted as i32
-            {
-                stopped = true;
-                break;
-            }
-            sleep(STOP_POLL);
-        }
+    // A stop ends an acquisition only in the states is_acquiring() names
+    // (monitor_acquisition_active() in monitor.c). It is posted, not
+    // performed, and an L4 tag can lose one, so stop_confirmed() polls for
+    // the stopped state and resends.
+    if tagcore::tag::is_acquiring(status.state) {
+        status = match tag.stop_confirmed(Duration::from_secs(cli.stop_timeout)) {
+            Ok(status) => status,
+            Err(failure) => return fail(failure),
+        };
         report_debug(&status);
-        if !stopped {
-            return fail(format!(
-                "Tag did not reach a stopped state within {} s; last state {}",
-                cli.stop_timeout,
-                state_name(status.state)
-            ));
-        }
     }
 
     println!("State: {}", state_name(status.state));

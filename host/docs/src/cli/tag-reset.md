@@ -46,8 +46,9 @@ tag-reset --base 20:7
 
 Fill in: describe the status/debug output and final state messages.
 
-`tag-reset` stops a tag that is `RUNNING`, `HIBERNATING` or `CONFIGURED`,
-erases a tag that is `FINISHED` or `ABORTED`, and ends with
+`tag-reset` stops a tag that is `RUNNING`, `HIBERNATING` or `CONFIGURED`
+(sending the stop again if the tag is still collecting a few seconds after
+accepting it, as `tag-stop` does), erases a tag that is `FINISHED` or `ABORTED`, and ends with
 `Final state: IDLE` and exit status 0. A tag in any other state, such as
 `TEST` or `EXCEPTION`, is not reset: the final state is printed with an
 explanation, and the exit status is 1.

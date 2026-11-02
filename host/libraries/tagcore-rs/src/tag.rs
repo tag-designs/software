@@ -45,7 +45,9 @@
 use std::fmt;
 use std::sync::{Mutex, MutexGuard};
 use std::thread::sleep;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use log::warn;
 
 use crate::link::{LinkAdaptStats, UsbDev};
 use crate::monitor::{BitTagFlashLog, MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
@@ -77,6 +79,77 @@ impl fmt::Display for TagError {
 }
 
 impl std::error::Error for TagError {}
+
+/// Interval between the status reads [`Tag::stop_confirmed`] makes while it
+/// waits for the tag to stop.
+pub const STOP_POLL: Duration = Duration::from_secs(2);
+
+/// How long a stop may go unacted on, with the tag still acquiring, before
+/// [`Tag::stop_confirmed`] sends it again.
+///
+/// An STM32L4 tag can accept a stop and then lose it: one sent in the first
+/// second or so of the first session after a start is answered OK and never
+/// acted on, while the same request sent later in the same session, with no
+/// reset between, stops the tag at once (`embedded/tags/TODO.md`). A stop is
+/// harmless to repeat while the tag is acquiring, so the cure on the host is
+/// to resend it rather than wait out the timeout.
+pub const STOP_RESEND_AFTER: Duration = Duration::from_secs(4);
+
+/// Whether a stop ends an acquisition in `state`: CONFIGURED, RUNNING or
+/// HIBERNATING, the states the firmware's `monitor_acquisition_active()`
+/// accepts. A host sends a stop in no other state.
+pub fn is_acquiring(state: i32) -> bool {
+    state == TagState::Configured as i32
+        || state == TagState::Running as i32
+        || state == TagState::Hibernating as i32
+}
+
+/// Whether `state` is one a stop ends in: FINISHED or ABORTED.
+pub fn is_stopped(state: i32) -> bool {
+    state == TagState::Finished as i32 || state == TagState::Aborted as i32
+}
+
+/// Why [`Tag::stop_confirmed`] did not leave the tag stopped.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StopFailure {
+    /// A status read failed, so the tag's state is unknown.
+    Status(TagError),
+    /// The tag is not acquiring, so no stop was sent; carries its status.
+    NotAcquiring(Box<Status>),
+    /// The tag refused the first stop.
+    Refused(TagError),
+    /// The tag had not stopped when the timeout ran out; carries the last
+    /// status read.
+    TimedOut(Box<Status>),
+}
+
+impl fmt::Display for StopFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Status(e) => write!(f, "Could not read tag status: {e}"),
+            Self::NotAcquiring(s) => write!(
+                f,
+                "Tag is {}, not acquiring; no stop sent",
+                state_label(s.state)
+            ),
+            Self::Refused(e) => write!(f, "Stop failed: {e}"),
+            Self::TimedOut(s) => write!(
+                f,
+                "Tag did not reach a stopped state in time; last state {}",
+                state_label(s.state)
+            ),
+        }
+    }
+}
+
+impl std::error::Error for StopFailure {}
+
+/// The protobuf name of `state`, or its number when it is out of range.
+fn state_label(state: i32) -> String {
+    TagState::try_from(state)
+        .map(|s| s.as_str_name().to_owned())
+        .unwrap_or_else(|_| state.to_string())
+}
 
 /// The firmware's Ack code, treating an out-of-range value as `Unspecified`.
 fn ack_err(ack: &Ack) -> ack::Err {
@@ -469,9 +542,68 @@ impl Tag {
     }
 
     /// Stops a running tag.
+    ///
+    /// This only sends the request: the firmware queues the stop and acts on
+    /// it later, and an STM32L4 tag can accept it and lose it (see
+    /// [`STOP_RESEND_AFTER`]). Use [`Tag::stop_confirmed`] unless something
+    /// else polls for the stopped state and resends.
     pub fn stop(&self) -> Result<(), TagError> {
         self.lock()
             .expect_ok(&request(req::Payload::Stop(Empty {})))
+    }
+
+    /// Stops an acquiring tag and waits until it reports FINISHED or ABORTED.
+    ///
+    /// Reads the status first. A tag already FINISHED or ABORTED is returned
+    /// as it is, with no stop sent; one in any other state that is not
+    /// acquiring (see [`is_acquiring`]) is refused without sending one. The
+    /// stop is then sent, and the status read every [`STOP_POLL`]; while the
+    /// tag is still acquiring [`STOP_RESEND_AFTER`] after the last stop, the
+    /// stop is sent again. A resent stop that fails is only logged: the state
+    /// may have moved between the read and the request, and the next read
+    /// decides.
+    ///
+    /// Blocks for up to `timeout` plus one poll, taking and releasing the
+    /// lock for each request.
+    ///
+    /// # Errors
+    ///
+    /// [`StopFailure::Status`] when any status read fails;
+    /// [`StopFailure::NotAcquiring`] when the tag is neither acquiring nor
+    /// stopped; [`StopFailure::Refused`] when the first stop is refused;
+    /// [`StopFailure::TimedOut`] when the tag has not stopped by `timeout`.
+    pub fn stop_confirmed(&self, timeout: Duration) -> Result<Status, StopFailure> {
+        let status = self.status().map_err(StopFailure::Status)?;
+        if is_stopped(status.state) {
+            return Ok(status);
+        }
+        if !is_acquiring(status.state) {
+            return Err(StopFailure::NotAcquiring(Box::new(status)));
+        }
+        self.stop().map_err(StopFailure::Refused)?;
+        let started = Instant::now();
+        let mut sent = started;
+        loop {
+            let status = self.status().map_err(StopFailure::Status)?;
+            if is_stopped(status.state) {
+                return Ok(status);
+            }
+            if started.elapsed() >= timeout {
+                return Err(StopFailure::TimedOut(Box::new(status)));
+            }
+            if is_acquiring(status.state) && sent.elapsed() >= STOP_RESEND_AFTER {
+                warn!(
+                    "tag still {} {:.0} s after the stop was accepted; sending it again",
+                    state_label(status.state),
+                    sent.elapsed().as_secs_f32()
+                );
+                if let Err(e) = self.stop() {
+                    warn!("resent stop failed: {e}");
+                }
+                sent = Instant::now();
+            }
+            sleep(STOP_POLL);
+        }
     }
 
     /// Puts the tag in its sensor-calibration state.

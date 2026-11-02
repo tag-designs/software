@@ -1,7 +1,15 @@
 # tag-stop
 
-`tag-stop` attaches to a tag, sends the stop command, and prints the status read
-back after the command completes.
+`tag-stop` attaches to a tag, sends the stop command, waits for the tag to
+reach `FINISHED` or `ABORTED`, and prints its status.
+
+A tag accepts a stop and acts on it a moment later. If the tag is still
+collecting a few seconds after accepting the stop, `tag-stop` sends it again,
+because a tag stopped straight after it was started can accept the first stop
+and never act on it. A tag that is already `FINISHED` or `ABORTED` is reported
+as it is, with no stop sent. A tag in any other state that is not
+collecting, that is not `CONFIGURED`, `RUNNING` or `HIBERNATING`, is not sent a
+stop and the command fails.
 
 ## Usage
 
@@ -37,14 +45,19 @@ tag-stop --base 20:7
 
 ## Output
 
-The command prints the protobuf `Status` message returned after the stop command.
-On a successfully stopped active tag, the state is typically `ABORTED`.
+The command prints the protobuf `Status` message read once the tag has stopped.
+A tag stopped by the command is `FINISHED`. The status is printed when the tag
+fails to stop, or is not collecting, too.
 
 ## Troubleshooting
 
 - `No matching device`: no connected tag/base matched the optional `--base`
   selector.
 - `Attach failed`: the USB interface was found but could not be opened.
-- `Stop failed`: the monitor did not acknowledge the stop command.
+- `Stop failed`: the tag refused the stop command, or did not answer it.
+- `Tag is IDLE, not acquiring; no stop sent`: the tag had no run to stop. The
+  same message names any other state that is not collecting.
+- `Tag did not reach a stopped state in time`: the tag was still collecting at
+  the end of `--stop-timeout`, after the stop was sent more than once.
 - `Could not read tag status`: the command was sent, but the follow-up status
   request failed.
