@@ -88,8 +88,12 @@ Delete an item when it is done.
   fits a posted AHB-AP access faulting on the target bus: the access's own
   ACK is OK, `STICKYERR` is set, and the next AP access gets the FAULT. Also
   ruled out: the Sleep clock gates (`RCC_AHB1SMENR` = `0x00011303`, the reset
-  value, SRAM1 and flash clocked in Sleep) and how `DBG_SLEEP` is set (the
-  host and the 2026-10-27 tool write the same bit). The one recorded
+  value, SRAM1 and flash clocked in Sleep), how `DBG_SLEEP` is set (the
+  host and the 2026-10-27 tool write the same bit), and a missing barrier
+  after the `WFI`: an idle hook of `__WFI(); __ISB();` (idle thread
+  `wfi; isb sy`) still failed 6 of 6 with the sleep-only test. As expected,
+  since the reads fail for the whole sleep and the `ISB` runs only after
+  wake-up. The one recorded
   difference from 2026-10-27 is the supply: 3.28 V then, 2.496 V now. 2.5 V
   is this tag's operating voltage, so the tag must work there.
 
