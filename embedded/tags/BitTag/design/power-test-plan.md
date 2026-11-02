@@ -348,12 +348,21 @@ undisturbed tag. A quiescent tag reporting continuous activity means the
 activity threshold or the `AWAKE` wiring is wrong, and would also explain an
 unexpectedly high running current — check this before investigating power.
 
-## 8. Phase D — activity sensitivity (optional, do last)
+## 8. Phase D — activity sensitivity (done on the test stand)
 
-Deliberately agitate the tag for a 1200 s run and compare against B1. This is
-not a gate; it bounds how far a field tag can sit above the quiescent floor,
-which is the number a deployment estimate actually needs. Record how it was
-agitated, because the measurement is not otherwise reproducible.
+The question was how far a moving tag sits above the quiescent floor, which is
+the number a deployment estimate needs. It was answered more thoroughly than a
+hand-agitated run could, on a servo activity test stand, 2026-10-25 to
+2026-10-29, on the qualification board (`2035374D303150190059002F`): see
+the hardware repository's `Mechanical/ActivityTestStand/ACTIVITY-TEST-REPORT.md`
+(github.com/tag-designs/hardware). With a field-like workload, active about
+18% of the time, stock BitTag averaged about 620 nA at 2.5 V. The same report
+measures the detector's thresholds and timing and checks that all four log
+formats record exactly what the detector reported.
+
+A sweep of current against cell voltage is not planned: the bench is not set
+up for one, and BitTag figures hold only at the voltage they were taken at
+(section 2).
 
 ## 9. Pass/fail
 

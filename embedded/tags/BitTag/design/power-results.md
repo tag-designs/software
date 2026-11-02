@@ -256,6 +256,10 @@ Per mAh of cell: 342 days resting, 82 days recording.
   known interval, stop, and confirm non-zero buckets at those times with zeros
   either side. At `BITPERSEC` a minute of movement places it to the second.
 
+  *Closed 2026-10-29, more thoroughly than this:* activity sensing and its
+  power cost were measured on a servo test stand on this board; see section 8
+  of the [test plan](power-test-plan.md).
+
 ## 2026-10-26 — IDLE after each kind of debug attach, fw-v0.6
 
 Does any debug attach leave a BitTag drawing more in IDLE? Asked for the
