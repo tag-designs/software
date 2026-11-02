@@ -77,6 +77,7 @@ pub mod abi;
 pub mod cortex_m;
 pub mod l4;
 mod rescue;
+pub use rescue::BitTagFlashLog;
 pub mod rpc;
 pub mod u3;
 

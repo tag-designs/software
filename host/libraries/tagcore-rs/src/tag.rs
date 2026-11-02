@@ -48,7 +48,7 @@ use std::thread::sleep;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::link::{LinkAdaptStats, UsbDev};
-use crate::monitor::{MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
+use crate::monitor::{BitTagFlashLog, MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
 use crate::proto::{
     Ack, CalibrationConstants, Config, Empty, LogReq, Req, StateLog, Status, TagInfo, TagState,
     TestReq, ack, log_req, req,
@@ -370,14 +370,14 @@ impl Tag {
 
     /// Counts an old BitTag's records in flash; see
     /// [`TagMonitor::count_bittag_log_headers`].
-    pub fn count_bittag_log_headers(&self) -> Option<usize> {
-        self.lock().monitor.count_bittag_log_headers()
+    pub fn count_bittag_log_headers(&self, layout: BitTagFlashLog) -> Option<usize> {
+        self.lock().monitor.count_bittag_log_headers(layout)
     }
 
     /// Reads an old BitTag's records straight from flash as a data-log Ack;
     /// see [`TagMonitor::read_bittag_log_from_flash`].
-    pub fn bittag_log_from_flash(&self, index: i32) -> Option<Ack> {
-        self.lock().monitor.read_bittag_log_from_flash(index)
+    pub fn bittag_log_from_flash(&self, layout: BitTagFlashLog, index: i32) -> Option<Ack> {
+        self.lock().monitor.read_bittag_log_from_flash(layout, index)
     }
 
     // ---- Live memory access ----

@@ -15,6 +15,11 @@
 //!
 //! **STM32L4 only.** Nothing checks the target family; on any other part
 //! these addresses mean something else.
+//!
+//! Where the records sit depends on the image: see [`BitTagFlashLog`]. The
+//! address hard-coded at first was right only for the original field
+//! firmware; in `fw-v0.0.3` it lies inside `.text`, 4 KB below the records
+//! (`docs/investigations/2026-10-offline-log-reconstruction.md`).
 
 use log::error;
 
@@ -33,18 +38,62 @@ const PWR_CR1_DBP: u32 = 1 << 8;
 /// this word; log cursors and flash contents are left untouched.
 const TAG_BACKUP_STATE_ADDR: u32 = STM32L4_RTC_BKP0R + 3 * 4;
 
-// Legacy BitTag V6 persistent layout.
-/// Flash address of the first legacy sample record (`t_DataHeader`).
-const BITTAG_VDD_HEADER_ADDR: u32 = 0x0800_7a68;
-/// End (exclusive) of the legacy persistent region: the top of the
-/// STM32L432's 256 KiB flash.
-const BITTAG_PERSISTENT_END: u32 = 0x0804_0000;
+/// Start of the STM32L432's internal flash.
+const STM32L432_FLASH_BASE: u32 = 0x0800_0000;
+/// End (exclusive) of the STM32L432's 256 KiB internal flash.
+const STM32L432_FLASH_END: u32 = 0x0804_0000;
 /// Size of one legacy sample record in bytes.
 const BITTAG_DATA_HEADER_SIZE: u32 = 16;
 /// Most records returned per synthesised log Ack (the C++
 /// `kBitTagLogRecordsPerAck`); callers page by advancing `index` by the
 /// number of records each Ack carries.
 const BITTAG_LOG_RECORDS_PER_ACK: u32 = 30;
+
+/// Where a BitTag image keeps its 16-byte sample records in internal flash.
+///
+/// The records run from the image's `vddHeader` to its
+/// `__persistent_end__`, and both move between builds, so the layout should
+/// come from the ELF of the image the tag runs ([`BitTagFlashLog::new`]).
+/// [`BitTagFlashLog::LEGACY`] is the layout of the original BitTag V6 field
+/// firmware the rescue was written for, and is right for no later image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BitTagFlashLog {
+    /// Address of the first record: the image's `vddHeader`.
+    pub start: u32,
+    /// End (exclusive) of the record region: the image's `__persistent_end__`.
+    pub end: u32,
+}
+
+impl BitTagFlashLog {
+    /// The original BitTag V6 field firmware's layout: records from
+    /// 0x08007A68 to the top of the STM32L432's flash.
+    pub const LEGACY: Self = Self {
+        start: 0x0800_7a68,
+        end: STM32L432_FLASH_END,
+    };
+
+    /// A layout from an image's `vddHeader` and `__persistent_end__`.
+    ///
+    /// # Errors
+    ///
+    /// A message naming the addresses if the region is empty or reversed,
+    /// lies outside the STM32L432's internal flash, or starts off an 8-byte
+    /// boundary (records are written as flash double words) -- all signs of
+    /// symbols from the wrong kind of image.
+    pub fn new(start: u32, end: u32) -> Result<Self, String> {
+        if start < STM32L432_FLASH_BASE || end > STM32L432_FLASH_END || start >= end {
+            return Err(format!(
+                "BitTag record region 0x{start:08x}..0x{end:08x} is not inside the STM32L432's flash"
+            ));
+        }
+        if !start.is_multiple_of(8) {
+            return Err(format!(
+                "BitTag record region starts at 0x{start:08x}, off a flash double word"
+            ));
+        }
+        Ok(Self { start, end })
+    }
+}
 
 /// Decodes one legacy 16-byte `t_DataHeader`: epoch (i32), temperature in
 /// tenths of a degree (i16), voltage in hundredths of a volt (u16), and the
@@ -130,15 +179,16 @@ impl TagMonitor {
     ///
     /// Reads one word per record until a blank record or the end of the
     /// region, so it costs up to several thousand SWD reads on a full log.
-    /// Port of `TagMonitor::CountBitTagLogHeaders`.
-    pub fn count_bittag_log_headers(&mut self) -> Option<usize> {
+    /// `layout` says where the records are. Port of
+    /// `TagMonitor::CountBitTagLogHeaders`.
+    pub fn count_bittag_log_headers(&mut self, layout: BitTagFlashLog) -> Option<usize> {
         if !self.is_attached() {
             error!("Monitor not attached");
             return None;
         }
         let mut count = 0;
-        let mut address = BITTAG_VDD_HEADER_ADDR;
-        while address + BITTAG_DATA_HEADER_SIZE <= BITTAG_PERSISTENT_END {
+        let mut address = layout.start;
+        while address + BITTAG_DATA_HEADER_SIZE <= layout.end {
             let first = self.read_word(address)?;
             if first == 0xffff_ffff {
                 break;
@@ -157,8 +207,13 @@ impl TagMonitor {
     /// if not attached or a read fails.
     ///
     /// An empty log means there are no more records, as with the firmware's
-    /// own log RPC. Port of `TagMonitor::ReadBitTagLogFromFlash`.
-    pub fn read_bittag_log_from_flash(&mut self, index: i32) -> Option<Ack> {
+    /// own log RPC. `layout` says where the records are. Port of
+    /// `TagMonitor::ReadBitTagLogFromFlash`.
+    pub fn read_bittag_log_from_flash(
+        &mut self,
+        layout: BitTagFlashLog,
+        index: i32,
+    ) -> Option<Ack> {
         if !self.is_attached() {
             error!("Monitor not attached");
             return None;
@@ -167,8 +222,8 @@ impl TagMonitor {
         if index >= 0 {
             for n in 0..BITTAG_LOG_RECORDS_PER_ACK {
                 let record = index as u32 + n;
-                let address = BITTAG_VDD_HEADER_ADDR + record * BITTAG_DATA_HEADER_SIZE;
-                if address + BITTAG_DATA_HEADER_SIZE > BITTAG_PERSISTENT_END {
+                let address = layout.start + record * BITTAG_DATA_HEADER_SIZE;
+                if address + BITTAG_DATA_HEADER_SIZE > layout.end {
                     break;
                 }
                 let mut header = [0u8; 16];
@@ -214,5 +269,22 @@ mod tests {
     #[test]
     fn backup_state_is_fourth_backup_register() {
         assert_eq!(TAG_BACKUP_STATE_ADDR, 0x4000_285C);
+    }
+
+    #[test]
+    fn legacy_layout_is_the_original_field_firmware() {
+        assert_eq!(BitTagFlashLog::LEGACY.start, 0x0800_7a68);
+        assert_eq!(BitTagFlashLog::LEGACY.end, 0x0804_0000);
+    }
+
+    #[test]
+    fn layout_from_symbols_is_checked() {
+        // fw-v0.0.3's vddHeader, from the offline-reconstruction investigation.
+        let layout = BitTagFlashLog::new(0x0800_8a68, 0x0804_0000).unwrap();
+        assert_eq!(layout.start, 0x0800_8a68);
+        assert!(BitTagFlashLog::new(0x2000_0000, 0x2000_1000).is_err(), "SRAM");
+        assert!(BitTagFlashLog::new(0x0800_8a68, 0x0804_1000).is_err(), "past flash");
+        assert!(BitTagFlashLog::new(0x0803_0000, 0x0802_0000).is_err(), "reversed");
+        assert!(BitTagFlashLog::new(0x0800_8a64, 0x0804_0000).is_err(), "unaligned");
     }
 }

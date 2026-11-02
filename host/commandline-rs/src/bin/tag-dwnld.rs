@@ -13,6 +13,9 @@
 //! 2. Attach, then poll status until the tag reports a definite state.
 //! 3. With `--rescue-exception`, turn an old BitTag's EXCEPTION into
 //!    ABORTED; with `--stop`, stop a RUNNING tag and poll until it stops.
+//!    A BitTag rescue reads its records straight from flash, at the
+//!    addresses `--elf` gives (read before attaching), or at the original
+//!    field firmware's for a `BITTAG` tag without one.
 //! 4. Refuse unless the tag is FINISHED, ABORTED or EXCEPTION.
 //! 5. Read the config, open the database, and write the header from the
 //!    same requests, in the same order, as `readTagLogHeader()`.
@@ -69,7 +72,8 @@ use std::time::{Duration, Instant};
 use clap::Parser;
 use tag_tools::{BaseArgs, exit_on_interrupt, init_logging, select_base, state_name};
 use tagcore::proto::{self, Ack, Status, TagState, TagType, ack};
-use tagcore::{LinkAdaptStats, Tag, TagMonitorStats};
+use tagcore::{BitTagFlashLog, LinkAdaptStats, Tag, TagMonitorStats};
+use tagprogram_core::model::elf::plan_symbols;
 use taglogwriter::{LogHeader, LogWriter};
 
 /// Downloads data from a tag
@@ -97,6 +101,13 @@ struct Cli {
     #[arg(long)]
     rescue_exception: bool,
 
+    /// With --rescue-exception on a BitTag: the ELF of the image the tag
+    /// runs, whose vddHeader and __persistent_end__ say where its records
+    /// are. Required for BITTAG_LE; without it a BITTAG is read at the
+    /// original field firmware's addresses
+    #[arg(long, value_name = "FILE", requires = "rescue_exception")]
+    elf: Option<std::path::PathBuf>,
+
     /// Print download timing and link transport profile
     #[arg(long)]
     profile: bool,
@@ -112,6 +123,28 @@ struct Cli {
     /// it later
     #[arg(long, default_value_t = 30, value_name = "SECONDS")]
     stop_timeout: u64,
+}
+
+/// Reads a BitTag image's record region from its ELF: `vddHeader` to
+/// `__persistent_end__`.
+///
+/// # Errors
+///
+/// A message naming the file if it cannot be read or is not a 32-bit
+/// little-endian ELF, if either symbol is missing, or if the region they
+/// give is not a BitTag's (see [`BitTagFlashLog::new`]).
+fn bittag_layout_from_elf(path: &std::path::Path) -> Result<BitTagFlashLog, String> {
+    let data = std::fs::read(path).map_err(|e| format!("Could not read {}: {e}", path.display()))?;
+    let symbols = plan_symbols(&data, &["vddHeader", "__persistent_end__"])
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let symbol = |name: &str| {
+        symbols
+            .get(name)
+            .copied()
+            .ok_or_else(|| format!("{} has no {name} symbol; is it a BitTag image?", path.display()))
+    };
+    BitTagFlashLog::new(symbol("vddHeader")?, symbol("__persistent_end__")?)
+        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// Prints `message` to stderr and returns exit status 1.
@@ -358,6 +391,11 @@ fn main() -> ExitCode {
     if let Err(message) = check_format(&cli.format) {
         return fail(message);
     }
+    // The same for --elf: a missing file or symbol is found before the reset.
+    let elf_layout = match cli.elf.as_deref().map(bittag_layout_from_elf).transpose() {
+        Ok(layout) => layout,
+        Err(message) => return fail(message),
+    };
 
     let tag = Tag::new();
     let dev = select_base::<Cli>(&tag, &cli.base);
@@ -429,7 +467,28 @@ fn main() -> ExitCode {
         return fail(format!("Could not write log header: {error}"));
     }
 
-    let bittag_rescue = rescue && config.tag_type == TagType::Bittag as i32;
+    let bittag_rescue = rescue
+        && (config.tag_type == TagType::Bittag as i32
+            || config.tag_type == TagType::BittagLe as i32);
+    let layout = match (&elf_layout, bittag_rescue) {
+        (Some(layout), true) => *layout,
+        (None, true) if config.tag_type == TagType::Bittag as i32 => BitTagFlashLog::LEGACY,
+        (None, true) => {
+            return fail(
+                "Rescue: a BITTAG_LE image keeps its records at addresses that vary by build; \
+                 pass --elf with the image the tag runs",
+            );
+        }
+        (_, false) => BitTagFlashLog::LEGACY,
+    };
+    if bittag_rescue {
+        eprintln!(
+            "Rescue: reading BitTag records from flash, 0x{:08x} to 0x{:08x} ({})",
+            layout.start,
+            layout.end,
+            if elf_layout.is_some() { "from --elf" } else { "original field firmware's layout" }
+        );
+    }
     let mut max_count = if status.external_data_count > 0 {
         status.external_data_count as usize
     } else {
@@ -438,7 +497,7 @@ fn main() -> ExitCode {
     if bittag_rescue && max_count == 0 {
         // Some exception paths leave the page count at zero although the
         // BitTag's internal flash headers are intact; count them directly.
-        match tag.count_bittag_log_headers() {
+        match tag.count_bittag_log_headers(layout) {
             Some(count) => max_count = count,
             None => return fail("Could not scan BitTag log headers"),
         }
@@ -467,7 +526,7 @@ fn main() -> ExitCode {
         // In BitTag rescue mode the firmware's data-log RPC is avoided: the
         // host reads the raw headers from flash, wrapped as ordinary pages.
         let page: Option<Ack> = if bittag_rescue {
-            tag.bittag_log_from_flash(total as i32)
+            tag.bittag_log_from_flash(layout, total as i32)
         } else {
             tag.data_log(total as i32).ok()
         };

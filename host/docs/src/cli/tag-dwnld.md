@@ -19,6 +19,7 @@ tag-dwnld [options]
 | `-f`, `--format` | `default`, `sqlite` | Selects the output storage format. SQLite is the only format; `sqlite`, `sql`, `db` and `db3` are accepted. The text format is retired: `text` and `txt` are refused before the tag is touched. Convert existing `.txt` logs with [tag-txt-import](tag-txt-import.md). |
 | `-s`, `--stop` | none | Stops a running tag before downloading. Without this option, download proceeds only when the tag is already finished, aborted, or in exception state. |
 | `--rescue-exception` | none | For old firmware that refuses downloads from `EXCEPTION`, changes the monitor-visible backup state to `ABORTED` before downloading. This does not erase log flash or reset log counters. |
+| `--elf` | path | With `--rescue-exception` on a BitTag, the firmware image (`.elf`) the tag is running. Its `vddHeader` and `__persistent_end__` symbols say where the tag keeps its records, which moves from build to build. Required for a `BITTAG_LE` tag; without it a `BITTAG` tag is read at the original field firmware's addresses. Read before the tag is touched, so a wrong file costs nothing. |
 | `--stop-timeout` | seconds | With `--stop`, how long to wait for the tag to reach `FINISHED` or `ABORTED`. Default 30. |
 | `--settle-timeout` | seconds | How long to wait after connecting for the tag to report its state. Connecting restarts the tag, which reports no definite state while it boots. Default 10. |
 | `--profile` | none | Prints download timing and the link's transfer profile, for diagnosing a slow download. |
@@ -36,6 +37,9 @@ tag-dwnld [options]
   changes only the monitor-visible backup state from `EXCEPTION` to `ABORTED`,
   then reads legacy BitTag log headers directly from internal flash if the
   firmware cannot serve data-log RPCs. It does not erase flash or reset counters.
+  For a BitTag, pass the `.elf` of the image the tag runs with `--elf`: the
+  records' address differs between builds, and reading at the wrong one
+  returns nothing or garbage.
 
 ## Examples
 
@@ -49,6 +53,10 @@ tag-dwnld --stop --format default
 
 ```sh
 tag-dwnld --rescue-exception --format sqlite --output field-rescue.db3
+```
+
+```sh
+tag-dwnld --rescue-exception --elf BitTag.elf --output field-rescue.db3
 ```
 
 ## Output

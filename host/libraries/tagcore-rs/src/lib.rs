@@ -51,5 +51,5 @@ pub mod tag;
 pub mod textformat;
 
 pub use link::{LinkAdapt, LinkAdaptStats, UsbDev};
-pub use monitor::{MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
+pub use monitor::{BitTagFlashLog, MemAccess, TagMonitor, TagMonitorStats, TargetFamily};
 pub use tag::{Tag, TagError};
