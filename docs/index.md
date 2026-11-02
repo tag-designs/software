@@ -210,6 +210,7 @@ design document.
 ### Tags / Common Firmware / core / Proposals
 
 - [A more robust monitor for the STM32L4 tags](../embedded/tags/common/core/design/proposals/l4-monitor-robustness.md) *(proposal, proposed)* — Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a monitor info call behind a version bump - with what each step needs, what it would and would not fix, and how to check it on the bench.
+- [Synchronous monitor commands](../embedded/tags/common/core/design/proposals/synchronous-monitor-commands.md) *(proposal, proposed)* — Make the monitor's state-changing commands synchronous - the firmware holds the reply to Start, Stop, Erase and Self-test until the state machine has acted, and answers with the resulting Status or an error - so a host never has to infer from later polls whether a queued command ran; with the firmware design for both STM32 families, the host's detection of old and new firmware, what it replaces, and how to check it on the bench.
 
 ### Tags / Common Firmware / modules
 

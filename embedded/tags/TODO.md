@@ -48,16 +48,32 @@ not been reproduced on a tag.
   session works: with a `tag-info` attach between the start and the stop, 38 of
   40. Not yet tried on BitTag, PresTag or CompassTag, which share the code.
 
-  The likely cause, *inferred from the code, not observed*: each attach resets
-  the tag, and the first `StateMachine()` pass after that boot takes the reset
-  recovery branch, which returns before the `MON_WORK_*` checks. `main()` has
-  already cleared the events it passed in, so a stop evaluated by
-  `monitorServicePending()` in that pass is dropped. Fix in the batch: re-post
-  `events & MON_WORK_ALL` with `chEvtAddEvents()` before the recovery branch
-  returns, so the next pass acts on them, then repeat the start-then-stop loop
-  above (the cycle script is short; the 2026-11-02 runs are under
-  `Claude-tmp/uiuc-20261102/stopnow`). If the first-pass theory is wrong, the
-  loop will still fail and say so.
+  The cause, *confirmed 2026-11-02*: each attach resets the tag, and the first
+  `StateMachine()` pass after that boot takes the reset recovery branch, which
+  returns before the `MON_WORK_*` checks. `main()` has already cleared the
+  events it passed in, so a stop evaluated by `monitorServicePending()` in that
+  pass is dropped. The fix, for the batch, goes straight after the one-shot
+  `pState->resetCause = resetStandby;` in that branch:
+
+  ```c
+  if (events & MON_WORK_ALL)
+  {
+    chEvtAddEvents(events & MON_WORK_ALL);
+  }
+  ```
+
+  Tested on UIUCTag as a throwaway image (32 bytes more text than `main`, so the
+  change was linked in), then `main` put back: 20 of 20 start-then-`tag-stop`
+  cycles stopped on the first stop, in 0.18 to 0.25 s, all FINISHED, against
+  9 of 10 needing the host's resend on `main`. It covers every `MON_WORK_*`
+  request, not only stop. Check BitTag, PresTag and CompassTag with the same
+  loop when the batch is qualified.
+
+  This is the minimal fix. The root problem is that the state-changing
+  commands answer before they act; [the synchronous-commands
+  proposal](common/core/design/proposals/synchronous-monitor-commands.md)
+  holds the reply until the state machine has acted, which subsumes the
+  re-post. Take one or the other into the batch, not both.
 
   The host works around it: `Tag::stop_confirmed()` in `tagcore-rs` resends a
   stop while the tag is still acquiring, and `tag-stop`, `tag-reset`,
