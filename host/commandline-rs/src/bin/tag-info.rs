@@ -180,7 +180,7 @@ fn print_marker(index: i32, marker: &State) {
 /// are included when available rather than required.
 fn print_json(tag: &Tag) -> ExitCode {
     let Ok(info) = tag.tag_info() else {
-        eprintln!("Info failed");
+        eprintln!("Info failed: {}", tag.debug_message());
         return ExitCode::FAILURE;
     };
     let mut out = String::from("{");
@@ -297,7 +297,7 @@ fn main() -> ExitCode {
     let info = match tag.tag_info() {
         Ok(info) => info,
         Err(_) => {
-            eprintln!("Info failed");
+            eprintln!("Info failed: {}", tag.debug_message());
             return ExitCode::FAILURE;
         }
     };
