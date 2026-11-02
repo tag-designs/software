@@ -83,13 +83,30 @@ Delete an item when it is done.
     bus, and why the base answers OK. One candidate for the second: a posted
     AHB-AP access that faults sets `STICKYERR` while its own ACK is OK.
 
-  Skipping WFI during a session is a candidate firmware fix (the main loop
-  already never blocks during one), at the cost of session current, which
-  should be measured; finding why `DBG_SLEEP` no longer keeps the bus is the
-  better answer. The next step there is the same test on another base
-  (`bittag-base-v7`, or a clean `tag-breakout-base-l432-v1` build), which
-  separates the base from the tag. Any request that lands in the window is
-  lost. The harness's one `Info
+  **Not the base build:** a clean `tag-breakout-base-l432-v1` (`5c6ddaf6`,
+  flashed 2026-11-02) fails identically, with one 0x81 in six runs, which
+  fits a posted AHB-AP access faulting on the target bus: the access's own
+  ACK is OK, `STICKYERR` is set, and the next AP access gets the FAULT. Also
+  ruled out: the Sleep clock gates (`RCC_AHB1SMENR` = `0x00011303`, the reset
+  value, SRAM1 and flash clocked in Sleep) and how `DBG_SLEEP` is set (the
+  host and the 2026-10-27 tool write the same bit). The one recorded
+  difference from 2026-10-27 is the supply: 3.28 V then, 2.496 V now. 2.5 V
+  is this tag's operating voltage, so the tag must work there.
+
+  Fixes, separable, none needing the cause:
+  - **Firmware (batch):** skip the idle `__WFI()` while a monitor session is
+    open, as the probe build did. On L4 the main loop already never blocks
+    during a session, so the core only idles there while a test or delay
+    sleeps; the cost is that time at run current instead of Sleep.
+  - **Host:** read the request back after writing it and retry or fail
+    loudly, rather than trigger on zeros.
+  - **Base:** check `CTRL/STAT.STICKYERR` after a memory transfer, so a
+    faulted access reports 0x81 instead of OK with zeros.
+
+  The L4 mailbox in
+  [the monitor proposal](../common/core/design/proposals/l4-monitor-robustness.md)
+  would not avoid this: its block is in SRAM too. Any request that lands in
+  the window is lost. The harness's one `Info
   failed` after `tag-start` in the 2026-11-02 release check may be the same.
   The host can at least detect it by reading the request back before
   triggering; the cause is a base or firmware item.
