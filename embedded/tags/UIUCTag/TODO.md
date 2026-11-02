@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the system bus during the ADXL367 self-test, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
+summary: Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the system bus while the core sleeps in a session, a tag-test link failure probably fixed, and confirming the internal-ADC fix.
 ---
 
 # UIUCTag TODO
@@ -17,13 +17,16 @@ UIUCTag was qualified on `fw-v0.6` on 2026-10-08
 Delete an item when it is done.
 
 - **`tag-test` on `RUN_ALL` was intermittent; probably fixed, not yet
-  attributed.** On 2026-11-02, main `12af820d` on a `bittag-base-v7` base
-  passed **six of six**, with no 0x81 at all (the host still logs the first
-  failure of a burst at ERROR, so none occurred). Three things changed since
-  the failures below: the L4 monitor fix, the host's SWD enter retry
-  (2026-10-31) and the base firmware, so this does not say which one fixed
-  it. Six of six against a 4-in-6 rate is p ≈ 0.09; delete this item after
-  another clean dozen.
+  attributed.** On 2026-11-02, main `12af820d` on the same
+  `tag-breakout-base-l432-v1` (fw `be8f9062`, a dirty build of 2026-10-28)
+  passed **six of six** with no 0x81 at all (the host still logs the first
+  failure of a burst at ERROR, so none occurred). The L4 monitor fix, the
+  host's SWD enter retry (2026-10-31), the host's `DBG_SLEEP` (2026-10-27) and
+  possibly the base build changed since the failures below, so this does not
+  say which one fixed it. Six of six against a 4-in-6 rate is p ≈ 0.09;
+  delete this item after another clean dozen. Note that the base reports
+  some failed accesses as successes (next item), so "no 0x81" is weaker
+  evidence than it looks.
 
   Re-measured on
   `fw-v0.6`, 2026-10-06: **four of six attempts passed** `ALL_PASSED`,
@@ -39,37 +42,47 @@ Delete an item when it is done.
   timeout at the first transaction of the sequence, which points at the link
   rather than at the tag.
 
-- **During the ADXL367 self-test the debug port loses the system bus, and a
-  status poll fails with `Tag returned NANOPB`.** Every `tag-test` prints
-  `GetStatus failed: Tag returned NANOPB` once, then finishes `ALL_PASSED`.
-  Run one test at a time, only `RUN_ADXL362` (the ADXL367 test) does it.
-  Traced on 2026-11-02 with throwaway probes (none committed):
+- **While the core sleeps during a monitor session, the debug port cannot
+  reach the system bus, and the base reports the failed accesses as
+  successes.** Every `tag-test` prints `GetStatus failed: Tag returned
+  NANOPB` once, then finishes `ALL_PASSED`. Traced on 2026-11-02 with
+  throwaway probes (none committed), on `tag-breakout-base-l432-v1`:
   - **Not the monitor.** An image with the L4 monitor fix reverted fails the
     same way. The tag answers `08 08`, `errAck(NANOPB)`: `proto_eval()` could
     not decode the request, because the first word of `ProtoBuf` was zero
     while the host had written `12 00` (`get_status`).
-  - **The host's write never lands.** Read back straight after writing, the
-    buffer is `00 00 00 00`, and a second write and read give the same. The
-    ST-LINK memory commands report no error, so the failure is silent.
+  - **The host's write never lands, and nothing says so.** Read back straight
+    after writing, the buffer is `00 00 00 00`; a second write and read give
+    the same. The base reported both as OK, including to the host's
+    last-read/write-status check.
   - **Every system-bus access fails, not just SRAM.** In the same window
-    `RCC_CR`, `RCC_CFGR` and `PWR_CR1` read 0 over the debug port, while the
+    `RCC_CR`, `RCC_CFGR` and `PWR_CR1` read 0 (with OK status), while the
     core-private registers answer: `DBGMCU_CR` = 1 (`DBG_SLEEP`, set by the
     host), `SCB_SCR` = 0 (no `SLEEPDEEP`), `DHCSR` = `0x01050001` (core in
     Sleep).
-  - **Not Stop mode.** The test waits with `chThdSleepMilliseconds()`, and
-    `stopMilliseconds()` falls back to that while the monitor is attached.
-    The difference from ordinary session idle, which polls fine, is that the
-    accelerometer's bus is up: USART2 in synchronous mode on PA1-PA4
-    (`TAG_BUS_USART_INIT` in `src/devices.c`, `common/core/src/usart_bus.c`).
-    Still to find: what about that state cuts the AHB off from the debug
-    port while the core sleeps.
+  - **Any sleep in the main thread does it; the ADXL367 is incidental.** A
+    test that only calls `chThdSleepMilliseconds(1500)` fails the same way;
+    the real ADXL367 test is simply the only one longer than the host's 1 s
+    poll. With the accelerometer's USART2 bus up, or the sensor measuring,
+    nothing changes. Ordinary session idle polls cleanly because on L4 the
+    main loop never blocks during a session (`godown()` returns and the loop
+    yields), so the core only reaches the BitPresTag idle hook's `__WFI()`
+    while a test sleeps. A `Test` request's own reply was once read as zeros
+    for the same reason: the test, and its sleep, starts the moment the
+    reply is written.
+  - **Not Stop mode.** `stopMilliseconds()` falls back to the RTOS sleep while
+    the monitor is attached, and `SCB_SCR` = 0.
+  - **Contradicts 2026-10-27.** That investigation read `PWR_CR1 = 0x500`
+    and made 48 clean status reads across sleeps with `DBG_SLEEP` set, on the
+    same base model (`../../bases/design/investigations/2026-10-0x81-dbg-sleep.md`).
+    Still to find: why plain Sleep with `DBG_SLEEP` now cuts off the system
+    bus, and why the base answers OK. One candidate for the second: a posted
+    AHB-AP access that faults sets `STICKYERR` while its own ACK is OK.
 
-  Harmless to `tag-test`, which polls again, but any request that lands in
-  the window is lost, and the harness's one `Info failed` after `tag-start`
-  in the 2026-11-02 release check may be the same thing. Two remedies,
-  separable: the host can check the probe's last read/write status after
-  writing the request and retry, which is a host change; the cause is a
-  firmware item for the batch.
+  Any request that lands in the window is lost. The harness's one `Info
+  failed` after `tag-start` in the 2026-11-02 release check may be the same.
+  The host can at least detect it by reading the request back before
+  triggering; the cause is a base or firmware item.
 
 - **`external_pages` is wrong after any reset, and reports nothing collected.**
   Confirmed on hardware 2026-10-06: a run that stored **5 pressure samples, 5

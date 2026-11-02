@@ -190,8 +190,8 @@ _No measurements recorded yet._
 - **image**: main `12af820d` (the L4 monitor fix and the RTC relock removal on
   top of `fe7e35b5`), built locally; the check ran with `--skip-build` on the
   flashed image.
-- **board**: `2036354B3032500800520028` (the breakout), on a `bittag-base-v7`
-  base.
+- **board**: `2036354B3032500800520028` (the breakout), on
+  `tag-breakout-base-l432-v1` (fw `be8f9062`, a dirty build of 2026-10-28).
 - **conditions**: supply 2.4961 V, checked before the first attach. Shipped
   default config (`embedded/tools/power-configs/uiuctag-default.json`).
 - **result**: the new UIUCTag profile, with no hand steps:

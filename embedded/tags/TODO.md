@@ -47,7 +47,8 @@ not been reproduced on a tag.
   On 2026-11-01 BitTag and PresTag passed `tag-test` with resting current
   unchanged, and a PresTag Tag Monitor session stayed live through Start, Stop,
   Erase and Synchronize Clock. On 2026-11-02 the UIUCTag breakout (main
-  `12af820d`, on a `bittag-base-v7` base) passed `tag-test` six times out of
+  `12af820d`, on
+  `tag-breakout-base-l432-v1` (fw `be8f9062`, a dirty build of 2026-10-28)) passed `tag-test` six times out of
   six with no 0x81 burst, and Tag Monitor's `session_check` passed every step
   with a clean log; resting current 0.1507 µA against 0.1521 µA before
   ([UIUCTag power results](UIUCTag/design/power-results.md)). Still to verify,
