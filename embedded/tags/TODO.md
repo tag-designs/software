@@ -246,6 +246,26 @@ not been reproduced on a tag.
 
 ## Restart recovery
 
+- **Clean up the reset recovery code in `StateMachine()`** (user request,
+  2026-11-02). The recovery branch at the top of `StateMachine()`
+  (`common/core/src/state_machine.c`) has grown one bench fault at a time and
+  is now most of the function. It has:
+  - two parallel recovery paths, selected by `TAG_MONITOR_RESET_RECOVERY`;
+  - four overlapping ways of deciding why the tag reset: `reattachReset()`,
+    `externalResetAtBoot`, `backupStateValidAtBoot` and
+    `monitor_reset_recovery`;
+  - trace bookkeeping (`TAG_RECOVERY_TRACE`, about 50 references in the
+    branch) and retained run diagnostics woven through the decisions.
+
+  Reduce it to one path with one reset classification, and move tracing out
+  of the decision logic. Write down the cases the path must handle first:
+  standby wake, attach reset, field power loss, brownout, exception. Then
+  check each against the code rather than preserving every branch. UIUCTag
+  behaves differently from BitTag after an attach, and nothing in its
+  `restoreLog()` explains why. The
+  [synchronous-commands proposal](common/core/design/proposals/synchronous-monitor-commands.md)
+  removes one reason for the complexity (a monitor request racing the recovery
+  pass). Doing both at once suits the firmware batch.
 - **The monitor-attach recovery branch adopts retained state without
   cross-checking the marker log.** Nothing depends on that now, but if
   `pState->state` is ever wiped or corrupted, it will again outrank durable
