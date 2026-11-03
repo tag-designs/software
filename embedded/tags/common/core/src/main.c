@@ -895,75 +895,56 @@ int main(void)
 
   eventmask_t pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
 
+  /*
+   * The main loop: run the state machine, then either serve the monitor or
+   * sleep.
+   *
+   * The state machine runs first on every pass, so the boot's reset recovery
+   * is done before any monitor request is served. A served request may change
+   * the state (proto_eval() runs Start, Stop, Erase, Self-test and Calibrate at
+   * once), so the loop goes straight back to the state machine rather than
+   * sleeping on a mode chosen before the command. godown() runs only with no
+   * monitor session, on the mode the latest pass chose.
+   */
   while (1)
   {
-    enum Sleep sleepmode = STANDBY;
     eventmask_t current_events = pending_events;
     pending_events = 0;
-    /*  if (current_events & EVT_MONITOR_ALL)
-    {
-      debug_log_printf("main loop 0: monitor events detected\r\n");
-    } */
-
-    // rtc interrupts are not working hence this polling of them
-    //chEvtAddEvents(tagRtcCollectAndClearPendingEvents());
 
     timestamp = GetTimeUnixSec(&timestamp_millis); // get current time
     tagPhaseProbeLoopTop();
     pState->safe = false;                          // critical section start
 
-    monitorServicePending((uint32_t) (current_events & EVT_MONITOR_ALL));
-    current_events |= chEvtGetAndClearEvents(MON_WORK_ALL);
-    sleepmode = StateMachine(current_events);      // process events
+    enum Sleep sleepmode = StateMachine(current_events);
     tagPhaseProbeMarkIfOpen(15);  /* StateMachine returned */
 
-    /* if (current_events & EVT_MONITOR_ALL)
-    {
-      debug_log_printf("main loop 1: monitor events detected\r\n");
-    } */
+    const bool attached = isMonitorEnabled();
+    bool served = false;
+    if (attached)
+      served = monitorServicePending((uint32_t)(current_events & EVT_MONITOR_ALL));
 
-    // critical section end
-
-    pState->safe = true;
+    pState->safe = true;                           // critical section end
     tagPhaseProbeMarkIfOpen(23);  /* critical section closed */
 
-    #if 0
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
-    palSetLineMode(LINE_LED1, PAL_MODE_OUTPUT_PUSHPULL);
-    palSetLine(LINE_LED1);
-#endif
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palSetLineMode(LINE_testpin, PAL_MODE_OUTPUT_PUSHPULL);
-    palClearLine(LINE_testpin);
-#endif
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
-    palSetLine(LINE_LED1);
-#endif
-    palClearLine(LINE_testpin);
-    godown(sleepmode);
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palSetLine(LINE_testpin);
-#endif
+    if (served)
+    {
+      pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
+      continue;
+    }
 
-    palSetLine(LINE_testpin);
-    #endif
-
-    godown(sleepmode);
-    tagPhaseProbeMarkIfOpen(16);  /* godown returned (no-op for STOP requests) */
+    if (!attached)
+    {
+      godown(sleepmode);
+      tagPhaseProbeMarkIfOpen(16);  /* godown returned (no-op for STOP requests) */
 #if defined(TAG_PHASE_PROBE) && TAG_PHASE_PROBE
-    if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) tagPhaseProbeAux(3, (uint32_t)sleepmode);
+      if (tagPhaseProbe.magic == TAG_PHASE_PROBE_MAGIC && tagPhaseProbe.open == 1U) tagPhaseProbeAux(3, (uint32_t)sleepmode);
 #endif
+    }
 
 #if TAG_STM32U3_FLASH
     if (pState->state == TagState_RUNNING){
       idlePowerMode = sleepmode;
-      /*
-       * MON_WORK_* are posted by the monitor handler and must be able to wake
-       * this wait on their own. Without them in the mask a stop request only
-       * takes effect once something else wakes the loop, and one storm set in
-       * six saw a stop go unserviced for over 30 s.
-       */
-      eventmask_t wait_events = EVT_HARDWARE_ALL | MON_WORK_ALL;
+      eventmask_t wait_events = EVT_HARDWARE_ALL;
       if (isMonitorEnabled())
         wait_events |= EVT_MONITOR_ALL;
       pending_events =  chEvtWaitAny(wait_events);
@@ -972,31 +953,17 @@ int main(void)
     else {
       /*
        * Never block here outside RUNNING. Blocking on the monitor's behalf
-       * bought nothing -- godown() already refuses to sleep while a monitor
-       * is attached -- and it raced the detach: a MONITORSTOP landing after
-       * the isMonitorEnabled() test but before the wait parks the main
-       * thread on an event no one will ever post.
+       * bought nothing -- the loop serves the monitor without sleeping while a
+       * session is open -- and it raced the detach: a MONITORSTOP landing after
+       * the isMonitorEnabled() test but before the wait parks the main thread
+       * on an event no one will ever post.
        */
       pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
     }
 #else
-    if (isMonitorEnabled())
+    if (attached)
       chThdYield();
     pending_events = chEvtGetAndClearEvents(EVT_ALL_DEFINED);
-#endif
-
-    #if 0
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palClearLine(LINE_testpin);
-#endif
-    pending_events |= chEvtGetAndClearEvents(EVT_ALL_DEFINED);
-    //debug_log_printf("main loop: sleepmode %d, pending events %x\r\n", sleepmode, pending_events);
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_testpin)
-    palClearLine(LINE_testpin);
-#endif
-#if TAG_MAIN_SLEEP_DIAGNOSTICS && defined(BOARD_IMUTagNandv1) && defined(LINE_LED1)
-    palClearLine(LINE_LED1);
-#endif
 #endif
   }
 }

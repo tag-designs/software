@@ -18,7 +18,7 @@ extern eventmask_t events;
 /**
  * @name Event bit assignments
  * Bit positions used to construct ChibiOS event masks for hardware wakeups,
- * RTC events, and monitor work requests.
+ * RTC events, and the monitor.
  * @{
  */
 // Event/work bit assignments.
@@ -27,11 +27,6 @@ extern eventmask_t events;
 #define EVT_BIT_RTC_ALRBF 9
 #define EVT_BIT_RTC_WUTF 10
 #define EVT_BIT_WAKE_STANDBY 11
-#define EVT_BIT_MON_WORK_START 12
-#define EVT_BIT_MON_WORK_STOP 13
-#define EVT_BIT_MON_WORK_RESET 14
-#define EVT_BIT_MON_WORK_SELFTEST 15
-#define EVT_BIT_MON_WORK_CALIBRATE 16
 #define EVT_BIT_MONITOR_SERVICE 17
 #define EVT_BIT_MONITOR_TIMEOUT 18
 /** @} */
@@ -56,21 +51,6 @@ extern eventmask_t events;
 /** @} */
 
 /**
- * @name Monitor work masks
- * Work requests decoded by the monitor and consumed by the main state machine.
- * @{
- */
-// Monitor command work bits. Protobuf evaluation posts these into the main
-// thread event mask so the state machine sees monitor work like any other
-// pending event.
-#define MON_WORK_START EVENT_MASK(EVT_BIT_MON_WORK_START)
-#define MON_WORK_STOP EVENT_MASK(EVT_BIT_MON_WORK_STOP)
-#define MON_WORK_RESET EVENT_MASK(EVT_BIT_MON_WORK_RESET)
-#define MON_WORK_SELFTEST EVENT_MASK(EVT_BIT_MON_WORK_SELFTEST)
-#define MON_WORK_CALIBRATE EVENT_MASK(EVT_BIT_MON_WORK_CALIBRATE)
-/** @} */
-
-/**
  * @name Composite event masks
  * Convenience masks used by the main loop and state-machine dispatch.
  * @{
@@ -79,20 +59,15 @@ extern eventmask_t events;
 #define EVT_MONITOR_SERVICE EVENT_MASK(EVT_BIT_MONITOR_SERVICE)
 #define EVT_MONITOR_TIMEOUT EVENT_MASK(EVT_BIT_MONITOR_TIMEOUT)
 #define EVT_MONITOR_ALL (EVT_MONITOR_SERVICE | EVT_MONITOR_TIMEOUT)
-#define MON_WORK_ALL (MON_WORK_START | MON_WORK_STOP | MON_WORK_RESET | MON_WORK_SELFTEST | MON_WORK_CALIBRATE)
 
 #define EVT_HARDWARE_ALL (EVT_WKUP | EVT_RTC_ALL | EVT_WAKE_STANDBY)
-#define EVT_ALL_DEFINED (EVT_HARDWARE_ALL | MON_WORK_ALL | EVT_MONITOR_ALL)
+#define EVT_ALL_DEFINED (EVT_HARDWARE_ALL | EVT_MONITOR_ALL)
 /** @} */
 
 #if defined(__cplusplus)
-static_assert((EVT_HARDWARE_ALL & MON_WORK_ALL) == 0, "hardware events overlap monitor work bits");
 static_assert((EVT_HARDWARE_ALL & EVT_MONITOR_ALL) == 0, "hardware events overlap monitor event bits");
-static_assert((MON_WORK_ALL & EVT_MONITOR_ALL) == 0, "monitor work bits overlap monitor event bits");
 #else
-_Static_assert((EVT_HARDWARE_ALL & MON_WORK_ALL) == 0, "hardware events overlap monitor work bits");
 _Static_assert((EVT_HARDWARE_ALL & EVT_MONITOR_ALL) == 0, "hardware events overlap monitor event bits");
-_Static_assert((MON_WORK_ALL & EVT_MONITOR_ALL) == 0, "monitor work bits overlap monitor event bits");
 #endif
 
 #endif

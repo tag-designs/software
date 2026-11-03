@@ -125,7 +125,11 @@ enum DBGINFO { MONITORVERSION = 0, MONITORBUF = 1, MONITORBUFSIZE = 2, TAGSHASTR
 extern "C" {
 #endif
 
-void monitorServicePending(uint32_t monitor_events);
+/*
+ * Serve a latched monitor request on the main thread. Returns true when one
+ * was served, so the caller can run the state machine again before sleeping.
+ */
+bool monitorServicePending(uint32_t monitor_events);
 void monitorPostPendingEvents(void);
 void monitorSharedEarlyInit(void);
 void monitorSharedSessionStart(void);

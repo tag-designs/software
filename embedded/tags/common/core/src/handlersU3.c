@@ -6,7 +6,7 @@
  *          and helpers have been declared. U3 uses a shared-memory command
  *          mailbox and a reserved IRQ instead of the L4 DebugMonitor request
  *          bits. Protobuf requests normally stay cooperative: the IRQ latches
- *          work and the main state-machine thread evaluates it. The only
+ *          the request and the main state-machine thread evaluates it. The only
  *          exception is an exact get_status request while @c pState->safe is
  *          false, which is answered from cached state so host polling can
  *          continue while the main thread is inside a long operation.
@@ -90,13 +90,13 @@ static void monitor_timeout_cb(virtual_timer_t *vtp, void *arg)
 }
 
 /*
- * Cooperative protobuf service path. The kick IRQ only latches work; main
- * thread context evaluates protobuf and completes the shared-memory command.
+ * Cooperative protobuf service path. The kick IRQ only latches the request;
+ * main thread context evaluates protobuf and completes the shared-memory
+ * command. Returns true when a request was served.
  */
-void monitorServicePending(uint32_t monitor_events)
+bool monitorServicePending(uint32_t monitor_events)
 {
   int len = 0;
-  uint32_t work = 0;
   bool do_eval = false;
 
   chSysLock();
@@ -116,14 +116,14 @@ void monitorServicePending(uint32_t monitor_events)
     monitorStopSessionI();
     monitorSharedSetDisconnected();
     chSysUnlock();
-    return;
+    return false;
   }
   chSysUnlock();
 
   if (!do_eval)
-    return;
+    return false;
 
-  len = proto_eval(len, &work);
+  len = proto_eval(len);
 
   chSysLock();
   monitor_shared.result = monitor_enabled ? (uint32_t)len : 0U;
@@ -134,9 +134,7 @@ void monitorServicePending(uint32_t monitor_events)
     monitorArmTimeoutI(chTimeS2I(MONITOR_HEARTBEAT_PERIOD_S),
                        monitor_timeout_cb);
   chSysUnlock();
-
-  if (work != 0U)
-    chEvtAddEvents((eventmask_t)work);
+  return true;
 }
 
 /*

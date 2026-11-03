@@ -848,68 +848,11 @@ enum Sleep StateMachine(eventmask_t input_events)
   recoveryTraceStore(0U, 0U);
 #endif
 
-  // check monitor events
-
-  if (events & MON_WORK_SELFTEST)
-  {
-    if (pState->state == TagState_IDLE)
-    {
-      return SelfTest(T_INIT, State_EVENT_OK);
-    }
-  }
-
-  if (events & MON_WORK_START)
-  {
-    if (pState->state == TagState_IDLE)
-    {
-      return Configured(T_INIT, State_EVENT_STARTCMD);
-    }
-  }
-  if (events & MON_WORK_STOP)
-  {
-    bool stop_requested =
-        (pState->state == TagState_CONFIGURED) ||
-        (pState->state == TagState_RUNNING);
-#if CONFIG_HAS_HIBERNATE
-    stop_requested = stop_requested ||
-        (pState->state == TagState_HIBERNATING);
-#endif
-
-    if (stop_requested)
-    {
-      return Finished(T_INIT, State_EVENT_STOPCMD);
-    }
-    if (pState->state == TagState_EXCEPTION)
-    {
-      return Aborted(T_INIT, State_EVENT_STOPCMD);
-    }
-#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
-    if (pState->state == TagState_CALIBRATE)
-    {
-      (void)Calibrating(T_EXIT, State_EVENT_STOPCMD);
-      return Idle(T_INIT, State_EVENT_OK);
-    }
-#endif
-  }
-  if (events & MON_WORK_RESET)
-  {
-    if ((pState->state == TagState_ABORTED) ||
-        (pState->state == TagState_FINISHED) ||
-        (pState->state == TagState_sRESET))
-    {
-      return Reset(T_INIT, State_EVENT_RESETCMD);
-    }
-  }
-
-  #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
-  if (events & MON_WORK_CALIBRATE)
-  {
-    if (pState->state == TagState_IDLE)
-    {
-      return Calibrating(T_INIT, State_EVENT_OK);
-    }
-  }
-  #endif
+  /*
+   * Monitor commands are not dispatched here: proto_eval() runs their
+   * transitions at once through StateMachineCommand(), and the next pass
+   * continues from the state they reached.
+   */
 
   // eval state
 
@@ -959,6 +902,38 @@ enum Sleep StateMachine(eventmask_t input_events)
  * @param[in] reason Event that caused reset entry.
  * @return Sleep mode requested after reset cleanup.
  */
+/**
+ * @brief Enter sRESET for an erase, without starting the sweep.
+ *
+ * @details The sweep runs in Reset() on the following passes. Used by
+ *          Reset(T_INIT) and by an Erase command, which answers the host as
+ *          soon as the erase is under way.
+ *
+ * @param[in] reason Event that caused reset entry.
+ */
+static void resetEnter(State_Event reason)
+{
+  /*
+   * A reset command while already erasing resumes; it does not restart.
+   *
+   * StateMachineCommand() accepts an erase in sRESET, so a host that retries
+   * -- the natural response to a tag that looks busy -- used to clear
+   * reset_erase_started, sending the sweep back to the beginning and
+   * re-running restoreLog() and lastDirtyExternalSector(). A host polling on
+   * a timer could keep that up indefinitely and the erase would never
+   * finish. Resuming makes reset idempotent.
+   */
+  const bool already_erasing =
+      (pState->state == TagState_sRESET) && reset_erase_started;
+
+  pState->state = TagState_sRESET;
+  recordState(reason);
+  if (!already_erasing)
+  {
+    reset_erase_started = false;
+  }
+}
+
 static enum Sleep Reset(enum StateTrans t, State_Event reason)
 {
   bool erase_more = false;
@@ -971,25 +946,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
 
   if (t == T_INIT)
   {
-    /*
-     * A reset command while already erasing resumes; it does not restart.
-     *
-     * StateMachine() accepts MON_WORK_RESET in sRESET, so a host that retries
-     * -- the natural response to a tag that looks busy -- used to clear
-     * reset_erase_started, sending the sweep back to the beginning and
-     * re-running restoreLog() and lastDirtyExternalSector(). A host polling on
-     * a timer could keep that up indefinitely and the erase would never
-     * finish. Resuming makes reset idempotent.
-     */
-    const bool already_erasing =
-        (pState->state == TagState_sRESET) && reset_erase_started;
-
-    pState->state = TagState_sRESET;
-    recordState(reason);
-    if (!already_erasing)
-    {
-      reset_erase_started = false;
-    }
+    resetEnter(reason);
   }
 
   if (!reset_erase_started)
@@ -1022,9 +979,9 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
    * The mask matters. An unmasked test would yield on every EVT_WKUP or RTC
    * tick, pacing the sweep one sector at a time for a different reason.
    *
-   * There is deliberately no cancel: MON_WORK_STOP has no sRESET branch in
-   * StateMachine(), so a stop sent mid-sweep breaks this loop, is cleared by
-   * main(), and the next pass resumes through Reset(T_CONT). Returning to IDLE
+   * There is deliberately no cancel: StateMachineCommand() refuses a stop in
+   * sRESET, so a stop sent mid-sweep breaks this loop, is answered PERM, and
+   * the next pass resumes through Reset(T_CONT). Returning to IDLE
    * with sectors still dirty would let a run start on un-erased NAND.
    */
   for (;;)
@@ -1032,7 +989,7 @@ static enum Sleep Reset(enum StateTrans t, State_Event reason)
     erase_more = eraseExternalNextSector();
     if (!erase_more)
       break;
-    if ((chEvtGetEventsX() & (eventmask_t)(EVT_MONITOR_ALL | MON_WORK_ALL)) != 0U)
+    if ((chEvtGetEventsX() & (eventmask_t)EVT_MONITOR_ALL) != 0U)
       break;
   }
 
@@ -1356,10 +1313,82 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
   (void)reason;
   if (t == T_INIT)
   {
+    /*
+     * Enter TEST only; the test runs on the next pass, so the command that
+     * started it can answer at once however long the test is. TEST_RUNNING
+     * lets a host tell a test cut short by a reset from one that finished.
+     */
     deviceInit(true);
     pState->state = TagState_TEST;
-    test();
+    pState->test_result = TEST_RUNNING;
+    return SLEEP;
   }
+  test();
   return Idle(T_INIT, State_EVENT_OK);
+}
+
+bool StateMachineCommand(MonitorCommand command)
+{
+  const TagState state = pState->state;
+
+  switch (command)
+  {
+  case MONITOR_CMD_START:
+    if (state != TagState_IDLE)
+      return false;
+    (void)Configured(T_INIT, State_EVENT_STARTCMD);
+    return true;
+
+  case MONITOR_CMD_STOP:
+    if ((state == TagState_CONFIGURED) || (state == TagState_RUNNING)
+#if CONFIG_HAS_HIBERNATE
+        || (state == TagState_HIBERNATING)
+#endif
+    )
+    {
+      (void)Finished(T_INIT, State_EVENT_STOPCMD);
+      return true;
+    }
+    if (state == TagState_EXCEPTION)
+    {
+      (void)Aborted(T_INIT, State_EVENT_STOPCMD);
+      return true;
+    }
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
+    if (state == TagState_CALIBRATE)
+    {
+      (void)Calibrating(T_EXIT, State_EVENT_STOPCMD);
+      (void)Idle(T_INIT, State_EVENT_OK);
+      return true;
+    }
+#endif
+    return false;
+
+  case MONITOR_CMD_ERASE:
+    if ((state != TagState_ABORTED) && (state != TagState_FINISHED) &&
+        (state != TagState_sRESET))
+      return false;
+    resetEnter(State_EVENT_RESETCMD);
+    return true;
+
+  case MONITOR_CMD_SELFTEST:
+    if (state != TagState_IDLE)
+      return false;
+    (void)SelfTest(T_INIT, State_EVENT_OK);
+    return true;
+
+  case MONITOR_CMD_CALIBRATE:
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
+    if (state != TagState_IDLE)
+      return false;
+    (void)Calibrating(T_INIT, State_EVENT_OK);
+    return true;
+#else
+    return false;
+#endif
+
+  default:
+    return false;
+  }
 }
 /** @} */

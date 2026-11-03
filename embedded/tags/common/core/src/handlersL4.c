@@ -116,12 +116,12 @@ bool monitorIsAttached(void)
 
 /*
  * Cooperative protobuf service path. The interrupt latches the request length;
- * main-thread context evaluates protobuf and writes the DCRDR result.
+ * main-thread context evaluates protobuf and writes the DCRDR result. Returns
+ * true when a request was served.
  */
-void monitorServicePending(uint32_t monitor_events)
+bool monitorServicePending(uint32_t monitor_events)
 {
   int len = 0;
-  uint32_t work = 0;
   bool do_eval = false;
 
   chSysLock();
@@ -140,14 +140,14 @@ void monitorServicePending(uint32_t monitor_events)
   {
     monitorStopI(true);
     chSysUnlock();
-    return;
+    return false;
   }
   chSysUnlock();
 
   if (!do_eval)
-    return;
+    return false;
 
-  len = proto_eval(len, &work);
+  len = proto_eval(len);
 
   chSysLock();
   CoreDebug->DCRDR = monitor_enabled ? (uint32_t)len : 0U;
@@ -156,9 +156,7 @@ void monitorServicePending(uint32_t monitor_events)
   if (monitor_enabled)
     monitorArmTimeoutI(chTimeS2I(L4_MONITOR_TIMEOUT_S), monitor_timeout_cb);
   chSysUnlock();
-
-  if (work != 0U)
-    chEvtAddEvents((eventmask_t)work);
+  return true;
 }
 
 /*

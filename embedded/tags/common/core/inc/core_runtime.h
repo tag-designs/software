@@ -29,6 +29,39 @@ extern thread_t *tpMain;
 enum Sleep StateMachine(eventmask_t events);
 
 /**
+ * @enum  MonitorCommand
+ * @brief Monitor requests that change the tag's state.
+ */
+typedef enum {
+  MONITOR_CMD_START,     ///< Store the configuration and begin a run.
+  MONITOR_CMD_STOP,      ///< End a run, an exception or calibration.
+  MONITOR_CMD_ERASE,     ///< Erase stored data and return to idle.
+  MONITOR_CMD_SELFTEST,  ///< Run the self-tests.
+  MONITOR_CMD_CALIBRATE, ///< Enter live sensor calibration.
+} MonitorCommand;
+
+/**
+ * @brief Carry out a monitor command's state transition at once.
+ *
+ * @details Called from proto_eval(), so the reply to a state-changing request
+ *          reports the state the command reached rather than acknowledging
+ *          work a later pass might not do. Start runs Configured(T_INIT);
+ *          Stop runs Finished(T_INIT), Aborted(T_INIT) from EXCEPTION, or
+ *          leaves calibration; Calibrate runs Calibrating(T_INIT). Erase and
+ *          Self-test only enter sRESET or TEST, and the following passes do
+ *          the sweep or the test.
+ *
+ * @param[in] command The command to carry out.
+ * @return true when the state allowed the command and its transition ran;
+ *         false, with nothing changed, otherwise.
+ *
+ * @pre StateMachine() has run since boot, so reset recovery is done; main()
+ *      serves monitor requests only after a StateMachine() pass.
+ * @warning Main thread only.
+ */
+bool StateMachineCommand(MonitorCommand command);
+
+/**
  * @brief Initialize board devices and persistent runtime state.
  *
  * @param[in] force Nonzero to force reinitialization after reset handling.

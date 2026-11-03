@@ -11,6 +11,7 @@
 
 #include "config.h"
 #include "core_events.h"
+#include "core_runtime.h"
 #include "core_sync.h"
 #include "core_types.h"
 #include "custom.h"
@@ -584,6 +585,8 @@ static int configAck(void)
   return encode_ack();
 }
 
+static int statusAckErr(Ack_Err err);
+
 /**
  * @brief Generate a current status response for the host monitor.
  *
@@ -591,13 +594,27 @@ static int configAck(void)
  */
 static int statusAck(void)
 {
+  return statusAckErr(Ack_OK);
+}
+
+/**
+ * @brief Generate a status response carrying @p err for the host monitor.
+ *
+ * @details The reply to a state-changing command (commandAck()) is the state
+ *          the command reached, with the outcome as the Ack code.
+ *
+ * @param[in] err Ack code to report with the status.
+ * @return Encoded byte count.
+ */
+static int statusAckErr(Ack_Err err)
+{
 
   int64_t epoch;
   uint32_t millis;
 
   monitorStatusMeasure(&status_vdd100, &status_temp10);
 
-  ack.err = Ack_OK;
+  ack.err = err;
   ack.which_payload = Ack_status_tag;
   ack.payload.status.state = pState->state;
   ack.payload.status.internal_data_count = pState->pages;
@@ -956,19 +973,48 @@ static bool monitor_request_allowed(const Req *request)
  * @{
  */
 /**
+ * @brief Run a state-changing command and reply with the state it reached.
+ *
+ * @details Every state-changing request is synchronous: the transition runs
+ *          here, through StateMachineCommand(), so OK means it happened.
+ *          Erase and Self-test reply on entering sRESET or TEST; the host
+ *          polls that state while the sweep or the test runs.
+ *
+ * @param[in] command The command to carry out.
+ * @return Encoded byte count: the Status with OK; with NXIO when a start
+ *         ended anywhere but CONFIGURED or RUNNING (a configuration that did
+ *         not store aborts it) or a calibrate did not reach CALIBRATE; with
+ *         PERM, state unchanged, when the state did not allow the command.
+ */
+static int commandAck(MonitorCommand command)
+{
+  if (!StateMachineCommand(command))
+    return statusAckErr(Ack_Err_PERM);
+  if ((command == MONITOR_CMD_START) &&
+      (pState->state != TagState_CONFIGURED) &&
+      (pState->state != TagState_RUNNING))
+    return statusAckErr(Ack_Err_NXIO);
+#if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
+  if ((command == MONITOR_CMD_CALIBRATE) &&
+      (pState->state != TagState_CALIBRATE))
+    return statusAckErr(Ack_Err_NXIO);
+#endif
+  return statusAck();
+}
+
+/**
  * @brief Evaluate one protobuf request from the shared monitor buffer.
  *
+ * @details A state-changing request runs its transition here, before the
+ *          reply is encoded (commandAck()).
+ *
  * @param[in] len Number of request bytes present in ProtoBuf.
- * @param[out] work State-machine command bits requested by this packet.
  * @return Encoded acknowledgement byte count.
  */
-int proto_eval(int len, uint32_t *work)
+int proto_eval(int len)
 {
   int err;
   bool status;
-
-  if (work)
-    *work = 0;
 
   bzero(&ack, sizeof(ack));
   pb_istream_t istream = pb_istream_from_buffer(ProtoBuf, len);
@@ -1007,17 +1053,13 @@ int proto_eval(int len, uint32_t *work)
     // Control
 
   case Req_erase_tag: // erase
-    if (work)
-      *work |= MON_WORK_RESET;
-    return monitorReturn(errAck(Ack_OK));
+    return monitorReturn(commandAck(MONITOR_CMD_ERASE));
 
   case Req_start_tag: // start
   {
     if (writeConfig(&req.payload.start))
     {
-      if (work)
-        *work |= MON_WORK_START;
-      return monitorReturn(errAck(Ack_OK));
+      return monitorReturn(commandAck(MONITOR_CMD_START));
     }
     else
     {
@@ -1038,15 +1080,11 @@ int proto_eval(int len, uint32_t *work)
   case Req_stop_tag: // stop
     debug_log_printf("monitor: stop request accepted state=%d\r\n",
                      pState->state);
-    if (work)
-      *work |= MON_WORK_STOP;
-    return monitorReturn(errAck(Ack_OK));
+    return monitorReturn(commandAck(MONITOR_CMD_STOP));
 
   case Req_test_tag: // self test
     test_to_run = req.payload.test;
-    if (work)
-      *work |= MON_WORK_SELFTEST;
-    return monitorReturn(errAck(Ack_OK));
+    return monitorReturn(commandAck(MONITOR_CMD_SELFTEST));
   case Req_set_rtc_tag: // Write RTC
     if ((err = SetTimeUnixSec(req.payload.set_rtc / 1000)))
     {
@@ -1072,9 +1110,7 @@ int proto_eval(int len, uint32_t *work)
 
 #if defined(SENSOR_CALIBRATION) && SENSOR_CALIBRATION
   case Req_calibrate_tag:
-    if (work)
-      *work |= MON_WORK_CALIBRATE;
-    return monitorReturn(errAck(Ack_OK));
+    return monitorReturn(commandAck(MONITOR_CMD_CALIBRATE));
   case Req_caldata_tag:
     return monitorReturn(calibration_logAck(&ack));
 

@@ -52,11 +52,12 @@ static const char SHAStr[64] __attribute__((aligned(4))) = GIT_SHA ;
 /**
  * @brief Evaluate one protobuf monitor request from the shared buffer.
  *
+ * @details A state-changing request runs its transition before replying.
+ *
  * @param[in] len Number of request bytes in ProtoBuf.
- * @param[out] work State-machine work bits requested by the packet.
  * @return Encoded acknowledgement byte count.
  */
-extern int proto_eval(int, uint32_t *);
+extern int proto_eval(int);
 
 /**
  * @brief Try to answer a monitor status request from cached runtime state.
