@@ -7,9 +7,9 @@ summary: Measured IMUTagNandBmp581 current at 3.7 V on the SMPS board per sample
 # IMUTag Power and Runtime
 
 At a 3.7 V cell, the SMPS (TPS62840) IMUTagNandBmp581 board draws **5.5-6.7 uA
-idle** and **539 uA at 100 Hz rising to 1003 uA at 1600 Hz** while running. On
+idle** and **441 uA at 100 Hz rising to 995 uA at 1600 Hz** while running. On
 a 12 mAh cell with the 2 Gbit NAND, runtime is battery-limited at 100 and
-200 Hz (22.3 h and 20.7 h) and storage-limited from 400 Hz up (13.7 h, 6.83 h,
+200 Hz (27.2 h and 24.9 h) and storage-limited from 400 Hz up (13.7 h, 6.83 h,
 3.41 h). Quote idle shelf life as 74 days until the idle split below is
 understood.
 
@@ -18,18 +18,86 @@ terminal sleep Stop 3, run sleep Stop 2. `IMUTagNand` (LPS22HH, 1 Gbit NAND)
 does not set `IMUTAG_RUN_SLEEP_STOP2` and stays in Stop 1 during runs; it has
 not been measured at 3.7 V.
 
-**The BMP581 now runs in NORMAL mode, which lowers every run figure below 1600 Hz**
-(about 100 uA at 100-200 Hz, 18%); the rate table below predates it. See
+The run figures are for the BMP581 in NORMAL mode, adopted in `eb0ba0d3`. It
+saves about 100 uA at 100-200 Hz against the CONTINUOUS mode of the 2026-10-03
+sweep; see
 [BMP581 NORMAL against CONTINUOUS mode](#bmp581-normal-against-continuous-mode-2026-11-03).
-The runtime figures here will be restated after the next full sweep of a
-qualified NORMAL-mode image.
 
 The datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at
 2.5 V and 3.3 V that this sweep checks are in
 [investigations/2026-09-imutag-regulator-and-sleep-sweeps.md](investigations/2026-09-imutag-regulator-and-sleep-sweeps.md).
 No figure there is current. Open power questions are in [`../TODO.md`](../TODO.md).
 
-## Measured SMPS Board, Full Rate Sweep at 3.7 V (2026-10-03), Shipping Configuration
+## Measured SMPS Board, Full Rate Sweep at 3.7 V (2026-11-03), Shipping Configuration
+
+Taken with `power_sweep_imutag.sh`, 120 s per rate point, at a supply measured at
+**3.6931 V**, on the daughter card `00303143433650090059002E`. Firmware
+`eb0ba0d3`, target `IMUTagNandBmp581`, shipping configuration: terminal sleep
+Stop 3, run sleep Stop 2, BMP581 in NORMAL mode. The image passed
+`tag_release_check.py` the same day (400 Hz run 578.46 uA). **Every rate point
+carries a verified download**, 1.01-1.03x the expected sample count, and idle
+was re-measured after every rate.
+
+| Mode | Measured (uA) | Download | 12 mAh battery | 2 Gbit storage | Usable | Binds on | 20 mAh battery | Usable, 20 mAh |
+| --- | ---: | --- | ---: | ---: | ---: | --- | ---: | ---: |
+| Idle | 6.2091 | -- | 80.5 d | -- | 80.5 d | battery | 134.2 d | 134.2 d |
+| 100 Hz | 440.7007 | 12150 rows, 1.01x | 27.23 h | 54.6 h | **27.23 h** | battery | 45.38 h | 45.38 h |
+| 200 Hz | 482.6283 | 24600 rows, 1.02x | 24.86 h | 27.3 h | **24.86 h** | battery | 41.44 h | 27.3 h |
+| 400 Hz | 578.5857 | 49200 rows, 1.02x | 20.74 h | 13.7 h | **13.70 h** | storage | 34.57 h | 13.7 h |
+| 800 Hz | 768.8327 | 98550 rows, 1.03x | 15.61 h | 6.83 h | **6.83 h** | storage | 26.01 h | 6.83 h |
+| 1600 Hz | 994.8749 | 197100 rows, 1.03x | 12.06 h | 3.41 h | **3.41 h** | storage | 20.10 h | 3.41 h |
+
+The 12 mAh columns are the deployed cell. The 20 mAh columns are for comparison: the same currents
+over a larger cell.
+
+Idle is the mean of the six readings taken through the sweep (6.1876-6.2385 uA,
+a 51 nA spread). It falls inside the two idle populations described under the
+2026-10-03 sweep, so shelf life is still quoted at the pessimistic 74 days.
+Raw per-point data: [`sweep-3v7-20261103.csv`](sweep-3v7-20261103.csv).
+
+The run figures agree with the NORMAL half of the
+[mode comparison](#bmp581-normal-against-continuous-mode-2026-11-03), taken the
+same day on an image differing only in the self-test fix, to 0.6-0.7% from
+100 to 800 Hz. At 1600 Hz this sweep reads 32.6 uA (3.2%) lower. Idle reads
+about 0.7 uA lower on this image than on the earlier images of the same day
+(6.2 against 6.9 uA). Neither is explained; low-power current on the STM32U375
+is known to move with code layout
+([U375 low power](../../../common/core/design/u375-low-power.md)).
+
+### What binds at 3.7 V
+
+The crossover still sits between 200 and 400 Hz. At 200 Hz the battery now
+lasts 24.9 h against 27.3 h of storage, so the margin there is small. At and
+above 400 Hz the 2 Gbit device fills first -- 13.70 h against 20.74 h of
+battery at 400 Hz -- so the power saving becomes margin for cold, cell derating
+and idle either side of the run, not more samples. Below 400 Hz the mission is
+battery-limited and the saving is runtime directly.
+
+At 1600 Hz the gap is 3.5x: 12.06 h of battery against 3.41 h of storage.
+The lever at high rates remains bytes per sample, not microamps.
+
+A 20 mAh cell moves the crossover down to about 130 Hz. It buys 18 h at
+100 Hz (45.4 h against 27.2 h) but only 2.4 h at 200 Hz, where the flash then
+fills first at 27.3 h; from 400 Hz up the larger cell adds margin, not
+samples.
+
+### Consequence for the release gate
+
+`tag_release_check.py --run-max-ua` was rebased from 760 uA to **665 uA** on
+this sweep: 1.15x the 578.5 uA measured at 400 Hz, the margin the sub-uA
+targets' bounds use. The 760 uA bound left 98 uA above the CONTINUOUS-mode
+662 uA; above 578 uA it would have let a ~178 uA layout regression, the size it
+exists to catch, land exactly on it. The 665 uA bound leaves 87 uA. The bound
+is supply-voltage dependent, so moving the bench supply without rebasing it
+makes it either toothless or a false-failure generator. See
+[*Bound run current, not just idle*](../../../../../docs/bench/power-testing.md)
+in the power-testing procedure.
+
+## Measured SMPS Board, Full Rate Sweep at 3.7 V (2026-10-03), BMP581 in CONTINUOUS Mode
+
+**Superseded as the run figures by the 2026-11-03 sweep above**, which runs
+the BMP581 in NORMAL mode. Kept for the check of the buck projection and the
+idle populations, which still stand.
 
 Two of the earlier sweeps (2026-09-03 and 2026-09-07, in
 [the 2026-09 sweeps](investigations/2026-09-imutag-regulator-and-sleep-sweeps.md))
@@ -131,31 +199,6 @@ the ~3.6 uA price of a terminal sleep that is entered every time.) **Quote shelf
 population** (74 d) until it is understood, and record bench temperature on the
 next idle measurement.
 
-### What binds at 3.7 V
-
-On measured figures rather than projected ones, the picture is unchanged from
-the 2026-09-07 sweep: the crossover sits between 200 and 400 Hz. At and above
-400 Hz the 2 Gbit device fills first -- 13.70 h against 18.12 h of battery at
-400 Hz -- so the power saving becomes margin for cold, cell derating and idle
-either side of the run, not more samples. Below 400 Hz the mission is
-battery-limited and the saving is runtime directly.
-
-At 1600 Hz the gap is 3.5x: 11.96 h of battery against 3.41 h of storage.
-The lever at high rates remains bytes per sample, not microamps.
-
-### Consequence for the release gate
-
-`tag_release_check.py --run-max-ua` was rebased from 850 uA to **760 uA** on
-these measurements, preserving the proportional margin the 3.3 V pair had
-(850/750). Against the measured 400 Hz figure of 662.40 uA that leaves 98 uA of
-headroom, and a layout regression of the size this bound exists to catch
-(~200 uA at 3.3 V, ~178 uA here) still fails it. The bound is supply-voltage
-dependent for exactly the reason this section exists, so moving the bench
-supply without rebasing it makes it either toothless or a false-failure
-generator. See [*Bound run current, not just idle*](../../../../../docs/bench/power-testing.md)
-in the power-testing procedure.
-
-
 ## BMP581 NORMAL against CONTINUOUS mode (2026-11-03)
 
 NORMAL mode draws **101 uA less at 100 Hz, 102 at 200, 90 at 400 and 67 at
@@ -223,11 +266,12 @@ will be slightly lower after bad blocks and metadata/checkpoint overhead.
 | 1600 Hz | 10.667 pages/s | 1.71 h (0.07 d) | 3.41 h (0.14 d) |
 
 Against the battery, on the 2 Gbit part IMUTagNandBmp581 carries, the two
-limits cross near 300 Hz; at the 400 Hz design point the flash fills first.
+limits cross near 240 Hz with a 12 mAh cell and near 130 Hz with a 20 mAh
+cell; at the 400 Hz design point the flash fills first with either.
 
-![Recording time against sample rate: battery limit (12 mAh over the measured current) and 2 Gbit flash limit, crossing near 300 Hz; at 400 Hz the flash fills at 13.7 h, the battery would last 18.1 h](../../../../../host/docs/src/images/imutag-recording-limits.svg)
+![Recording time against sample rate: battery limits for 12 and 20 mAh cells over the measured current, and the 2 Gbit flash limit; they cross near 240 Hz and 130 Hz; at 400 Hz the flash fills at 13.7 h, a 12 mAh battery would last 20.7 h and a 20 mAh one 34.6 h](../../../../../host/docs/src/images/imutag-recording-limits.svg)
 
-The chart is drawn from `sweep-3v7-20261003.csv` by
+The chart is drawn from `sweep-3v7-20261103.csv` by
 [`plot_recording_limits.py`](plot_recording_limits.py); rerun it after a new
 sweep.
 

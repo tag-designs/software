@@ -45,8 +45,10 @@ from power_experiment import DEFAULT_BIN, resolve_measure_python  # noqa: E402
 #: resting states, and idle_window_s is the length of each idle trial.
 #:
 #: - IMUTag: a stalled Standby reads about 1035 uA and a sleeping tag about
-#:   5 uA, so 100 uA separates them; run 665 uA at 400 Hz from 3.7 V, bound
-#:   760 uA (docs/bench/power-testing.md, section 5).
+#:   6 uA, so 100 uA separates them; run 578.5 uA at 400 Hz from 3.7 V with
+#:   the BMP581 in NORMAL mode (2026-11-03), bound 1.15x, 665 uA
+#:   (embedded/tags/families/IMUTag/design/power.md; docs/bench/power-testing.md,
+#:   section 5).
 #: - BitTag: idle 0.118 uA and run 0.508 uA at BITPERSEC from 2.5 V, agreed by
 #:   two sessions; bound 1.15x (embedded/tags/BitTag/design/power-test-plan.md).
 #: - PresTag: idle at most 0.22 uA, run 0.37-0.41 uA across boards at the
@@ -62,7 +64,7 @@ from power_experiment import DEFAULT_BIN, resolve_measure_python  # noqa: E402
 #: integrate against their floor.
 PROFILES: dict[str, dict] = {
     "IMUTag": dict(config="imutag-400.json", idle_max_ua=100.0, idle_window_s=10.0,
-                   run_min_ua=None, run_max_ua=760.0, run_duration=60.0,
+                   run_min_ua=None, run_max_ua=665.0, run_duration=60.0,
                    rest_duration=None, settle=None, storm_sets=3),
     "BitTag": dict(config="bittag-bitpersec.json", idle_max_ua=0.3, idle_window_s=120.0,
                    run_min_ua=0.3, run_max_ua=0.584, run_duration=1200.0,
@@ -173,9 +175,9 @@ def main() -> int:
                         "moved ~200 uA between IMUTag builds differing only in "
                         "code layout, and four release checks reported such a "
                         "regression and passed because only idle was bounded. "
-                        "IMUTag's 760 uA is for 400 Hz from 3.7 V; its board "
+                        "IMUTag's 665 uA is for 400 Hz from 3.7 V; its board "
                         "regulates with an SMPS, so at 3.3 V the equivalent "
-                        "is 850 uA")
+                        "is about 745 uA")
     p.add_argument("--idle-max-ua", type=float, default=None,
                    help="current at or below which a resting state counts as "
                         "asleep, in uA, for the idle trials and the life-cycle "

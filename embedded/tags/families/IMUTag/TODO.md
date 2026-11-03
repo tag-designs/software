@@ -8,18 +8,6 @@ summary: Open questions for the IMUTag family -- cell voltage, supply noise on t
 
 ## Power
 
-- **Restate the run figures for NORMAL mode once it is qualified.** The BMP581
-  moved to NORMAL mode on branch `sync-monitor-commands` (2026-11-03), saving
-  about 100 uA at 100-200 Hz and nothing at 1600 Hz
-  ([power.md](design/power.md#bmp581-normal-against-continuous-mode-2026-11-03)).
-  It ships with the batched firmware changes. After that image is qualified:
-  - rerun `power_sweep_imutag.sh` and replace the 2026-10-03 rate table and
-    its runtimes in [power.md](design/power.md), then rerun
-    `plot_recording_limits.py` -- at ~444 uA the 100 Hz battery limit rises
-    from 22 h to about 27 h, and the battery/flash crossover moves;
-  - rebase `tag_release_check.py --run-max-ua` (760 uA, set against 662 uA at
-    400 Hz). At the new ~582 uA a ~178 uA layout regression, the size the
-    bound exists to catch, would land exactly on it.
 - **Record the deployed cell voltage and chemistry.** It is not recorded in
   this tree. The current figures in [power.md](design/power.md) and the
   release gate's `--run-max-ua` bound assume a 3.7 V cell; the SMPS board's

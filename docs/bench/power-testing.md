@@ -236,8 +236,12 @@ voltage is set by the board's regulator:
 
 The release check's run-current bound is the worked example. It was 850 uA
 against a healthy 750 uA at the ~3.29 V bench supply. It was then rebased by
-the voltage ratio to **760 uA** against a healthy ~665 uA at a 3.7 V cell. The
+the voltage ratio to 760 uA against a healthy ~665 uA at a 3.7 V cell. When
+the BMP581 moved to NORMAL mode (2026-11-03) the healthy figure fell to
+578.5 uA, and the bound was rebased to **665 uA**, 1.15x. Left at 760 uA, it
+would have let through a regression of the size it exists to catch. The
 evidence is in [IMUTag power](../../embedded/tags/families/IMUTag/design/power.md).
+A bound needs rebasing when the healthy figure moves, not only the supply.
 If you move the bench supply without rebasing the bound, the bound either
 catches nothing or fails good builds.
 
@@ -250,7 +254,7 @@ check `--help`.
 | --- | --- | --- |
 | `tag_lifecycle_check.py` | The default after any firmware change: walks idle (clock set) -> running -> stopped -> idle again and measures every resting state | Compares idle before the run with idle after it: the same state reached by two histories, which is where a state-dependent fault shows. `--idle-max-ua` defaults to 100 uA, a "did it sleep at all" bound for IMUTag. Set a target's own bound from its plan. `--settle` defaults to 12 s. A run at or below `--run-min-ua` (default: `--idle-max-ua`) is failed as "not collecting", so for a sub-microamp target set the floor between idle and running current (BitTag: `--idle-max-ua 0.3 --run-min-ua 0.3`). Drives a sleeping BitTag since the host's SWD enter retry of 2026-10-31 (checked 2026-11-01) |
 | `tag_attach_storm.py` | Repeated reset-and-set-clock cycles and attach/detach storms against a running tag. Checks that the run survives and records usable data | Measures no power, so it complements the life-cycle check rather than replacing it. Pass `--keep-download <dir>`, or each round's database goes to a temporary file that is deleted. Pass `--stop-on-failure` to keep a failed tag for [capture](../../embedded/tools/tag_capture_state.py) |
-| `tag_release_check.py` | Qualifying an image: builds (unless `--skip-build`), flashes, measures idle four times, walks the life cycle, runs three attach-storm sets, and keeps every log, database and the ELF in a timestamped directory with one pass/fail | Records whether the tree was dirty. Defaults come from a per-target profile: IMUTag (400 Hz config, `--run-max-ua 760`, 10 s idle trials), BitTag and PresTag (their qualification configs, sub-uA bounds, 120 s windows, a 1200 s and 1800 s run); a target without one needs `--config`. Pass `--bin-dir` for the host tools. Procedure: [release procedure](../release/release-procedure.md) |
+| `tag_release_check.py` | Qualifying an image: builds (unless `--skip-build`), flashes, measures idle four times, walks the life cycle, runs three attach-storm sets, and keeps every log, database and the ELF in a timestamped directory with one pass/fail | Records whether the tree was dirty. Defaults come from a per-target profile: IMUTag (400 Hz config, `--run-max-ua 665`, 10 s idle trials), BitTag and PresTag (their qualification configs, sub-uA bounds, 120 s windows, a 1200 s and 1800 s run); a target without one needs `--config`. Pass `--bin-dir` for the host tools. Procedure: [release procedure](../release/release-procedure.md) |
 | `power_experiment.py` | One configured run, measured, then downloaded and checked | `--settle` defaults to 5 s, sized for a tag that starts collecting at once. Its rate check reads `lsm6.odr`, so it switches itself off for any tag without one, and only the monotonic-timestamp check runs |
 | `joulescope_measure.py` | A single state, by hand | `--repeat` for agreeing windows. `--use-server` always |
 | `joulescope_server.py` | Holding the instrument for a session | Section 2 |

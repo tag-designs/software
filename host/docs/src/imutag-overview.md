@@ -103,7 +103,7 @@ graph LR
     SWD["<b>Wired probe connector</b><br/><i>Arm the tag, download data</i>"]
     NAND["<b>GD5F2GM7RE</b><br/>2 Gbit flash, 256 MiB<br/>About 13.7 h at 400 Hz<br/><i>10-year data retention</i>"]
 
-    PWR["<b>Power</b><br/>12 mAh cell through a 1.8 V regulator<br/><i>5.5-6.7 uA waiting, 0.66 mA recording at 400 Hz</i>"]
+    PWR["<b>Power</b><br/>12 mAh cell through a 1.8 V regulator<br/><i>5.5-6.7 uA waiting, 0.58 mA recording at 400 Hz</i>"]
 
     IMU --- MCU
     PRS --- MCU
@@ -175,17 +175,18 @@ shorten the deployment.
 
 ### 3.1 Sample rates
 
-| Sample rate | Magnetic, pressure, temperature | Data produced | Flash full after | Battery, 12 mAh | Runs out first |
-| ---: | ---: | ---: | ---: | ---: | --- |
-| 100 Hz | 10 Hz | 1.37 kB/s | 54.6 h | 22.3 h | battery |
-| 200 Hz | 20 Hz | 2.73 kB/s | 27.3 h | 20.7 h | battery |
-| 400 Hz | 40 Hz | 5.46 kB/s | 13.7 h | 18.1 h | flash |
-| 800 Hz | 80 Hz | 10.9 kB/s | 6.83 h | 14.5 h | flash |
-| 1600 Hz | 160 Hz | 21.8 kB/s | 3.41 h | 12.0 h | flash |
+| Sample rate | Magnetic, pressure, temperature | Data produced | Flash full after | Battery, 12 mAh | Runs out first | Battery, 20 mAh | Runs out first, 20 mAh |
+| ---: | ---: | ---: | ---: | ---: | --- | ---: | --- |
+| 100 Hz | 10 Hz | 1.37 kB/s | 54.6 h | 27.2 h | battery | 45.4 h | battery |
+| 200 Hz | 20 Hz | 2.73 kB/s | 27.3 h | 24.9 h | battery | 41.4 h | flash |
+| 400 Hz | 40 Hz | 5.46 kB/s | 13.7 h | 20.7 h | flash | 34.6 h | flash |
+| 800 Hz | 80 Hz | 10.9 kB/s | 6.83 h | 15.6 h | flash | 26.0 h | flash |
+| 1600 Hz | 160 Hz | 21.8 kB/s | 3.41 h | 12.1 h | flash | 20.1 h | flash |
 
 Acceleration and rotation are always recorded at the rate you select.
-Whichever of the last two columns is smaller is what you actually get. Battery
-figures are measured; section 3.5 has the currents behind them.
+Whichever of the flash and battery columns is smaller is what you actually
+get. Battery figures are measured; section 3.5 has the currents behind them.
+The 20 mAh columns show what a larger cell would give.
 
 For scale: a small songbird's wingbeat is roughly 10-30 Hz, so 400 Hz gives on
 the order of 15-40 samples per wingbeat.
@@ -258,20 +259,22 @@ Two things end a recording: the battery runs down, or the flash fills. Which
 one bites first depends on the rate you chose. The currents were measured on
 the SMPS breakout carrying the IMUTagNandBmp581 daughter card at **3.6931 V**,
 the voltage of a nominal 3.7 V cell, 120 s per point with a verified download at
-every rate. Recording draws 539 uA at 100 Hz, 662 uA at 400 Hz and 1003 uA at
+every rate. Recording draws 441 uA at 100 Hz, 579 uA at 400 Hz and 995 uA at
 1600 Hz; those currents give the battery column of the table in section 3.1.
 The per-rate measurements are in
 [IMUTag power](https://tag-designs.github.io/software/developer/reference/embedded/tags/families/IMUTag/design/power.html).
 
-![Recording time against sample rate for a 12 mAh cell and 2 Gbit flash: the battery limit falls gently from 22.3 h at 100 Hz to 12.0 h at 1600 Hz, the flash limit halves with every doubling of rate from 54.6 h to 3.4 h, and the two cross near 300 Hz; at the 400 Hz design point the flash fills at 13.7 h, before the battery runs out at 18.1 h](images/imutag-recording-limits.svg)
+![Recording time against sample rate for a 12 mAh cell and 2 Gbit flash: the battery limit falls gently from 27.2 h at 100 Hz to 12.1 h at 1600 Hz (45.4 h to 20.1 h for a 20 mAh cell), the flash limit halves with every doubling of rate from 54.6 h to 3.4 h, and the flash limit crosses the 12 mAh line near 240 Hz and the 20 mAh line near 130 Hz; at the 400 Hz design point the flash fills at 13.7 h, before either battery runs out (20.7 h, 34.6 h)](images/imutag-recording-limits.svg)
 
 Idle has measured as two distinct populations on the same board and image,
 5.52 uA and 6.71 uA, and which one you get is not yet understood. **Plan on
 74 days**, the pessimistic figure. The recording currents are reproducible to
 better than 1%.
 
-Below 400 Hz the battery gives out while there is still flash to spare, so a
-larger cell buys recording time. At 400 Hz and above the flash fills first, and
+Below about 240 Hz a 12 mAh battery gives out while there is still flash to
+spare, so a larger cell buys recording time -- but only down to the flash
+limit: a 20 mAh cell gives 45 h instead of 27 h at 100 Hz, but only 27.3 h
+instead of 24.9 h at 200 Hz, where the flash then fills first. At 400 Hz and above the flash fills first, and
 a larger cell buys nothing -- only a lower rate would help. Waiting costs
 almost nothing either way: at a few microamps a tag can sit armed for months
 before a recording window opens, so it is the recording itself that is bounded,
