@@ -400,6 +400,20 @@ These ship separately but are needed for the firmware changes to be useful.
 
 ## Cleanup
 
+- **The start-time comment in `Configured()` describes only IMUTag**
+  (`common/core/src/state_machine.c`, the `TAG_CONFIGURED_IMMEDIATE_START`
+  block). It says `config_tmp.start = (start_delay - 1) * 60 + timestamp`, and
+  argues from that that the immediate-start test is a relative comparison
+  against the same clock and so need not depend on `clockTrusted`. Only IMUTag
+  (`families/IMUTag/src/config.c`) computes the start that way. BitTag,
+  BitTagNG, PresTag, BitPresTag, CompassTag and UIUCTag all take the absolute
+  `config->active_interval.start_epoch`. For them the start is a wall-clock
+  time, and the test does depend on the clock being right. Correct the comment,
+  and decide whether the `clockTrusted` reasoning still holds for
+  absolute-start tags. Related host point: `tag-start --start-now` only zeroes
+  `start_delay`, so it changes nothing on those tags; they start at once only
+  because their configs set `start_epoch` to 0. Found 2026-11-03, when a
+  BitTag "delayed start" built on `start_delay` started immediately.
 - **Move sensor orchestration out of `state_run.c`.** Some older tags still
   configure sensors directly from `state_run.c`, which crowds the acquisition
   state with device setup. The CompassTag family started a family-owned
