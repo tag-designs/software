@@ -136,7 +136,7 @@ dump_failure_state() {
 # the caller can mark every subsequent point as suspect.
 check_idle_between() {
   label="$1"
-  out=$(python3 "$RUNNER" --idle --duration "$IDLE_CHECK_DURATION" \
+  out=$(python3 "$RUNNER" --bin-dir "$BIN" --idle --duration "$IDLE_CHECK_DURATION" \
           --label "$label" --output "$OUTPUT" 2>&1)
   status=$?
   ua=$(printf '%s\n' "$out" | current_from)
@@ -160,7 +160,7 @@ echo
 
 echo "=== idle ==="
 total=$((total + 1))
-if ! python3 "$RUNNER" --idle --duration "$DURATION" \
+if ! python3 "$RUNNER" --bin-dir "$BIN" --idle --duration "$DURATION" \
      --label idle --output "$OUTPUT"; then
   echo "  idle FAILED" >&2
   failures=$((failures + 1))
@@ -181,7 +181,7 @@ for hz in $RATES; do
     continue
   fi
   total=$((total + 1))
-  if ! python3 "$RUNNER" --config "$cfg" --duration "$DURATION" \
+  if ! python3 "$RUNNER" --bin-dir "$BIN" --config "$cfg" --duration "$DURATION" \
        --label "${hz}Hz" --expected-hz "$hz" --output "$OUTPUT"; then
     echo "  ${hz} Hz FAILED" >&2
     failures=$((failures + 1))
