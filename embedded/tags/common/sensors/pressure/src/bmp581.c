@@ -466,8 +466,14 @@ int bmp581_config_continuous_device(const TagPressureDevice *device,
   if (rc == BMP5_OK)
     rc = bmp581_apply_sampling_config(&dev, odr,
                                       &bmp581_continuous_interrupt_config);
+  /*
+   * NORMAL, not CONTINUOUS: CONTINUOUS ignores the ODR and converts as fast as
+   * the oversampling allows (~200-250 Hz), costing about 100 uA on IMUTag at
+   * the 25 Hz ODR used for 100-200 Hz collection. NORMAL converts at the ODR
+   * and lost no samples in the 2026-10-21 A/B; see IMUTag design/power.md.
+   */
   if (rc == BMP5_OK)
-    rc = bmp5_set_power_mode(BMP5_POWERMODE_CONTINUOUS, &dev);
+    rc = bmp5_set_power_mode(BMP5_POWERMODE_NORMAL, &dev);
   if (rc != BMP5_OK) {
     debug_log_printf("BMP581: config raw_ok=%u raw_id=0x%x status=0x%x"
                      " rc=%d chip=0x%x intf=%d\r\n",

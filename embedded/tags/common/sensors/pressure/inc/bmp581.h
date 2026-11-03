@@ -84,8 +84,14 @@ int bmp581_set_idle_device(const TagPressureDevice *device);
 /**
  * @brief Configure periodic pressure and temperature sampling.
  *
+ * @details Leaves the BMP581 in NORMAL mode, converting at @p odr with a pulsed
+ *          data-ready interrupt. The name predates the choice of mode: the
+ *          sensor's CONTINUOUS mode, which ignores the ODR and converts at its
+ *          maximum rate, is not used because it costs about 100 uA more at low
+ *          ODRs for no gain in data.
+ *
  * @param[in] device Pressure device descriptor.
- * @param[in] odr Output data rate for the continuous conversion stream.
+ * @param[in] odr Output data rate for the periodic conversion stream.
  * @return 0 on success or a negative Bosch SensorAPI error.
  */
 int bmp581_config_continuous_device(const TagPressureDevice *device,

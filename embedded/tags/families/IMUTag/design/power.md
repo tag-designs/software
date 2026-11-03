@@ -18,6 +18,12 @@ terminal sleep Stop 3, run sleep Stop 2. `IMUTagNand` (LPS22HH, 1 Gbit NAND)
 does not set `IMUTAG_RUN_SLEEP_STOP2` and stays in Stop 1 during runs; it has
 not been measured at 3.7 V.
 
+**The BMP581 now runs in NORMAL mode, which lowers every run figure below 1600 Hz**
+(about 100 uA at 100-200 Hz, 18%); the rate table below predates it. See
+[BMP581 NORMAL against CONTINUOUS mode](#bmp581-normal-against-continuous-mode-2026-11-03).
+The runtime figures here will be restated after the next full sweep of a
+qualified NORMAL-mode image.
+
 The datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at
 2.5 V and 3.3 V that this sweep checks are in
 [investigations/2026-09-imutag-regulator-and-sleep-sweeps.md](investigations/2026-09-imutag-regulator-and-sleep-sweeps.md).
@@ -149,6 +155,57 @@ supply without rebasing it makes it either toothless or a false-failure
 generator. See [*Bound run current, not just idle*](../../../../../docs/bench/power-testing.md)
 in the power-testing procedure.
 
+
+## BMP581 NORMAL against CONTINUOUS mode (2026-11-03)
+
+NORMAL mode draws **101 uA less at 100 Hz, 102 at 200, 90 at 400 and 67 at
+800 Hz, and the same at 1600 Hz**. Collection now leaves the BMP581 in NORMAL
+mode (`bmp581_config_continuous_device()` in
+`common/sensors/pressure/src/bmp581.c`).
+
+![Run current against sample rate in the two BMP581 modes: NORMAL is about 100 uA lower at 100 and 200 Hz, 90 uA at 400, 67 uA at 800, and equal at 1600 Hz](bmp581-mode-current.svg)
+
+| IMU rate | BMP581 ODR | CONTINUOUS (uA) | NORMAL (uA) | Saving |
+| ---: | ---: | ---: | ---: | ---: |
+| idle | -- | 6.93 | 6.97 | -- |
+| 100 Hz | 25 Hz | 544.67 | 443.60 | 101.1 uA (18.6%) |
+| 200 Hz | 25 Hz | 587.57 | 485.53 | 102.0 uA (17.4%) |
+| 400 Hz | 50 Hz | 672.62 | 582.36 | 90.3 uA (13.4%) |
+| 800 Hz | 100 Hz | 840.83 | 774.12 | 66.7 uA (7.9%) |
+| 1600 Hz | 200 Hz | 1023.62 | 1027.50 | none |
+
+**Why it falls with rate.** CONTINUOUS mode ignores the ODR and converts as
+fast as the oversampling allows (BST-BMP581-DS004 4.3.6; about 200-250 Hz at
+the firmware's OSR_P x4, OSR_T x2), which costs about 105 uA here whatever the
+IMU rate. NORMAL mode converts only at the ODR that `select_pressure_rate()` in
+`src/sensors.c` picks, so its saving shrinks as that ODR rises and vanishes at
+200 Hz, which is already near the continuous rate.
+
+**The data are unchanged.** An A/B on the same board on 2026-10-21, at every
+rate from 100 to 1600 Hz for 180 s each, lost no pressure or magnetometer
+sample in either mode, and consecutive equal pressure readings ran at 0.9-1.4%
+in both, so NORMAL mode does not re-read stale results. Per-sample noise is set
+by the oversampling, which did not change. The value read once per superframe
+can now be up to one ODR period old (40 ms at 25 Hz) instead of under 5 ms.
+
+**Method.** Board `00303143433650090059002E`, **supply 3.6931 V**, through
+`joulescope_server.py`. Both images were built from `e1a1abee` (branch
+`sync-monitor-commands`), one as committed and one with only the power mode
+changed; their `.list` files differ in one instruction, the mode argument to
+`bmp5_set_power_mode()` (`movs r0,#3` against `movs r0,#1`). Each was flashed,
+passed `tag-test`, and was swept with `power_sweep_imutag.sh 120`. Every rate
+point passed its download check, and the idle check after every rate read
+6.94-6.97 uA. Raw data:
+[`sweep-3v7-20261103-bmp581-continuous.csv`](sweep-3v7-20261103-bmp581-continuous.csv),
+[`sweep-3v7-20261103-bmp581-normal.csv`](sweep-3v7-20261103-bmp581-normal.csv);
+the chart is drawn from them by [`plot_bmp581_mode.py`](plot_bmp581_mode.py).
+The images, logs and the 2026-10-21 A/B are in
+`captures/2026-10-21-bmp581-mode-ab/`, outside the repository.
+
+**The CONTINUOUS figures moved since 2026-10-03** (544.67 against 538.60 uA at
+100 Hz, +1.1%; 1023.62 against 1003.38 at 1600 Hz, +2.0%; idle 6.93 against
+5.52), on the same board and supply but a later firmware. Only the pair
+measured the same day is a comparison; the 2026-10-03 table stays as recorded.
 
 ## Storage-Limited Runtime
 
