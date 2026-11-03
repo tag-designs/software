@@ -1310,6 +1310,14 @@ enum Sleep Aborted(enum StateTrans t, State_Event reason)
  */
 static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
 {
+  /*
+   * Set by T_INIT and consumed by the next pass. It is ordinary RAM, so a reset
+   * between the two clears it: TEST then survives in pState without the flag,
+   * and the test is abandoned rather than rerun. Rerunning would restart the
+   * test on every attach, and a test that resets the tag would loop forever.
+   */
+  static bool test_pending = false;
+
   (void)reason;
   if (t == T_INIT)
   {
@@ -1321,9 +1329,14 @@ static enum Sleep SelfTest(enum StateTrans t, State_Event reason)
     deviceInit(true);
     pState->state = TagState_TEST;
     pState->test_result = TEST_RUNNING;
+    test_pending = true;
     return SLEEP;
   }
-  test();
+  if (test_pending)
+  {
+    test_pending = false;
+    test();
+  }
   return Idle(T_INIT, State_EVENT_OK);
 }
 
