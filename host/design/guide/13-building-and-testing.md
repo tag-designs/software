@@ -84,7 +84,7 @@ The top-level options that matter to the host:
 | `BUILD_HOST_DOCS` | on | The user manual in the default build and the package |
 | `BUILD_DEVELOPER_DOCS` | off | The developer portal (`developer_docs`), with Doxygen and rustdoc |
 | `BUILD_TAG_SERVER` | off | `tag-server` (needs CMake 3.28 and a network fetch) |
-| `EMBEDDED_PROGRAMMER` | `TAG_FLASH` where available | Which programmer the embedded `-download` targets run |
+| `TAG_FLASH_BASE` | empty | USB serial of the base the embedded `-download` and `-erase` targets use when several are connected |
 
 Focused targets: `tagcore`, `tagcore_c_static`, `tagcore_c`, `tagprogram`,
 `tagmonitor`, `tagcalibrate`, `tagview`, `rust_tools`, `flash_tools`, `docs`, `developer_docs`, `rust_docs`, `api_docs`, `package`.

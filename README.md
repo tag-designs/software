@@ -536,8 +536,7 @@ For an overview of the embedded source tree and how `bases`, `boards`,
 | Java runtime | Required by `fmpp`. |
 | `fmpp` | Needed by the default configure: the boards of prototype tags and bases do not commit their generated files, so configure fails without `fmpp`. Not needed with `-DREGENERATE_SOURCES=OFF`. |
 | `make` | Required for ChibiOS-based firmware builds. |
-| Rust (cargo) | Optional for building. The `-download`, `-erase` and `-dfu` targets run `tag-flash` and `base-flash`, which CMake builds with cargo (or finds on `PATH`). |
-| STM32CubeProgrammer | Optional. The fallback for the `-download`, `-erase` and `-dfu` targets where `tag-flash` is not available, or when configured with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`. |
+| Rust (cargo) | Assumed. The `-download`, `-erase` and `-dfu` targets run `tag-flash` and `base-flash`, which CMake builds with cargo (or finds on `PATH`); without them those targets are not defined. STM32CubeProgrammer is not used. |
 
 Before configuring an embedded build, initialize the ChibiOS submodule. This is
 required after a fresh clone, and may also be needed after pulling changes that
@@ -601,18 +600,16 @@ cmake --build build-embedded --target BitTag-download
 cmake --build build-embedded --target PresTag-download
 ```
 
-Download targets program through a base with `tag-flash`, erasing only the
-pages the image occupies, then start the image. If more than one base is
+Download targets program through a base with `tag-flash`, erasing by the
+image's flash plan, then start the image. On an STM32L432 that erases every
+page below the calibration page (the whole part when there is none), stored
+configuration included, because the persistent region moves with code size; on
+an STM32U375 it erases only the image's pages. If more than one base is
 connected, name one by the USB serial `tag-flash list` prints:
 
 ```
 cmake -DTAG_FLASH_BASE=<serial> build-embedded
 ```
-
-With STM32CubeProgrammer as the programmer, the targets prefer the tag
-programmer base ST-LINK PID (`0483:3748`) and fall back to other attached
-ST-LINK programmers, such as STLINK-V3PWR (`0483:3757`); select one with
-`STM32_PROGRAMMER_PROBE=serial:<stlink-serial>` or `pid:0483:3757`.
 
 Build base-board targets:
 

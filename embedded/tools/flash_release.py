@@ -13,10 +13,16 @@
          configure and no toolchain. Unzip a release on the machine with the
          ST-LINK attached and run it there.
 
-         It programs with tag-flash (host/commandline-rs) when that is found
-         -- on PATH, in `TAG_FLASH`, or built in this repository -- and falls
-         back to STM32_Programmer_CLI when it is not; `--tool` chooses
-         outright.
+         It programs with tag-flash (host/commandline-rs), found on PATH, in
+         `TAG_FLASH`, or built in this repository. A Rust toolchain is assumed;
+         there is no STM32_Programmer_CLI fallback.
+
+         By default tag-flash erases by the image's flash plan: on an
+         STM32L432 every page below the calibration page (or the whole part
+         when there is none), because the persistent region and the stored
+         configuration in it start at the first page after the code and move
+         whenever the image crosses a page boundary; on an STM32U375 only the
+         image's pages, since every region it saves is pinned.
 
 @warning A matching hash says the image is the one that was archived. It does
          not say the image was ever qualified: CI builds candidates, and only a
@@ -29,10 +35,6 @@ import argparse
 import datetime
 import hashlib
 import json
-import os
-import platform
-import shutil
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -41,27 +43,9 @@ from typing import Optional
 from tag_flash import find_tag_flash
 
 TOOLS = Path(__file__).resolve().parent
-SELECT_SCRIPT = TOOLS / "stm32_programmer_select.py"
 
-#: Where the image is loaded. Matches the `-g 0x08000000` the CMake download
-#: targets use; every tag in this tree boots from the start of internal flash.
-LOAD_ADDRESS = "0x08000000"
-
-
-#: STM32L4 FLASH_SR, holding PEMPTY in bit 17 (RM0394 2.6). The address is
-#: family-specific, which is why this is only used for the device IDs below.
-L4_FLASH_SR = 0x40022010
-L4_FLASH_SR_PEMPTY = 1 << 17
-
-#: Device IDs this tree's STM32L4 tags report. Every L4 tag here is an L432,
-#: and the PEMPTY handling below writes a hardware register, so the check is an
-#: allowlist rather than a family guess: on a part where 0x40022010 means
-#: something else, a write there would be its own bug. Extend deliberately.
-L4_DEVICE_IDS = {0x435}
-
-#: Escape sequences STM32_Programmer_CLI colours its output with, which would
-#: otherwise land in the middle of a value being parsed.
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
+#: Start of internal flash on both supported MCUs; flash page 0 is here.
+FLASH_BASE = 0x08000000
 
 
 def elf_symbols(image: Path, wanted: tuple[str, ...]) -> dict[str, int]:
@@ -98,8 +82,8 @@ def elf_symbols(image: Path, wanted: tuple[str, ...]) -> dict[str, int]:
     return out
 
 
-def calibration_keep_erase(image: Path) -> list[str]:
-    """Build the erase arguments that clear every flash page below calibration.
+def calibration_keep_erase(image: Path) -> tuple[int, int]:
+    """Check @p image keeps a calibration page, and name the pages erased below it.
 
     @details STM32L432xC.ld pins a family's calibration table to the top flash
              pages, while the persistent region below it still starts wherever
@@ -113,7 +97,8 @@ def calibration_keep_erase(image: Path) -> list[str]:
 
     @param image Firmware ELF being programmed; the page is read from it, so it
                  must be the new image, whose layout governs from now on.
-    @return STM32_Programmer_CLI arguments, e.g. `["-e", "[0", "126]"]`.
+    @return First and last flash page erased, e.g. `(0, 126)`; the same span
+            tag-flash's `--erase plan` erases for this image.
     @throws SystemExit if the image reserves no calibration pages or is not an
             L432 image.
     """
@@ -124,94 +109,15 @@ def calibration_keep_erase(image: Path) -> list[str]:
     page_size = symbols.get("__tag_flash_page_size__")
     if start is None or page_size is None:
         raise SystemExit(f"error: {image.name} has no pinned calibration "
-                         "region; use --erase")
+                         "region; leave out --keep-calibration")
     if page_size != 2048:
         raise SystemExit(f"error: {image.name} is not an STM32L432 image; "
-                         "a plain program already keeps its calibration")
+                         "the default erase already keeps its calibration")
     if symbols.get("__calibration_end__", start) == start:
-        raise SystemExit(f"error: {image.name} stores no calibration; use --erase")
-    first_kept = (start - int(LOAD_ADDRESS, 16)) // page_size
-    return ["-e", "[0", f"{first_kept - 1}]"]
-
-
-def _programmer_call(programmer: str, selector: str,
-                     args: list[str]) -> tuple[int, str]:
-    """Run STM32_Programmer_CLI through the probe selector and capture output.
-
-    @param programmer Path to STM32_Programmer_CLI.
-    @param selector   ST-LINK selector passed through to the wrapper.
-    @param args       Arguments following `--`, excluding the connection.
-    @return Exit status and the output with colour escapes removed.
-    """
-    command = [sys.executable, str(SELECT_SCRIPT), "--programmer", programmer,
-               "--selector", selector, "--", "-c", "port=SWD", "mode=UR"] + args
-    done = subprocess.run(command, capture_output=True, text=True)
-    return done.returncode, ANSI.sub("", done.stdout + done.stderr)
-
-
-def _read32(text: str, address: int) -> Optional[int]:
-    """Extract one 32-bit value from a `-r32` dump.
-
-    @param text    Programmer output, colour escapes already removed.
-    @param address Address whose value to return.
-    @return The value, or None when the dump does not contain it.
-    """
-    found = re.search(rf"0x0*{address:X}\s*:\s*([0-9A-Fa-f]{{1,8}})", text,
-                      re.IGNORECASE)
-    return int(found.group(1), 16) if found else None
-
-
-def clear_pempty(programmer: str, selector: str) -> str:
-    """Clear FLASH_SR.PEMPTY after programming, when the part has it set.
-
-    @details A mass erase sets PEMPTY, and with `nSWBOOT0 = 1` and BOOT0 low a
-             set PEMPTY sends every reset to the ROM bootloader: the firmware
-             just written does not run, and no monitor answers. Hardware
-             re-evaluates the flag only at power-on or an option-byte load, so
-             without this the tag needs a physical power cycle before it will
-             run -- which is the kind of step that gets forgotten, and whose
-             symptom (`tag-info` reporting the bootloader) looks like a failed
-             flash rather than a missing power cycle.
-
-             Writing 1 to the bit **toggles** it, so this reads first and
-             writes only when the bit is set. An unconditional write would set
-             PEMPTY on a healthy part and create the fault it exists to fix.
-
-    @param programmer Path to STM32_Programmer_CLI.
-    @param selector   ST-LINK selector.
-    @return One line describing what happened, for the operator and the record.
-    """
-    status, text = _programmer_call(programmer, selector,
-                                    ["-r32", hex(L4_FLASH_SR), "1"])
-    if status != 0:
-        return "not checked: could not read FLASH_SR"
-
-    device = re.search(r"Device ID\s*:\s*(0x[0-9A-Fa-f]+)", text)
-    if not device:
-        return "not checked: no device ID reported"
-    if int(device.group(1), 16) not in L4_DEVICE_IDS:
-        return f"skipped: {device.group(1)} is not an STM32L4 in the allowlist"
-
-    before = _read32(text, L4_FLASH_SR)
-    if before is None:
-        return "not checked: FLASH_SR not found in the read"
-    if not before & L4_FLASH_SR_PEMPTY:
-        return f"already clear (FLASH_SR=0x{before:x})"
-
-    status, _ = _programmer_call(
-        programmer, selector,
-        ["-w32", hex(L4_FLASH_SR), hex(L4_FLASH_SR_PEMPTY)])
-    if status != 0:
-        return f"FAILED to write FLASH_SR (was 0x{before:x})"
-
-    status, text = _programmer_call(programmer, selector,
-                                    ["-r32", hex(L4_FLASH_SR), "1"])
-    after = _read32(text, L4_FLASH_SR) if status == 0 else None
-    if after is None:
-        return f"written, but could not confirm (was 0x{before:x})"
-    if after & L4_FLASH_SR_PEMPTY:
-        return f"STILL SET after the write (0x{after:x}) -- power-cycle the tag"
-    return f"cleared (0x{before:x} -> 0x{after:x}); no power cycle needed"
+        raise SystemExit(f"error: {image.name} stores no calibration; "
+                         "leave out --keep-calibration")
+    first_kept = (start - FLASH_BASE) // page_size
+    return 0, first_kept - 1
 
 
 def tag_flash_command(tag_flash: str, base: Optional[str], image: Path,
@@ -221,71 +127,26 @@ def tag_flash_command(tag_flash: str, base: Optional[str], image: Path,
     @details tag-flash erases, programs, verifies and starts the image in one
              session, so there is no window with the flash empty between an
              erase and the program, and it clears FLASH_SR.PEMPTY on an
-             STM32L4 itself before starting the image. `--erase plan` is Tag
-             Programmer's flash plan, which for a calibrated STM32L432 image
-             erases exactly the pages below the calibration table; the caller
-             has already checked, with calibration_keep_erase(), that the
-             image is one.
+             STM32L4 itself before starting the image. Without a flag the erase
+             is `--erase plan`, Tag Programmer's flash plan for the image;
+             `--keep-calibration` asks for the same plan, after the caller has
+             checked with calibration_keep_erase() that the image keeps a
+             calibration page, so a mistaken flag cannot mass-erase one that
+             does not.
 
     @param tag_flash        Path to tag-flash.
     @param base             USB serial of the base, or None for the only one.
     @param image            Firmware ELF.
     @param erase_all        Mass erase first (`--erase`).
-    @param keep_calibration Erase below calibration (`--keep-calibration`).
+    @param keep_calibration Erase below calibration (`--keep-calibration`);
+                            the plan, as when neither flag is given.
     @return The command line.
     """
-    erase = "image"
-    if erase_all:
-        erase = "all"
-    elif keep_calibration:
-        erase = "plan"
+    erase = "all" if erase_all else "plan"
     command = [tag_flash]
     if base:
         command += ["--base", base]
     return command + ["program", str(image), "--erase", erase]
-
-
-def find_programmer(explicit: Optional[str]) -> str:
-    """Locate STM32_Programmer_CLI without a configured build tree."""
-    if explicit:
-        if not Path(explicit).exists():
-            raise SystemExit(f"error: no STM32_Programmer_CLI at {explicit}")
-        return explicit
-
-    env = os.environ.get("STM32_PRG_PATH")
-    if env:
-        candidate = Path(env) / "STM32_Programmer_CLI"
-        if candidate.exists():
-            return str(candidate)
-
-    found = shutil.which("STM32_Programmer_CLI")
-    if found:
-        return found
-
-    system = platform.system()
-    if system == "Darwin":
-        roots = [
-            Path.home() / "Software/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin",
-            Path("/Applications/STMicroelectronics/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin"),
-        ]
-    elif system == "Windows":
-        roots = [Path("C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin")]
-    else:
-        roots = [
-            Path.home() / "Software/STM32CubeProgrammer/bin",
-            Path("/opt/st/stm32cubeprog/bin"),
-        ]
-
-    for root in roots:
-        for name in ("STM32_Programmer_CLI", "STM32_Programmer_CLI.exe"):
-            candidate = root / name
-            if candidate.exists():
-                return str(candidate)
-
-    raise SystemExit(
-        "error: STM32_Programmer_CLI was not found. Pass --programmer, or set "
-        "STM32_PRG_PATH to the directory containing it."
-    )
 
 
 def resolve_release(target: Path) -> tuple[Path, Path]:
@@ -407,9 +268,8 @@ def record(
 ) -> None:
     """Append one JSON object describing what was programmed.
 
-    @details A path rather than stdout, because STM32_Programmer_CLI writes to
-             stdout and a redirect would capture its progress bar along with the
-             record.
+    @details A path rather than stdout, because tag-flash writes to stdout and
+             a redirect would capture its output along with the record.
 
              This exists for one field. `tag-info --json` reports everything a
              tag knows about itself -- its UUID, the commit it was built from,
@@ -461,13 +321,6 @@ def main(argv: list[str]) -> int:
         help="A release directory (containing <Tag>.elf and its manifest), or the image itself.",
     )
     parser.add_argument(
-        "--tool",
-        choices=("auto", "tag-flash", "cubeprogrammer"),
-        default="auto",
-        help="What to program with: tag-flash when it is found (auto, the "
-        "default), tag-flash only, or STM32_Programmer_CLI.",
-    )
-    parser.add_argument(
         "--tag-flash",
         help="tag-flash path; otherwise TAG_FLASH, PATH, then this "
         "repository's host/target/release.",
@@ -475,42 +328,27 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--base",
         help="USB serial of the base, as `tag-flash list` prints it; needed "
-        "only when more than one base is connected. A --selector of "
-        "serial:<sn> is used the same way.",
-    )
-    parser.add_argument("--programmer", help="STM32_Programmer_CLI path")
-    parser.add_argument(
-        "--selector",
-        default="pid:0483:3748",
-        help="ST-LINK selector for STM32_Programmer_CLI: pid:0483:3748, serial:<sn>, index:<n>, prompt, auto.",
+        "only when more than one base is connected.",
     )
     parser.add_argument(
         "--erase",
         action="store_true",
-        help="Mass erase before programming, in the same programmer "
-        "invocation. Use for a major upgrade that moves or reformats the "
-        "NOLOAD regions -- calibration, stored configuration, the NAND map -- "
-        "which a normal program leaves in place and the new image may then "
-        "read at the wrong address or in the wrong format. Destroys those "
-        "regions: the tag must be reprovisioned afterwards.",
+        help="Mass erase before programming, in the same tag-flash session. "
+        "Use for an upgrade that changes the calibration format, or on an "
+        "STM32U375 one that moves or reformats its pinned regions -- "
+        "calibration, stored configuration, the NAND map -- which the default "
+        "erase keeps. Destroys those regions: the tag must be reprovisioned "
+        "afterwards.",
     )
     parser.add_argument(
         "--keep-calibration",
         action="store_true",
-        help="Erase every flash page below the calibration table, in the same "
-        "programmer invocation, and keep the table. The normal upgrade for a "
-        "calibrated STM32L432 tag (CompassTag): its persistent region moves "
-        "with code size and must be erased, while calibration is pinned to the "
-        "top page. Stored configuration and logs are destroyed; calibration "
-        "survives only if the new image uses the same calibration format.",
-    )
-    parser.add_argument(
-        "--no-pempty-fix",
-        action="store_true",
-        help="Do not clear FLASH_SR.PEMPTY after programming. The check reads "
-        "before it writes and is a no-op on a healthy part, so the only "
-        "reason to pass this is to reproduce the bootloader condition. "
-        "STM32_Programmer_CLI only: tag-flash always clears it.",
+        help="The default erase, refused unless the image keeps a calibration "
+        "page: every flash page below the calibration table is erased and the "
+        "table kept. For a calibrated STM32L432 tag (CompassTag), whose "
+        "persistent region moves with code size. Stored configuration is "
+        "destroyed; calibration survives only if the new image uses the same "
+        "calibration format.",
     )
     parser.add_argument(
         "--verify-only",
@@ -528,7 +366,7 @@ def main(argv: list[str]) -> int:
         type=Path,
         metavar="FILE",
         help="Append one JSON object per flash to FILE, to join against "
-        "`tag-info --json`. A file rather than stdout, because the programmer "
+        "`tag-info --json`. A file rather than stdout, because tag-flash "
         "writes there too.",
     )
     args = parser.parse_args(argv)
@@ -560,76 +398,34 @@ def main(argv: list[str]) -> int:
             record(args.json, args.label, image, manifest_data, False, None)
         return 0
 
-    tag_flash = None
-    if args.tool != "cubeprogrammer":
-        tag_flash = find_tag_flash(args.tag_flash)
-        if tag_flash is None and args.tool == "tag-flash":
-            raise SystemExit(
-                "error: tag-flash was not found. Pass --tag-flash, set TAG_FLASH, "
-                "or build it: cargo build --release in host/commandline-rs."
-            )
-    if tag_flash and args.no_pempty_fix:
-        raise SystemExit("error: --no-pempty-fix needs --tool cubeprogrammer; "
-                         "tag-flash always clears PEMPTY")
-
-    if tag_flash:
-        base = args.base
-        if base is None and args.selector.startswith("serial:"):
-            base = args.selector[len("serial:"):]
-        if args.keep_calibration:
-            # Run for its checks: it refuses an image that is not a calibrated
-            # STM32L432 one, for which `--erase plan` would mean something else.
-            erase = calibration_keep_erase(image)
-        command = tag_flash_command(tag_flash, base, image, args.erase,
-                                    args.keep_calibration)
-        programmer = tag_flash
-    else:
-        programmer = find_programmer(args.programmer)
-        command = None
-    # Erase and program in one invocation when asked. Two invocations leave a
-    # reset between them with the flash empty, which is what latches
-    # FLASH_SR.PEMPTY and sends the part to the ROM bootloader; one invocation
-    # never exposes that window. The PEMPTY check below stays as a net.
-    if command is None:
-        erase = ["-e", "all"] if args.erase else []
-        if args.keep_calibration:
-            erase = calibration_keep_erase(image)
-        command = [
-            sys.executable,
-            str(SELECT_SCRIPT),
-            "--programmer",
-            programmer,
-            "--selector",
-            args.selector,
-            "--",
-            *erase,
-            "-d",
-            str(image),
-            "-g",
-            LOAD_ADDRESS,
-        ]
+    tag_flash = find_tag_flash(args.tag_flash)
+    if tag_flash is None:
+        raise SystemExit(
+            "error: tag-flash was not found. Pass --tag-flash, set TAG_FLASH, "
+            "or build it: cargo build --release in host/commandline-rs."
+        )
+    if args.keep_calibration:
+        # Run for its checks: it refuses an image that is not a calibrated
+        # STM32L432 one, for which the plan would mean something else.
+        first, last = calibration_keep_erase(image)
+    command = tag_flash_command(tag_flash, args.base, image, args.erase,
+                                args.keep_calibration)
     if args.erase:
         print("\nMass erase requested: NOLOAD regions are destroyed with the\n"
               "image, so a provisioned tag needs reprovisioning afterwards --\n"
               "calibration, and anything else held outside the loaded image.")
     if args.keep_calibration:
-        print(f"\nErasing flash pages {erase[1][1:]}-{erase[2][:-1]} and keeping "
-              "the calibration page:\nstored configuration and logs are "
-              "destroyed, so reconfigure the tag afterwards.")
-    # Flushed so that, piped to a log, these lines precede the programmer's.
-    print(f"\nProgramming with {programmer}", flush=True)
+        print(f"\nErasing flash pages {first}-{last} and keeping the calibration "
+              "page:\nstored configuration and logs are destroyed, so "
+              "reconfigure the tag afterwards.")
+    # Flushed so that, piped to a log, these lines precede tag-flash's.
+    print(f"\nProgramming with {tag_flash}", flush=True)
     status = subprocess.call(command)
 
-    # A mass erase leaves PEMPTY set, and the tag then boots the ROM bootloader
-    # instead of the image just written. Doing this here rather than leaving it
-    # to the operator is the point: it is conditional on a read, and a step that
-    # must be remembered is a step that will be missed.
-    pempty = None
-    if status == 0 and tag_flash:
-        pempty = "cleared by tag-flash when set"
-    elif status == 0 and not args.no_pempty_fix:
-        pempty = clear_pempty(programmer, args.selector)
-        print(f"  FLASH_SR.PEMPTY  {pempty}")
+    # tag-flash clears FLASH_SR.PEMPTY itself, read first, on an STM32L4; a set
+    # PEMPTY after a mass erase would otherwise send the tag to its ROM
+    # bootloader instead of the image just written.
+    pempty = "cleared by tag-flash when set" if status == 0 else None
 
     # Recorded either way, with `programmed` saying which. A failed flash that
     # left no row would be indistinguishable from one that never happened, and

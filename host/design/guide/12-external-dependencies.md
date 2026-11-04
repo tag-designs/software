@@ -118,7 +118,7 @@ macOS, from the system on Linux, at the baseline in
 | Python 3 with MkDocs Material | The user manual and the developer portal | `host/docs/requirements.txt` |
 | Doxygen | The portal's C++ API reference (optional) | |
 | headless Chrome | `ui-kit/screenshot.sh`, the manual's pictures of the Rust applications | |
-| STM32CubeProgrammer (`STM32_Programmer_CLI`) | **Only as a fallback**: qtprogram, and the CMake programming targets when cargo is missing and `tag-flash` is not on `PATH` | |
+| STM32CubeProgrammer (`STM32_Programmer_CLI`) | Only the legacy qtprogram, and the external-flash loaders' `.stldr` format; the CMake programming targets and `flash_release.py` use `tag-flash` | |
 
 The full inventory across the project's repositories, with install paths,
 is [`docs/build/toolchain-inventory.md`](../../../docs/build/toolchain-inventory.md).

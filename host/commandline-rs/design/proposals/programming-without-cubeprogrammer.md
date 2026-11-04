@@ -257,3 +257,7 @@ the firmware that wrote the log, flash, self-test):
 5. Retire `stm32_programmer_select.py` and `tag_capture_state.py`; drop the
    STM32_Programmer_CLI fallback, leaving STM32CubeProgrammer only as Tag
    Programmer's Qt build's dependency until that build is removed.
+   *Done 2026-11-04, except `tag_capture_state.py`*: the fallback,
+   `EMBEDDED_PROGRAMMER`, `STM32_PROGRAMMER_PROBE` and the selector script are
+   gone from the build and `flash_release.py`, and a Rust toolchain is
+   assumed.

@@ -241,33 +241,15 @@ tree. The important final artifacts are the `.elf`, `.hex`, `.bin`, `.dmp`, and
 same artifacts are copied to
 `share/UltralightTags/firmware/<target>/`.
 
-Firmware targets also get programming targets: `BitTag-download` programs the
-image's pages and starts it, `BitTag-erase` mass-erases, and `<base>-dfu`
+Firmware targets also get programming targets: `BitTag-download` erases by
+the image's flash plan (on an STM32L432 every page below the calibration page,
+since the persistent region moves with code size), programs and starts it, `BitTag-erase` mass-erases, and `<base>-dfu`
 writes a base through its ROM bootloader. They run `tag-flash` and
 `base-flash` (`host/commandline-rs`), which CMake builds with cargo as the
 `flash_tools` target (`cmake/RustFlashTools.cmake`) or, without cargo, finds
-on `PATH`. `-DTAG_FLASH_BASE=<serial>` picks a base when several are
+on `PATH`; a Rust toolchain is assumed, and without the tools these targets
+are not defined. `-DTAG_FLASH_BASE=<serial>` picks a base when several are
 connected.
-
-Where neither is available, or with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`,
-the targets use `STM32_Programmer_CLI` instead, selecting an ST-LINK probe
-before invoking it. By default, CMake sets `STM32_PROGRAMMER_PROBE=pid:0483:3748`, which prefers the
-tag programmer base. If that PID is not present, the selector falls back to the
-available ST-LINK probes, using the only attached probe automatically or
-prompting when multiple probes are attached. Override this at configure time or
-in the build environment when you need a specific probe such as an STLINK-V3PWR
-(`0483:3757`):
-
-```sh
-cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=serial:<stlink-serial>
-cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=index:<cube-index>
-cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=pid:0483:3757
-cmake -S . -B build -DSTM32_PROGRAMMER_PROBE=prompt
-```
-
-The selector uses USB VID:PID discovery on Linux, macOS, and Windows when
-available, then passes `sn=<serial>` to CubeProgrammer. `index:<n>` is still
-available for setups where the OS does not expose a usable serial number.
 
 ## `bases`
 

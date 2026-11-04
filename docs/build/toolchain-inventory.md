@@ -168,9 +168,9 @@ compiler and the ChibiOS submodule.
 | Measurement interpreter | `power_experiment.py` searches `~/opt/joulescope-mcp/.venv/bin/python`, `~/.venvs/joulescope/bin/python`, `<repo>/.venv/bin/python`; override with `--measure-python` or `JOULESCOPE_PYTHON`. |
 | Joulescope desktop app | Setting and confirming supply voltage. Detach before scripted runs. |
 | `joulescope-js220` MCP server | Not to be used; it holds the device. Kill stray `joulescope-mcp` processes. |
-| ST-LINK probes | Tag programmer base `0483:3748` (preferred), STLINK-V3PWR `0483:3757`. Select with `STM32_PROGRAMMER_PROBE`. |
-| STM32CubeProgrammer CLI | SWD with `mode=UR`, and DFU. 2.4.0 here. |
-| `tag-flash`, `base-flash` | Program tags through a base and bases over DFU without CubeProgrammer; built by the `flash_tools` target, preferred by the embedded `-download`, `-erase` and `-dfu` targets. |
+| ST-LINK probes | Tag programmer base `0483:3748` (preferred), STLINK-V3PWR `0483:3757`. `tag-flash --base <serial>` (or `-DTAG_FLASH_BASE`) picks one. |
+| STM32CubeProgrammer CLI | Not used for programming; `tag_capture_state.py` and the legacy qtprogram still call it. 2.4.0 here. |
+| `tag-flash`, `base-flash` | Program tags through a base and bases over DFU; built by the `flash_tools` target and run by the embedded `-download`, `-erase` and `-dfu` targets and `flash_release.py`. A Rust toolchain is assumed. |
 | `tag-capture` | Host tool from this repo; halts the core before firmware runs. |
 | `embedded-debugger` MCP | Probe inspection, core control, memory reads, breakpoints, RTT, over probe-rs or OpenOCD. **probe-rs has no STM32U3 target**, so U375 work needs the OpenOCD backend at `/usr/local/bin/openocd`. |
 | GDB over SWD | `arm-none-eabi-gdb` from the Arm toolchain; the VS Code configs use `cortex-debug`. |

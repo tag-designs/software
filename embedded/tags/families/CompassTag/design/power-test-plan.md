@@ -111,11 +111,13 @@ Production CompassTag boards carry user calibration in `.calibration`, 2016
 bytes. Recovering it means re-running `tag-cal`/`qtcalibrate` on a unit that
 may be calibrated against a real deployment.
 
-**Never mass erase.** `flash_release.py` does a normal download —
-`STM32_Programmer_CLI ... -d <image> -g 0x08000000`, with no `-e all` — and the
-`.calibration` section is `NOBITS` with a zero file size, so the image contains
-no bytes for it and programming does not write that region. Verified against
-the released ELF, not assumed.
+**Never mass erase.** `flash_release.py` without `--erase` runs `tag-flash
+program --erase plan`, which on a calibrated CompassTag image erases every
+page below the calibration page and keeps that page (2026-11-04; it previously
+programmed the image's pages only). The `.calibration` section is `NOBITS`
+with a zero file size, so the image contains no bytes for it and programming
+does not write that region. Stored configuration is erased, so reconfigure
+the tag after flashing.
 
 > **The region is not at a fixed address on this part, and that is the real
 > hazard.** The L432 linker places it as `.calibration (NOLOAD): ALIGN(2048)`

@@ -129,20 +129,34 @@ are never touched. It is the equivalent of `dfu-util -a 0 -s 0x08000000:leave`.
 
 `commandline-rs/src/bin/tag-flash.rs` is the command line over `tagprobe`,
 and what the CMake `<target>-download` and `-erase` targets, `flash_release.py`
-and `decode_scratchpad.py --read` run instead of `STM32_Programmer_CLI`
-(the CMake side falls back to the CLI where cargo is missing and the tools
-are not on `PATH`, or with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`).
+and `decode_scratchpad.py --read` run instead of `STM32_Programmer_CLI`.
+There is no CubeProgrammer fallback: a Rust toolchain is assumed, and without
+the tools on `PATH` the CMake programming targets are not defined.
 
 | Command | Does |
 | --- | --- |
 | `tag-flash list` | The bases on USB: serial, `bus:device`, identity |
 | `tag-flash [-b SERIAL] info` | The connect check: device, part, flash size, supply voltage |
-| `tag-flash [-b SERIAL] program IMAGE.elf [--erase image\|plan\|all]` | Erase, program, verify and start, in one session |
+| `tag-flash [-b SERIAL] program IMAGE.elf [--erase plan\|image\|all]` | Erase, program, verify and start, in one session. `plan` is the default; `image` is refused when the persistent region would move |
 | `tag-flash [-b SERIAL] erase` | Mass erase; an L432 then boots its ROM bootloader until programmed |
 | `tag-flash [-b SERIAL] read ADDRESS LENGTH -o FILE` | Read memory under reset (the scratchpad, for instance) |
 
 Unlike the monitor tools, `-b` takes the base's USB serial, which survives
-replugging. Every command but `list` resets the tag. Neither `program` nor
+replugging. Every command but `list` resets the tag.
+
+`program` erases by the image's plan unless told otherwise. On an STM32L432
+the persistent region begins at the first page after the code, so it moves
+whenever an image crosses a page boundary, and erasing only the image's
+pages would leave the old bytes where the new firmware reads its stored
+configuration (a UIUCTag aborted its first start this way on 2026-11-04).
+`--erase image` therefore first reads the identity record of the image on
+the tag and refuses unless its persistent region starts where the new
+image's `__persistent_start__` does; a tag with no readable record is
+refused too. A U375's plan also programs the image's pages only, but its
+regions are pinned, so the default needs no such check and a blank board
+programs normally.
+
+Neither `program` nor
 `erase` touches the external flash log; the flashing protocol in the root
 `AGENTS.md` says to erase that first with `tag-reset`, which asks the
 firmware to do it.

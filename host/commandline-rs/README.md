@@ -95,15 +95,15 @@ are in [the proposal](design/proposals/programming-without-cubeprogrammer.md).
 CMake builds both tools with cargo as the `flash_tools` target
 ([`cmake/RustFlashTools.cmake`](../../cmake/RustFlashTools.cmake)), which the
 embedded programming targets depend on, and with `BUILD_RUST_APPS` installs
-them with the host tools ([`CMakeLists.txt`](CMakeLists.txt)). The embedded
-targets fall back to STM32_Programmer_CLI where cargo is missing and the tools
-are not on `PATH`, or when configured with `-DEMBEDDED_PROGRAMMER=CUBEPROGRAMMER`.
+them with the host tools ([`CMakeLists.txt`](CMakeLists.txt)). There is no
+STM32_Programmer_CLI fallback: without cargo, the tools must be on `PATH`, or
+the embedded programming targets are not defined.
 
 ```sh
 tag-flash list                                  # bases: serial, bus:device, identity
 tag-flash -b <serial> info                      # device, flash size, voltage
-tag-flash -b <serial> program BitTag.elf        # image pages only, as -download
-tag-flash -b <serial> program BitTag.elf --erase plan   # Tag Programmer's erase plan
+tag-flash -b <serial> program BitTag.elf        # Tag Programmer's erase plan, as -download
+tag-flash -b <serial> program BitTag.elf --erase image  # image pages only; refused if the persistent region moves
 tag-flash -b <serial> erase                     # mass erase
 tag-flash -b <serial> read 0x2003E000 8192 -o scratch.bin
 ```

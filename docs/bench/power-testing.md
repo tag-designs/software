@@ -149,9 +149,6 @@ attempts, because the device renumbers. Afterwards the range mode reads 0
   The download targets end with that jump and must keep doing so; replacing it
   with `-rst` put the tag straight back into the ROM. Incident: the
   [PresTag campaign](../../embedded/tags/families/PresTag/design/investigations/2026-09-prestag-stop2-and-power-campaign.md), §2.0a.
-- `stm32_programmer_select.py` connects with `reset=HWrst` and retries four
-  times, two seconds apart. A first attempt on a sleeping target still fails
-  now and then.
 - **The first monitor attach to a sleeping tag often fails** with
   `initial DEMCR read failed`, `couldn't fetch monitor buffer length` or
   `empty or invalid acknowledgement`. Retry. On BitTag the failed attach also

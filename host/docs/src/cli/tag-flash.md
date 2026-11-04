@@ -28,7 +28,7 @@ tag-flash [options] <command>
 | Option | Value | Function |
 | --- | --- | --- |
 | `-b`, `--base` | serial | Selects a base by its USB serial, as `tag-flash list` prints it. Needed only when more than one base is connected. Unlike the other tools' `BUS:DEVICE`, a serial does not change when the base is unplugged. |
-| `--erase` | `image`, `plan` or `all` | For `program`: what to erase first. `image` (the default) erases only the pages the image occupies. `plan` erases what Tag Programmer would for this image, which keeps a calibrated STM32L432 tag's calibration. `all` erases everything. |
+| `--erase` | `plan`, `image` or `all` | For `program`: what to erase first. `plan` (the default) erases what Tag Programmer would for this image: on an STM32L432 everything except a calibrated tag's calibration page, on an STM32U375 only the image's pages. This also erases the tag's stored configuration on an STM32L432. `image` erases only the pages the image occupies, keeping the stored configuration, and is refused when the new image keeps that configuration at a different address from the image on the tag. `all` erases everything. |
 | `-d`, `--debug` | none | Enables debug logging. |
 | `-h`, `--help` | none | Prints command usage and exits. |
 
@@ -63,6 +63,14 @@ on failure and 2 for a mistake in the options.
   `tag_tools/udev` are installed.
 - **Several bases are connected.** Pick one with `--base`, using a serial
   from `tag-flash list`.
+- **`The persistent region moves`.** `--erase image` was asked for, but the
+  new image is a different size and keeps its stored configuration and state
+  at a different address. Erasing only the image would leave stale bytes
+  there and the tag would refuse to start. Program with the default
+  `--erase plan` instead, and configure the tag again.
+- **`tag flash: no tag identity record after the vectors`.** `--erase image`
+  was asked for, but the tag holds no firmware that says where its stored
+  configuration is (a blank part, or old firmware). Use the default.
 - **A tool run straight after `tag-flash` cannot connect.** `tag-flash` waits
   a second before it exits so the base is ready; if another tool still fails,
   run it again.

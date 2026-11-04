@@ -10,11 +10,23 @@
 //!
 //! - `list`: the bases on USB, with serial, `bus:device` and identity.
 //! - `info`: the connect check: device ID, part, flash size, supply voltage.
-//! - `program <elf> [--erase image|plan|all]`: erase, program, verify and
-//!   start the image in one session. `image` (the default) erases only the
-//!   pages the image covers, as the `-download` targets always have; `plan`
-//!   erases what Tag Programmer's flash plan for the image says (keeping an
-//!   STM32L432 tag's calibration page); `all` mass-erases first.
+//! - `program <elf> [--erase plan|image|all]`: erase, program, verify and
+//!   start the image in one session. `plan` (the default) erases what Tag
+//!   Programmer's flash plan for the image says: on an STM32L432 every page
+//!   below the calibration page, or the whole part when there is none; on an
+//!   STM32U375 only the image's pages, since every region it saves is pinned.
+//!   `image` erases only the pages the image covers, keeping the stored
+//!   configuration and state, and is refused unless the image already on the
+//!   tag keeps its persistent region at the same address
+//!   ([`check_persistent_unmoved`]). `all` mass-erases first.
+//!
+//!   On an STM32L432 the persistent region starts at the first page after
+//!   the code, so it moves whenever the image crosses a page boundary.
+//!   Erasing only the image's pages then leaves whatever was on the new
+//!   region's first page -- the old image's code, typically -- where the new
+//!   firmware reads its stored configuration, and its first start aborts. On
+//!   2026-11-04 a UIUCTag image 2 KB shorter than its predecessor did exactly
+//!   that.
 //! - `erase`: mass erase, programming nothing.
 //! - `read <address> <length> -o <file>`: read memory to a file.
 //!
@@ -46,10 +58,19 @@ use tagcore::UsbDev;
 use tagprobe::{Driver, Erase, Progress};
 use tagprogram_core::model::elf::Elf;
 use tagprogram_core::model::flashplan::{self, plan_flash};
+use tagprogram_core::model::identity::find_identity_record;
 
 /// How long to wait after a command that attaches before exiting, so the
 /// next tool can attach to the base.
 const SETTLE: std::time::Duration = std::time::Duration::from_secs(1);
+
+/// Start of internal flash on both supported MCUs.
+const FLASH_BASE: u64 = 0x0800_0000;
+
+/// Bytes read from [`FLASH_BASE`] to find the tag's identity record. The
+/// record starts at `0x1A0` (STM32L432) or `0x240` (STM32U375) and is well
+/// under 3 KB long.
+const RECORD_READ: usize = 4096;
 
 /// program, erase and read a tag's flash through a base
 #[derive(Parser)]
@@ -82,7 +103,7 @@ enum Command {
         #[arg(value_parser = tag_tools::parse_elf_path)]
         elf: PathBuf,
         /// What to erase before programming
-        #[arg(long, value_enum, default_value_t = EraseArg::Image)]
+        #[arg(long, value_enum, default_value_t = EraseArg::Plan)]
         erase: EraseArg,
     },
     /// Mass-erase internal flash, programming nothing
@@ -104,9 +125,11 @@ enum Command {
 /// The `--erase` choices for `program`.
 #[derive(Clone, Copy, ValueEnum)]
 enum EraseArg {
-    /// Only the pages the image covers
+    /// Only the pages the image covers, keeping stored configuration; refused
+    /// if the persistent region would move
     Image,
-    /// What Tag Programmer's flash plan for the image says
+    /// What Tag Programmer's flash plan for the image says: everything but
+    /// the calibration page on an STM32L432
     Plan,
     /// The whole of internal flash
     All,
@@ -268,16 +291,86 @@ fn erase_for(elf: &std::path::Path, erase: EraseArg) -> Result<Erase, String> {
     })
 }
 
+/// Refuses an erase of the image's pages only when the persistent region
+/// would move.
+///
+/// Reads the identity record of the image already on the tag (an attach
+/// under reset) and compares its persistent region's address with the new
+/// image's `__persistent_start__`. Programming the image's pages leaves the
+/// rest of flash as it was, which is right only when the new firmware will
+/// find its stored configuration and state where the old one left them.
+///
+/// Only an explicit `--erase image` is checked. The plan for an STM32U375
+/// image also erases the image's pages only, but there every saved region is
+/// pinned, and a check would refuse a blank board's first programming.
+///
+/// # Errors
+///
+/// A message naming both addresses when they differ; when the new image has
+/// no `__persistent_start__`; when the tag's flash holds no readable record
+/// (an erased part, or firmware built before identity records) or a record
+/// with no persistent region; or when the read fails.
+fn check_persistent_unmoved(
+    target: &Target,
+    image: &Elf,
+    elf: &std::path::Path,
+) -> Result<(), String> {
+    let new = image.symbol("__persistent_start__").ok_or_else(|| {
+        format!(
+            "{} has no __persistent_start__ symbol, so an erase of its pages \
+             only cannot be checked; use --erase plan",
+            elf.display()
+        )
+    })?;
+    let flash = tagprobe::read_memory(
+        &target.base,
+        target.driver,
+        target.chip,
+        FLASH_BASE,
+        RECORD_READ,
+    )?;
+    let old = find_identity_record(&flash)
+        .map_err(|e| format!("tag flash: {e}"))
+        .and_then(|r| {
+            r.persistent_start
+                .ok_or_else(|| "tag flash: identity record has no persistent region".into())
+        })
+        .map_err(|e: String| {
+            format!(
+                "{e}, so where the tag's image keeps its persistent region is \
+                 unknown and --erase image could leave stale bytes there; \
+                 use --erase plan"
+            )
+        })?;
+    if old != new {
+        return Err(format!(
+            "The persistent region moves: the image on the tag keeps it at \
+             0x{old:08x}, {} at 0x{new:08x}. --erase image would leave the old \
+             bytes where the new firmware reads its stored configuration, and \
+             its first start would abort. Use --erase plan (the default).",
+            elf.display()
+        ));
+    }
+    log::debug!("persistent region stays at 0x{new:08x}");
+    Ok(())
+}
+
 /// Programs `elf`, verifies it and starts it, showing progress on stderr.
 ///
 /// # Errors
 ///
-/// A message when the image cannot be read, the erase plan is invalid, or
-/// the attach, erase, programming, verification or start fails.
+/// A message when the image cannot be read, the erase plan is invalid, an
+/// erase of the image's pages only would move the persistent region
+/// ([`check_persistent_unmoved`]), or the attach, erase, programming,
+/// verification or start fails.
 fn program(wanted: Option<&str>, elf: &std::path::Path, erase: EraseArg) -> Result<(), String> {
     let image = Elf::load(elf).map_err(|e| format!("{}: {e}", elf.display()))?;
+    let image_only = matches!(erase, EraseArg::Image);
     let erase = erase_for(elf, erase)?;
     let target = connect(wanted, image.symbol("__flash0_size__"))?;
+    if image_only {
+        check_persistent_unmoved(&target, &image, elf)?;
+    }
     println!("Programming {} into {}", elf.display(), target.chip);
     let mut stderr = std::io::stderr();
     let mut step = "";

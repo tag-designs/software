@@ -46,72 +46,30 @@ include("${CMAKE_SOURCE_DIR}/cmake/ReproducibilityChecks.cmake")
 check_reproducibility_pitfalls()
 
 # Tools for programming hardware
+#
+# tag-flash and base-flash (host/commandline-rs/README.md) program tags and
+# bases through probe-rs and USB DFU. They are built with cargo, or found on
+# PATH on a bench machine without the source build; a Rust toolchain is
+# assumed, and STM32CubeProgrammer is no longer a fallback.
 
-if(MSVC)
-  find_program(
-    STM32_PROGRAMMER
-    NAMES STM32_Programmer_CLI STM32_Programmer_CLI.exe
-    PATHS
-      "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin")
-else()
-  find_program(
-    STM32_PROGRAMMER
-    NAMES STM32_Programmer_CLI
-    HINTS
-      "$ENV{STM32_PRG_PATH}"
-      "/Users/geobrown/Software/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/Resources/bin"
-      "/Users/geobrown/Software/stm32cubeprogrammer/STM32CubeProgrammer.app/Contents/MacOs/bin"
-    PATHS "/home/geobrown/Software/STM32CubeProgrammer/bin"
-  )
-endif()
-
-find_program(PYTHON_EXECUTABLE NAMES python3 python)
-
-# tag-flash and base-flash program tags and bases without STM32CubeProgrammer
-# (host/commandline-rs/README.md). They are preferred where they can be built
-# with cargo, or found on PATH; STM32_Programmer_CLI remains the fallback, and
-# can be chosen outright.
-set(EMBEDDED_PROGRAMMER "AUTO" CACHE STRING
-    "Programmer for the -download, -erase and -dfu targets: AUTO (tag-flash and base-flash when available, else STM32CubeProgrammer), TAG_FLASH or CUBEPROGRAMMER")
-set_property(CACHE EMBEDDED_PROGRAMMER PROPERTY STRINGS AUTO TAG_FLASH CUBEPROGRAMMER)
-string(TOUPPER "${EMBEDDED_PROGRAMMER}" EMBEDDED_PROGRAMMER)
 # tag-flash needs no selector when one base is connected; with several, this
 # names one by the USB serial `tag-flash list` prints.
 set(TAG_FLASH_BASE "" CACHE STRING
     "USB serial of the base the tag-flash -download and -erase targets use; empty when only one base is connected")
 
-set(_use_tag_flash OFF)
-if(NOT EMBEDDED_PROGRAMMER STREQUAL "CUBEPROGRAMMER")
-  include("${CMAKE_SOURCE_DIR}/cmake/RustFlashTools.cmake")
-  rust_flash_tools(_have_flash_tools)
-  if(_have_flash_tools)
-    set(_use_tag_flash ON)
-  elseif(EMBEDDED_PROGRAMMER STREQUAL "TAG_FLASH")
-    message(FATAL_ERROR
-      "EMBEDDED_PROGRAMMER is TAG_FLASH, but cargo was not found to build "
-      "tag-flash and base-flash, and they are not on PATH.")
-  endif()
-endif()
+include("${CMAKE_SOURCE_DIR}/cmake/RustFlashTools.cmake")
+rust_flash_tools(_use_tag_flash)
 if(_use_tag_flash)
   set(_tag_flash_command "${TAG_FLASH_EXECUTABLE}")
   if(TAG_FLASH_BASE)
     list(APPEND _tag_flash_command --base "${TAG_FLASH_BASE}")
   endif()
   message(STATUS "Embedded -download, -erase and -dfu targets use tag-flash and base-flash")
-elseif(STM32_PROGRAMMER)
-  message(STATUS "Embedded -download, -erase and -dfu targets use ${STM32_PROGRAMMER}")
 else()
-  message(STATUS
-    "No -download, -erase or -dfu targets: install Rust (rustup.rs) to build tag-flash, "
-    "or https://www.st.com/en/development-tools/stm32cubeprog.html")
+  message(WARNING
+    "No -download, -erase or -dfu targets: cargo was not found to build tag-flash and "
+    "base-flash, and they are not on PATH. Install Rust (rustup.rs).")
 endif()
-
-set(STM32_PROGRAMMER_PROBE
-    "pid:0483:3748"
-    CACHE STRING
-          "ST-LINK selector for download/erase targets: pid:0483:3748, auto, prompt, serial:<sn>, or index:<n>")
-set(STM32_PROGRAMMER_SELECT_SCRIPT
-    "${CMAKE_CURRENT_LIST_DIR}/tools/stm32_programmer_select.py")
 
 #
 # Function to build embedded ChibiOS targets using make
@@ -296,10 +254,12 @@ function(add_embedded_target name proto_target)
   # create download target
 
   if(_use_tag_flash)
-    # -download programs only the pages the image covers and starts it, as
-    # the STM32_Programmer_CLI `-d <elf> -g 0x08000000` below does; -erase
-    # mass-erases; -dfu writes a base through its ROM bootloader, waiting up
-    # to a minute for it to be plugged in with its button held.
+    # -download erases by the image's flash plan (tag-flash's default: on an
+    # STM32L432 every page below the calibration page, since the persistent
+    # region moves with code size; on an STM32U375 only the image's pages),
+    # programs and starts it. -erase mass-erases; -dfu writes a base through
+    # its ROM bootloader, waiting up to a minute for it to be plugged in with
+    # its button held.
     add_custom_target(
       ${name}-download
       DEPENDS ${name}
@@ -325,53 +285,6 @@ function(add_embedded_target name proto_target)
       add_dependencies(${name}-erase flash_tools)
       add_dependencies(${name}-dfu flash_tools)
     endif()
-  elseif(STM32_PROGRAMMER AND PYTHON_EXECUTABLE)
-    add_custom_target(
-      ${name}-download
-      DEPENDS ${name}
-      COMMAND
-        ${PYTHON_EXECUTABLE} ${STM32_PROGRAMMER_SELECT_SCRIPT}
-        --programmer ${STM32_PROGRAMMER}
-        --selector ${STM32_PROGRAMMER_PROBE}
-        --
-        -d ${target_elf}
-        -g 0x08000000
-      VERBATIM)
-
-    add_custom_target(
-      ${name}-erase
-      COMMAND
-        ${PYTHON_EXECUTABLE} ${STM32_PROGRAMMER_SELECT_SCRIPT}
-        --programmer ${STM32_PROGRAMMER}
-        --selector ${STM32_PROGRAMMER_PROBE}
-        --
-        -e all
-      VERBATIM)
-
-    add_custom_target(
-      ${name}-dfu
-      DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf}
-      VERBATIM)
-  elseif(STM32_PROGRAMMER)
-    message(STATUS
-      "Python was not found; embedded download targets will use STM32CubeProgrammer without probe selection"
-    )
-    add_custom_target(
-      ${name}-download
-      DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=SWD mode=UR reset=HWrst -d
-              ${target_elf} -g 0x08000000
-      VERBATIM)
-
-    add_custom_target(${name}-erase COMMAND ${STM32_PROGRAMMER} -c port=SWD
-                                            mode=UR reset=HWrst -e all VERBATIM)
-
-    add_custom_target(
-      ${name}-dfu
-      DEPENDS ${name}
-      COMMAND ${STM32_PROGRAMMER} -c port=usb1 -d ${target_elf}
-      VERBATIM)
   endif()
 
   # Only actively deployed tags are installed; prototypes are built but not

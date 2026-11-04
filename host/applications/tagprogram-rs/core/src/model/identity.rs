@@ -33,6 +33,8 @@ const MAGIC: u32 = 0x4449_4754; // "TGID"
 const END: u16 = 0xFFFF;
 /// Entry id of the numbers block (at least 24 bytes; `TagType` first).
 const NUMBERS: u16 = 0x0201;
+/// Entry id of the persistent region (`TagIdentityRegion`, address first).
+const REGION_PERSISTENT: u16 = 0x0302;
 
 /// The name a string entry id is stored under in
 /// [`IdentityRecord::strings`], or `None` for an id that is not a string.
@@ -83,7 +85,8 @@ pub struct ImageIdentity {
     pub tag_type: i32,
 }
 
-/// A parsed record: its strings by name and, if present, the tag type.
+/// A parsed record: its strings by name and, if present, the tag type and
+/// the persistent region's address.
 ///
 /// Built by [`parse_identity_record`]; [`identity_of`] reduces it to an
 /// [`ImageIdentity`].
@@ -96,6 +99,9 @@ pub struct IdentityRecord {
     /// `TagType` from the numbers entry, when the record has one at least 24
     /// bytes long.
     pub tag_type: Option<u32>,
+    /// First byte of the persistent region (`TAG_ID_REGION_PERSISTENT`), the
+    /// image's `__persistent_start__`, when the record has that entry.
+    pub persistent_start: Option<u32>,
 }
 
 impl IdentityRecord {
@@ -163,6 +169,8 @@ pub fn parse_identity_record(flash: &[u8], offset: u32) -> Result<IdentityRecord
             );
         } else if id == NUMBERS && len >= 24 {
             r.tag_type = Some(u32::from_le_bytes(value[0..4].try_into().unwrap()));
+        } else if id == REGION_PERSISTENT && len >= 8 {
+            r.persistent_start = Some(u32::from_le_bytes(value[0..4].try_into().unwrap()));
         }
         off += len;
     }
@@ -219,6 +227,29 @@ pub fn identity_of(elf: &Elf) -> Result<ImageIdentity, String> {
             source_path: text("source_path"),
             tag_type: record.tag_type.map_or(0, |t| t as i32),
         });
+    }
+    Err("no tag identity record after the vectors".into())
+}
+
+/// Finds and parses the identity record in `flash`, internal flash read from
+/// its base (`0x0800_0000`), as a tag's flash reads back.
+///
+/// The record offsets are tried in order (L432 first); the first that holds
+/// the `"TGID"` magic decides, as in [`identity_of`].
+///
+/// # Errors
+///
+/// [`parse_identity_record`]'s errors, or "no tag identity record after the
+/// vectors" when no offset holds the magic -- an erased part, or an image
+/// built before identity records.
+pub fn find_identity_record(flash: &[u8]) -> Result<IdentityRecord, String> {
+    for offset in RECORD_OFFSETS {
+        let at = offset as usize;
+        if flash.len() >= at + 4
+            && u32::from_le_bytes(flash[at..at + 4].try_into().unwrap()) == MAGIC
+        {
+            return parse_identity_record(flash, offset);
+        }
     }
     Err("no tag identity record after the vectors".into())
 }
@@ -287,6 +318,40 @@ mod tests {
         }
         let id = identity_of(&image(0x1A0, &testrecord::build(&[], None))).unwrap();
         assert_eq!(id.tag_type, 0);
+    }
+
+    /// Checks that the persistent region's address is read from flash bytes
+    /// at either offset, and that erased flash has no record.
+    #[test]
+    fn finds_persistent_start_in_flash() {
+        // A record with a 20-byte TagIdentityRegion entry spliced in before
+        // its end entry, and its size patched to match.
+        let mut rec = testrecord::build(&[(0x0101, "UIUCTag")], None);
+        let end = rec.split_off(rec.len() - 4);
+        rec.extend_from_slice(&0x0302u16.to_le_bytes());
+        rec.extend_from_slice(&20u16.to_le_bytes());
+        for word in [0x0800_B000u32, 0, 0, 0, 1] {
+            rec.extend_from_slice(&word.to_le_bytes());
+        }
+        rec.extend_from_slice(&end);
+        let size = rec.len() as u16;
+        rec[6..8].copy_from_slice(&size.to_le_bytes());
+        for offset in [0x1A0usize, 0x240] {
+            let mut flash = vec![0xFFu8; offset];
+            flash.extend_from_slice(&rec);
+            let r = find_identity_record(&flash).unwrap();
+            assert_eq!(r.persistent_start, Some(0x0800_B000));
+            assert_eq!(r.string("target"), "UIUCTag");
+        }
+        // No region entry: no address.
+        let mut flash = vec![0u8; 0x1A0];
+        flash.extend_from_slice(&testrecord::build(&[], None));
+        assert_eq!(find_identity_record(&flash).unwrap().persistent_start, None);
+        // Erased flash.
+        assert_eq!(
+            find_identity_record(&[0xFFu8; 4096]).unwrap_err(),
+            "no tag identity record after the vectors"
+        );
     }
 
     #[test]
