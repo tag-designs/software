@@ -1,7 +1,7 @@
 ---
 type: results
 status: current
-summary: Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until 2026-11-03, when Running() was fixed to re-arm the minute alarm.
+summary: Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies.
 ---
 
 # UIUCTag Power Measurement Log
@@ -287,3 +287,48 @@ _No measurements recorded yet._
 - **notes**: `tag-flash` printed "Programming failed" during verify while
   flashing `7079bf32`. The tag then reported `7079bf32` and passed
   `tag-test`. The fix image flashed cleanly. Not investigated.
+
+### 2026-11-04  the monitor on the shared-memory mailbox, `4b409426` — **PASS**
+
+- **setup**: the same breakout, UUID `2036354B3032500800520028`, on
+  `tag-breakout-base-l432-v1` at 2.496 V. Image `4b409426` (SHA-256
+  `a8c29c23fe4aa2e8…`): the re-arm fix plus the L4 mailbox
+  (`TAG_L4_MONITOR_MAILBOX`). Host tools built from the same commit.
+- **functional**:
+  - `tag-info -d`: monitor version 0x21, session over the block, path magic
+    `0x554C0004`.
+  - `tag-test` 6 of 6 `ALL_PASSED`, then 5 cycles of `tag-reset --set-rtc`
+    plus `tag-test`: no base `0x81`. The DebugMonitor image (`49a5246e…`) over
+    the same 5 cycles: one `0x81`, a DEMCR read. Neither image showed the
+    NANOPB lost request any more; the host's DMA1 clock fix removed that from
+    both.
+  - Attach straight after `tag-start`, 420 s, then capture and download:
+    minute wakes, `RTC_CR` = `0x00001120`, 5 activity and 2 pressure rows, the
+    same as the DebugMonitor image.
+  - A v4.0 host fails its attach (`Monitor Start failed`) in under 0.6 s.
+- **current after an attach**, 1 s windows:
+  - after a clean session: 0.155 µA from the first window;
+  - after a session left idle until the heartbeat dropped it: 0.1543 µA;
+  - after the v4.0 host's refused attach: about 355 µA for 10 s (the attach
+    grace), then 0.155 µA. About 1 µAh per refused attach.
+- **`tag_release_check.py`**:
+
+  | Point | Gate | Measured | Verdict |
+  | --- | --- | ---: | --- |
+  | `IDLE`, four 120 s trials | ≤ 0.3 µA | 0.1544 / 0.1545 / 0.1545 / 0.1546 µA | **pass** |
+  | `RUNNING`, 1800 s | 0.3–0.646 µA | 0.56 µA | **pass** |
+  | `FINISHED` | ≤ 0.3 µA | 0.16 µA | **pass** |
+  | `IDLE` after a full cycle | ≤ 0.3 µA | 0.16 µA | **pass** |
+  | download, activity | 1/60 Hz, ≥ 0.75x | 30 rows, 1.00x | **pass** |
+
+- **notes**:
+  - The life-cycle log has two `0x81` lines, one in the state check after
+    the start and one in the first DebugMonitor write of the reset's attach.
+    Both steps went on to pass (the attach retries). The 2026-11-03
+    DebugMonitor run had none. Not yet investigated.
+  - `tag-start` replied `CONFIGURED`. UIUCTag starts on the next minute
+    alarm, and the reply may report either state.
+  - `214fc7fe`, which moves the mailbox images to `DEBUGVERSION_MAILBOX`,
+    then flashed: version 0x21 over the DebugMonitor and in the block,
+    `tag-test` 3 of 3 with no `0x81`. Not release-checked; the change is
+    two constants.
