@@ -9,6 +9,19 @@
 #define DEBUGVERSION 0x20
 
 /*
+ * The version an STM32L4 image reports to TAG_MONITORINFO/MONITORVERSION over
+ * the DebugMonitor. From 0x21 the image also answers MONITORPROTOCOL, which
+ * says whether protobuf requests go over the DebugMonitor or the shared-memory
+ * mailbox, so a host asks that question only of 0x21 or later. Older L4 images
+ * answer an unknown operand with the host's own command word still in DCRDR.
+ *
+ * DEBUGVERSION itself stays 0x20: the STM32U3 host requires the block's
+ * debug_version to equal it exactly, so bumping it would make every released
+ * host refuse new U3 firmware.
+ */
+#define DEBUGVERSION_L4 0x21
+
+/*
  * STM32U3 shared-memory monitor ABI.
  *
  * Host and firmware both include this header, so keep every field that crosses
@@ -50,6 +63,7 @@
 #define MONITOR_REQUEST_MAGIC 0xC0FFEE00U
 #define MONITOR_CONNECTED_MAGIC 0xDEADBEEFU
 #define MONITOR_PATH_U3_MAGIC 0x55330003U
+#define MONITOR_PATH_L4_MAGIC 0x554C0004U
 #define MONITOR_SHARED_ABI_VERSION 1U
 #define MONITOR_SHARED_FLAG_SESSION_READY (1U << 0)
 #define MONITOR_HEARTBEAT_PERIOD_S 5U
@@ -119,7 +133,21 @@ enum DBGOP {
 
 // operands for MONITORINFO
 
-enum DBGINFO { MONITORVERSION = 0, MONITORBUF = 1, MONITORBUFSIZE = 2, TAGSHASTR = 3};
+enum DBGINFO { MONITORVERSION = 0, MONITORBUF = 1, MONITORBUFSIZE = 2, TAGSHASTR = 3,
+               MONITORPROTOCOL = 4 };
+
+/*
+ * Answers to MONITORPROTOCOL (STM32L4, DEBUGVERSION_L4 and later): which
+ * transport carries protobuf requests. An image that answers
+ * MONITOR_PROTOCOL_MAILBOX keeps the DebugMonitor for TAG_MONITORINFO only;
+ * the host then starts the session by writing MONITOR_REQUEST_MAGIC to the
+ * shared block and pending the kick IRQ, and refuses MONITORSTART and
+ * PROTOBUF over the DebugMonitor.
+ */
+enum MONITOR_PROTOCOL {
+  MONITOR_PROTOCOL_DEBUGMON = 1,
+  MONITOR_PROTOCOL_MAILBOX = 2,
+};
 
 #ifdef __cplusplus
 extern "C" {

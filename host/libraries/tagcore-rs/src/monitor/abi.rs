@@ -3,7 +3,8 @@
 //! These values cross the SWD boundary, so they must match the header the
 //! firmware is built with. `docs/shared/monitor-interface.md` describes both
 //! transports; this module only restates the constants and the layout of the
-//! STM32U3 shared block.
+//! shared block, which every STM32U3 image and STM32L4 images built with
+//! `TAG_L4_MONITOR_MAILBOX` use.
 //!
 //! A change on either side of the boundary must be made in `monitor.h`
 //! and here together. The U3 attach checks [`MONITOR_SHARED_ABI_VERSION`]
@@ -13,7 +14,14 @@
 /// Monitor debug protocol version an STM32U3 tag must publish.
 pub const DEBUGVERSION: u32 = 0x20;
 
-/// Address of the STM32U3 shared monitor block, at the bottom of SRAM.
+/// The first STM32L4 monitor version (`DEBUGVERSION_L4`) that answers
+/// [`info::MONITORPROTOCOL`]. Older L4 images leave the host's own command
+/// word in DCRDR for an operand they do not know, so the host asks only from
+/// this version on.
+pub const DEBUGVERSION_L4: u32 = 0x21;
+
+/// Address of the shared monitor block, at the bottom of SRAM on both
+/// families.
 pub const MONITOR_SHARED_ADDR: u32 = 0x2000_0000;
 /// Size in bytes reserved for the shared block; the struct uses the first
 /// [`MonitorShared::SIZE`] of them.
@@ -25,6 +33,8 @@ pub const MONITOR_REQUEST_MAGIC: u32 = 0xC0FF_EE00;
 pub const MONITOR_CONNECTED_MAGIC: u32 = 0xDEAD_BEEF;
 /// `path_magic` value identifying the U3 transport.
 pub const MONITOR_PATH_U3_MAGIC: u32 = 0x5533_0003;
+/// `path_magic` an STM32L4 image on the mailbox publishes.
+pub const MONITOR_PATH_L4_MAGIC: u32 = 0x554C_0004;
 /// Shared-block layout version the host understands.
 pub const MONITOR_SHARED_ABI_VERSION: u32 = 1;
 /// `flags` bit set once the firmware's monitor watchdog and IRQ are armed.
@@ -79,6 +89,18 @@ pub mod info {
     pub const MONITORBUFSIZE: i32 = 2;
     /// Address of the firmware's git SHA string.
     pub const TAGSHASTR: i32 = 3;
+    /// Which transport carries protobuf requests, one of [`super::protocol`];
+    /// answered by STM32L4 images from [`super::DEBUGVERSION_L4`].
+    pub const MONITORPROTOCOL: i32 = 4;
+}
+
+/// Answers to [`info::MONITORPROTOCOL`] (`enum MONITOR_PROTOCOL`).
+pub mod protocol {
+    /// Protobuf requests over the DebugMonitor (DCRDR), as every older L4 image.
+    pub const DEBUGMON: u32 = 1;
+    /// Protobuf requests over the shared-memory mailbox; the DebugMonitor
+    /// answers only TAG_MONITORINFO.
+    pub const MAILBOX: u32 = 2;
 }
 
 /// Short name of a monitor operation, for log messages.

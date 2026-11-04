@@ -124,8 +124,9 @@ include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
 # Other files (optional).
 #include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 include $(CHIBIOS)/tools/mk/autobuild.mk
-# Define linker script file here
-LDSCRIPT= ../common/STM32L432xC.ld
+# Define linker script file here. A target's project.mk, included above, may
+# set its own (UIUCTag links STM32L432xC-mailbox.ld for the monitor mailbox).
+LDSCRIPT ?= ../common/STM32L432xC.ld
 #$(STARTUPLD)/
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global

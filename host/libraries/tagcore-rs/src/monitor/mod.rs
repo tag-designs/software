@@ -36,7 +36,9 @@
 //! 2. The family's attach sequence arms the debug block, releases reset into
 //!    the firmware so that it boots seeing the host, and reads the monitor
 //!    metadata: protocol version, call-buffer address and size, and the
-//!    address of the git SHA string, which is read once and cached.
+//!    address of the git SHA string, which is read once and cached. It also
+//!    settles the session's [`Transport`]: the mailbox on STM32U3, and on an
+//!    STM32L4 whichever the image reports.
 //! 3. RPCs ([`TagMonitor::rpc`]) and live memory access
 //!    ([`TagMonitor::read_mem`], [`TagMonitor::write_mem`]) follow. The
 //!    firmware ends the session on its own if the host goes quiet, so idle
@@ -185,6 +187,21 @@ pub enum TargetFamily {
     Stm32U3,
 }
 
+/// How the current session carries monitor calls, decided at attach.
+///
+/// Every STM32U3 image uses the mailbox. An STM32L4 image uses the
+/// DebugMonitor unless it reports [`abi::protocol::MAILBOX`] to
+/// [`abi::info::MONITORPROTOCOL`] (images built with `TAG_L4_MONITOR_MAILBOX`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Transport {
+    /// DCRDR and the DEMCR request bits, served by the DebugMonitor exception.
+    #[default]
+    DebugMonitor,
+    /// The shared block at [`abi::MONITOR_SHARED_ADDR`], a kick IRQ and the
+    /// `host_activity` heartbeat.
+    Mailbox,
+}
+
 /// Prints `STM32L4`, `STM32U3` or `unknown`, as the C++ log lines do.
 impl fmt::Display for TargetFamily {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -290,8 +307,10 @@ pub struct TagMonitor {
     sha_str: [u8; 48],
     /// Monitor version the firmware reported.
     version: u32,
-    /// The family detected at attach; selects the transport for every call.
+    /// The family detected at attach.
     pub(crate) target_family: TargetFamily,
+    /// The transport this session's calls use; see [`Transport`].
+    pub(crate) transport: Transport,
     /// The raw DBGMCU_IDCODE read at attach (0 if none was plausible), for
     /// log messages.
     target_idcode: u32,
@@ -338,6 +357,7 @@ impl TagMonitor {
             target_idcode: 0,
             monitor_stats: TagMonitorStats::default(),
             l4_dma_clock_set: false,
+            transport: Transport::DebugMonitor,
         }
     }
 
@@ -402,6 +422,7 @@ impl TagMonitor {
         self.sha_str = [0; 48];
         self.version = 0;
         self.l4_dma_clock_set = false;
+        self.transport = Transport::DebugMonitor;
     }
 
     /// Forgets the session metadata and the detected family and IDCODE.
@@ -465,9 +486,10 @@ impl TagMonitor {
     /// Writes tag memory or peripheral space while the tag runs.
     ///
     /// Same access path and chunking as [`read_mem`](Self::read_mem). On
-    /// STM32U3 a write overlapping the monitor_shared block is refused with
-    /// [`MemAccess::Protected`] unless `force` is set, because changing that
-    /// block can end the session; STM32L4 has no such block. On
+    /// the mailbox transport a write overlapping the monitor_shared block is
+    /// refused with [`MemAccess::Protected`] unless `force` is set, because
+    /// changing that block can end the session; the DebugMonitor transport
+    /// has no such block. On
     /// [`MemAccess::LinkError`] earlier chunks may already have been written.
     ///
     /// Nothing else is checked: a write can corrupt firmware state,
@@ -480,7 +502,7 @@ impl TagMonitor {
             return MemAccess::InvalidRange;
         }
         if !force
-            && self.target_family == TargetFamily::Stm32U3
+            && self.transport == Transport::Mailbox
             && overlaps_monitor_shared(addr, data.len())
         {
             return MemAccess::Protected;
@@ -497,16 +519,17 @@ impl TagMonitor {
     /// Keeps the monitor session alive while the host is otherwise idle.
     ///
     /// The firmware ends a session when the host goes quiet: within one to
-    /// two heartbeat periods (5-10 s) on STM32U3, after 60 s without a
-    /// request on STM32L4. On U3 this sets `host_activity` with one SWD
-    /// write, which runs no code on the tag; on L4 it issues a get_status
-    /// RPC. Call at least every 2-3 s for U3. Returns false if not attached
-    /// or the write or RPC failed.
+    /// two heartbeat periods (5-10 s) on the mailbox transport (every U3
+    /// tag, and L4 mailbox images), after 60 s without a request on the
+    /// DebugMonitor transport. On the mailbox this sets `host_activity` with
+    /// one SWD write, which runs no code on the tag; on the DebugMonitor it
+    /// issues a get_status RPC. Call at least every 2-3 s on the mailbox.
+    /// Returns false if not attached or the write or RPC failed.
     pub fn keep_alive(&mut self) -> bool {
         if !self.is_attached() {
             return false;
         }
-        if self.target_family == TargetFamily::Stm32U3 {
+        if self.transport == Transport::Mailbox {
             return self.write_monitor_shared_word(MonitorShared::HOST_ACTIVITY, 1);
         }
         // L4 re-arms its session timer only on a monitor request.
@@ -558,16 +581,16 @@ impl TagMonitor {
         }
     }
 
-    /// Runs one monitor operation over the detected family's transport and
-    /// returns its result word: [`call_u3`](Self::call_u3) on an STM32U3,
-    /// [`call_l4`](Self::call_l4) otherwise. `None`, with the reason logged,
+    /// Runs one monitor operation over the session's [`Transport`] and
+    /// returns its result word: [`call_u3`](Self::call_u3) on the mailbox,
+    /// [`call_l4`](Self::call_l4) on the DebugMonitor. `None`, with the reason logged,
     /// if the call fails.
     ///
     /// `operation` is one of [`abi::op`]; `operand` is packed above it by
     /// [`abi::command_word`]. Blocks until the firmware answers or the
     /// transport's poll limit runs out. Port of `TagMonitor::Call`.
     fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
-        if self.target_family == TargetFamily::Stm32U3 {
+        if self.transport == Transport::Mailbox {
             self.call_u3(operation, operand)
         } else {
             self.call_l4(operation, operand)
@@ -642,7 +665,7 @@ impl TagMonitor {
         // or start a run, and the clock is not the host's to leave on.
         self.release_l4_dma_clock();
         let stop = self.call(op::MONITORSTOP, 0);
-        if self.target_family == TargetFamily::Stm32U3 {
+        if self.transport == Transport::Mailbox {
             if let Some(s) = self.read_monitor_shared() {
                 debug!(
                     "U3 monitor after MONITORSTOP request=0x{:x} flags=0x{:x} status=0x{:x} \

@@ -291,18 +291,12 @@ impl TagMonitor {
     ///    [`MONITOR_REQUEST_MAGIC`] to `request` and clear any stale kick
     ///    IRQ, so the firmware sees the request before its first
     ///    instruction. Clear a stale C_MASKINTS, then resume the core.
-    /// 3. Poll up to 2000 times, setting `host_activity` each time, until
-    ///    the firmware writes [`MONITOR_CONNECTED_MAGIC`] and sets
-    ///    [`MONITOR_SHARED_FLAG_SESSION_READY`]. On timeout, log the block
-    ///    (and the last non-zero version of it seen) and fail.
-    /// 4. Check the ABI and protocol versions and the call-buffer metadata,
-    ///    and read the SHA string.
+    /// 3. Wait for the firmware to connect, and check and record its
+    ///    metadata: [`await_mailbox_session`](Self::await_mailbox_session).
     ///
     /// No MONITORSTART is sent: on U3 the session starts when the firmware
     /// sees the request. Returns false, logged, at the first failing step.
     fn attach_u3_steps(&mut self) -> bool {
-        const ATTACH_TIMEOUT_MS: u32 = 2000;
-
         let Some(demcr) = self.link.read_debug32(DEMCR) else {
             error!("U3 monitor attach failed: DEMCR read failed");
             return false;
@@ -363,10 +357,48 @@ impl TagMonitor {
             return false;
         }
 
+        self.await_mailbox_session(false)
+    }
+
+    /// Writes [`MONITOR_REQUEST_MAGIC`] to the block's `request` and pends
+    /// the kick IRQ, for an STM32L4 image whose session starts after boot.
+    /// Returns false, logged, on a link failure.
+    pub(super) fn post_mailbox_request(&mut self) -> bool {
+        let ok = self.write_monitor_shared_word(MonitorShared::REQUEST, MONITOR_REQUEST_MAGIC)
+            && self.write_word(MONITOR_SHARED_KICK_ICPR_ADDR, MONITOR_SHARED_KICK_MASK)
+            && self.write_word(MONITOR_SHARED_KICK_ISPR_ADDR, MONITOR_SHARED_KICK_MASK);
+        if !ok {
+            error!("monitor mailbox session request failed");
+        }
+        ok
+    }
+
+    /// Waits for the firmware to accept a mailbox session request, then
+    /// checks and records its metadata. Shared by the U3 attach and the L4
+    /// mailbox attach.
+    ///
+    /// Polls up to 2000 times, setting `host_activity` each time, until the
+    /// firmware writes [`MONITOR_CONNECTED_MAGIC`] and sets
+    /// [`MONITOR_SHARED_FLAG_SESSION_READY`]. With `rekick` the request is
+    /// posted again every 200 polls ([`post_mailbox_request`](Self::post_mailbox_request)),
+    /// since an L4 tag can drop a write that lands while it sleeps. It then
+    /// checks the ABI and protocol versions and the call-buffer metadata,
+    /// and reads the SHA string. On success the session's transport is
+    /// [`Transport::Mailbox`](super::Transport::Mailbox). Returns false,
+    /// logged, at the first failing step; on a timeout the block (and the
+    /// last non-zero version of it seen) is logged.
+    pub(super) fn await_mailbox_session(&mut self, rekick: bool) -> bool {
+        const ATTACH_TIMEOUT_MS: u32 = 2000;
+        const REKICK_EVERY_MS: u32 = 200;
+
         let mut shared = MonitorShared::default();
         let mut last_nonzero = None;
         let mut connected = false;
-        for _ in 0..ATTACH_TIMEOUT_MS {
+        for i in 0..ATTACH_TIMEOUT_MS {
+            if rekick && i > 0 && i % REKICK_EVERY_MS == 0 {
+                // An L4 request can be lost while the tag sleeps; post it again.
+                self.post_mailbox_request();
+            }
             self.write_monitor_shared_word(MonitorShared::HOST_ACTIVITY, 1);
             if let Some(s) = self.read_monitor_shared() {
                 shared = s;
@@ -380,7 +412,7 @@ impl TagMonitor {
                     break;
                 }
             } else if !self.is_attached() {
-                error!("U3 monitor attach failed: the probe has gone");
+                error!("monitor mailbox attach failed: the probe has gone");
                 return false;
             }
             sleep(ms(1));
@@ -394,7 +426,7 @@ impl TagMonitor {
             let dhcsr = self.debug_or_zero(DHCSR);
             let demcr = self.debug_or_zero(DEMCR);
             error!(
-                "U3 monitor attach timed out target={} idcode=0x{:x} request=0x{:x} flags=0x{:x} \
+                "monitor mailbox attach timed out target={} idcode=0x{:x} request=0x{:x} flags=0x{:x} \
                  status=0x{:x} heartbeat=0x{:x} watchdog_ticks={} dhcsr=0x{dhcsr:x} \
                  demcr=0x{demcr:x} ispr=0x{ispr:x}",
                 self.target_family,
@@ -405,16 +437,16 @@ impl TagMonitor {
                 shared.host_activity,
                 shared.watchdog_ticks
             );
-            self.log_monitor_shared("U3 monitor attach timeout shared", &shared);
+            self.log_monitor_shared("monitor mailbox attach timeout shared", &shared);
             if let Some(s) = last_nonzero {
-                self.log_monitor_shared("U3 monitor attach last nonzero shared", &s);
+                self.log_monitor_shared("monitor mailbox attach last nonzero shared", &s);
             }
             return false;
         }
 
         if shared.abi_version != MONITOR_SHARED_ABI_VERSION {
             error!(
-                "U3 monitor ABI mismatch host={MONITOR_SHARED_ABI_VERSION} target={}",
+                "monitor mailbox ABI mismatch host={MONITOR_SHARED_ABI_VERSION} target={}",
                 shared.abi_version
             );
             return false;
@@ -430,7 +462,7 @@ impl TagMonitor {
             || shared.sha_addr == 0
         {
             error!(
-                "U3 monitor metadata invalid version=0x{:x} buf=0x{:x} size={} sha=0x{:x}",
+                "monitor mailbox metadata invalid version=0x{:x} buf=0x{:x} size={} sha=0x{:x}",
                 self.version, self.call_buf, self.maxpacket, shared.sha_addr
             );
             return false;
@@ -438,17 +470,19 @@ impl TagMonitor {
 
         let mut sha = [0u8; 48];
         if !self.link.read_mem32(shared.sha_addr, &mut sha) {
-            error!("U3 monitor attach failed: SHA read failed");
+            error!("monitor mailbox attach failed: SHA read failed");
             return false;
         }
         self.sha_str = sha;
         debug!(
-            "U3 monitor attached version=0x{:x} buf=0x{:x} size={} sha={}",
+            "monitor mailbox attached path=0x{:x} version=0x{:x} buf=0x{:x} size={} sha={}",
+            shared.path_magic,
             self.version,
             self.call_buf,
             self.maxpacket,
             self.git_sha_string()
         );
+        self.transport = super::Transport::Mailbox;
         true
     }
 }

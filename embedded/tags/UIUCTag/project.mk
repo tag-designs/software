@@ -1,4 +1,11 @@
 # UIUCTag build manifest.
+
+# The monitor runs over the shared-memory mailbox, not the DebugMonitor
+# (common/core/src/handlersL4Mailbox.c). The mailbox linker script keeps
+# MONITOR_SHARED_ADDR, the first 64 bytes of SRAM1, out of ram0.
+UDEFS += -DTAG_L4_MONITOR_MAILBOX=1
+LDSCRIPT = ../common/STM32L432xC-mailbox.ld
+
 USE_HAL_I2C_FALLBACK = yes
 include $(BOARDDIR)/UIUCTag/board.mk
 

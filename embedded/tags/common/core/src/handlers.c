@@ -33,6 +33,17 @@
  *          models cannot share one notion of "attached".
  */
 #define TAG_MONITOR_MAILBOX 1
+#elif (defined(STM32L4xx_MCUCONF) || defined(STM32L422xx) || \
+       defined(STM32L431xx) || defined(STM32L432xx) || \
+       defined(STM32L433xx)) && \
+      defined(TAG_L4_MONITOR_MAILBOX) && TAG_L4_MONITOR_MAILBOX
+/*
+ * An STM32L4 image on the mailbox (a target's project.mk sets
+ * TAG_L4_MONITOR_MAILBOX and links ../common/STM32L432xC-mailbox.ld, which
+ * reserves the block). Attachment is the mailbox's, as on U3.
+ */
+#define TAG_HANDLERS_TARGET_FILE "handlersL4Mailbox.c"
+#define TAG_MONITOR_MAILBOX 1
 #elif defined(STM32L4xx_MCUCONF) || defined(STM32L422xx) || \
       defined(STM32L431xx) || defined(STM32L432xx) || \
       defined(STM32L433xx)

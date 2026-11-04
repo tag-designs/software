@@ -21,7 +21,7 @@ use std::thread::sleep;
 
 use log::{debug, error, warn};
 
-use super::abi::{command_word, info, op, operation_name};
+use super::abi::{DEBUGVERSION_L4, command_word, info, op, operation_name, protocol};
 use super::cortex_m::*;
 use super::{
     STM32L4_DBGMCU_CR, STM32L4_DBGMCU_CR_DBG_SLEEP, STM32L4_DBGMCU_IDCODE,
@@ -420,9 +420,12 @@ impl TagMonitor {
     /// call fails it pulses nRST, resets into the monitor again and retries
     /// once, so one missed first request (the C++ logs the same warning)
     /// does not fail the attach.
-    /// It then reads the call-buffer address, the SHA string and the
-    /// call-buffer size (rejecting one larger than the host buffer) and
-    /// sends MONITORSTART, which must return non-zero. Each failure is
+    /// An image reporting [`DEBUGVERSION_L4`] or later is asked which
+    /// transport it uses; a mailbox image continues in
+    /// [`attach_l4_mailbox`](Self::attach_l4_mailbox). Otherwise it reads the
+    /// call-buffer address, the SHA string and the call-buffer size
+    /// (rejecting one larger than the host buffer) and sends MONITORSTART,
+    /// which must return non-zero. Each failure is
     /// logged and returns false.
     fn attach_l4_steps(&mut self) -> bool {
         if !self.reset_into_monitor("initial") {
@@ -472,6 +475,24 @@ impl TagMonitor {
         };
         debug!("Monitor Version 0x{:x}", self.version);
 
+        // From DEBUGVERSION_L4 an image says which transport carries its
+        // protobuf requests; a mailbox image starts its session over the
+        // shared block instead of MONITORSTART.
+        if self.version >= DEBUGVERSION_L4 {
+            match self.call(op::TAG_MONITORINFO, info::MONITORPROTOCOL) {
+                Some(protocol::MAILBOX) => return self.attach_l4_mailbox(),
+                Some(protocol::DEBUGMON) => {}
+                Some(other) => {
+                    error!("L4 monitor reports unknown protocol {other}");
+                    return false;
+                }
+                None => {
+                    error!("couldn't fetch the L4 monitor protocol");
+                    return false;
+                }
+            }
+        }
+
         let Some(call_buf) = self.call(op::TAG_MONITORINFO, info::MONITORBUF) else {
             error!("couldn't fetch monitor buffer location");
             return false;
@@ -516,6 +537,26 @@ impl TagMonitor {
         self.keep_debug_in_sleep();
         self.keep_bus_matrix_in_sleep();
         true
+    }
+
+    /// Starts a mailbox session on an STM32L4 image that reported
+    /// [`protocol::MAILBOX`].
+    ///
+    /// The firmware has booted under the attach and holds itself awake in
+    /// its attach grace. Sets DBG_SLEEP and DMA1's clock first, so that the
+    /// tag sleeping cannot drop the request ([`keep_bus_matrix_in_sleep`](Self::keep_bus_matrix_in_sleep)),
+    /// then posts the session request and waits for the firmware to accept
+    /// it ([`await_mailbox_session`](Self::await_mailbox_session), reposting
+    /// the request while it waits). Calls then use the mailbox; the
+    /// DebugMonitor answers only TAG_MONITORINFO from here on. Returns false,
+    /// logged, if the request cannot be written or is not accepted.
+    fn attach_l4_mailbox(&mut self) -> bool {
+        self.keep_debug_in_sleep();
+        self.keep_bus_matrix_in_sleep();
+        if !self.post_mailbox_request() {
+            return false;
+        }
+        self.await_mailbox_session(true)
     }
 
     /// Sets DBGMCU_CR.DBG_SLEEP for the session.

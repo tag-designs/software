@@ -210,12 +210,16 @@ measuring again.
 
 ## Questions for the owner
 
-- **Step 1 first, as proposed, or straight to the mailbox?** Step 1 is
-  smaller and keeps one protocol; the mailbox is the end state if bursts
-  remain.
-- **Should new L4 images drop DebugMonitor protobuf requests entirely** once
-  they report the mailbox, or keep both in firmware for a release? (They keep
-  the info calls either way.)
+- ~~Step 1 first, as proposed, or straight to the mailbox?~~ Step 1 is on
+  `main` (`12af820d`), and with the host's DMA1 clock fix no bursts have been
+  seen since. Answered 2026-11-03: go ahead with the mailbox on UIUCTag
+  anyway, for one protocol on both families. Its block is in SRAM, so the
+  firmware must keep a DMA clock on for the session (the tags worklist's
+  bus-matrix item) before it can rely on it.
+- ~~Should new L4 images drop DebugMonitor protobuf requests entirely?~~
+  Answered 2026-11-03: yes. A mailbox image serves protobuf only over the
+  mailbox and keeps the DebugMonitor info calls, so a silent fallback cannot
+  hide a mailbox fault; the bench then needs the new host for that image.
 - ~~Is a reserved vector-table word acceptable as the marker?~~ Answered
   2026-11-02: no marker; a `TAG_MONITORINFO` protocol call behind a version
   bump (above). UIUCTag, not yet fabricated, is the first target.
