@@ -380,11 +380,12 @@ still accepted over the DebugMonitor. On disconnect the firmware clears vector
 catch and the DebugMonitor bits, and turns DMA1's clock off if its own connect
 turned it on; the host's detach clears the clock if the host set it.
 
-**Known gap.** Because the host sets `DMA1EN` before posting the request, the
-firmware's connect finds it already on and does not take ownership. A session
-that ends by heartbeat timeout rather than a host detach therefore leaves the
-clock on. It costs nothing on UIUCTag, whose Standby resets RCC, but would on
-an image that idles in Stop. Recorded in `embedded/tags/TODO.md`.
+**Known gap.** The host sets `DMA1EN` for every L4 session, on the
+DebugMonitor as well, and only its own detach clears it; the firmware clears
+only a bit it set. A session that ends on the heartbeat or watchdog therefore
+leaves the clock on. It costs nothing measurable on the L432 tags, which rest
+and run in Standby or Shutdown and reset RCC on every wake. Recorded in
+`embedded/tags/TODO.md`.
 
 ## Main-Thread Service
 

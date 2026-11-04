@@ -43,6 +43,14 @@ landing and measuring them one at a time. Host tool fixes are not held back.
     check's first `tag-info` does once the start reply is synchronous. Verify
     each fix with an attach straight after start, then 420 s of trace and a
     download.
+  - **CompassTag did not reproduce it with the harness's timing**
+    (2026-11-04, `eb165461`, 2.496 V, UUID `203633324B4250060022005E`). A
+    `tag-info` straight after `tag-start --start-now` and one 10 s later both
+    left the wakeup timer on (`RTC_CR` = `0x4424`) and collected 6 activity
+    and 6 compass rows in 180 s. Its start goes CONFIGURED to RUNNING in the
+    same second and it reaches Standby before the next attach lands, where
+    UIUCTag stays awake about 1.5 s. The code path is unchanged, so an attach
+    that does land while it is awake (around a tick) should still stop it.
   - **The general alternative:** skip the alarm and ticker teardown in the
     L432 `deviceInit()` on a reattach, as `TAG_MONITOR_RESET_RECOVERY` does on
     U3. That is broader and touches every L4 image's boot path.
@@ -67,19 +75,27 @@ not been reproduced on a tag.
 
 ## Defects
 
-- **The L4 mailbox leaves DMA1's clock on after a session that times out.**
-  Found on UIUCTag (`handlersL4Mailbox.c`, 2026-11-04, 2.496 V). The host's
-  `attach_l4_mailbox()` sets `RCC_AHB1ENR.DMA1EN` before posting its session
-  request, which it must, or the request can be dropped while the tag sleeps.
-  So `monitorSharedConnectI()` finds the bit set, does not record it as its
-  own, and `monitorSharedSetDisconnected()` leaves it on. Only the host's
-  detach clears it, and a session that ends on the heartbeat (the host died,
-  was unplugged, or went quiet) has no detach. Seen as `could not clear
-  RCC_AHB1ENR.DMA1EN` after a 15 s idle session. Free on UIUCTag: Standby
-  resets RCC, and idle read 0.1543 uA afterwards. It would cost current on an
-  L4 mailbox image that idles in Stop. A likely fix is for the firmware to take
-  ownership on connect whenever none of its own code holds a DMA1 stream.
-  - Fix before a second L4 target moves to the mailbox.
+- **An L4 session that times out leaves DMA1's clock on; it costs nothing
+  measurable (low priority).** The host sets `RCC_AHB1ENR.DMA1EN` for every L4
+  session, after `MONITORSTART` on the DebugMonitor and before the request on
+  the mailbox (it must, or a request can be dropped while the tag sleeps), and
+  clears it only in its own detach. Neither `handlersL4.c` nor
+  `handlersL4Mailbox.c` clears a bit it did not set, so a session that ends on
+  the firmware's watchdog or heartbeat (the host died, was unplugged, or went
+  quiet) leaves it on.
+  - **Why it is free:** the L432 tags rest and run in Standby or Shutdown,
+    and every wake from either resets RCC; in Stop the bus clocks are gated
+    regardless of the enable bit. It only costs while the tag sleeps with its
+    clocks running, which is the awake time between a session ending and the
+    next Standby.
+  - **Measured 2026-11-04, 2.496 V:** UIUCTag mailbox, 15 s idle session:
+    idle 0.1543 uA afterwards. CompassTag `eb165461`, DebugMonitor: `DMA1EN`
+    read set (`0x101`) through a quiet session, the watchdog ended it
+    between 45 and 60 s, no detach, and the tag rested at 0.219 uA against
+    0.2206 uA before.
+  - **If it is ever fixed**, the firmware can take the clock on connect
+    whenever none of its own code holds a DMA1 stream, and clear it on any
+    disconnect.
 
 - **On an L4 tag, the first request after an attach waits for an erase to
   finish.** Seen on CompassTagAT25 (2026-11-03, 2.50 V, branch
