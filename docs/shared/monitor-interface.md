@@ -160,7 +160,7 @@ watchdog (`L4_MONITOR_TIMEOUT_S`) while attached.
 A protobuf call also writes the request into the protobuf buffer before step 1.
 The buffer belongs to the pending request until the firmware clears `MON_REQ`,
 and the main thread can take a second or more to reach it (Set RTC runs inside
-`proto_eval()`; a self-test runs straight after it is accepted). So
+`proto_eval()`; a self-test runs on the pass after it is accepted). So
 `TagMonitor::Rpc()` first waits, up to 2.5 s, for `MON_REQ` and `MON_PEND` to
 clear (`WaitL4MonitorIdle()`), and fails without writing if they do not. A
 request that an earlier, failed call left pending on the tag is therefore
@@ -311,10 +311,14 @@ Both target paths funnel protobuf evaluation into the same model:
 4. The target-specific response mailbox is completed:
    - L4 writes response length to `DCRDR` and clears `MON_REQ`.
    - U3 writes response length/status into the shared block.
-5. Any returned monitor work bits are then posted as normal ChibiOS events.
 
 This keeps protobuf parsing, storage access, and tag command execution out of
-the interrupt handler.
+the interrupt handler. A state-changing command (Start, Stop, Erase, Self-test,
+Calibrate) runs its transition inside `proto_eval()`, so its reply carries the
+resulting `Status`; see
+[Monitor Commands](../../embedded/tags/common/core/design/monitor-commands.md).
+The main loop serves requests only after a `StateMachine()` pass, and goes
+straight back to the state machine after serving one.
 
 ## Sleep And Reset Interaction
 

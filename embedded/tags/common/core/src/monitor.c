@@ -927,8 +927,11 @@ static bool monitor_request_allowed(const Req *request)
     return true;
 
   case Req_erase_tag:
+    /* sRESET too: an erase sent while the tag is erasing continues the sweep
+     * (resetEnter() resumes, it does not restart) and is answered sRESET. */
     return (pState->state == TagState_ABORTED) ||
-           (pState->state == TagState_FINISHED);
+           (pState->state == TagState_FINISHED) ||
+           (pState->state == TagState_sRESET);
 
   case Req_start_tag:
   case Req_test_tag:

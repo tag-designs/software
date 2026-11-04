@@ -6,8 +6,10 @@
 //! JSON file, or with `--merge` overlays the file using
 //! [`ConfigShape::merge`]: only fields the tag supports and the file speaks
 //! for are copied, zeros included. `--start-now` forces `start_delay` to 0.
-//! It then polls until the tag leaves IDLE and prints the resulting status,
-//! since an acknowledged start is not proof the tag started.
+//! Firmware with synchronous commands answers the start with the state it
+//! reached, which is taken as the result. Older firmware only queues it, so
+//! the tool then polls until the tag leaves IDLE and prints the resulting
+//! status, since that acknowledgement is not proof the tag started.
 //!
 //! Exits 0 when the tag reached RUNNING or CONFIGURED, was already in one of
 //! them (no start is sent), or accepted the start but answered no status read
@@ -173,6 +175,8 @@ fn main() -> ExitCode {
 
     let mut start_attempted = false;
     let mut start_failed = false;
+    // The state the start reply reports, from synchronous firmware.
+    let mut confirmed = false;
     if status.state == idle {
         // Starting from a default config would run settings nobody chose.
         let mut cfg = match tag.config() {
@@ -192,7 +196,11 @@ fn main() -> ExitCode {
             proto::debug_string(&cfg)
         );
         start_attempted = true;
-        if tag.start(&cfg).is_ok() {
+        if let Ok(reply) = tag.start(&cfg) {
+            if let Some(s) = reply {
+                status = s;
+                confirmed = true;
+            }
             // From here the tag may leave the debug link at any moment (a tag
             // whose next state sleeps at once must), so the link errors
             // tagcore would log are expected; keep them unless --debug.
@@ -228,16 +236,18 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // Start() returns when the request is accepted; the state machine acts
-    // on it later, so poll until the tag has left IDLE. A failed read is not
-    // a reason to stop: it is a tag that did not answer in time, which is
-    // what the remaining tries are for.
-    let tries = if start_attempted {
+    // Older firmware answers the start when it is accepted and acts on it
+    // later, so poll until the tag has left IDLE. A failed read is not a
+    // reason to stop: it is a tag that did not answer in time, which is what
+    // the remaining tries are for. A synchronous reply needs no poll.
+    let tries = if confirmed {
+        0
+    } else if start_attempted {
         cli.start_timeout.max(1)
     } else {
         1
     };
-    let mut read_ok = false;
+    let mut read_ok = confirmed;
     for _ in 0..tries {
         match tag.status() {
             Ok(s) => {

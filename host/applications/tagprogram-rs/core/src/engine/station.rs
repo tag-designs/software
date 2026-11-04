@@ -1263,15 +1263,15 @@ impl Station {
     }
 
     /// The Tag state row's Erase: asks the tag's own firmware to erase its
-    /// log, only from FINISHED or ABORTED (the UI confirms first), then
-    /// re-reads the state. The erase runs on the tag; this returns as soon as
+    /// log, from FINISHED or ABORTED (the UI confirms first), or to continue
+    /// an erase already under way in SRESET, then re-reads the state. The erase runs on the tag; this returns as soon as
     /// it is accepted, and the poll shows SRESET until it ends. A refusal is
     /// silent.
     fn erase_tag(&mut self) {
         let erasable = self.status.as_ref().is_some_and(|s| {
             matches!(
                 TagState::try_from(s.state),
-                Ok(TagState::Finished | TagState::Aborted)
+                Ok(TagState::Finished | TagState::Aborted | TagState::SReset)
             )
         });
         if self.attached() && erasable && self.tag.erase().is_ok() {

@@ -10,6 +10,14 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-11-03: Erase is available while the tag is erasing
+
+Change: an erase sent to a tag in sRESET continues the sweep
+([Monitor Commands](../../../../embedded/tags/common/core/design/monitor-commands.md)),
+so Erase is enabled in sRESET as well as FINISHED and ABORTED. No golden
+changed. `action-states.txt` changes in its two attached sRESET rows, which
+now read `erase=E`.
+
 ## 2026-10-23: every schedule time is a whole hour in UTC
 
 Change: the four schedule date/time boxes (logging start and end, hibernation

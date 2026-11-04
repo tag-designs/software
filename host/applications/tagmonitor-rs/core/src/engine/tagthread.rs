@@ -15,7 +15,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use log::{debug, warn};
 use tagcore::proto::{Config, Status, TagInfo, TestReq};
-use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring};
+use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring, is_stopped};
 use tagcore::{LinkAdapt, Tag, UsbDev};
 
 use super::Msg;
@@ -261,14 +261,21 @@ impl TagThread {
                 // acknowledgement can be lost after the tag accepted it. The
                 // model judges the start from the statuses that follow.
                 let message = match self.tag.start(&config) {
-                    Ok(()) => String::new(),
+                    Ok(_) => String::new(),
                     Err(_) => self.tag.debug_message(),
                 };
                 self.report(Report::StartSent(message));
                 self.poll();
             }
             TagCmd::Stop => match self.tag.stop() {
-                Ok(()) => {
+                // Synchronous firmware has stopped already: show it at once,
+                // with nothing to resend.
+                Ok(Some(status)) if is_stopped(status.state) => {
+                    self.stop_sent = None;
+                    self.poll();
+                }
+                // Firmware that queues the stop: watch for it and resend.
+                Ok(_) => {
                     let now = Instant::now();
                     self.stop_sent = Some((now, now));
                     self.next_poll = Some(now + AFTER_STOP);
@@ -286,7 +293,7 @@ impl TagThread {
                 }
             },
             TagCmd::SelfTest => match self.tag.test(TestReq::RunAll) {
-                Ok(()) => {
+                Ok(_) => {
                     self.report(Report::TestSent);
                     self.next_poll = Some(Instant::now() + QUIET_AFTER_BUSY);
                 }
@@ -296,7 +303,7 @@ impl TagThread {
                 }
             },
             TagCmd::Erase => match self.tag.erase() {
-                Ok(()) => {
+                Ok(_) => {
                     self.report(Report::EraseSent);
                     self.poll();
                 }

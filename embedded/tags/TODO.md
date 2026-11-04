@@ -38,49 +38,16 @@ not been reproduced on a tag.
 
 ## Defects
 
-- **An L4 tag accepts a stop sent early in the first session after a start,
-  and never acts on it.** Found on UIUCTag, 2026-11-02 (breakout base, 2.50 V,
-  `98fee9ec`). `tag-start --start-now`, then `tag-stop` at once: the tag
-  answers the stop OK, was RUNNING when it was sent, and is still RUNNING 30 s
-  of polls later, in 20 of 20 cycles. In the same session, with no reset
-  between, a stop resent 4 s later stops it at the next poll (5 of 5), and one
-  sent after a 2 s wait works first time (5 of 5). A stop from any later
-  session works: with a `tag-info` attach between the start and the stop, 38 of
-  40. Not yet tried on BitTag, PresTag or CompassTag, which share the code.
-
-  The cause, *confirmed 2026-11-02*: each attach resets the tag, and the first
-  `StateMachine()` pass after that boot takes the reset recovery branch, which
-  returns before the `MON_WORK_*` checks. `main()` has already cleared the
-  events it passed in, so a stop evaluated by `monitorServicePending()` in that
-  pass is dropped. The fix, for the batch, goes straight after the one-shot
-  `pState->resetCause = resetStandby;` in that branch:
-
-  ```c
-  if (events & MON_WORK_ALL)
-  {
-    chEvtAddEvents(events & MON_WORK_ALL);
-  }
-  ```
-
-  Tested on UIUCTag as a throwaway image (32 bytes more text than `main`, so the
-  change was linked in), then `main` put back: 20 of 20 start-then-`tag-stop`
-  cycles stopped on the first stop, in 0.18 to 0.25 s, all FINISHED, against
-  9 of 10 needing the host's resend on `main`. It covers every `MON_WORK_*`
-  request, not only stop. Check BitTag, PresTag and CompassTag with the same
-  loop when the batch is qualified.
-
-  This is the minimal fix. The root problem is that the state-changing
-  commands answer before they act; [the synchronous-commands
-  proposal](common/core/design/proposals/synchronous-monitor-commands.md)
-  holds the reply until the state machine has acted, which subsumes the
-  re-post. Take one or the other into the batch, not both.
-
-  The host works around it: `Tag::stop_confirmed()` in `tagcore-rs` resends a
-  stop while the tag is still acquiring, and `tag-stop`, `tag-reset`,
-  `tag-dwnld`, Tag Monitor and Tag Programmer all resend. With it, 10 of 10
-  start-then-`tag-stop` and 5 of 5 start-then-`tag-reset` cycles stopped, 9 of
-  the 10 on the resend. Hosts that send one stop and wait, including the legacy
-  C++ tools, still see the fault.
+- **On an L4 tag, the first request after an attach waits for an erase to
+  finish.** Seen on CompassTagAT25 (2026-11-03, 2.50 V, branch
+  `sync-monitor-commands`): attach to a tag in sRESET, and a stop or erase is
+  answered only after the sweep ends, 6.6 s later, although within a session
+  the sweep yields to a request after one sector. Status reads are answered at
+  once, from the cached status. On IMUTag (U3) the same request was answered
+  in 0.23 s. The reply is still correct (PERM, then IDLE), so an erase sent in
+  a new session to an erasing L4 tag never continues it; it finds the erase
+  done. Not yet explained; the sweep's event check, the L4 attach sequence and
+  the boot's first pass are the places to look.
 
 - **The L4 DebugMonitor handler can clear the MON_REQ of a request still
   pending.** Step 1 of
@@ -262,10 +229,10 @@ not been reproduced on a tag.
   standby wake, attach reset, field power loss, brownout, exception. Then
   check each against the code rather than preserving every branch. UIUCTag
   behaves differently from BitTag after an attach, and nothing in its
-  `restoreLog()` explains why. The
-  [synchronous-commands proposal](common/core/design/proposals/synchronous-monitor-commands.md)
-  removes one reason for the complexity (a monitor request racing the recovery
-  pass). Doing both at once suits the firmware batch.
+  `restoreLog()` explains why. The synchronous
+  [monitor commands](common/core/design/monitor-commands.md) removed one reason
+  for the complexity: the main loop now serves no request before the recovery
+  pass, so a request can no longer race it.
 - **The monitor-attach recovery branch adopts retained state without
   cross-checking the marker log.** Nothing depends on that now, but if
   `pState->state` is ever wiped or corrupted, it will again outrank durable

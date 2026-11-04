@@ -85,14 +85,17 @@ impl std::error::Error for TagError {}
 pub const STOP_POLL: Duration = Duration::from_secs(2);
 
 /// How long a stop may go unacted on, with the tag still acquiring, before
-/// [`Tag::stop_confirmed`] sends it again.
+/// [`Tag::stop_confirmed`] sends it again. Applies only to firmware that
+/// answers a stop with a bare OK.
 ///
-/// An STM32L4 tag can accept a stop and then lose it: one sent in the first
-/// second or so of the first session after a start is answered OK and never
-/// acted on, while the same request sent later in the same session, with no
-/// reset between, stops the tag at once (`embedded/tags/TODO.md`). A stop is
-/// harmless to repeat while the tag is acquiring, so the cure on the host is
-/// to resend it rather than wait out the timeout.
+/// That firmware queued the stop for a later state-machine pass, and an
+/// STM32L4 tag could accept one and lose it: a stop sent in the first second
+/// or so of the first session after a start was answered OK and never acted
+/// on, while the same request sent later in the same session stopped the tag
+/// at once. A stop is harmless to repeat while the tag is acquiring, so the
+/// cure on the host is to resend it rather than wait out the timeout.
+/// Firmware with synchronous commands stops before it answers, and replies
+/// with the resulting Status, so nothing is resent to it.
 pub const STOP_RESEND_AFTER: Duration = Duration::from_secs(4);
 
 /// Whether a stop ends an acquisition in `state`: CONFIGURED, RUNNING or
@@ -158,7 +161,8 @@ fn ack_err(ack: &Ack) -> ack::Err {
 
 /// The outcome of an RPC, as `Tag::LastError()` reports it: the firmware's
 /// message if it sent one, otherwise one derived from the transport flag and
-/// the Ack code; empty for a success.
+/// the Ack code, naming the tag's state when the refusal carries a Status;
+/// empty for a success.
 fn describe(ack: &Ack, rpc_failed: bool) -> TagError {
     let err = ack_err(ack);
     let mut message = ack.error_message().to_owned();
@@ -167,6 +171,9 @@ fn describe(ack: &Ack, rpc_failed: bool) -> TagError {
             message = "Monitor call failed".into();
         } else if err != ack::Err::Ok {
             message = format!("Tag returned {}", err.as_str_name());
+            if let Some(ack::Payload::Status(status)) = &ack.payload {
+                message.push_str(&format!(" (tag is {})", state_label(status.state)));
+            }
         }
     }
     TagError {
@@ -182,6 +189,29 @@ fn monitor_failure(message: &str) -> Ack {
     Ack {
         err: ack::Err::Monitor as i32,
         payload: Some(ack::Payload::ErrorMessage(message.into())),
+    }
+}
+
+/// The outcome of a state-changing command (Start, Stop, Erase, Self-test,
+/// Calibrate) whose RPC completed with `ack`.
+///
+/// Firmware with synchronous commands carries out the transition before it
+/// answers, and replies with the resulting [`Status`]; older firmware answers
+/// a bare OK and acts later. See
+/// `embedded/tags/common/core/design/monitor-commands.md`.
+///
+/// # Errors
+///
+/// The [`describe`]d Ack when its code is not OK: PERM when the state did
+/// not allow the command, NXIO when a start or calibrate did not reach its
+/// state, and so on.
+fn command_outcome(ack: &Ack) -> Result<Option<Status>, TagError> {
+    if ack_err(ack) != ack::Err::Ok {
+        return Err(describe(ack, false));
+    }
+    match &ack.payload {
+        Some(ack::Payload::Status(status)) => Ok(Some(status.clone())),
+        _ => Ok(None),
     }
 }
 
@@ -251,6 +281,19 @@ impl Inner {
         } else {
             Err(self.error())
         }
+    }
+
+    /// Sends a state-changing command; see [`command_outcome`].
+    ///
+    /// A transport failure is recorded as a MONITOR Ack ("Monitor call
+    /// failed"), as the C++ `Start()` does, so [`Tag::last_error`] reports
+    /// [`ack::Err::Monitor`] rather than `Unspecified`.
+    fn command(&mut self, req: &Req) -> Result<Option<Status>, TagError> {
+        if !self.rpc(req) {
+            self.ack = monitor_failure("Monitor call failed");
+            return Err(self.error());
+        }
+        command_outcome(&self.ack)
     }
 
     /// The Ack payload, if the RPC completed and carried one.
@@ -511,45 +554,64 @@ impl Tag {
         match ack_err(&inner.ack) {
             ack::Err::Ok => String::new(),
             ack::Err::Unspecified => "Tag returned an empty or invalid acknowledgement".into(),
-            err => format!("Tag returned {}", err.as_str_name()),
+            _ => describe(&inner.ack, false).message,
         }
     }
 
     // ---- Tag control ----
+    //
+    // Start, Stop, Erase, Self-test and Calibrate return `Ok(Some(status))`
+    // from firmware with synchronous commands: the transition has run, and
+    // `status` is the state it reached. `Ok(None)` is a bare OK from older
+    // firmware, which only queued the command; the caller then learns the
+    // outcome from later status reads. A refusal is `Err`; from the newer
+    // firmware a PERM leaves the state as it was.
 
     /// Erases the stored data and returns the tag to IDLE.
-    pub fn erase(&self) -> Result<(), TagError> {
+    ///
+    /// Synchronous firmware replies on entering sRESET, before the sweep: the
+    /// erase then runs on the tag, and the caller polls until IDLE. Accepted
+    /// from FINISHED and ABORTED, and from sRESET, where it continues the
+    /// sweep already under way and replies sRESET. Older firmware refuses an
+    /// erase in sRESET with PERM, but its sweep carries on regardless.
+    ///
+    /// # Errors
+    ///
+    /// The transport failure or the firmware's refusal; see [`Tag::last_error`].
+    pub fn erase(&self) -> Result<Option<Status>, TagError> {
         self.lock()
-            .expect_ok(&request(req::Payload::Erase(Empty {})))
+            .command(&request(req::Payload::Erase(Empty {})))
     }
 
     /// Configures the tag with `config` and starts it.
     ///
-    /// A transport failure is recorded as a MONITOR Ack ("Monitor call
-    /// failed"), as the C++ `Start()` does, so [`last_error`](Self::last_error)
-    /// reports [`ack::Err::Monitor`] rather than `Unspecified`.
-    pub fn start(&self, config: &Config) -> Result<(), TagError> {
-        let mut inner = self.lock();
-        if !inner.rpc(&request(req::Payload::Start(config.clone()))) {
-            inner.ack = monitor_failure("Monitor call failed");
-            return Err(inner.error());
-        }
-        if ack_err(&inner.ack) == ack::Err::Ok {
-            Ok(())
-        } else {
-            Err(inner.error())
-        }
+    /// Synchronous firmware replies CONFIGURED or RUNNING. It answers NXIO
+    /// when the configuration could not be stored, or when the start ended in
+    /// any other state (a start that fails device setup aborts).
+    ///
+    /// # Errors
+    ///
+    /// The transport failure, recorded as a MONITOR Ack ("Monitor call
+    /// failed"), or the firmware's refusal; see [`Tag::last_error`].
+    pub fn start(&self, config: &Config) -> Result<Option<Status>, TagError> {
+        self.lock()
+            .command(&request(req::Payload::Start(config.clone())))
     }
 
-    /// Stops a running tag.
+    /// Stops a running tag, or ends calibration.
     ///
-    /// This only sends the request: the firmware queues the stop and acts on
-    /// it later, and an STM32L4 tag can accept it and lose it (see
-    /// [`STOP_RESEND_AFTER`]). Use [`Tag::stop_confirmed`] unless something
-    /// else polls for the stopped state and resends.
-    pub fn stop(&self) -> Result<(), TagError> {
+    /// Synchronous firmware replies FINISHED or ABORTED (IDLE when it ends
+    /// calibration). Older firmware only queues the stop, and an STM32L4 tag
+    /// running it can accept the stop and lose it (see
+    /// [`STOP_RESEND_AFTER`]); use [`Tag::stop_confirmed`] unless something
+    /// else handles both.
+    ///
+    /// # Errors
+    ///
+    /// The transport failure or the firmware's refusal; see [`Tag::last_error`].
+    pub fn stop(&self) -> Result<Option<Status>, TagError> {
         self.lock()
-            .expect_ok(&request(req::Payload::Stop(Empty {})))
+            .command(&request(req::Payload::Stop(Empty {})))
     }
 
     /// Stops an acquiring tag and waits until it reports FINISHED or ABORTED.
@@ -557,7 +619,9 @@ impl Tag {
     /// Reads the status first. A tag already FINISHED or ABORTED is returned
     /// as it is, with no stop sent; one in any other state that is not
     /// acquiring (see [`is_acquiring`]) is refused without sending one. The
-    /// stop is then sent, and the status read every [`STOP_POLL`]; while the
+    /// stop is then sent. A reply carrying a stopped Status (synchronous
+    /// firmware) is returned at once. Otherwise the status is read every
+    /// [`STOP_POLL`]; while the
     /// tag is still acquiring [`STOP_RESEND_AFTER`] after the last stop, the
     /// stop is sent again. A resent stop that fails is only logged: the state
     /// may have moved between the read and the request, and the next read
@@ -580,7 +644,11 @@ impl Tag {
         if !is_acquiring(status.state) {
             return Err(StopFailure::NotAcquiring(Box::new(status)));
         }
-        self.stop().map_err(StopFailure::Refused)?;
+        if let Some(stopped) = self.stop().map_err(StopFailure::Refused)?
+            && is_stopped(stopped.state)
+        {
+            return Ok(stopped);
+        }
         let started = Instant::now();
         let mut sent = started;
         loop {
@@ -606,10 +674,18 @@ impl Tag {
         }
     }
 
-    /// Puts the tag in its sensor-calibration state.
-    pub fn calibrate(&self) -> Result<(), TagError> {
+    /// Puts the tag in its sensor-calibration state; [`Tag::stop`] ends it.
+    ///
+    /// Synchronous firmware replies CALIBRATE, or NXIO if the tag did not
+    /// reach it. Calibration does not survive an attach: the reset returns
+    /// the tag to IDLE.
+    ///
+    /// # Errors
+    ///
+    /// The transport failure or the firmware's refusal; see [`Tag::last_error`].
+    pub fn calibrate(&self) -> Result<Option<Status>, TagError> {
         self.lock()
-            .expect_ok(&request(req::Payload::Calibrate(Empty {})))
+            .command(&request(req::Payload::Calibrate(Empty {})))
     }
 
     /// Sets the tag's clock to the host's.
@@ -653,10 +729,19 @@ impl Tag {
         }
     }
 
-    /// Runs a self-test.
-    pub fn test(&self, test: TestReq) -> Result<(), TagError> {
+    /// Starts a self-test.
+    ///
+    /// Synchronous firmware replies on entering TEST, with `test_status`
+    /// TEST_RUNNING; the test runs on the tag's next pass, and the tag
+    /// returns to IDLE with the result. A test cut short by a reset leaves
+    /// IDLE with TEST_RUNNING. The caller polls until IDLE.
+    ///
+    /// # Errors
+    ///
+    /// The transport failure or the firmware's refusal; see [`Tag::last_error`].
+    pub fn test(&self, test: TestReq) -> Result<Option<Status>, TagError> {
         self.lock()
-            .expect_ok(&request(req::Payload::Test(test as i32)))
+            .command(&request(req::Payload::Test(test as i32)))
     }
 
     // ---- Logs ----
@@ -791,5 +876,42 @@ mod tests {
             tag.debug_message(),
             "Tag returned an empty or invalid acknowledgement"
         );
+    }
+
+    /// An Ack with code `err` carrying a Status in `state`.
+    fn status_ack(err: ack::Err, state: TagState) -> Ack {
+        Ack {
+            err: err as i32,
+            payload: Some(ack::Payload::Status(Status {
+                state: state as i32,
+                ..Status::default()
+            })),
+        }
+    }
+
+    #[test]
+    /// A synchronous reply yields the Status the command reached.
+    fn command_reply_with_status_is_the_resulting_state() {
+        let s = command_outcome(&status_ack(ack::Err::Ok, TagState::Finished))
+            .unwrap()
+            .unwrap();
+        assert_eq!(s.state, TagState::Finished as i32);
+    }
+
+    #[test]
+    /// A bare OK, from firmware that queues commands, yields no Status.
+    fn command_reply_without_status_is_old_firmware() {
+        assert_eq!(command_outcome(&ack(ack::Err::Ok, None)), Ok(None));
+    }
+
+    #[test]
+    /// A refusal is an error whether or not it carries a Status, and names
+    /// the tag's state when it does.
+    fn command_refusal_is_an_error_naming_the_state() {
+        let e = command_outcome(&status_ack(ack::Err::Perm, TagState::Idle)).unwrap_err();
+        assert_eq!(e.err, ack::Err::Perm);
+        assert_eq!(e.message, "Tag returned PERM (tag is IDLE)");
+        let e = command_outcome(&ack(ack::Err::Perm, Some("not now"))).unwrap_err();
+        assert_eq!(e.message, "not now");
     }
 }

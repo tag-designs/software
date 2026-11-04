@@ -40,7 +40,9 @@ Availability availability(Command command, const CommandInputs &in)
     return enabledIf(in.attached && (in.state == CONFIGURED || in.state == RUNNING ||
                                      in.state == HIBERNATING || in.state == CALIBRATE));
   case Command::Erase:
-    return enabledIf(in.attached && (in.state == FINISHED || in.state == ABORTED));
+    // sRESET too: an erase sent while the tag is erasing continues the sweep.
+    return enabledIf(in.attached &&
+                     (in.state == FINISHED || in.state == ABORTED || in.state == sRESET));
   case Command::Download:
     return enabledIf(in.attached && isDownloadableState(in.state) && !in.downloading);
   case Command::Open:

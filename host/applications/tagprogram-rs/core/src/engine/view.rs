@@ -223,7 +223,8 @@ impl Station {
     /// `updateButtons`: Program is enabled with no tooltip exactly when
     /// [`Station::can_program`] passes (its refusal is the tooltip); Retest needs
     /// an answering tag and an OK record; Stop shows for a tag in a deployed
-    /// state and Erase for one in FINISHED or ABORTED. The outstanding prompt is
+    /// state and Erase for one in FINISHED, ABORTED or SRESET (where it
+    /// continues the erase). The outstanding prompt is
     /// included with its `id`.
     pub(crate) fn view_state(&self) -> Value {
         let running = self.session_running();
@@ -243,7 +244,10 @@ impl Station {
                     | TagState::SReset
             )
         });
-        let erase_visible = matches!(state, Some(TagState::Finished | TagState::Aborted));
+        let erase_visible = matches!(
+            state,
+            Some(TagState::Finished | TagState::Aborted | TagState::SReset)
+        );
         let program = self.can_program();
         let action = |enabled: bool| json!({ "enabled": enabled, "tooltip": "" });
         json!({

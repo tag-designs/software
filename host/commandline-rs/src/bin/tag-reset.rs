@@ -4,7 +4,8 @@
 //! definite state after the attach reset, stops it if it is RUNNING,
 //! HIBERNATING or CONFIGURED and polls until it is FINISHED or ABORTED,
 //! erases it and polls until the erase reaches IDLE, and optionally syncs its
-//! clock (`--set-rtc`).
+//! clock (`--set-rtc`). A tag found already erasing (sRESET) is sent the
+//! erase too, which continues the sweep, and polled until IDLE.
 //!
 //! Exits 0 with the tag IDLE; 1 if the attach, a status read, the stop, the
 //! erase or the clock sync fails, the tag never settles, does not stop
@@ -120,9 +121,9 @@ fn main() -> ExitCode {
     println!("{}", proto::debug_string(&status));
 
     // A stop ends an acquisition only in the states is_acquiring() names
-    // (monitor_acquisition_active() in monitor.c). It is posted, not
-    // performed, and an L4 tag can lose one, so stop_confirmed() polls for
-    // the stopped state and resends.
+    // (monitor_acquisition_active() in monitor.c). stop_confirmed() takes a
+    // synchronous reply as the answer; with older firmware, which queues the
+    // stop and on L4 can lose it, it polls for the stopped state and resends.
     if tagcore::tag::is_acquiring(status.state) {
         status = match tag.stop_confirmed(Duration::from_secs(cli.stop_timeout)) {
             Ok(status) => status,
@@ -132,14 +133,29 @@ fn main() -> ExitCode {
     }
 
     println!("State: {}", state_name(status.state));
-    if status.state == TagState::Finished as i32 || status.state == TagState::Aborted as i32 {
+    let erasing = status.state == TagState::SReset as i32;
+    if status.state == TagState::Finished as i32
+        || status.state == TagState::Aborted as i32
+        || erasing
+    {
+        // In sRESET the erase continues the sweep already under way. Firmware
+        // that predates synchronous commands refuses it but sweeps on
+        // regardless, so there the refusal is only a note and the poll below
+        // still waits for IDLE.
         if tag.erase().is_err() {
-            return fail(format!("Erase failed: {}", tag.debug_message()));
+            if !erasing {
+                return fail(format!("Erase failed: {}", tag.debug_message()));
+            }
+            println!(
+                "Erase while erasing refused ({}); waiting for the sweep to finish",
+                tag.debug_message()
+            );
         }
 
-        // Erase() only posts the work; the state machine then sweeps
-        // external storage in batches whose length depends on the data
-        // present, so poll for IDLE rather than guess a duration.
+        // The erase reply means at most that the tag entered sRESET; the
+        // state machine then sweeps external storage in batches whose length
+        // depends on the data present, so poll for IDLE rather than guess a
+        // duration.
         const POLL_MS: u64 = 250;
         let timeout_ms = cli.reset_timeout * 1000;
         let mut waited_ms = 0;
@@ -174,8 +190,8 @@ fn main() -> ExitCode {
     // also keeps --set-rtc to IDLE, the only state the firmware accepts it in.
     if status.state != TagState::Idle as i32 {
         eprintln!(
-            "Tag is {}; it can be reset only from RUNNING, HIBERNATING, CONFIGURED, FINISHED \
-             or ABORTED",
+            "Tag is {}; it can be reset only from RUNNING, HIBERNATING, CONFIGURED, FINISHED, \
+             ABORTED or sRESET",
             state_name(status.state)
         );
         println!("Final state: {}", state_name(status.state));

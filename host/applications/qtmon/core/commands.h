@@ -68,7 +68,8 @@ struct CommandInputs {
  * @details Tag commands need an attached tag in the right state: Read,
  *          Synchronize Clock and Self-Test an IDLE one (Self-Test not while
  *          one is pending); Stop a CONFIGURED, RUNNING, HIBERNATING or
- *          CALIBRATE one; Erase a FINISHED or ABORTED one; Download a
+ *          CALIBRATE one; Erase a FINISHED, ABORTED or sRESET one (in
+ *          sRESET it continues the erase); Download a
  *          downloadable one (isDownloadableState()) while no download runs.
  *          Configuration commands need no tag: Save and Reset need a
  *          document, and Open is always available. Start needs an IDLE tag

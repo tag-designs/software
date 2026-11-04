@@ -57,6 +57,9 @@ active tags unless a tag provides a same-named local override.
 - `design/u375-low-power.md`: how STM32U375 tags sleep (Stop 3 terminal, Stop 2
   or Stop 1 run, Sleep idle) and what to measure after a change.
 - `design/restart-recovery.md`: the recovery contract after a reset.
+- `design/monitor-commands.md`: the synchronous state-changing monitor commands
+  (Start, Stop, Erase, Self-test, Calibrate), their replies, and the main loop
+  that serves them.
 - `design/i2c-bus-recovery.md`: clearing a stuck I2C bus on U375 IMUTag targets.
 - `design/investigations/`: dated investigations, including the Standby
   layout-dependence fault.
@@ -67,8 +70,9 @@ active tags unless a tag provides a same-named local override.
 
 The main tag thread processes only ChibiOS thread events. Interrupt handlers and
 callbacks translate hardware causes into `EVT_*` bits and signal the main
-thread; monitor protobuf evaluation posts `MON_WORK_*` bits into the same event
-mask before the state machine runs. On reset from standby, `main.c` reconstructs
+thread. Monitor commands post no events: `proto_eval()` runs a state-changing
+command's transition at once and replies with the resulting state
+([Monitor Commands](design/monitor-commands.md)). On reset from standby, `main.c` reconstructs
 retained RTC alarm/wakeup flags once during startup and posts those bits as
 thread events. The steady-state loop should not poll RTC status registers.
 

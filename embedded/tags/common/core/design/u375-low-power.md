@@ -116,15 +116,17 @@ The main loop in `main.c` applies the mode only in RUNNING:
 
 ```c
 idlePowerMode = sleepmode;
-eventmask_t wait_events = EVT_HARDWARE_ALL | MON_WORK_ALL;
+eventmask_t wait_events = EVT_HARDWARE_ALL;
 if (isMonitorEnabled())
   wait_events |= EVT_MONITOR_ALL;
 pending_events = chEvtWaitAny(wait_events);
 idlePowerMode = TAG_DEFAULT_IDLE_POWER_MODE;
 ```
 
-`MON_WORK_ALL` is in the mask so that a posted stop or other monitor work
-wakes the RUNNING wait by itself. In any other state the loop never blocks:
+A monitor request wakes the RUNNING wait through `EVT_MONITOR_ALL`; a command
+such as Stop runs inside the request
+([Monitor Commands](monitor-commands.md)), so no separate work event is
+needed. In any other state the loop never blocks:
 it collects pending events with `chEvtGetAndClearEvents(EVT_ALL_DEFINED)` and
 re-runs the state machine. A blocking wait there could miss a `MONITORSTOP`
 that arrives between the monitor test and the wait. The wake model is

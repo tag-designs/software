@@ -47,6 +47,13 @@ it says so below.
   Retest), the UI asks `label_conflict` and, when it answers, asks again with
   Cancel the default. A blank board has no UUID yet, so for one every
   recorded use of the label counts.
+- **A tag found erasing (SRESET) is sent an erase**, which continues the
+  sweep on firmware with synchronous commands
+  ([Monitor Commands](../../../../embedded/tags/common/core/design/monitor-commands.md)):
+  the Tag state row shows Erase in SRESET as well as FINISHED and ABORTED,
+  and a session that finds the tag erasing sends the erase and moves to
+  Erasing instead of waiting it out. Older firmware refuses that erase and
+  sweeps on regardless, so the refusal is only logged.
 
 ## Transport
 

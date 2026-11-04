@@ -9,7 +9,7 @@ attached state tagtype document downloading testpending | attach detach read sta
 1 HIBERNATING BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
 1 ABORTED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
 1 FINISHED BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
-1 sRESET BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 sRESET BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=D open=E save=E reset=E
 1 EXCEPTION BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=E open=E save=E reset=E
 1 CALIBRATE BITTAG_LE same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
 1 IDLE BITTAG_LE none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=D reset=D
@@ -26,7 +26,7 @@ attached state tagtype document downloading testpending | attach detach read sta
 1 HIBERNATING COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
 1 ABORTED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
 1 FINISHED COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=E open=E save=E reset=E
-1 sRESET COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=D open=E save=E reset=E
+1 sRESET COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=E download=D open=E save=E reset=E
 1 EXCEPTION COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=D sync=D test=D erase=D download=E open=E save=E reset=E
 1 CALIBRATE COMPASSTAG same 0 0 | attach=D detach=E read=D start=D stop=E sync=D test=D erase=D download=D open=E save=E reset=E
 1 IDLE COMPASSTAG none 0 0 | attach=D detach=E read=E start=D stop=D sync=E test=E erase=D download=D open=E save=D reset=D

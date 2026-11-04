@@ -192,9 +192,15 @@ fn main() -> ExitCode {
     println!("#  Running test {}", requested_test.as_str_name());
     // A result is only meaningful if the request was accepted and the
     // status reporting it was actually read.
-    if tag.test(requested_test).is_err() {
-        eprintln!("Test request failed: {}", tag.debug_message());
-        return ExitCode::FAILURE;
+    match tag.test(requested_test) {
+        // Synchronous firmware answers on entering TEST; older firmware
+        // answers a bare OK. Either way the test runs after the reply.
+        Ok(Some(s)) => println!("#  Test started: {}", state_name(s.state)),
+        Ok(None) => {}
+        Err(_) => {
+            eprintln!("Test request failed: {}", tag.debug_message());
+            return ExitCode::FAILURE;
+        }
     }
     // The tag returns to IDLE when the test is finished; until then
     // test_status is TEST_RUNNING, a state rather than a verdict.
@@ -235,6 +241,11 @@ fn main() -> ExitCode {
         "Test Result: {}",
         enum_name(status.test_status, TestResult::as_str_name)
     );
+    if status.test_status == TestResult::TestRunning as i32 {
+        // IDLE with the result still TEST_RUNNING: the tag reset during the
+        // test, and abandoned it rather than rerunning it.
+        eprintln!("The test did not finish: the tag reset while it ran");
+    }
     if tag.set_rtc().is_err() {
         // reset rtc since test may alter
         eprintln!("SetRtc after test failed: {}", tag.debug_message());

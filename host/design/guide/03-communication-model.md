@@ -155,6 +155,16 @@ and the response is published when it finishes. A request therefore takes as
 long as the main thread takes to get to it: milliseconds normally, a second
 or more while the tag is setting its clock or running a self test.
 
+The state-changing commands (Start, Stop, Erase, Self-test, Calibrate) are
+synchronous on current firmware: `proto_eval()` runs the transition before
+it replies, and the reply carries the `Status` the tag reached, or PERM with
+the state unchanged. Erase and Self-test reply on entering sRESET or TEST,
+and the host polls while the sweep or the test runs. `Tag::start`, `stop`,
+`erase`, `test` and `calibrate` return that Status as `Ok(Some(status))`;
+older firmware replies a bare OK, returned as `Ok(None)`, and acts on a
+later pass, so its outcome is read from later status polls
+([monitor commands](../../../embedded/tags/common/core/design/monitor-commands.md)).
+
 ## A protobuf RPC
 
 `monitor/rpc.rs` frames one request, the same way over both transports:

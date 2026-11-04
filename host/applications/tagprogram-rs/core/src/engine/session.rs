@@ -438,11 +438,15 @@ impl Station {
     /// Stopping: brings the tag to IDLE.
     ///
     /// IDLE starts the programmer. FINISHED or ABORTED: asks the tag's own
-    /// firmware to erase its log and moves to Erasing. Any other state: sends
-    /// one stop on the first tick (not during TEST or SRESET, which end on
-    /// their own), resends it every [`RESEND_TICKS`] while the tag is still
-    /// acquiring, and waits up to [`STOP_TICKS`]. A tag that stops answering
-    /// or refuses the erase fails the session.
+    /// firmware to erase its log and moves to Erasing. SRESET: the tag is
+    /// already erasing; sends the erase, which continues the sweep, and moves
+    /// to Erasing. Firmware that predates synchronous commands refuses that
+    /// erase but sweeps on regardless, so the refusal is only logged. Any
+    /// other state: sends one stop on the first tick (not during TEST, which
+    /// ends on its own), resends it every [`RESEND_TICKS`] while the tag is
+    /// still acquiring, and waits up to [`STOP_TICKS`]. A tag that stops
+    /// answering or refuses an erase from FINISHED or ABORTED fails the
+    /// session.
     fn tick_stopping(&mut self) {
         let status = self.tag.status();
         Self::log_tick(Step::Stopping, &status);
@@ -466,10 +470,17 @@ impl Station {
                 self.sess().ticks = 0;
                 self.set_step(Step::Erasing, "The tag is erasing its log");
             }
+            TagState::SReset => {
+                if let Err(e) = self.tag.erase() {
+                    debug!("erase while erasing refused ({e}); the sweep continues");
+                }
+                self.sess().ticks = 0;
+                self.set_step(Step::Erasing, "The tag is erasing its log");
+            }
             TagState::Idle => self.run_programmer(),
             _ => {
                 let ticks = self.sess().ticks;
-                if ticks == 0 && !matches!(state, TagState::Test | TagState::SReset) {
+                if ticks == 0 && state != TagState::Test {
                     let _ = self.tag.stop();
                 } else if ticks.is_multiple_of(RESEND_TICKS) && is_acquiring(status.state) {
                     // An L4 tag can accept a stop and lose it; resend while

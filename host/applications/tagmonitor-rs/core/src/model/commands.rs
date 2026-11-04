@@ -113,7 +113,7 @@ fn enabled_if(condition: bool) -> Availability {
 /// Tag commands need an attached tag in the right state: Read, Synchronize
 /// Clock and Self-Test an IDLE one (Self-Test not while one is pending);
 /// Stop a CONFIGURED, RUNNING, HIBERNATING or CALIBRATE one; Erase a
-/// FINISHED or ABORTED one; Download a downloadable one while no download
+/// FINISHED, ABORTED or sRESET one (in sRESET it continues the erase); Download a downloadable one while no download
 /// runs. Configuration commands need no tag: Save and Reset need a document,
 /// and Open is always available. Start needs an IDLE tag and a document of
 /// that tag's type.
@@ -139,8 +139,14 @@ pub fn availability(command: Command, input: &CommandInputs) -> Availability {
                         | TagState::Calibrate
                 ),
         ),
+        // sRESET too: an erase sent while the tag is erasing continues the
+        // sweep, on firmware with synchronous commands.
         Command::Erase => enabled_if(
-            input.attached && matches!(input.state, TagState::Finished | TagState::Aborted),
+            input.attached
+                && matches!(
+                    input.state,
+                    TagState::Finished | TagState::Aborted | TagState::SReset
+                ),
         ),
         Command::Download => {
             enabled_if(input.attached && is_downloadable_state(input.state) && !input.downloading)
