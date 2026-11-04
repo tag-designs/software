@@ -147,7 +147,7 @@ void monitorSharedEarlyInit(void)
       (monitor_shared.request == MONITOR_REQUEST_MAGIC);
 
   monitor_shared.abi_version = MONITOR_SHARED_ABI_VERSION;
-  monitor_shared.debug_version = DEBUGVERSION;
+  monitor_shared.debug_version = DEBUGVERSION_MAILBOX;
   monitor_shared.flags = 0U;
   monitor_shared.buf_addr = (uint32_t)ProtoBuf;
   monitor_shared.buf_size = (uint32_t)sizeof(ProtoBuf);

@@ -6,20 +6,31 @@
 #include <stdbool.h>
 #endif
 
+/*
+ * Monitor protocol version of the DebugMonitor transport (handlersL4.c): what
+ * an STM32L4 image without the mailbox answers to TAG_MONITORINFO/
+ * MONITORVERSION. Unchanged since before fw-v0.7, and up to fw-v0.7 also the
+ * version every STM32U3 image published.
+ */
 #define DEBUGVERSION 0x20
 
 /*
- * The version an STM32L4 image reports to TAG_MONITORINFO/MONITORVERSION over
- * the DebugMonitor. From 0x21 the image also answers MONITORPROTOCOL, which
- * says whether protobuf requests go over the DebugMonitor or the shared-memory
- * mailbox, so a host asks that question only of 0x21 or later. Older L4 images
- * answer an unknown operand with the host's own command word still in DCRDR.
+ * Monitor protocol version of every mailbox image: STM32U3, and STM32L4 built
+ * with TAG_L4_MONITOR_MAILBOX. It is the shared block's debug_version, and on
+ * an STM32L4 mailbox image also the MONITORVERSION answer over the
+ * DebugMonitor.
  *
- * DEBUGVERSION itself stays 0x20: the STM32U3 host requires the block's
- * debug_version to equal it exactly, so bumping it would make every released
- * host refuse new U3 firmware.
+ * From 0x21 an STM32L4 image answers MONITORPROTOCOL, which says whether
+ * protobuf requests go over the DebugMonitor or the shared-memory mailbox; a
+ * host asks that question only of 0x21 or later, because the DebugMonitor
+ * handler answers an unknown operand with the host's own command word still
+ * in DCRDR.
+ *
+ * Hosts up to v4.0.1 require a U3 block's debug_version to equal 0x20
+ * exactly, so they refuse 0x21 firmware; later hosts accept 0x20 up to
+ * DEBUGVERSION_MAILBOX.
  */
-#define DEBUGVERSION_L4 0x21
+#define DEBUGVERSION_MAILBOX 0x21
 
 /*
  * STM32U3 shared-memory monitor ABI.
@@ -137,12 +148,15 @@ enum DBGINFO { MONITORVERSION = 0, MONITORBUF = 1, MONITORBUFSIZE = 2, TAGSHASTR
                MONITORPROTOCOL = 4 };
 
 /*
- * Answers to MONITORPROTOCOL (STM32L4, DEBUGVERSION_L4 and later): which
- * transport carries protobuf requests. An image that answers
- * MONITOR_PROTOCOL_MAILBOX keeps the DebugMonitor for TAG_MONITORINFO only;
- * the host then starts the session by writing MONITOR_REQUEST_MAGIC to the
- * shared block and pending the kick IRQ, and refuses MONITORSTART and
- * PROTOBUF over the DebugMonitor.
+ * Answers to MONITORPROTOCOL, asked of an STM32L4 image reporting
+ * DEBUGVERSION_MAILBOX or later: which transport carries protobuf requests.
+ * An image that answers MONITOR_PROTOCOL_MAILBOX keeps the DebugMonitor for
+ * TAG_MONITORINFO only; the host then starts the session by writing
+ * MONITOR_REQUEST_MAGIC to the shared block and pending the kick IRQ, and the
+ * image refuses MONITORSTART and PROTOBUF over the DebugMonitor.
+ * MONITOR_PROTOCOL_DEBUGMON is for a future 0x21-or-later image that stays on
+ * the DebugMonitor; DebugMonitor images today report DEBUGVERSION (0x20) and
+ * are never asked.
  */
 enum MONITOR_PROTOCOL {
   MONITOR_PROTOCOL_DEBUGMON = 1,

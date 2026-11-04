@@ -7,18 +7,24 @@
 //! `TAG_L4_MONITOR_MAILBOX` use.
 //!
 //! A change on either side of the boundary must be made in `monitor.h`
-//! and here together. The U3 attach checks [`MONITOR_SHARED_ABI_VERSION`]
-//! and [`DEBUGVERSION`] and refuses a mismatch; the L4 transport has no
-//! such check, so an L4 mismatch shows up as failed or nonsensical calls.
+//! and here together. The mailbox attach checks
+//! [`MONITOR_SHARED_ABI_VERSION`] exactly and the block's version against
+//! [`DEBUGVERSION`]`..=`[`DEBUGVERSION_MAILBOX`], and refuses anything else; the
+//! L4 DebugMonitor transport has no such check, so an L4 mismatch there shows
+//! up as failed or nonsensical calls.
 
-/// Monitor debug protocol version an STM32U3 tag must publish.
+/// Monitor protocol version of the STM32L4 DebugMonitor transport
+/// (`DEBUGVERSION`), and of every STM32U3 image up to fw-v0.7: the oldest
+/// version a mailbox image may publish and still be accepted.
 pub const DEBUGVERSION: u32 = 0x20;
 
-/// The first STM32L4 monitor version (`DEBUGVERSION_L4`) that answers
-/// [`info::MONITORPROTOCOL`]. Older L4 images leave the host's own command
-/// word in DCRDR for an operand they do not know, so the host asks only from
-/// this version on.
-pub const DEBUGVERSION_L4: u32 = 0x21;
+/// Monitor protocol version of the mailbox images (`DEBUGVERSION_MAILBOX`),
+/// and the newest this host knows.
+///
+/// From this version an STM32L4 image answers [`info::MONITORPROTOCOL`].
+/// Older L4 images leave the host's own command word in DCRDR for an operand
+/// they do not know, so the host asks only from this version on.
+pub const DEBUGVERSION_MAILBOX: u32 = 0x21;
 
 /// Address of the shared monitor block, at the bottom of SRAM on both
 /// families.
@@ -90,7 +96,7 @@ pub mod info {
     /// Address of the firmware's git SHA string.
     pub const TAGSHASTR: i32 = 3;
     /// Which transport carries protobuf requests, one of [`super::protocol`];
-    /// answered by STM32L4 images from [`super::DEBUGVERSION_L4`].
+    /// answered by STM32L4 images from [`super::DEBUGVERSION_MAILBOX`].
     pub const MONITORPROTOCOL: i32 = 4;
 }
 
@@ -129,7 +135,8 @@ pub struct MonitorShared {
     pub request: u32,
     /// Layout version; must equal [`MONITOR_SHARED_ABI_VERSION`].
     pub abi_version: u32,
-    /// Monitor protocol version; must equal [`DEBUGVERSION`].
+    /// Monitor protocol version; accepted from [`DEBUGVERSION`] to
+    /// [`DEBUGVERSION_MAILBOX`].
     pub debug_version: u32,
     /// Session flags, such as [`MONITOR_SHARED_FLAG_SESSION_READY`].
     pub flags: u32,

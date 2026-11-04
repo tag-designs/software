@@ -21,7 +21,7 @@ use std::thread::sleep;
 
 use log::{debug, error, warn};
 
-use super::abi::{DEBUGVERSION_L4, command_word, info, op, operation_name, protocol};
+use super::abi::{DEBUGVERSION_MAILBOX, command_word, info, op, operation_name, protocol};
 use super::cortex_m::*;
 use super::{
     STM32L4_DBGMCU_CR, STM32L4_DBGMCU_CR_DBG_SLEEP, STM32L4_DBGMCU_IDCODE,
@@ -420,8 +420,8 @@ impl TagMonitor {
     /// call fails it pulses nRST, resets into the monitor again and retries
     /// once, so one missed first request (the C++ logs the same warning)
     /// does not fail the attach.
-    /// An image reporting [`DEBUGVERSION_L4`] or later is asked which
-    /// transport it uses; a mailbox image continues in
+    /// An image reporting [`DEBUGVERSION_MAILBOX`] or later is asked
+    /// which transport it uses; a mailbox image continues in
     /// [`attach_l4_mailbox`](Self::attach_l4_mailbox). Otherwise it reads the
     /// call-buffer address, the SHA string and the call-buffer size
     /// (rejecting one larger than the host buffer) and sends MONITORSTART,
@@ -475,10 +475,10 @@ impl TagMonitor {
         };
         debug!("Monitor Version 0x{:x}", self.version);
 
-        // From DEBUGVERSION_L4 an image says which transport carries its
+        // From DEBUGVERSION_MAILBOX an image says which transport carries its
         // protobuf requests; a mailbox image starts its session over the
         // shared block instead of MONITORSTART.
-        if self.version >= DEBUGVERSION_L4 {
+        if self.version >= DEBUGVERSION_MAILBOX {
             match self.call(op::TAG_MONITORINFO, info::MONITORPROTOCOL) {
                 Some(protocol::MAILBOX) => return self.attach_l4_mailbox(),
                 Some(protocol::DEBUGMON) => {}

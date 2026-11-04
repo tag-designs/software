@@ -318,17 +318,30 @@ implement as a peripheral interrupt; NVIC pending still works for it.
 ### How the host chooses the protocol
 
 The host attaches as on any L4 tag (steps 1-5 of [L4 Attach](#l4-attach)) and
-reads `MONITORVERSION`. A version of `DEBUGVERSION_L4` (0x21) or later means
-the image answers the `MONITORPROTOCOL` operand of `TAG_MONITORINFO`:
+reads `MONITORVERSION`. A version of 0x21 or later means the image answers
+the `MONITORPROTOCOL` operand of `TAG_MONITORINFO`:
 
 - `MONITOR_PROTOCOL_DEBUGMON` (1): continue with `MONITORSTART`, as above.
 - `MONITOR_PROTOCOL_MAILBOX` (2): start a mailbox session instead.
 
-A host asks only of 0x21 or later, because older L4 handlers have no default
-case: an unknown operand comes back with the host's own command word still in
-`DCRDR`. `DEBUGVERSION` itself stays 0x20, because the U3 host requires the
-shared block's `debug_version` to equal it exactly; the L4 mailbox image also
-publishes 0x20 there.
+A host asks only of 0x21 or later, because the DebugMonitor handler
+(`handlersL4.c`) has no default case: an unknown operand comes back with the
+host's own command word still in `DCRDR`. DebugMonitor images report 0x20 and
+are never asked.
+
+### Monitor versions
+
+There are two version constants in `include/monitor.h`, one per transport:
+
+| Constant | Value | Reported by |
+| --- | --- | --- |
+| `DEBUGVERSION` | 0x20 | STM32L4 DebugMonitor images, as `MONITORVERSION`. Also every STM32U3 image up to fw-v0.7, in the shared block. |
+| `DEBUGVERSION_MAILBOX` | 0x21 | Every mailbox image: STM32U3 from the release after fw-v0.7, and STM32L4 with `TAG_L4_MONITOR_MAILBOX`. It is the shared block's `debug_version`, and on an L4 mailbox image also its `MONITORVERSION`. |
+
+The mailbox attach accepts a block version from `DEBUGVERSION` to
+`DEBUGVERSION_MAILBOX`, so it takes both old and new STM32U3 images. Hosts up
+to v4.0.1 required exactly 0x20, so they refuse 0x21 STM32U3 firmware: ship
+the host before the firmware.
 
 ### L4 Mailbox Attach
 

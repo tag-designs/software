@@ -18,6 +18,13 @@ configuration's own page, the state-marker overflow and reset markers, PresTag
 F2/F3 and the L4 monitor's remaining checks -- and qualify once, rather than
 landing and measuring them one at a time. Host tool fixes are not held back.
 
+- **Monitor version 0x21 for the mailbox images rides in the batch (decided
+  2026-11-04).** IMUTag (`handlersU3.c`) and the L4 mailbox images publish
+  `DEBUGVERSION_MAILBOX` (0x21); DebugMonitor images keep `DEBUGVERSION`
+  (0x20) and are unchanged (see `docs/shared/monitor-interface.md`, Monitor
+  versions). Hosts up to v4.0.1 refuse a 0x21 IMUTag, so the host release that
+  accepts it must ship first.
+
 - **Re-arm the run's wake source on a POWERFAIL resume in CompassTag, BitTag
   and the BitPresTag family.** On an L432 tag, an attach or external reset
   that lands while the tag is awake boots as `resetPower`. Only a reset from

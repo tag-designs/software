@@ -170,16 +170,18 @@ proposal beside it.
 
 The handshake of chapter 3 is a C header both sides compile: the monitor
 opcodes (`TAG_MONITORINFO`, `MONITORSTART`, `MONITORSTOP`, `PROTOBUF`), the
-`TAG_MONITORINFO` operands, the debug protocol version (`DEBUGVERSION`,
-0x20), and for the STM32U375 the address, size, magic words, flags, kick
+`TAG_MONITORINFO` operands, the debug protocol versions (`DEBUGVERSION`,
+0x20, for the L432 DebugMonitor, and `DEBUGVERSION_MAILBOX`, 0x21, for the
+mailbox images; see `docs/shared/monitor-interface.md`), and for the STM32U375 the address, size, magic words, flags, kick
 IRQ and the packed layout of the 64-byte shared block
 (`monitor_shared_t`). The C++ host compiles the header directly; the Rust
 host **mirrors it by hand** in `tagcore-rs/src/monitor/abi.rs`, with a unit
 test that the struct's offsets match. A change to the header is therefore a
-change to `abi.rs` in the same commit. The U375 attach checks
-`MONITOR_SHARED_ABI_VERSION` and `DEBUGVERSION` and refuses a mismatch; the
-L432 path has no such check, so a mismatch there shows up as calls that
-fail or answer nonsense.
+change to `abi.rs` in the same commit. The mailbox attach checks
+`MONITOR_SHARED_ABI_VERSION` exactly, accepts a `debug_version` from
+`DEBUGVERSION` to `DEBUGVERSION_MAILBOX`, and refuses anything else; the
+L432 DebugMonitor path has no such check, so a mismatch there shows up as
+calls that fail or answer nonsense.
 
 The header's comment states the design rule for what belongs in it: only
 state the host must observe or modify. Firmware policy stays in the

@@ -27,10 +27,10 @@ use std::thread::sleep;
 use log::{debug, error, warn};
 
 use super::abi::{
-    DEBUGVERSION, MONITOR_CONNECTED_MAGIC, MONITOR_REQUEST_MAGIC, MONITOR_SHARED_ABI_VERSION,
-    MONITOR_SHARED_ADDR, MONITOR_SHARED_FLAG_SESSION_READY, MONITOR_SHARED_KICK_ICPR_ADDR,
-    MONITOR_SHARED_KICK_ISPR_ADDR, MONITOR_SHARED_KICK_MASK, MONITOR_SHARED_SIZE, MonitorShared,
-    command_word, op, operation_name, status,
+    DEBUGVERSION, DEBUGVERSION_MAILBOX, MONITOR_CONNECTED_MAGIC, MONITOR_REQUEST_MAGIC,
+    MONITOR_SHARED_ABI_VERSION, MONITOR_SHARED_ADDR, MONITOR_SHARED_FLAG_SESSION_READY,
+    MONITOR_SHARED_KICK_ICPR_ADDR, MONITOR_SHARED_KICK_ISPR_ADDR, MONITOR_SHARED_KICK_MASK,
+    MONITOR_SHARED_SIZE, MonitorShared, command_word, op, operation_name, status,
 };
 use super::cortex_m::*;
 use super::{TagMonitor, ms};
@@ -455,7 +455,7 @@ impl TagMonitor {
         self.version = shared.debug_version;
         self.call_buf = shared.buf_addr;
         self.maxpacket = shared.buf_size as usize;
-        if self.version != DEBUGVERSION
+        if !(DEBUGVERSION..=DEBUGVERSION_MAILBOX).contains(&self.version)
             || self.call_buf == 0
             || self.maxpacket == 0
             || self.maxpacket > self.rpcbuf.len()

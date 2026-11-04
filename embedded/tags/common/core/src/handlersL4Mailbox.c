@@ -281,7 +281,7 @@ void monitorSharedEarlyInit(void)
 {
   monitor_shared.request = 0U;
   monitor_shared.abi_version = MONITOR_SHARED_ABI_VERSION;
-  monitor_shared.debug_version = DEBUGVERSION;
+  monitor_shared.debug_version = DEBUGVERSION_MAILBOX;
   monitor_shared.flags = 0U;
   monitor_shared.buf_addr = (uint32_t)ProtoBuf;
   monitor_shared.buf_size = (uint32_t)sizeof(ProtoBuf);
@@ -331,7 +331,7 @@ CH_IRQ_HANDLER(DebugMon_Handler) {
         monitorStartAttachGraceFromISR();
         switch (operand) {
           case MONITORVERSION:
-            CoreDebug->DCRDR = (uint32_t)DEBUGVERSION_L4;
+            CoreDebug->DCRDR = (uint32_t)DEBUGVERSION_MAILBOX;
             break;
           case MONITORBUF:
             CoreDebug->DCRDR = (uint32_t)ProtoBuf;

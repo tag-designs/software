@@ -1067,7 +1067,10 @@ bool TagMonitor::AttachU3()
     call_buf = shared.buf_addr;
     maxpacket = shared.buf_size;
 
-    if ((version != DEBUGVERSION) || (call_buf == 0U) || (maxpacket == 0U) ||
+    // Accept every version from DEBUGVERSION (0x20, U3 up to fw-v0.7) to
+    // DEBUGVERSION_MAILBOX, the newest this host knows (include/monitor.h).
+    if ((version < DEBUGVERSION) || (version > DEBUGVERSION_MAILBOX) || (call_buf == 0U) ||
+        (maxpacket == 0U) ||
         (maxpacket > sizeof(rpcbuf)) || (shared.sha_addr == 0U))
     {
       log_error("U3 monitor metadata invalid version=0x%x buf=0x%x size=%zu sha=0x%x",
