@@ -13,6 +13,11 @@ the other three. This walks the whole cycle and measures each one:
   4. download                      not measured; the monitor is attached
   5. reset --set-rtc  -> IDLE      measured: the same state as step 1
 
+If the download fails, step 5 is skipped: its reset erases the log, and the
+failure may be the host's rather than the tag's. The tag is left FINISHED with
+its data for a capture or a second download. A download that is read but fails
+its sanity check is kept on disk even without --keep-download.
+
 Step 1 sets the clock deliberately. Setting the clock is normally the last
 thing done to a tag before it is deployed, so idle-with-the-clock-set is the
 state a prepared tag actually sits in for weeks. Measuring idle after a plain
@@ -80,6 +85,14 @@ DEFAULT_IDLE_MAX_UA = 100.0
 #: current in every state, which is a failure that looks exactly like the one
 #: this tool is looking for.
 DEFAULT_SETTLE_S = 12.0
+
+
+class CycleStopped(Exception):
+    """The cycle ended early on purpose, leaving the tag as it is.
+
+    Raised after a failed download, so that the final reset does not erase a
+    log nobody has read; the reason is already in the cycle's failures.
+    """
 
 
 @dataclass
@@ -294,9 +307,19 @@ def main() -> int:
             db = tmp.name
         res = download(args.bin_dir, db, args.base, args.download_timeout,
                        args.verbose)
+        keep_db = False
         if not res.ok:
             cyc.sanity = "download failed"
             cyc.failures.append(f"download failed: {res.stderr.strip()}")
+            # Step 5 would erase the log through tag-reset. A download that
+            # failed may be the host's fault (a stale decoder lost a 100-minute
+            # UIUCTag run this way on 2026-11-04), so the tag keeps its log in
+            # FINISHED for a capture or a second download.
+            cyc.failures.append(
+                "the final reset was skipped: the tag is left FINISHED with its "
+                "log. Capture it (tag-capture) or download it again before "
+                "resetting.")
+            raise CycleStopped()
         else:
             cfg = recorded_config(db)
             verdict, detail = check_download(db, args.run_duration,
@@ -306,8 +329,13 @@ def main() -> int:
             print(f"      {verdict}: {detail}")
             if verdict.lower().startswith("fail"):
                 cyc.failures.append(f"download sanity: {detail}")
+                keep_db = True
         if tmp is not None:
-            os.unlink(db)
+            if keep_db:
+                # The tag's copy is about to be erased; this is the evidence.
+                cyc.failures.append(f"the download is kept at {db}")
+            else:
+                os.unlink(db)
 
         # 5. Same state as step 1, reached by a different history.
         print("[5/5] reset to idle, set clock")
@@ -321,6 +349,9 @@ def main() -> int:
         cyc.points.append(pt)
         print(f"      {pt.current_ua:.2f} uA  [{pt.verdict}]")
 
+    except CycleStopped:
+        print("  stopped before the final reset; the tag keeps its log",
+              file=sys.stderr)
     except ExperimentError as e:
         cyc.failures.append(str(e))
         print(f"  aborted: {e}", file=sys.stderr)

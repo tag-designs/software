@@ -515,6 +515,12 @@ function(add_nanopb_target name)
           "${CMAKE_CURRENT_SOURCE_DIR}/${stem}.override.options"
         VERBATIM)
 
+      # Every variant's combined .options, not just this file's: nanopb
+      # reads an imported file's options from the -I path too, and sizes
+      # this file's messages by them (tag.proto's Ack embeds tagdata.proto's
+      # logs). Depending on this file's options alone let a fresh tree
+      # generate tag.pb.h before tagdata.options was written, sized by the
+      # defaults; only a second build corrected it.
       add_custom_command(
         OUTPUT "${generated_dir}/${stem}.pb.c" "${generated_dir}/${stem}.pb.h"
         COMMAND "${NANOPB_GENERATOR_EXECUTABLE}"
@@ -522,7 +528,7 @@ function(add_nanopb_target name)
                 -I "${parent}"
                 -D "${generated_dir}"
                 "${stem}.proto"
-        DEPENDS ${TAG_PROTO_SOURCES} "${combined_options}"
+        DEPENDS ${TAG_PROTO_SOURCES} ${nanopb_options}
         VERBATIM)
     endforeach()
 

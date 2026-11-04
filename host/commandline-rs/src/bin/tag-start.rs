@@ -21,7 +21,8 @@
 //! configuration actually sent is printed as protobuf text before the
 //! start. A non-IDLE tag other than RUNNING or CONFIGURED is refused with
 //! exit 1, as is `--set-rtc` on a tag that is not IDLE. Option errors exit 2
-//! (clap).
+//! (clap). Every failure is explained on stderr; stdout carries the
+//! configuration and the final `State:` line.
 //!
 //! # Hardware side effects
 //!
@@ -210,10 +211,13 @@ fn main() -> ExitCode {
         } else {
             start_failed = true;
             let message = tag.debug_message();
+            // On stderr, with the other failures: a script that reports a
+            // failed start reads stderr, and saw nothing when this was on
+            // stdout (an aborted UIUCTag start on 2026-11-04).
             if message.is_empty() {
-                println!("Start failed");
+                eprintln!("Start failed");
             } else {
-                println!("Start failed: {message}");
+                eprintln!("Start failed: {message}");
             }
         }
     } else if status.state == TagState::Running as i32

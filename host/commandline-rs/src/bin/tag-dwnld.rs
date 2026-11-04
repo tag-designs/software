@@ -70,7 +70,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
-use tag_tools::{BaseArgs, exit_on_interrupt, init_logging, select_base, state_name};
+use tag_tools::{BaseArgs, exit_on_interrupt, init_logging, select_base};
 use tagcore::proto::{self, Ack, Status, TagState, TagType, ack};
 use tagcore::{BitTagFlashLog, LinkAdaptStats, Tag, TagMonitorStats};
 use tagprogram_core::model::elf::plan_symbols;

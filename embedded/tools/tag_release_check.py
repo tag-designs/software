@@ -55,10 +55,12 @@ from power_experiment import DEFAULT_BIN, resolve_measure_python  # noqa: E402
 #:   shipped 60 s period; bound 1.15x the highest. A 1800 s run is the 30
 #:   samples of the fw-v0.6 qualification
 #:   (embedded/tags/families/PresTag/design/power-results.md).
-#: - UIUCTag: idle 0.15-0.16 uA, run 0.562 uA with the shipped config
-#:   (fw-v0.6 qualification); bound 1.15x. The run floor also catches a run
-#:   that wakes but does not collect, which read 0.24 uA on 2026-10-06
-#:   (embedded/tags/UIUCTag/design/power-results.md).
+#: - UIUCTag: idle 0.15-0.16 uA. Firmware 2.0 reads pressure every minute
+#:   (decision 0044) and ran at 0.79 uA over 100 min on 2026-11-04; the bound
+#:   is 0.8 uA by user decision, little margin above that one figure. (The
+#:   five-minute firmware ran 0.562 uA, bound 0.646.) The run floor also
+#:   catches a run that wakes but does not collect, which read 0.24 uA on
+#:   2026-10-06 (embedded/tags/UIUCTag/design/power-results.md).
 #:
 #: The sub-uA tags also need 120 s windows: less charge than that does not
 #: integrate against their floor.
@@ -73,7 +75,7 @@ PROFILES: dict[str, dict] = {
                     run_min_ua=0.22, run_max_ua=0.47, run_duration=1800.0,
                     rest_duration=120.0, settle=75.0, storm_sets=0),
     "UIUCTag": dict(config="uiuctag-default.json", idle_max_ua=0.3, idle_window_s=120.0,
-                    run_min_ua=0.3, run_max_ua=0.646, run_duration=1800.0,
+                    run_min_ua=0.3, run_max_ua=0.8, run_duration=1800.0,
                     rest_duration=120.0, settle=75.0, storm_sets=0),
 }
 
@@ -349,10 +351,18 @@ def main() -> int:
     print(f"  {'passed' if rc == 0 else 'FAILED'}")
     ok &= rc == 0
 
-    # 4. Attach storms, which is where the host/firmware races show up.
-    print(f"[storm] {args.storm_sets} sets")
-    storm_ok = True
-    for s in range(args.storm_sets):
+    # 4. Attach storms, which is where the host/firmware races show up. Not
+    # after a failed download: the life-cycle check then leaves the tag
+    # FINISHED with its log, and a storm's resets would erase it.
+    held = "final reset was skipped" in (out_txt or "")
+    storm_sets = 0 if held else args.storm_sets
+    if held and args.storm_sets:
+        print("[storm] skipped: the life-cycle download failed and the tag "
+              "still holds its log")
+    else:
+        print(f"[storm] {args.storm_sets} sets")
+    storm_ok = not (held and args.storm_sets)
+    for s in range(storm_sets):
         rc, _ = run([os.path.join(TOOLS, "tag_attach_storm.py"),
                      "--config", args.config, "--bin-dir", args.bin_dir,
                      "--rtc-cycles", "10",
