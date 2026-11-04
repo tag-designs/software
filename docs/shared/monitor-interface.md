@@ -7,10 +7,12 @@ summary: Reference for the monitor transport as implemented -- attach, calls, de
 # Tag Monitor Interface
 
 This document describes the monitor interface implemented by the tag firmware
-and host tools. It covers both supported target paths:
+and host tools. It covers the three supported target paths:
 
 - STM32L4 / L432: legacy DebugMonitor and `DCRDR` transport.
 - STM32U3 / U375: shared-memory attach and shared-memory RPC transport.
+- STM32L4 / L432 on the mailbox (UIUCTag): the L4 attach, then the U3
+  shared-memory RPC transport.
 
 This is a reference for the current implementation. Open work on the transport
 is in the [shared contracts worklist](TODO.md).
@@ -28,6 +30,8 @@ Both target families share these pieces:
 - `embedded/tags/common/core/src/handlers.c`: common monitor state, protobuf
   buffer storage, timeout helpers, and target-path selection.
 - `embedded/tags/common/core/src/handlersL4.c`: STM32L4 transport.
+- `embedded/tags/common/core/src/handlersL4Mailbox.c`: STM32L4 on the
+  shared-memory mailbox, for images built with `TAG_L4_MONITOR_MAILBOX`.
 - `embedded/tags/common/core/src/handlersU3.c`: STM32U3 transport.
 - `embedded/tags/common/core/src/monitor.c`: protobuf request handling.
 - `host/libraries/tagcore/tagmonitor.cc`: host-side attach, call, and detach
@@ -301,6 +305,74 @@ effective disconnect latency is one to two heartbeat periods after the last
 host monitor call, depending on timer phase, so a host that makes no call for
 5 to 10 seconds is treated as gone.
 
+## STM32L4 Mailbox Path
+
+An STM32L4 image built with `TAG_L4_MONITOR_MAILBOX` (today UIUCTag only)
+carries protobuf requests over the U3 shared block, kick and heartbeat, and
+keeps the DebugMonitor only for `TAG_MONITORINFO`. Its `project.mk` sets the
+define and links `embedded/tags/common/STM32L432xC-mailbox.ld`, which starts
+`ram0` at `0x20000040` so the block at `MONITOR_SHARED_ADDR` belongs to no
+section or stack. The kick is IRQ 39 (`VectorDC`), which the L432 does not
+implement as a peripheral interrupt; NVIC pending still works for it.
+
+### How the host chooses the protocol
+
+The host attaches as on any L4 tag (steps 1-5 of [L4 Attach](#l4-attach)) and
+reads `MONITORVERSION`. A version of `DEBUGVERSION_L4` (0x21) or later means
+the image answers the `MONITORPROTOCOL` operand of `TAG_MONITORINFO`:
+
+- `MONITOR_PROTOCOL_DEBUGMON` (1): continue with `MONITORSTART`, as above.
+- `MONITOR_PROTOCOL_MAILBOX` (2): start a mailbox session instead.
+
+A host asks only of 0x21 or later, because older L4 handlers have no default
+case: an unknown operand comes back with the host's own command word still in
+`DCRDR`. `DEBUGVERSION` itself stays 0x20, because the U3 host requires the
+shared block's `debug_version` to equal it exactly; the L4 mailbox image also
+publishes 0x20 there.
+
+### L4 Mailbox Attach
+
+After the protocol call the host (`attach_l4_mailbox()` in tagcore-rs):
+
+1. sets `DBGMCU_CR.DBG_SLEEP` and, if clear, `RCC_AHB1ENR.DMA1EN`, so debug
+   accesses to SRAM are served while the tag idles in Sleep;
+2. writes `MONITOR_REQUEST_MAGIC` to `request` and pends the kick;
+3. polls, re-kicking, until `request == MONITOR_CONNECTED_MAGIC` and
+   `MONITOR_SHARED_FLAG_SESSION_READY` are set, then validates the block as on
+   U3 (`path_magic` is `MONITOR_PATH_L4_MAGIC`).
+
+Unlike U3, the session request arrives after boot. The firmware:
+
+- rewrites the whole block in `monitorSharedEarlyInit()` on every boot, so
+  nothing left there (a flash algorithm or loader runs from
+  `0x20000004`-`0x20000020` while the core is halted) can look like a request;
+- opens the 10-second attach grace at boot when `MONCONNECTED` shows a host
+  attaching under reset, and on each `TAG_MONITORINFO`, keeping the tag out of
+  terminal sleep until the request comes;
+- enables the kick IRQ unconditionally, and starts the session in the kick
+  handler when it finds `MONITOR_REQUEST_MAGIC`, turning DMA1's clock on if it
+  was off.
+
+`MONITORSTART` and `PROTOBUF` over the DebugMonitor are refused with a zero
+result, so a host that does not know the mailbox (v4.0 and earlier) fails its
+attach at once with `Monitor Start failed`. The tag then stays awake, at about
+355 uA on UIUCTag, until the attach grace ends 10 s later.
+
+### L4 Mailbox Calls, Detach and Heartbeat
+
+Calls, the fast status answer, `BUSY`, detach and the 5-second heartbeat are
+those of the U3 path ([U3 Calls](#u3-calls),
+[U3 Detach And Heartbeat](#u3-detach-and-heartbeat)). `MONITORSTOP` is also
+still accepted over the DebugMonitor. On disconnect the firmware clears vector
+catch and the DebugMonitor bits, and turns DMA1's clock off if its own connect
+turned it on; the host's detach clears the clock if the host set it.
+
+**Known gap.** Because the host sets `DMA1EN` before posting the request, the
+firmware's connect finds it already on and does not take ownership. A session
+that ends by heartbeat timeout rather than a host detach therefore leaves the
+clock on. It costs nothing on UIUCTag, whose Standby resets RCC, but would on
+an image that idles in Stop. Recorded in `embedded/tags/TODO.md`.
+
 ## Main-Thread Service
 
 Both target paths funnel protobuf evaluation into the same model:
@@ -310,7 +382,8 @@ Both target paths funnel protobuf evaluation into the same model:
 3. `monitorServicePending()` runs `proto_eval()`.
 4. The target-specific response mailbox is completed:
    - L4 writes response length to `DCRDR` and clears `MON_REQ`.
-   - U3 writes response length/status into the shared block.
+   - U3 and the L4 mailbox write response length/status into the shared
+     block.
 
 This keeps protobuf parsing, storage access, and tag command execution out of
 the interrupt handler. A state-changing command (Start, Stop, Erase, Self-test,
@@ -359,13 +432,21 @@ attaches again at the start of a session if the tag does not answer.
 
 ## Current Target Split
 
-STM32L4 targets, including PresTag:
+STM32L4 targets other than UIUCTag, including PresTag:
 
 - use `handlersL4.c`;
 - use `TAG_MONITORINFO` for attach metadata;
 - use `DCRDR` and DebugMonitor request bits for RPC calls;
 - need `MONCONNECTED` and the L4 attach grace to suppress standby during early
   attach.
+
+UIUCTag (STM32L432, `TAG_L4_MONITOR_MAILBOX`):
+
+- uses `handlersL4Mailbox.c` and `STM32L432xC-mailbox.ld`;
+- uses `TAG_MONITORINFO` for the version and protocol, then the shared block;
+- uses IRQ 39 as the kick, and the shared request word and heartbeat as on U3;
+- keeps `MONCONNECTED` and the attach grace to suppress standby until the
+  session request arrives.
 
 STM32U3 targets, IMUTagNand and IMUTagNandBmp581:
 
@@ -390,3 +471,7 @@ Useful regression checks:
   `monitorIsAttached()`, or the L4 attach grace is active. On U3,
   `isMonitorEnabled()` ignores `MONCONNECTED` and there is no attach grace, so
   only `monitorIsAttached()` suppresses sleep.
+- L4 mailbox: `MONITORVERSION` reads 0x21 and `MONITORPROTOCOL` reads 2; the
+  session reaches `MONITOR_CONNECTED_MAGIC` with `path_magic` 0x554C0004; an
+  idle session drops after 5-10 s; a v4.0 host fails its attach and the tag
+  returns to its floor 10 s later. Checked on a UIUCTag breakout 2026-11-04.

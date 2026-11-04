@@ -114,20 +114,20 @@ impl TagMonitor {
             return None;
         }
         let Some(shared) = self.read_monitor_shared() else {
-            error!("U3 monitor shared read failed");
+            error!("mailbox monitor shared read failed");
             return None;
         };
         if operation != op::MONITORSTOP {
             if shared.request != MONITOR_CONNECTED_MAGIC {
                 error!(
-                    "U3 monitor not connected request=0x{:x} status=0x{:x}",
+                    "mailbox monitor not connected request=0x{:x} status=0x{:x}",
                     shared.request, shared.status
                 );
                 return None;
             }
             if shared.command != 0 || shared.status == status::PENDING {
                 error!(
-                    "U3 monitor busy command=0x{:x} status=0x{:x}",
+                    "mailbox monitor busy command=0x{:x} status=0x{:x}",
                     shared.command, shared.status
                 );
                 return None;
@@ -143,7 +143,7 @@ impl TagMonitor {
             && self.write_word(MONITOR_SHARED_KICK_ICPR_ADDR, MONITOR_SHARED_KICK_MASK)
             && self.write_word(MONITOR_SHARED_KICK_ISPR_ADDR, MONITOR_SHARED_KICK_MASK))
         {
-            error!("U3 monitor kick failed op={name}(0x{operation:x}) operand={operand}");
+            error!("mailbox monitor kick failed op={name}(0x{operation:x}) operand={operand}");
             return None;
         }
 
@@ -157,7 +157,7 @@ impl TagMonitor {
                 if st == status::DONE {
                     let result = self.read_word(MONITOR_SHARED_ADDR + MonitorShared::RESULT);
                     if result.is_none() {
-                        error!("U3 monitor result read failed");
+                        error!("mailbox monitor result read failed");
                     }
                     return result;
                 }
@@ -168,7 +168,7 @@ impl TagMonitor {
                     && s.command == 0
                 {
                     debug!(
-                        "U3 monitor stop observed detached state status=0x{:x} \
+                        "mailbox monitor stop observed detached state status=0x{:x} \
                                  result=0x{:x} heartbeat=0x{:x} watchdog_ticks={}",
                         s.status, s.result, s.host_activity, s.watchdog_ticks
                     );
@@ -179,7 +179,7 @@ impl TagMonitor {
                     status::BUSY | status::BAD_COMMAND | status::NOT_ATTACHED
                 ) {
                     error!(
-                        "U3 monitor request rejected op={name}(0x{operation:x}) operand={operand} \
+                        "mailbox monitor request rejected op={name}(0x{operation:x}) operand={operand} \
                          status=0x{st:x}"
                     );
                     return None;
@@ -202,7 +202,7 @@ impl TagMonitor {
             // before the host sees the cleared block, SWD reads can fail even
             // though detach did what it needed to.
             warn!(
-                "U3 monitor stop did not observe detached state before timeout; completing host \
+                "mailbox monitor stop did not observe detached state before timeout; completing host \
                  detach"
             );
             return Some(1);
@@ -238,7 +238,7 @@ impl TagMonitor {
         let probe = self.halt_for_diagnostics(dhcsr);
 
         error!(
-            "U3 monitor call timed out op={}(0x{operation:x}) operand={operand} request=0x{:x} \
+            "mailbox monitor call timed out op={}(0x{operation:x}) operand={operand} request=0x{:x} \
              command=0x{:x} status=0x{:x} result=0x{:x} flags=0x{:x} iser=0x{iser:x} \
              ispr=0x{ispr:x} iabr=0x{iabr:x} dhcsr=0x{dhcsr:x} demcr=0x{demcr:x} icsr=0x{icsr:x} \
              vtor=0x{vtor:x} shcsr=0x{shcsr:x} cfsr=0x{cfsr:x} hfsr=0x{hfsr:x} dfsr=0x{dfsr:x} \
@@ -266,7 +266,7 @@ impl TagMonitor {
             && probe.halted_dhcsr & S_HALT != 0
             && !self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN)
         {
-            error!("U3 monitor timeout diagnostics halted target but failed to resume it");
+            error!("mailbox monitor timeout diagnostics halted target but failed to resume it");
         }
     }
 

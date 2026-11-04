@@ -60,6 +60,20 @@ not been reproduced on a tag.
 
 ## Defects
 
+- **The L4 mailbox leaves DMA1's clock on after a session that times out.**
+  Found on UIUCTag (`handlersL4Mailbox.c`, 2026-11-04, 2.496 V). The host's
+  `attach_l4_mailbox()` sets `RCC_AHB1ENR.DMA1EN` before posting its session
+  request, which it must, or the request can be dropped while the tag sleeps.
+  So `monitorSharedConnectI()` finds the bit set, does not record it as its
+  own, and `monitorSharedSetDisconnected()` leaves it on. Only the host's
+  detach clears it, and a session that ends on the heartbeat (the host died,
+  was unplugged, or went quiet) has no detach. Seen as `could not clear
+  RCC_AHB1ENR.DMA1EN` after a 15 s idle session. Free on UIUCTag: Standby
+  resets RCC, and idle read 0.1543 uA afterwards. It would cost current on an
+  L4 mailbox image that idles in Stop. A likely fix is for the firmware to take
+  ownership on connect whenever none of its own code holds a DMA1 stream.
+  - Fix before a second L4 target moves to the mailbox.
+
 - **On an L4 tag, the first request after an attach waits for an erase to
   finish.** Seen on CompassTagAT25 (2026-11-03, 2.50 V, branch
   `sync-monitor-commands`): attach to a tag in sRESET, and a stop or erase is

@@ -668,7 +668,7 @@ impl TagMonitor {
         if self.transport == Transport::Mailbox {
             if let Some(s) = self.read_monitor_shared() {
                 debug!(
-                    "U3 monitor after MONITORSTOP request=0x{:x} flags=0x{:x} status=0x{:x} \
+                    "mailbox monitor after MONITORSTOP request=0x{:x} flags=0x{:x} status=0x{:x} \
                      command=0x{:x} heartbeat=0x{:x} watchdog_ticks={} stop_ok={} \
                      stop_success={}",
                     s.request,
@@ -682,7 +682,7 @@ impl TagMonitor {
                 );
             }
             if !matches!(stop, Some(s) if s != 0) {
-                error!("U3 Monitor Stop failed during detach");
+                error!("mailbox monitor stop failed during detach");
             }
         } else if !matches!(stop, Some(s) if s != 0) {
             error!("Monitor Stop failed during detach");
