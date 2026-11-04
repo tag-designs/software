@@ -1,10 +1,22 @@
 ---
 type: proposal
-status: proposed
-summary: Proposal to change UIUCTag to a pressure/temperature reading every minute, stored as one 8-byte record (6 raw BMP585 bytes plus three 5-bit, 20-second activity counts), with an internal checkpoint every 32 minutes anchoring one 256-byte external page.
+status: historical
+summary: Implemented, with two changes recorded in decision 0044 -- proposal to change UIUCTag to a pressure/temperature reading every minute, stored as one 8-byte record (6 raw BMP585 bytes plus three 5-bit, 20-second activity counts), with an internal checkpoint every 32 minutes anchoring one 256-byte external page.
 ---
 
 # UIUCTag Minute Sampling with 8-Byte Records
+
+> **Implemented (firmware 2.0.0), with two differences.** The shipped design is
+> in [../overview.md](../overview.md) and the decision, with its reasons, is
+> [decision 0044](../../../../../docs/decisions/0044-uiuctag-minute-records.md).
+> The differences: **activity is stored first**, so a record is erased exactly
+> when its first two bytes read `0xFFFF` (a written activity word has bit 15
+> clear); and **the whole record is written at once**, carrying activity
+> for the minute *before* its reading, rather than activity for the minute
+> after written in a combined program at `8g - 2` that split at page
+> boundaries. Layout 1 is no longer decoded, so the format-identification and
+> two-format host plans below were not built. Power has not yet been measured.
+> Kept for the record; do not quote it as current.
 
 **Proposal.** UIUCTag would take a pressure and temperature reading **every
 minute** and store it as **one 8-byte record**: the 6 raw BMP585 data bytes,

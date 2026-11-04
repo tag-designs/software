@@ -1,7 +1,7 @@
 ---
 type: procedure
 status: current
-summary: UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
+summary: UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one 8-byte record each wake.
 ---
 
 # UIUCTag Power Test Plan
@@ -15,12 +15,14 @@ The rig, the Joulescope server, flashing, supply voltage and what to record are
 in the shared
 [power testing procedure](../../../../docs/bench/power-testing.md).
 Measurements go in [`power-results.md`](power-results.md). Background on the
-tag is in [`overview.md`](overview.md) and
-[`data-collection.md`](data-collection.md).
+tag is in [`overview.md`](overview.md).
 
 **No baseline exists.** This is UIUCTag's first power qualification, so the
 gates below are sanity bounds, not regression bounds, and the first clean
-session sets the numbers everything later is compared against.
+session sets the numbers everything later is compared against. RUNNING
+figures in [`power-results.md`](power-results.md) taken on firmware before
+2.0.0 are for the old five-minute format, which read the BMP585 once every five
+wakes; they are not a baseline for minute records.
 
 ## 0. Inputs
 
@@ -42,15 +44,15 @@ There is nothing to sweep — the cadence below is compile-time.
 
 | Constant | Value | Meaning |
 | --- | ---: | --- |
-| `UIUCTAG_ACTIVITY_BUCKET_SECONDS` | 60 s | one packed activity bucket |
-| `UIUCTAG_ACTIVITY_BUCKETS_PER_EXTERNAL_BLOCK` | 5 | buckets per stored block |
-| `UIUCTAG_EXTERNAL_BLOCK_SECONDS` | **300 s** | one stored record, five minutes |
-| `UIUCTAG_LOG_SAMPLES` | 24 | records per raw download block |
-| `UIUCTAG_DATA_LOG_SECONDS` | 7200 s | two hours per raw download block |
+| `UIUCTAG_RECORD_SECONDS` | **60 s** | one stored 8-byte record, one pressure reading |
+| `UIUCTAG_ACTIVITY_BUCKET_SECONDS` | 20 s | one packed activity bucket |
+| `UIUCTAG_ACTIVITY_BUCKETS_PER_RECORD` | 3 | buckets per record |
+| `UIUCTAG_LOG_RECORDS` | 32 | records per raw download block |
+| `UIUCTAG_DATA_LOG_SECONDS` | 1920 s | 32 minutes per raw download block |
 
 `Running()` arms `enableAlarm(0, ALARM_MINUTE)`, so **the MCU wakes once a
-minute**, samples the ADXL367 wake line into a 60 s bucket, and writes an
-external block every fifth wake. The ADXL367 also wakes the part on activity
+minute**, and every minute wake takes a BMP585 reading and programs one record
+to external flash ([overview](overview.md#write-sequencing)). The ADXL367 also wakes the part on activity
 edges, so a tag being handled wakes more often and draws more: every
 measurement here is taken with the tag **mechanically undisturbed**, and the
 result is the quiescent floor, not a field average.
@@ -58,14 +60,14 @@ result is the quiescent floor, not a field average.
 The wake is the load, so a window of N minutes holds N or N+1 wakes and the
 alignment error alone is **1/N** — the same arithmetic as BitTag:
 
-| Window | Wakes | Alignment error | Stored blocks |
+| Window | Wakes | Alignment error | Stored records |
 | ---: | ---: | ---: | ---: |
-| 300 s | 5 | 20% | 1 |
-| 1200 s | 20 | **5%** | 4 |
-| 1800 s | 30 | 3.3% | 6 |
+| 300 s | 5 | 20% | 5 |
+| 1200 s | 20 | **5%** | 20 |
+| 1800 s | 30 | 3.3% | 30 |
 
-**Use 1200 s**, which matches the 5% agreement band below and still produces
-four downloadable blocks.
+**Use 1200 s**, which matches the 5% agreement band below and stores about 20
+downloadable records.
 
 ### What is powered in each state
 
@@ -151,8 +153,9 @@ build-host/bin/tag-test               # expect RUN_ALL -> ALL_PASSED
 `tag-test` sets the clock, which `FINISHED` does not permit, so it runs from
 `IDLE` and therefore after the download.
 
-Check the database: block timestamps **exactly 300 s** apart, pressure
-plausible and non-saturated, and activity at or near zero throughout — correct
+Check the database: pressure and temperature timestamps **exactly 60 s**
+apart, `Voltage` (block) timestamps 1920 s apart, pressure plausible and
+non-saturated, and activity at or near zero throughout — correct
 for an undisturbed tag, and **not** a test of the activity encoding, which
 needs real motion.
 
@@ -178,7 +181,7 @@ embedded/tools/joulescope_measure.py --use-server --duration 120 --window 0.5
 | Phase D | at the Phase A floor | the floor must not depend on which request attached |
 | `RUNNING` | two windows within 5% | recorded, not gated: no baseline yet |
 | `tag-test` | `ALL_PASSED` | hard |
-| download | block timestamps exactly 300 s apart | hard |
+| download | pressure timestamps exactly 60 s apart | hard |
 
 ## 5. Not covered
 

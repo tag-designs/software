@@ -209,11 +209,11 @@ typedef struct _BitPresTagLog_BPT {
     float pressure;
 } BitPresTagLog_BPT;
 
-typedef PB_BYTES_ARRAY_T(288) UIUCTagLog_samples_t;
+typedef PB_BYTES_ARRAY_T(256) UIUCTagLog_samples_t;
 typedef struct _UIUCTagLog {
     int32_t epoch;
     float voltage;
-    UIUCTagLog_samples_t samples; /* packed t_UIUCTagSample[24] records */
+    UIUCTagLog_samples_t samples; /* t_UIUCTagRecord[32] as stored (uiuctag_log_format.h), trailing erased records trimmed */
 } UIUCTagLog;
 
 typedef struct _CompassTagLog_Compass {
@@ -704,7 +704,7 @@ extern const pb_msgdesc_t CalibrationConstants_AccelConstants_msg;
 #define SensorData_MagData_size                  15
 #define TAGDATA_PB_H_MAX_SIZE                    TagInfo_size
 #define TagInfo_size                             501
-#define UIUCTagLog_size                          307
+#define UIUCTagLog_size                          275
 
 #ifdef __cplusplus
 } /* extern "C" */

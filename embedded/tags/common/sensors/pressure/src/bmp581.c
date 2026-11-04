@@ -760,10 +760,22 @@ int bmp581_read_pressure_temp_device(const TagPressureDevice *device,
   return rc;
 }
 
-int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
-                                         uint32_t timeout_us,
-                                         float *pressure_hpa,
-                                         int16_t *temperature_centi_c)
+/**
+ * @brief   Trigger one forced conversion and wait for DRDY.
+ *
+ * @details The wait shared by both blocking samplers: sleeps the data-sheet
+ *          conversion time, then polls INT_STATUS (which also clears it) every
+ *          BMP581_INIT_RETRY_DELAY_US until DRDY or @p timeout_us runs out.
+ *          Every wait is a stopMilliseconds() Stop2 sleep.
+ *
+ * @param[in] device Pressure device descriptor, configured for forced mode
+ *                   and powered.
+ * @param[in] timeout_us Maximum time to wait for DRDY.
+ * @return 0 when a result is ready, BMP581_E_DATA_READY_TIMEOUT when DRDY
+ *         never asserted, or a negative Bosch SensorAPI error.
+ */
+static int bmp581_forced_wait_device(const TagPressureDevice *device,
+                                     uint32_t timeout_us)
 {
   uint32_t remaining_us = timeout_us;
   uint32_t settle_us = BMP581_CONVERSION_SETTLE_MS * 1000U;
@@ -783,10 +795,8 @@ int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
     rc = bmp581_clear_interrupt_status_device(device, &int_status);
     if (rc != BMP5_OK)
       return rc;
-    if ((int_status & BMP5_INT_ASSERTED_DRDY) != 0U) {
-      return bmp581_read_pressure_temp_powered_device(device, pressure_hpa,
-                                                      temperature_centi_c);
-    }
+    if ((int_status & BMP5_INT_ASSERTED_DRDY) != 0U)
+      return BMP5_OK;
 
     if (remaining_us == 0U)
       break;
@@ -801,4 +811,38 @@ int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
   } while (true);
 
   return BMP581_E_DATA_READY_TIMEOUT;
+}
+
+int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
+                                         uint32_t timeout_us,
+                                         float *pressure_hpa,
+                                         int16_t *temperature_centi_c)
+{
+  int rc = bmp581_forced_wait_device(device, timeout_us);
+
+  if (rc != BMP5_OK)
+    return rc;
+  return bmp581_read_pressure_temp_powered_device(device, pressure_hpa,
+                                                  temperature_centi_c);
+}
+
+int bmp581_sample_forced_raw_blocking_device(const TagPressureDevice *device,
+                                             uint32_t timeout_us,
+                                             uint8_t raw[6])
+{
+  struct bmp5_dev dev;
+  int rc;
+
+  if (raw == NULL)
+    return BMP5_E_NULL_PTR;
+
+  rc = bmp581_forced_wait_device(device, timeout_us);
+  if (rc != BMP5_OK)
+    return rc;
+
+  bmp581_begin_powered_session(device);
+  bmp581_prepare_dev(device, &dev);
+  rc = bmp5_get_regs(BMP5_REG_TEMP_DATA_XLSB, raw, 6U, &dev);
+  bmp581_end_powered_session(device);
+  return rc;
 }

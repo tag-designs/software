@@ -9,15 +9,22 @@
  *          them with SqliteTagLogWriter.
  *
  *          What this catches that neither side catches alone is disagreement
- *          about the contract: slot-to-epoch mapping, whether the payload is
- *          sent from slot 0, how a partial block is trimmed, and whether a value
- *          the firmware considers absent is a value the host omits.
+ *          about the contract: record-to-epoch mapping, whether the payload is
+ *          sent from record 0, how a partial block is trimmed, and whether a
+ *          value the firmware considers absent is a value the host omits. It
+ *          also checks every decoded block against the simulation's run: a
+ *          reading every minute, and three activity rows for every record
+ *          whose minute was observed.
  *
  * @note    Built only when BUILD_TAGCORE_CHECKS is enabled. Requires the block
  *          file produced by embedded/tags/UIUCTag/test/sequencer_sim.c.
  *
  * @see     embedded/tags/UIUCTag/design/test-strategy.md
  */
+
+// These are assertion programs: keep assert() live in Release builds too,
+// where CMake defines NDEBUG and would otherwise compile every check out.
+#undef NDEBUG
 
 #include <cstdio>
 #include <cstring>
@@ -59,10 +66,11 @@ int main(int argc, char **argv)
     }
 
     int blocks = 0;
+    int failed_readings = 0;
     for (;;) {
         int32_t epoch;
         uint16_t vdd100;
-        std::vector<char> image(UIUCTAG_SAMPLE_BYTES_MAX);
+        std::vector<char> image(UIUCTAG_BLOCK_BYTES);
 
         if (!in.read(reinterpret_cast<char *>(&epoch), sizeof(epoch))) break;
         in.read(reinterpret_cast<char *>(&vdd100), sizeof(vdd100));
@@ -70,11 +78,22 @@ int main(int argc, char **argv)
 
         // Firmware-side trailing trim, as in data_logAck().
         size_t used = image.size();
-        while (used >= UIUCTAG_SAMPLE_SIZE) {
-            t_UIUCTagSample s;
-            std::memcpy(&s, image.data() + used - UIUCTAG_SAMPLE_SIZE, sizeof(s));
-            if (!uiuctagSampleErased(&s)) break;
-            used -= UIUCTAG_SAMPLE_SIZE;
+        while (used >= UIUCTAG_RECORD_SIZE) {
+            t_UIUCTagRecord r;
+            std::memcpy(&r, image.data() + used - UIUCTAG_RECORD_SIZE, sizeof(r));
+            if (!uiuctagRecordErased(&r)) break;
+            used -= UIUCTAG_RECORD_SIZE;
+        }
+
+        // Every record the firmware wrote is complete: its activity word is
+        // always written, observed or not (the reading may be the failure
+        // value, which the simulation produces once on purpose).
+        for (size_t at = 0; at < used; at += UIUCTAG_RECORD_SIZE) {
+            t_UIUCTagRecord r;
+            std::memcpy(&r, image.data() + at, sizeof(r));
+            if (uiuctagRecordErased(&r)) continue;
+            assert(uiuctagRecordHasActivity(&r));
+            failed_readings += uiuctagRecordHasReading(&r) ? 0 : 1;
         }
 
         Ack ack;
@@ -84,13 +103,15 @@ int main(int argc, char **argv)
         log->set_samples(std::string(image.data(), used));
 
         int rc = writer.writeLog(ack);
-        printf("block %d: epoch=%d payload=%zu bytes (%zu slots) rc=%d\n",
-               blocks, epoch, used, used / UIUCTAG_SAMPLE_SIZE, rc);
+        printf("block %d: epoch=%d payload=%zu bytes (%zu records) rc=%d\n",
+               blocks, epoch, used, used / UIUCTAG_RECORD_SIZE, rc);
         if (rc != 1) { printf("FAIL rc=%d %s\n", rc, writer.lastError().c_str()); return 1; }
         blocks++;
     }
 
     writer.endLog();
-    printf("decoded %d blocks\n", blocks);
+    printf("decoded %d blocks, %d failed reading(s)\n", blocks, failed_readings);
+    // sequencer_sim.c fails exactly one reading, at minute 7.
+    assert(failed_readings == 1);
     return 0;
 }

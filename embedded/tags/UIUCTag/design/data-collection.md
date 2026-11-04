@@ -2,14 +2,18 @@
 type: proposal
 status: superseded
 superseded-by: embedded/tags/UIUCTag/design/overview.md
-summary: Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+summary: Plan, built and since replaced by minute records, for the UIUCTag five-minute record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
 ---
 
 # UIUCTag Data Collection Integration Plan
 
 > Superseded: this plan has been built. The design as it stands is in
 > [overview.md](overview.md); this document is kept for the record and its
-> progress notes (for example "hardware run pending") are not current.
+> progress notes (for example "hardware run pending") are not current. The
+> 12-byte five-minute record it plans has itself since been replaced by one
+> 8-byte record a minute
+> ([decision 0044](../../../../docs/decisions/0044-uiuctag-minute-records.md)),
+> so its layout, constants and write sequencing describe no shipped firmware.
 
 ## Scope
 

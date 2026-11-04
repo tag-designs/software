@@ -5,15 +5,17 @@
  * @date 2026-08-31
  *
  * @details Tag-local replacement for the BitPresTag family log header. UIUCTag
- *          stores compact float pressure/temperature samples with packed
- *          per-minute activity counts; the canonical layout is shared with host
- *          tools through include/uiuctag_log_format.h and is not redefined
- *          here.
+ *          stores one 8-byte record a minute: raw 24-bit pressure and
+ *          temperature, then three 20-second activity counts. The canonical
+ *          layout is shared with host tools through
+ *          include/uiuctag_log_format.h and is not redefined here.
  *
  *          Two storage regions are involved:
- *          - External flash holds a contiguous array of 288-byte blocks, each
- *            24 twelve-byte samples. Sample fields are programmed one 32-bit
- *            word at a time as they become available.
+ *          - External flash holds a contiguous array of 256-byte blocks, each
+ *            32 records and exactly one AT25XE page. Each minute wake writes
+ *            one whole record, its reading and the activity of the minute
+ *            just ended, as a single 8-byte program; a record never crosses a
+ *            page.
  *          - Internal flash holds one 8-byte checkpoint per external block, in
  *            the vddHeader[] array declared by the shared core persistent.c.
  *            t_DataHeader therefore has to stay a multiple of the internal
@@ -34,21 +36,21 @@
 #include "uiuctag_log_format.h"
 
 /**
- * @brief Number of samples grouped under one internal checkpoint.
+ * @brief Number of records grouped under one internal checkpoint.
  *
  * @details Named for compatibility with shared core code that reports log
- *          progress; the value is the UIUCTag block sample count.
+ *          progress; the value is the UIUCTag block record count.
  */
-#define DATALOG_SAMPLES UIUCTAG_LOG_SAMPLES
+#define DATALOG_SAMPLES UIUCTAG_LOG_RECORDS
 
-/** @brief Byte stride of one external log block. */
-#define DATALOG_BLOCK_BYTES UIUCTAG_SAMPLE_BYTES_MAX
+/** @brief Byte stride of one external log block: one flash page. */
+#define DATALOG_BLOCK_BYTES UIUCTAG_BLOCK_BYTES
 
 /**
  * @brief Internal-flash checkpoint that anchors one external log block.
  *
  * @details Layout is the shared t_UIUCTagInternalLog: the epoch second of this
- *          block's slot 0, the supply voltage at that moment in 0.01 V units,
+ *          block's record 0, the supply voltage at that moment in 0.01 V units,
  *          and the index of the external block it describes. The first
  *          checkpoint of a run anchors the sample grid; each later one is
  *          exactly one block period after its predecessor.
@@ -58,19 +60,10 @@ typedef t_UIUCTagInternalLog t_DataHeader;
 /** Internal flash checkpoint array placed by the linker script. */
 extern t_DataHeader vddHeader[];
 
-/** @brief Byte offset of the pressure field within a sample. */
-#define DATALOG_FIELD_PRESSURE 0u
-/** @brief Byte offset of the temperature field within a sample. */
-#define DATALOG_FIELD_TEMPERATURE 4u
-/** @brief Byte offset of the packed activity field within a sample. */
-#define DATALOG_FIELD_ACTIVITY 8u
-
 /**
- * @brief Wake the external flash for a burst of sample-field writes.
+ * @brief Wake the external flash for a record write.
  *
- * @details Pairs with dataLogWriteEnd(). Holding the chip awake across the two
- *          or three writes of one acquisition wake keeps the deep-power-down
- *          exit cost to once per wake instead of once per word.
+ * @details Pairs with dataLogWriteEnd().
  *
  * @post External flash is out of deep power-down until dataLogWriteEnd().
  */
@@ -82,30 +75,27 @@ extern void dataLogWriteBegin(void);
 extern void dataLogWriteEnd(void);
 
 /**
- * @brief Program one 32-bit field of one external sample slot.
+ * @brief Program one record of the external log.
  *
- * @details Writes exactly four bytes at
- *          @p sample_index * 12 + @p field_offset, then rests for
- *          UIUCTAG_WRITE_REST_MS in a low-power sleep so the storage capacitor
- *          recharges before the next program cycle. Slot addresses are derived
- *          from the acquisition clock, so a field is only ever programmed once;
- *          re-programming an already written word is not supported by NOR
- *          flash and is treated as a caller error.
+ * @details Writes the 8 bytes of @p record at @p index * 8 as one page
+ *          program. Records are 8-byte aligned and 32 fill a page exactly, so
+ *          the program never crosses a page boundary. Indices come from the
+ *          acquisition clock, so a record is only ever programmed once;
+ *          re-programming written bytes is not supported by NOR flash and is a
+ *          caller error.
  *
- * @param[in] sample_index Global sample index, counting from the first sample
- *                         of the first external block.
- * @param[in] field_offset One of the DATALOG_FIELD_* offsets.
- * @param[in] word Four bytes to program.
- * @return LOGWRITE_OK on success, LOGWRITE_FULL when the address is beyond
- *         external flash capacity, or LOGWRITE_ERROR when the program cycle
- *         fails.
+ * @param[in] index Global record index, counting from the first record of
+ *                  block 0.
+ * @param[in] record Record to program.
+ * @return LOGWRITE_OK on success, LOGWRITE_FULL when the record lies beyond
+ *         external flash capacity (nothing is written), or LOGWRITE_ERROR
+ *         when the program cycle fails.
  *
  * @pre dataLogWriteBegin() has been called.
- * @warning Blocks for the flash program time plus the recharge rest.
+ * @warning Blocks for the page program time.
  */
-extern enum LOGERR dataLogWriteField(uint32_t sample_index,
-                                     uint32_t field_offset,
-                                     const void *word);
+extern enum LOGERR dataLogWriteRecord(uint32_t index,
+                                      const t_UIUCTagRecord *record);
 
 /**
  * @brief Write the next internal-flash checkpoint.
@@ -134,11 +124,12 @@ extern bool readDataHeader(int index, t_DataHeader *header);
  * @brief Recover log cursors from internal flash after reset.
  *
  * @details Counts written checkpoints into pState->pages and sets
- *          pState->external_blocks to the same value, since one checkpoint
- *          always corresponds to exactly one external block. Progress within
- *          the current block is not recovered here: it is derived from the
+ *          pState->external_blocks to one past the global index of the last
+ *          written record, read from the newest checkpoint's block in external
+ *          flash. That count is reported in the status only; the run does not
+ *          resume from it. Where the next record goes is derived from the
  *          acquisition clock and the newest checkpoint, so a reset mid-block
- *          resumes at the correct slot without re-programming written fields.
+ *          resumes at the correct slot without re-programming written records.
  *
  * @return 0 when recovery completes.
  */

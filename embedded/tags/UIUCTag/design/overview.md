@@ -1,20 +1,23 @@
 ---
 type: design
 status: current
-summary: What UIUCTag is, how its hardware differs from BitPresTag, and the record layout, timing and firmware/host contract of its pressure and activity log.
-last-verified: a87fc84a
+summary: What UIUCTag is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
 ---
 
 # UIUCTag Design
 
-UIUCTag is a BitPresTag-family tag that logs **pressure and temperature every
-5 minutes and accelerometer activity per minute**, in 2-hour blocks of 24
-twelve-byte samples. Sample times are not stored: a block's checkpoint holds
-the epoch of its first slot, and slot `s` is at `epoch + s * 300`. A missing
-pressure or temperature is NaN; a missing activity word is the erased value
-`0xFFFFFFFF`. It reuses the family state machine, tests, storage modules
-and ChibiOS configuration, and replaces the family's sensors, log format and
-RUNNING state with its own.
+UIUCTag is a BitPresTag-family tag that logs **one 8-byte record every
+minute**: a raw BMP585 pressure and temperature reading, and three counts of
+active seconds, one per 20 s, for the minute before the reading. Thirty-two
+records fill one 256-byte block, exactly one AT25XE page, anchored by one
+internal-flash checkpoint. Record times are not stored: a block's checkpoint
+holds the epoch of its record 0, and record `s` is at `epoch + s * 60`. A
+record that was never written reads erased; a failed reading stores zero; a
+minute the tag did not watch stores the reserved bucket value `0x1F`. The
+4 MiB external flash holds **364.1 days**. UIUCTag reuses the family state
+machine, tests, storage modules and ChibiOS configuration, and replaces the
+family's sensors, log format and RUNNING state with its own. Why this format:
+[decision 0044](../../../../docs/decisions/0044-uiuctag-minute-records.md).
 
 ## Hardware
 
@@ -34,9 +37,10 @@ RUNNING state with its own.
   ([bring-up report](investigations/bringup-report.md#adxl367-wake-mode-sample-rate-timing)).
 - **BMP585.** Software-compatible with the BMP581: the shared
   `common/sensors/pressure/src/bmp581.c` accepts both chip IDs (`0x50`,
-  `0x51`). UIUCTag power-cycles the sensor rail for every sample and uses
+  `0x51`). UIUCTag power-cycles the sensor rail for every reading, uses
   `bmp581_config_forced_fast_device()`, which writes only the registers a
-  power-on-reset part needs. The conversion wait **polls** `INT_STATUS` with
+  power-on-reset part needs, and reads the six data registers unconverted with
+  `bmp581_sample_forced_raw_blocking_device()`. The conversion wait **polls** `INT_STATUS` with
   `stopMilliseconds()` sleeps; an interrupt-driven wait on `LPS_RDY` was
   evaluated and deferred, because no proven hardware timeout bounds a WFI wait
   ([bring-up report](investigations/bringup-report.md), 2026-09-27).
@@ -57,15 +61,24 @@ host include paths and is the single source of geometry and decode helpers.
 
 ## Record layout
 
+The shared header `include/uiuctag_log_format.h` is the definition; this is a
+summary.
+
+| Bytes | Field | Contents |
+| --- | --- | --- |
+| 0-1 | activity | three 5-bit counts, 0-20 active seconds per 20 s; bucket `b` in bits `5b..5b+4`; bit 15 always 0 |
+| 2-4 | pressure | BMP585 `PRESS_DATA`, unsigned 24-bit LE; hPa = raw / 6400 |
+| 5-7 | temperature | BMP585 `TEMP_DATA`, signed 24-bit LE; degC = raw / 65536 |
+
+The data registers already hold compensated values: "raw" means unconverted.
+The tag spends no energy on units; the host converts.
+
 | Quantity | Value | Source |
 | --- | --- | --- |
-| Activity bucket | 60 s, 6 bits | `UIUCTAG_ACTIVITY_BUCKET_SECONDS`, `UIUCTAG_ACTIVITY_BUCKET_MASK` |
-| Buckets per sample | 5 | `UIUCTAG_ACTIVITY_BUCKETS_PER_EXTERNAL_BLOCK` |
-| Sample period | 300 s | `UIUCTAG_EXTERNAL_BLOCK_SECONDS` |
-| Samples per block | 24 | `UIUCTAG_LOG_SAMPLES` |
-| Block period | 7200 s (2 h) | `UIUCTAG_DATA_LOG_SECONDS` |
-| Sample record | 12 B: `float pressure` (hPa), `float temperature` (°C), `uint32_t packed_activity_data` | `t_UIUCTagSample` |
-| External block stride | 288 B | `UIUCTAG_SAMPLE_BYTES_MAX` |
+| Record | 8 B, one per minute | `t_UIUCTagRecord`, `UIUCTAG_RECORD_SECONDS` |
+| Activity bucket | 20 s, 5 bits, `0x1F` reserved | `UIUCTAG_ACTIVITY_BUCKET_SECONDS`, `UIUCTAG_ACTIVITY_NOT_OBSERVED` |
+| Records per block | 32 | `UIUCTAG_LOG_RECORDS` |
+| Block | 256 B (one AT25XE page), 1920 s | `UIUCTAG_BLOCK_BYTES`, `UIUCTAG_DATA_LOG_SECONDS` |
 | Internal checkpoint | 8 B: `int32 epoch`, `uint16 vdd100` (0.01 V), `uint16 extern_log_block` | `t_UIUCTagInternalLog` |
 
 The checkpoint is the tag's `t_DataHeader`, so the common
@@ -73,75 +86,88 @@ The checkpoint is the tag's `t_DataHeader`, so the common
 **The `[256]` is not the capacity**: `readDataHeader()` and `writeDataHeader()`
 bound against `__persistent_end__`.
 
-**Capacity.** About 26,880 checkpoints in internal flash (6.1 years) and
-14,563 blocks in the 4 MB external flash (3.3 years); external flash binds.
-Each hibernation abandons the unused slots of the open block. Figures from the
-[bring-up report](investigations/bringup-report.md#maximum-run-time-from-available-memory).
+### Missing and reserved values
+
+| Value | Meaning | Host |
+| --- | --- | --- |
+| activity word `0xFFFF` | record never written (`uiuctagRecordErased()`) | skips the record |
+| pressure and temperature `0` | reading failed: conversion error, DRDY timeout, or pressure outside 300-1250 hPa (`UIUCTAG_RAW_FAILED`) | no pressure or temperature row; activity still decoded |
+| every bucket `0x1F`, word `0x7FFF` | the minute before was not watched end to end | no activity rows for that record |
+| bucket 21-30 | cannot be written | decoded as not observed |
+
+Activity comes first because it makes the erased test exact without reserving
+any sensor value: a written activity word has bit 15 clear, so its high byte is
+never `0xFF`. The range check in `samplePressureRaw()` stores a bus that reads
+all ones as a failed reading.
+
+**Capacity.** 4,194,304 B / 8 B = 524,288 records = 16,384 blocks =
+**364.1 days** of continuous collection on the 4 MiB AT25XE321D, with no
+margin to a full year. Internal checkpoints are not the limit. Hibernation
+writes nothing and stretches the calendar span; each hibernation abandons the
+unused records of the open block.
 
 ## Time mapping
 
 RUNNING wakes on the RTC **minute alarm** (`enableAlarm(0, ALARM_MINUTE)`),
 not the free-running ticker, so wakes land on epoch minute boundaries. The
-first wake of a run writes the first sample and opens the first block, and that
-instant anchors the grid:
+first minute wake of a run writes the first record and opens the first block,
+and that instant anchors the grid:
 
 ```text
-first sample          = first minute alarm after RUNNING entry
-sample s of a block   = checkpoint.epoch + s * 300
-next block starts at  = checkpoint.epoch + 24 * 300
-bucket b of sample s  = sample epoch + b * 60
+first record           = first minute alarm after RUNNING entry
+record s of a block    = checkpoint.epoch + s * 60          (s = 0..31)
+next block starts at   = checkpoint.epoch + 32 * 60
+activity bucket b of s = record time - 60 + b * 20          (b = 0..2)
 ```
 
-- `epoch` is the time of the block's own slot 0, not a rounded boundary. Why
-  the grid is run-anchored rather than aligned to multiples of 7200 s:
-  [0004-uiuctag-run-anchored-grid-and-lazy-block-open.md](../../../../docs/decisions/0004-uiuctag-run-anchored-grid-and-lazy-block-open.md).
-- Pressure and temperature are instantaneous readings at the slot time.
-  Activity bucket `b` counts active seconds in the `b`-th minute after it,
-  0..60, so the 6-bit field never saturates.
-- **Every checkpoint maps to exactly one 288-byte block**, at
-  `extern_log_block * 288`. A restart may skip fields or slots but never breaks
-  that correspondence, so block index equals checkpoint index.
-- **NaN means no measurement.** Erased flash reads `0xFFFFFFFF`, itself a NaN;
-  a failed sensor read stores the canonical `__builtin_nanf("")`. An activity
-  word of `0xFFFFFFFF` was never written. Gaps can be anywhere in a block.
-- A block opens lazily: its checkpoint is written after the slot-0 sample it
-  anchors, so every checkpoint describes at least one sample.
+- `epoch` is the time of the block's own record 0, not a rounded boundary. Why
+  the grid is run-anchored:
+  [decision 0004](../../../../docs/decisions/0004-uiuctag-run-anchored-grid-and-lazy-block-open.md).
+- Pressure and temperature are an instantaneous reading at the record time.
+  The activity word covers the minute that **ends** at the record time, so the
+  three buckets start at `t - 60`, `t - 40` and `t - 20`.
+- **Every checkpoint maps to exactly one 256-byte block**, at
+  `extern_log_block * 256`. A restart may skip records but never breaks that
+  correspondence, so block index equals checkpoint index.
+- Gaps can be anywhere in a block: a missed minute leaves an erased record in
+  place rather than moving later ones.
+- A block opens lazily: its checkpoint is written after the record-0 write it
+  anchors, so every checkpoint describes at least one record.
 
 ## Write sequencing
 
-Four of every five minute wakes only account activity. On a sample wake the
-tag performs at most three 4-byte programs through
-`dataLogWriteField(sample_index, field_offset, word)`, each followed by a
-`UIUCTAG_WRITE_REST_MS` (default 20 ms) `stopMilliseconds()` sleep so the
-storage capacitor recharges:
+Every minute wake at `T` does, in order:
 
-1. `packed_activity_data` of the **previous** sample, at `g_prev * 12 + 8`;
-2. `pressure` of the current sample, at `g * 12 + 0`;
-3. `temperature` of the current sample, at `g * 12 + 4`;
+1. Accumulate activity since the last wake into the three buckets of the
+   current minute, measured from the previous record. Seconds outside that
+   minute are dropped, not wrapped, and a bucket stops at 20.
+2. Read the BMP585 into the record (`samplePressureRaw()`), with the sensor
+   rail power-cycled. This comes before waking the flash: both share the SPI1
+   bus mutex, which `dataLogWriteBegin()` holds and which is not reentrant.
+3. Set the activity word: the accumulated buckets when the previous record was
+   written at exactly `T - 60` with no reset between, otherwise
+   `UIUCTAG_ACTIVITY_UNOBSERVED_WORD`. The first record of a run, the first
+   after a reset or a missed wake, and the first after hibernation are
+   therefore unobserved, never a partial count.
+4. `dataLogWriteBegin()`, `dataLogWriteRecord(g, &record)`,
+   `dataLogWriteEnd()`: one 8-byte page program at `8g`, where `g` is the
+   global record index. Records are 8-byte aligned and 8 divides 256, so a
+   program never crosses a page, and a record is either fully written or
+   erased.
+5. On record 0 of a new block, append the internal checkpoint.
 
-where `g` is the global sample index. `dataLogWriteBegin()` / `End()` wake and
-sleep the flash once around the group. The previous sample's activity write is
-suppressed when that sample was not in the immediately preceding window (first
-sample of a run, after hibernation, after a reset), so a partial count is never
-recorded as complete. Activity is credited to bucket
-`(i - lastwrite) / 60`; seconds beyond the fifth bucket are dropped, not
-wrapped.
+**Cursor.** No extra persistent state: with `C = checkpoint[pages - 1]`, the
+slot is `(T - C.epoch) / 60` and `g = C.extern_log_block * 32 + slot`. A reset
+mid-block therefore resumes on the same record times and never reprograms a
+written record; the minutes it missed stay erased. Slot 32 or later (a full
+block, or a long gap such as hibernation) opens a new block anchored at `T`.
+`restoreLog()` recounts checkpoints; that linear scan runs only on the
+power-on, brownout and exception recovery path, not on ordinary standby wakes.
 
-**Cursor.** No extra persistent state: at a minute wake at time `T`, with
-`C = checkpoint[pages - 1]`, a sample is due when `(T - C.epoch) % 300 == 0`,
-the slot is `(T - C.epoch) / 300`, and `g = C.extern_log_block * 24 + slot`. A
-reset mid-block therefore resumes on the same sample times and never
-reprograms a written slot. A sample is taken only on a wake that lands on the
-current grid, so slot 24 or later (a full block, or a long gap such as
-hibernation) opens a new block at the first on-grid wake `T`. After a gap that
-ends off the grid, nothing is sampled until the next on-grid minute, up to four
-minutes later, and the new block keeps the old grid's phase. `restoreLog()` recounts checkpoints;
-that linear scan runs only on the power-on, brownout and exception recovery
-path, not on ordinary standby wakes.
-
-Hibernation is entered only on a sample boundary; a resumed run opens a fresh
-block. A full checkpoint region or external flash, or any `LOGWRITE_ERROR`
-from a sample or checkpoint write, ends the run with
+Hibernation is entered at a minute wake, after that wake's record is written;
+a resumed run opens a fresh block. The run ends at its stop time before any
+record is written on that wake. A full checkpoint region or external flash, or
+any `LOGWRITE_ERROR` from a record or checkpoint write, ends the run with
 `Finished(T_INIT, State_EVENT_INTERNALFULL)`.
 
 ## Firmware/host interface
@@ -149,21 +175,25 @@ from a sample or checkpoint write, ends the run with
 What `data_logAck()` guarantees to the `host/libraries/tagcore/sqlitelog`
 decoder:
 
-- One `Ack.uiuctag_data_log` per 2-hour block. The download index space is
+- One `Ack.uiuctag_data_log` per 32-minute block. The download index space is
   `0 .. internal_data_count - 1`. An index with no written checkpoint returns
-  `Ack_Err_NODATA`. `external_data_count` is not a block count: during RUNNING
-  it is the global sample index of the last written sample plus one, and
-  `restoreLog()` seeds it with the checkpoint count after a recovery until the
-  next sample write corrects it.
-- `voltage` is volts (`vdd100 * 0.01`). `samples` is `n * 12` bytes of
-  `t_UIUCTagSample`, `n <= 24`, always starting at slot 0, so the array index
-  is the slot number. Trailing never-written slots are trimmed; interior gaps
-  stay. A final block cut short by the end of flash is still served.
-- Sample `s` is at `epoch + s * 300`, its activity bucket `b` covers
-  `epoch + s * 300 + b * 60`. Do not round `epoch` to a 2-hour boundary.
-- The host skips NaN fields and erased activity words rather than storing
-  zeros. It writes the same `Voltage`, `Activity`, `Pressure` and
-  `Temperature` tables as BitPresTag. The schema is in the user reference,
+  `Ack_Err_NODATA`. `external_data_count` is not a block count: it is the
+  global record index of the last written record plus one. `Running()` keeps
+  it per record, and `restoreLog()` rebuilds it after a recovery from the
+  newest checkpoint's block, reading that one block of external flash. It is
+  reported in the status only; nothing bounds a download by it.
+- `voltage` is volts (`vdd100 * 0.01`). `samples` is `n * 8` bytes of
+  `t_UIUCTagRecord` exactly as stored, `n <= 32`, always starting at record 0,
+  so the array index is the slot number. Trailing never-written records are
+  trimmed; interior gaps stay. The nanopb bound is `max_size:256`.
+- Record `s` is at `epoch + s * 60`; its activity bucket `b` starts at
+  `epoch + s * 60 - 60 + b * 20`. Do not round `epoch`.
+- The data layout version is 2 (`TAG_IDENTITY_DATA_LAYOUT_VERSION`), firmware
+  2.0.0. The 12-byte five-minute layout 1 is not decoded by any host tool.
+- The host skips erased records, failed readings and unobserved buckets rather
+  than storing zeros. It writes the same `Voltage`, `Activity`, `Pressure` and
+  `Temperature` tables as BitPresTag; activity rows are 20 s apart, in percent
+  of 20 s. The schema is in the user reference,
   [`host/docs/src/reference/sqlite-logs.md`](../../../../host/docs/src/reference/sqlite-logs.md);
   the decoder rules are in
   [`host/libraries/tagcore/sqlitelog/README.md`](../../../../host/libraries/tagcore/sqlitelog/README.md).
@@ -172,12 +202,18 @@ decoder:
 
 How each layer is verified, with and without hardware, is in
 [test-strategy.md](test-strategy.md); the host simulation is in
-[`../test/README.md`](../test/README.md). Hardware validation and power
-measurements are in the [bring-up report](investigations/bringup-report.md).
+[`../test/README.md`](../test/README.md). Hardware validation is in the
+[bring-up report](investigations/bringup-report.md); power measurements are in
+[power-results.md](power-results.md). The bring-up figures, and every power
+entry taken on firmware before 2.0.0, are for the old five-minute format.
 
 ## History
 
-- [data-collection.md](data-collection.md): the data-collection plan (stages
-  S1-S4, work items W1-W10), now built.
+- [Decision 0044](../../../../docs/decisions/0044-uiuctag-minute-records.md):
+  minute records replace the 12-byte five-minute format.
+- [proposals/minute-sampling.md](proposals/minute-sampling.md): the plan for
+  minute records, built with the differences recorded in decision 0044.
+- [data-collection.md](data-collection.md): the original data-collection plan
+  (stages S1-S4, work items W1-W10), for the five-minute format.
 - Pressure-sampling options for BMP58x parts:
   [`../../families/BitPresTag/design/bmp581-forced-mode.md`](../../families/BitPresTag/design/bmp581-forced-mode.md).

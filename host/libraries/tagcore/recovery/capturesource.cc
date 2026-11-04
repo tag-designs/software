@@ -511,18 +511,20 @@ public:
  *
  * @details Follows embedded/tags/UIUCTag/src/datalog.c and config.c, with the
  *          layout in include/uiuctag_log_format.h. Checkpoint i (vddHeader[i]:
- *          int32 epoch of slot 0, uint16 vdd100, uint16 extern_log_block)
- *          names a 288-byte external block of 24 time-indexed 12-byte slots
- *          {float pressure, float temperature, uint32 activity}. Slots are
- *          placed by time, so a missed sample leaves an erased slot rather
- *          than moving later ones. The block goes out raw: trailing erased
- *          slots trimmed, interior gaps kept. Indices at or above the
- *          checkpoint count, or with an erased checkpoint, answer NODATA.
+ *          int32 epoch of record 0, uint16 vdd100, uint16 extern_log_block)
+ *          names a 256-byte external block (one page) of 32 time-indexed
+ *          8-byte records {uint24 pressure, int24 temperature, uint16
+ *          activity}, data layout 2. Records are placed by time, so a missed
+ *          minute leaves an erased record rather than moving later ones. The
+ *          block goes out raw: trailing erased records trimmed, interior gaps
+ *          kept. Indices at or above the checkpoint count, or with an erased
+ *          checkpoint, answer NODATA. Layout 1 (12-byte five-minute slots,
+ *          fw 1.x) is no longer decoded; no such tag was ever deployed.
  */
 class UiucTagDecoder : public CaptureDecoder {
 public:
-  static constexpr uint32_t kSlots = 24;          ///< UIUCTAG_LOG_SAMPLES
-  static constexpr uint32_t kSlotBytes = 12;      ///< UIUCTAG_SAMPLE_SIZE
+  static constexpr uint32_t kSlots = UIUCTAG_LOG_RECORDS;      ///< Records per block
+  static constexpr uint32_t kSlotBytes = UIUCTAG_RECORD_SIZE;  ///< Bytes per record
   static constexpr uint32_t kBlockBytes = kSlots * kSlotBytes; ///< DATALOG_BLOCK_BYTES
   static constexpr uint32_t kHeaderBytes = 8;     ///< UIUCTAG_INTERNAL_LOG_SIZE
   /** UIUCTAG_ADXL_INACT_THRESH_MG: what readConfig() reports, hardcoded. */
@@ -530,7 +532,7 @@ public:
 
   std::vector<KnownLayout> Layouts() const override {
     return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
-            {"data_headers", 1, kHeaderBytes}};
+            {"data_headers", 2, kHeaderBytes}};
   }
 
   bool ReadConfig(const CaptureSource &src, Config &config,
@@ -598,12 +600,12 @@ public:
       count = static_cast<uint32_t>(flash_size - byte_offset);
     if (!src.External(byte_offset, block, count))
       return;
-    // Trim trailing never-written slots, by the firmware's own rule.
+    // Trim trailing never-written records, by the firmware's own rule.
     size_t used = kBlockBytes;
     while (used >= kSlotBytes) {
-      t_UIUCTagSample slot;
-      std::memcpy(&slot, block + used - kSlotBytes, sizeof slot);
-      if (!uiuctagSampleErased(&slot))
+      t_UIUCTagRecord record;
+      std::memcpy(&record, block + used - kSlotBytes, sizeof record);
+      if (!uiuctagRecordErased(&record))
         break;
       used -= kSlotBytes;
     }

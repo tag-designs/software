@@ -21,70 +21,82 @@ that a maintainer needs and a user does not.
 UIUCTag reuses the BitPresTag table and stream shape — `Voltage`, `Pressure`,
 `Temperature`, `Activity` — so viewers and analysis queries are identical across
 the two tags. Only the decoder differs: UIUCTag downloads a raw byte image of
-packed samples rather than a decoded protobuf record list.
+its records rather than a decoded protobuf record list.
 
 ### Download unit
 
-One ACK carries one **two-hour block**: up to 24 twelve-byte samples, each with
-float pressure in hPa, float BMP585 temperature in degrees C, and five six-bit
-activity counts covering the five minutes that follow the sample. The layout and
-every decode rule live in `include/uiuctag_log_format.h`, shared verbatim with
-the firmware; this decoder takes all geometry from those macros rather than
-repeating constants.
+One ACK carries one **32-minute block**: up to 32 eight-byte records, each a raw
+BMP585 pressure (unsigned 24-bit, hPa = raw / 6400) and temperature (signed
+24-bit, degC = raw / 65536) reading, and three 5-bit counts of active seconds,
+one per 20 s, for the minute before the reading. The layout, the conversions
+and every decode rule live in `include/uiuctag_log_format.h`, shared verbatim
+with the firmware; this decoder takes all geometry from those macros and
+helpers rather than repeating constants. The design is in the
+[UIUCTag overview](../../../../embedded/tags/UIUCTag/design/overview.md).
+
+This is data layout 2 (firmware 2.0.0). The 12-byte five-minute layout 1 is not
+decoded; no tag in that format was deployed
+([decision 0044](../../../../docs/decisions/0044-uiuctag-minute-records.md)).
+`txtlogs.cc` and the capture decoder in `../recovery/capturesource.cc` follow
+the same rules; the text log writes activity as `epoch,ACT:percent`.
 
 The download index space is the internal checkpoint index, and one checkpoint
 always describes exactly one external block, so there are no holes in it.
 
 ### Timing
 
-`UIUCTagLog.epoch` is the time of the block's own slot 0, so slot times are a
-plain offset from it with no rounding:
+`UIUCTagLog.epoch` is the time of the block's own record 0, so record times are
+a plain offset from it with no rounding:
 
-- sample `s` is at `epoch + s * 300` (`uiuctagSampleEpoch()`)
-- activity bucket `b` of sample `s` starts at `+ b * 60`
-  (`uiuctagActivityBucketEpoch()`)
+- record `s` is at `epoch + s * 60` (`uiuctagRecordEpoch()`)
+- activity bucket `b` of record `s` starts at `epoch + s * 60 - 60 + b * 20`
+  (`uiuctagActivityBucketEpoch()`): the three buckets cover the minute that
+  ends at the reading
 
-Collection anchors its sample grid at the first minute boundary of the run and
-each later block begins exactly one block period after the previous one, so a
-header epoch is generally *not* a multiple of 7200. Do not round it down to a
-two-hour boundary; that would shift every sample in the block.
+Collection anchors its grid at the first minute boundary of the run and each
+later block begins exactly one block period after the previous one, so a header
+epoch is generally *not* a multiple of 1920. Do not round it; that would shift
+every record in the block.
 
-The array index *is* the slot number: the firmware always sends a block from slot
-0 and trims only trailing unwritten slots, so a short payload is a valid partial
-block and never a shifted one. Because each block is anchored at its own first
-sample, no two blocks can share a start time, and a block that ended early — at a
-reset or a hibernation window — simply has unwritten slots at the end.
+The array index *is* the slot number: the firmware always sends a block from
+record 0 and trims only trailing unwritten records, so a short payload is a
+valid partial block and never a shifted one. Because each block is anchored at
+its own first record, no two blocks can share a start time, and a block that
+ended early — at a reset or a hibernation window — simply has unwritten records
+at the end. A payload that is not a whole number of records, or longer than
+256 bytes, is rejected.
 
 ### Missing data
 
-**NaN means no measurement.** Absent values are omitted from the tables rather
-than stored as a placeholder, so gaps stay visible in plots and out of
-aggregates. Two distinct causes both read as NaN:
+Absent values are omitted from the tables rather than stored as a placeholder,
+so gaps stay visible in plots and out of aggregates:
 
-- The slot was never written. Erased flash reads as `0xFFFFFFFF`, which is
-  itself a quiet NaN.
-- The conversion failed. The firmware stores a canonical quiet NaN.
+- **Erased record**: activity word, the first two bytes, `0xFFFF`
+  (`uiuctagRecordErased()`). A written activity word has bit 15 clear, so this
+  test is exact. The record produces no rows.
+- **Failed reading**: pressure and temperature both `0`
+  (`UIUCTAG_RAW_FAILED`). No pressure or temperature row; the record's activity
+  is still decoded (`uiuctagRecordHasReading()`).
+- **Unobserved bucket**: value `0x1F`, written in all three buckets of a minute
+  the tag did not watch end to end (the first record of a run, or after a reset,
+  missed wake or hibernation). Counts 21-30 cannot be written and are treated
+  the same way. `uiuctagActivityBucket()` returns
+  `UIUCTAG_ACTIVITY_NOT_OBSERVED` for both, and no row is written.
 
-`uiuctagSampleHasPressure()` and `uiuctagSampleHasTemperature()` test for any
-NaN and therefore cover both. Note this differs deliberately from
-`imutag.cc`, which compares against one exact NaN encoding — that test would
-miss the erased-flash case, which is a normal occurrence in a UIUCTag log.
-
-Activity has its own marker: `packed_activity_data == 0xFFFFFFFF` means the word
-was never written. That is the expected state of the newest sample in any log,
-because a sample's activity is programmed one sample period after its pressure.
-Gaps of both kinds can appear anywhere in a block, not only at the tail.
+Every record the firmware writes carries its activity word, so unlike the old
+format the newest record of a log is complete. Gaps can appear anywhere in a
+block, not only at the tail.
 
 ### Rows
 
 - `Voltage`: one row per block, at the raw checkpoint `epoch`, since the reading
   is taken as the block opens.
-- `Pressure`, `Temperature`: one row per sample that has that value, at the
-  sample's slot epoch.
-- `Activity`: five rows per sample whose activity word was written, one per
-  one-minute bucket, as a percentage — `active_seconds * 100 / 60`, matching the
-  `%` units the `Activity` stream metadata declares and the convention the
-  BitPresTag and CompassTag decoders use.
+- `Pressure`, `Temperature`: one row each per record with a reading, at the
+  record's epoch.
+- `Activity`: up to three rows per record, one per observed 20-second bucket,
+  at the bucket's start, as a percentage — `active_seconds * 100 / 20`,
+  matching the `%` units the `Activity` stream metadata declares and the
+  convention the BitPresTag and CompassTag decoders use.
 
 ## Known Inconsistency: BitPresTag Activity Geometry
 
@@ -131,5 +143,4 @@ Writer rules:
   page headers are diagnostic checkpoints and do not adjust the sample grid,
   because rounded milliseconds can add page-to-page jitter.
 - Missing auxiliary values (pressure, magnetometer) are detected by comparing
-  against the one quiet-NaN encoding `0x7fc00000` (`isMissingAux()`), unlike
-  the UIUCTag decoder above.
+  against the one quiet-NaN encoding `0x7fc00000` (`isMissingAux()`).

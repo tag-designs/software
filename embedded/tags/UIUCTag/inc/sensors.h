@@ -20,6 +20,9 @@
 #define UIUCTAG_SENSORS_H
 
 #include <stdbool.h>
+#include <stdint.h>
+
+#include "uiuctag_log_format.h"
 
 /**
  * @brief Configure the accelerometer for activity wakeups during acquisition.
@@ -42,20 +45,19 @@
 void initDataCollection(void);
 
 /**
- * @brief Take one forced-mode pressure and temperature sample.
+ * @brief Take one forced-mode pressure and temperature reading, unconverted.
  *
  * @details Configures the BMP585 for a forced conversion, polls DRDY for the
- *          result, and powers the sensor back down before returning. Both
- *          outputs are always written: on any failure they are set to a quiet
- *          NaN so a caller can store the record unconditionally and the host
- *          sees "no measurement" rather than a stale or zero value.
+ *          result, and powers the sensor back down before returning. Fills the
+ *          record's pressure and temperature fields with the sensor's data
+ *          registers as they read, and leaves its activity word alone. A
+ *          failed conversion, a DRDY timeout, a bus error, or a pressure
+ *          outside UIUCTAG_PRESSURE_RAW_MIN..MAX stores UIUCTAG_RAW_FAILED in
+ *          both fields, so the caller can store the record unconditionally.
  *
- * @param[out] pressure_hpa Pressure in hectopascals, or NaN when no sample was
- *                          captured.
- * @param[out] temperature_c BMP585 die temperature in degrees Celsius, or NaN
- *                           when no sample was captured.
- * @return true when a fresh sample was captured, false on configuration
- *         failure, DRDY timeout, or bus error.
+ * @param[out] record Record whose pressure and temperature are filled in.
+ * @return true when a reading was captured, false when @p record holds the
+ *         failure value.
  *
  * @post    The pressure rail is powered down and the bus session is closed on
  *          every path, including failures.
@@ -63,6 +65,6 @@ void initDataCollection(void);
  * @warning Blocks for the conversion time of the configured ODR while polling
  *          INT_STATUS. Not for use from an ISR.
  */
-bool samplePressure(float *pressure_hpa, float *temperature_c);
+bool samplePressureRaw(t_UIUCTagRecord *record);
 
 #endif /* UIUCTAG_SENSORS_H */

@@ -5,15 +5,16 @@
  * @details Compiles the real embedded/tags/UIUCTag/src/state_run.c, by
  *          including it directly, against the minimal stubs in test/stub and
  *          drives Running() over a synthetic minute-alarm timeline. A fake
- *          external flash records every field write and asserts on the two
- *          faults that are expensive to detect on hardware: programming a NOR
- *          word twice, and writing while the chip is in deep power-down.
+ *          external flash records every record write and asserts on the faults
+ *          that are expensive to detect on hardware: programming a byte twice,
+ *          a write that is not one whole aligned record, and writing while the
+ *          chip is in deep power-down.
  *
  *          This checks the part of the design that is pure arithmetic over the
- *          acquisition clock - which slot a sample lands in, when its activity
- *          word follows, when a block rolls over - and the recovery paths that
- *          are slow to reproduce on a tag: a reset mid-block, and a hibernation
- *          window spanning several block windows.
+ *          acquisition clock - which record a minute lands in, which minute
+ *          its activity covers, when a block rolls over - and the recovery
+ *          paths that are slow to reproduce on a tag: a reset mid-block, a
+ *          hibernation window spanning several block windows, and a reattach.
  *
  *          It deliberately does not model sensors, buses, power, or timing. Its
  *          value is that the sequencer's decisions are separable from all of
@@ -53,8 +54,14 @@ t_storedconfig sconfig;
 static BackupState backup;
 volatile BackupState *const pState = &backup;
 
+/* --- the timeline -------------------------------------------------------- */
+/** An arbitrary epoch; the run starts 137 s after it, mid-minute. */
+static const int32_t BLOCK0 = 1767225600;
+/** The run's first minute boundary: record 0, and checkpoint 0's epoch. */
+static const int32_t ANCHOR = 1767225600 + 180;
+
 /* --- recording of everything the sequencer writes ------------------------ */
-typedef struct { int32_t at; uint32_t index; uint32_t field; uint32_t word; } Write;
+typedef struct { int32_t at; uint32_t index; t_UIUCTagRecord record; } Write;
 static Write writes[8192];
 static int write_count;
 typedef struct { int32_t at; int32_t epoch; uint32_t block; } Checkpoint;
@@ -62,29 +69,31 @@ static Checkpoint checkpoints[512];
 static int checkpoint_count;
 static bool flash_awake;
 static int pressure_samples;
-static bool pressure_fails_at_slot7;
 
-/* --- simulated flash: one word per (index, field) ------------------------ */
-#define MAX_SAMPLES 4096
-static uint32_t flash[MAX_SAMPLES][3];
-static bool flash_written[MAX_SAMPLES][3];
+/* --- simulated external flash, byte for byte ----------------------------- */
+#define MAX_RECORDS 4096
+static uint8_t flash[MAX_RECORDS * UIUCTAG_RECORD_SIZE];
+static bool flash_written[MAX_RECORDS * UIUCTAG_RECORD_SIZE];
 
 void dataLogWriteBegin(void) { assert(!flash_awake); flash_awake = true; }
 void dataLogWriteEnd(void) { assert(flash_awake); flash_awake = false; }
 
-enum LOGERR dataLogWriteField(uint32_t sample_index, uint32_t field_offset,
-                              const void *word)
+enum LOGERR dataLogWriteRecord(uint32_t index, const t_UIUCTagRecord *record)
 {
-    assert(flash_awake && "field written with flash asleep");
-    assert(sample_index < MAX_SAMPLES);
-    unsigned f = field_offset / 4;
-    assert(f < 3);
-    /* NOR flash cannot rewrite a programmed word: catch double writes. */
-    assert(!flash_written[sample_index][f] && "field programmed twice");
-    memcpy(&flash[sample_index][f], word, 4);
-    flash_written[sample_index][f] = true;
-    writes[write_count++] = (Write){timestamp, sample_index, field_offset,
-                                    flash[sample_index][f]};
+    const uint32_t address = index * UIUCTAG_RECORD_SIZE;
+
+    assert(flash_awake && "record written with flash asleep");
+    assert(index < MAX_RECORDS);
+    /* One whole record, inside one page. */
+    assert((address % UIUCTAG_RECORD_SIZE) == 0);
+    assert((address / 256u) == ((address + UIUCTAG_RECORD_SIZE - 1u) / 256u));
+    /* NOR flash cannot rewrite a programmed byte: catch double writes. */
+    for (unsigned i = 0; i < UIUCTAG_RECORD_SIZE; i++) {
+        assert(!flash_written[address + i] && "byte programmed twice");
+        flash_written[address + i] = true;
+    }
+    memcpy(&flash[address], record, UIUCTAG_RECORD_SIZE);
+    writes[write_count++] = (Write){timestamp, index, *record};
     return LOGWRITE_OK;
 }
 
@@ -120,63 +129,54 @@ void recordState(State_Event reason) { (void)reason; }
 void initDataCollection(void) {}
 int palReadLine(int line) { (void)line; return isActive ? 1 : 0; }
 
-bool samplePressure(float *pressure_hpa, float *temperature_c)
+/**
+ * @brief Stand-in for the BMP585: a value derived from the minute.
+ *
+ * @details Pressure is (1000 + n) hPa and temperature (20 + n/256) degC for
+ *          the n-th minute after the anchor, so a decoded value names the
+ *          minute it came from. Minute 7 fails, as a DRDY timeout would.
+ */
+bool samplePressureRaw(t_UIUCTagRecord *record)
 {
-    unsigned slot = (unsigned)((timestamp % (int32_t)UIUCTAG_DATA_LOG_SECONDS)
-                               / (int32_t)UIUCTAG_EXTERNAL_BLOCK_SECONDS);
+    const uint32_t n = (uint32_t)((timestamp - ANCHOR) / 60);
+
     pressure_samples++;
-    if (pressure_fails_at_slot7 && slot == 7) {
-        *pressure_hpa = __builtin_nanf("");
-        *temperature_c = __builtin_nanf("");
+    if (n == 7) {
+        uiuctagPut24(record->pressure, UIUCTAG_RAW_FAILED);
+        uiuctagPut24(record->temperature, UIUCTAG_RAW_FAILED);
         return false;
     }
-    *pressure_hpa = 1000.0f + slot;
-    *temperature_c = 20.0f + slot;
+    uiuctagPut24(record->pressure, (1000u + n) * 6400u);
+    uiuctagPut24(record->temperature, (20u * 65536u + n * 256u) & 0xFFFFFFu);
     return true;
 }
 
 #include "state_run.c"
 
 /* --- the simulation ------------------------------------------------------ */
-static const int32_t BLOCK0 = 1767225600;   /* multiple of 7200 */
-
-/*
- * The expected slot indices, checkpoint epochs, and activity words below are
- * written for the shipping five-minute period. The invariants that hold at any
- * period - no word programmed twice, no write while the flash sleeps, every
- * sampled slot getting both pressure and temperature - stay active either way,
- * so building this with -DUIUCTAG_SAMPLE_PERIOD_SEC set still exercises the
- * addressing arithmetic that a shortened period is most likely to break.
- */
-#if UIUCTAG_SAMPLE_PERIOD_SEC == UIUCTAG_EXTERNAL_BLOCK_SECONDS
-#define SIM_DEFAULT_GEOMETRY 1
-#else
-#define SIM_DEFAULT_GEOMETRY 0
-#endif
 
 /**
- * @brief Unpack an activity bucket from a recorded activity word.
+ * @brief Find the write of one record.
  *
- * @details Goes through the shared accessor rather than re-deriving the shift,
- *          so the simulation cannot agree with a bug in the packing.
- *
- * @param[in] word Recorded packed activity word.
- * @param[in] b Bucket index.
- * @return Active seconds in that bucket.
+ * @param[in] index Global record index.
+ * @return Position in writes[], or -1 when the record was never written.
  */
-static uint32_t bucket(uint32_t word, unsigned b)
-{
-    t_UIUCTagSample sample;
-    memset(&sample, 0xFF, sizeof(sample));
-    sample.packed_activity_data = word;
-    return uiuctagActivityBucket(&sample, b);
-}
-
-static int find_write(uint32_t index, uint32_t field)
+static int find_write(uint32_t index)
 {
     for (int i = 0; i < write_count; i++)
-        if (writes[i].index == index && writes[i].field == field) return i;
+        if (writes[i].index == index) return i;
     return -1;
+}
+
+/**
+ * @brief Global record index of a minute on the original grid.
+ *
+ * @param[in] t Epoch second of a minute boundary at or after ANCHOR.
+ * @return Record index, valid while no block has been re-anchored.
+ */
+static uint32_t index_at(int32_t t)
+{
+    return (uint32_t)((t - ANCHOR) / 60);
 }
 
 int main(int argc, char **argv)
@@ -186,206 +186,160 @@ int main(int argc, char **argv)
         (argc > 1) ? argv[1] : "uiuc_sim_blocks.bin";
 
     memset(&backup, 0, sizeof(backup));
+    memset(flash, 0xFF, sizeof(flash));
     sconfig.stop = BLOCK0 + 100000;
-    sconfig.hibernate[0].start_epoch = 0;
-    sconfig.hibernate[0].end_epoch = 0;
-    sconfig.hibernate[1].start_epoch = 0;
-    sconfig.hibernate[1].end_epoch = 0;
-    pressure_fails_at_slot7 = true;
 
     /* Start mid-minute, deliberately off any boundary. */
     timestamp = BLOCK0 + 137;
     events = 0;
     Running(T_INIT, 0);
-    printf("T_INIT at block0+137: checkpoints=%d writes=%d\n",
-           checkpoint_count, write_count);
-    assert(checkpoint_count == 0 && "no block should open before a sample");
+    assert(checkpoint_count == 0 && "no block should open before a record");
 
-    /* Minute alarms for three hours. The grid is anchored at the first minute
-       boundary of the run, block0+180, so sample boundaries are +180, +480,
-       ... and the sample covering [+3780, +4080) is the one exercised below:
-       the whole minute at +3780 fills its bucket 0, and 30 s from +3900 fills
-       half of its bucket 2. */
-    for (int32_t t = BLOCK0 + 180; t <= BLOCK0 + 10800; t += 60) {
+    /* Minute alarms for three hours, anchored at block0+180. Activity: the
+       whole minute [+3780, +3840), then 30 s from +3930 to +3960. */
+    for (int32_t t = ANCHOR; t <= BLOCK0 + 10800; t += 60) {
         timestamp = t;
         events = EVT_RTC_ALRAF;
-        isActive = false;
-        if (t == BLOCK0 + 3780) { isActive = true; }        /* active from here */
-        if (t == BLOCK0 + 3840) { isActive = false; }       /* 60 s of activity */
-        if (t == BLOCK0 + 3900) { isActive = true; }
+        isActive = (t == BLOCK0 + 3780) || (t == BLOCK0 + 3900);
         Running(T_CONT, 0);
-        /* lastactstart is what carries "active since" across wakes; emulate 30 s
-           of activity starting mid-minute the way an edge wake would. */
+        /* lastactstart carries "active since" across wakes; emulate an edge
+           wake 30 s into the minute. */
         if (t == BLOCK0 + 3900) { pState->lastactstart = t + 30; }
-        if (t == BLOCK0 + 3960) { pState->lastactstart = INT_MAX; }
     }
-
-    printf("after 3 h: pressure_samples=%d writes=%d checkpoints=%d\n",
+    printf("after 3 h: readings=%d writes=%d checkpoints=%d\n",
            pressure_samples, write_count, checkpoint_count);
 
-    /* --- checkpoint expectations --- */
-#if SIM_DEFAULT_GEOMETRY
-    /* The run's first minute boundary is block0+180, and that instant is both
-       checkpoint 0 and its own slot 0. Every later block starts exactly one
-       block period after the previous one, so the grid never depends on where
-       the run happened to begin relative to absolute time. */
-    const int32_t ANCHOR = BLOCK0 + 180;
-    assert(checkpoint_count == 2);
-    assert(checkpoints[0].epoch == ANCHOR && checkpoints[0].block == 0);
-    assert(checkpoints[1].epoch == ANCHOR + 7200 && checkpoints[1].block == 1);
-    printf("checkpoint 0: epoch=block0+%d block=%u (run anchor)\n",
-           checkpoints[0].epoch - BLOCK0, checkpoints[0].block);
-    printf("checkpoint 1: epoch=block0+%d block=%u (anchor + one block)\n",
-           checkpoints[1].epoch - BLOCK0, checkpoints[1].block);
+    /* --- one record per minute, one checkpoint per 32 --- */
+    const uint32_t records = index_at(BLOCK0 + 10800) + 1;     /* 178 */
+    assert(write_count == (int)records && pressure_samples == (int)records);
+    assert(checkpoint_count == (int)((records + 31) / 32));
+    for (int c = 0; c < checkpoint_count; c++) {
+        assert(checkpoints[c].block == (uint32_t)c);
+        assert(checkpoints[c].epoch == ANCHOR + c * 1920 &&
+               "each block starts exactly 32 minutes after the previous one");
+    }
+    for (int i = 0; i < write_count; i++)
+        assert(writes[i].index == index_at(writes[i].at) &&
+               "record n is written at anchor + 60 n");
+    printf("%u records in %d blocks of 32, checkpoints 1920 s apart\n",
+           records, checkpoint_count);
 
-    /* --- slot addressing, measured from each block's own start --- */
-    /* The anchor sample itself is slot 0 of block 0 -> index 0. */
-    int w = find_write(0, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == ANCHOR);
-    /* One period later is slot 1 -> index 1. */
-    w = find_write(1, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == ANCHOR + 300);
-    /* The 24th sample opens block 1 as its slot 0 -> index 24. */
-    w = find_write(24, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == ANCHOR + 7200);
-    printf("slot addressing: index 0 @anchor, index 1 @anchor+300, "
-           "index 24 @anchor+7200\n");
-
-    /* --- failed conversion stores NaN, and only NaN --- */
-    /* slot 7 of block 0 = index 7, written one period per slot after the
-       anchor. */
-    w = find_write(7, DATALOG_FIELD_PRESSURE);
-    assert(w >= 0 && writes[w].at == ANCHOR + 7 * 300);
+    /* --- the first record's minute was not observed; the rest were --- */
     {
-        float p; memcpy(&p, &writes[w].word, 4);
-        assert(uiuctagFloatMissing(p) && "failed sample must store NaN");
-        assert(writes[w].word != UIUCTAG_ERASED_WORD &&
-               "stored NaN must be distinguishable from erased flash");
+        int w = find_write(0);
+        assert(w >= 0 && writes[w].record.activity == UIUCTAG_ACTIVITY_UNOBSERVED_WORD);
+        for (int i = 1; i < write_count; i++)
+            assert(writes[i].record.activity != UIUCTAG_ACTIVITY_UNOBSERVED_WORD &&
+                   uiuctagRecordHasActivity(&writes[i].record));
     }
-    printf("failed conversion at index 7 stored 0x%08x (canonical NaN)\n",
-           writes[w].word);
 
-    /* --- activity is written one sample period late, into the right slot --- */
-    /* The sample at anchor+3600 is slot 12 of block 0, covering
-       [anchor+3600, anchor+3900) = [block0+3780, block0+4080). Its activity
-       word must be programmed one period later, at anchor+3900. */
-    w = find_write(12, DATALOG_FIELD_ACTIVITY);
-    assert(w >= 0);
-    assert(writes[w].at == ANCHOR + 3900 && "activity lags its sample by one period");
-    printf("activity for slot 12 written at +%d, word=0x%08x buckets=%u,%u,%u,%u,%u\n",
-           writes[w].at - BLOCK0, writes[w].word,
-           bucket(writes[w].word, 0), bucket(writes[w].word, 1),
-           bucket(writes[w].word, 2), bucket(writes[w].word, 3),
-           bucket(writes[w].word, 4));
-    assert(bucket(writes[w].word, 0) == 60 && "full minute of activity");
-    assert(bucket(writes[w].word, 1) == 0);
-    assert(bucket(writes[w].word, 2) == 30 && "half minute of activity");
-    assert(bucket(writes[w].word, 3) == 0);
-    assert(bucket(writes[w].word, 4) == 0);
-
-#endif /* SIM_DEFAULT_GEOMETRY */
-
-    /* --- period-independent invariants: every written sample got exactly
-           pressure+temperature, and every completed sample also got activity --- */
-    int with_pressure = 0, with_activity = 0;
-    for (unsigned i = 0; i < MAX_SAMPLES; i++) {
-        if (flash_written[i][0]) {
-            with_pressure++;
-            assert(flash_written[i][1] && "temperature must accompany pressure");
-        }
-        if (flash_written[i][2]) {
-            with_activity++;
-            assert(flash_written[i][0] && "activity only for a sampled slot");
-        }
+    /* --- failed reading stores the failure value, still a written record --- */
+    {
+        int w = find_write(7);
+        assert(w >= 0);
+        assert(!uiuctagRecordErased(&writes[w].record));
+        assert(!uiuctagRecordHasReading(&writes[w].record));
+        assert(uiuctagRecordHasActivity(&writes[w].record));
+        int ok = find_write(8);
+        assert(ok >= 0 && uiuctagRecordHasReading(&writes[ok].record));
+        assert(uiuctagRecordPressureHpa(&writes[ok].record) == 1008.0);
     }
-    printf("samples with pressure=%d with activity=%d\n", with_pressure, with_activity);
-    assert(with_pressure == pressure_samples);
-    assert(with_activity == with_pressure - 1 && "newest sample has no activity yet");
 
-    /* --- stop time ends the run --- */
+    /* --- activity covers the minute before the record --- */
+    {
+        int w = find_write(index_at(BLOCK0 + 3840));
+        const t_UIUCTagRecord *r = &writes[w].record;
+        printf("record at +3840: buckets %u,%u,%u\n", uiuctagActivityBucket(r, 0),
+               uiuctagActivityBucket(r, 1), uiuctagActivityBucket(r, 2));
+        assert(uiuctagActivityBucket(r, 0) == 20 && uiuctagActivityBucket(r, 1) == 20 &&
+               uiuctagActivityBucket(r, 2) == 20 && "a whole active minute");
+        w = find_write(index_at(BLOCK0 + 3960));
+        r = &writes[w].record;
+        printf("record at +3960: buckets %u,%u,%u\n", uiuctagActivityBucket(r, 0),
+               uiuctagActivityBucket(r, 1), uiuctagActivityBucket(r, 2));
+        assert(uiuctagActivityBucket(r, 0) == 0 && uiuctagActivityBucket(r, 1) == 10 &&
+               uiuctagActivityBucket(r, 2) == 20 && "30 s from 10 s into bucket 1");
+        w = find_write(index_at(BLOCK0 + 3900));
+        assert(writes[w].record.activity == 0 && "an inactive minute is zero");
+    }
+
+    /* --- stop time ends the run without a further record --- */
     sconfig.stop = BLOCK0 + 10800;
     timestamp = BLOCK0 + 10860;
     events = EVT_RTC_ALRAF;
     Running(T_CONT, 0);
-    assert(finished_count == 1);
-    printf("stop time honoured: finished=%d\n", finished_count);
+    assert(finished_count == 1 && write_count == (int)records);
+    printf("stop time honoured\n");
 
-#if SIM_DEFAULT_GEOMETRY
     /* ---------------------------------------------------------------- */
-    /* Phase 2: reset mid-block. The state machine re-enters RUNNING via
-       T_INIT with the flash checkpoints intact but volatile progress lost. */
+    /* Phase 2: reset mid-block. RUNNING is re-entered through T_INIT with
+       the flash checkpoints intact but volatile progress lost. */
     /* ---------------------------------------------------------------- */
     {
-        int writes_before = write_count;
         int checkpoints_before = checkpoint_count;
-        finished_count = 0;
         sconfig.stop = BLOCK0 + 100000;
 
-        /* Reset between two grid points, deliberately off the sample grid. */
-        timestamp = ANCHOR + 10860;
+        timestamp = BLOCK0 + 10890;                  /* mid-minute */
         Running(T_INIT, 0);
         assert(checkpoint_count == checkpoints_before &&
                "re-entry must not open a block on its own");
-        assert(write_count == writes_before);
 
-        /* A wake that is minute aligned but off the grid must not sample. */
-        timestamp = ANCHOR + 10920;
+        timestamp = BLOCK0 + 10920;
         events = EVT_RTC_ALRAF;
         isActive = false;
         Running(T_CONT, 0);
-        assert(write_count == writes_before &&
-               "an off-grid wake must not write a sample");
-
-        /* The next grid point resumes the original grid: slot 12 of block 1. */
-        timestamp = ANCHOR + 11100;
-        events = EVT_RTC_ALRAF;
-        Running(T_CONT, 0);
-        int w2 = find_write(24 + 13, DATALOG_FIELD_PRESSURE);
-        assert(w2 >= 0 && writes[w2].at == ANCHOR + 11100);
+        int w = find_write(index_at(BLOCK0 + 10920));
+        assert(w >= 0 && "the grid resumes at the next minute");
+        assert(find_write(index_at(BLOCK0 + 10860)) < 0 &&
+               "the minute missed during the reset stays erased");
+        assert(writes[w].record.activity == UIUCTAG_ACTIVITY_UNOBSERVED_WORD &&
+               "a minute spanning a reset is not observed, not guessed");
         assert(checkpoint_count == checkpoints_before &&
-               "an unfilled block must be reused, not replaced");
-        /* The sample written before the reset keeps its erased activity word:
-           its accumulation was lost, so nothing is invented for it. */
-        assert(!flash_written[24 + 12][2] &&
-               "activity spanning a reset must stay unwritten, not guessed");
-        printf("reset mid-block: off-grid wake ignored, grid resumed at "
-               "index %d, prior activity left erased\n", 24 + 13);
+               "an unfilled block is reused, not replaced");
+
+        timestamp = BLOCK0 + 10980;
+        Running(T_CONT, 0);
+        w = find_write(index_at(BLOCK0 + 10980));
+        assert(w >= 0 && writes[w].record.activity == 0 &&
+               "the next whole minute is observed again");
+        printf("reset mid-block: grid resumed, missed minute erased, "
+               "first minute unobserved\n");
     }
 
     /* ---------------------------------------------------------------- */
     /* Phase 3: hibernation window, then resume in a later block window. */
     /* ---------------------------------------------------------------- */
+    int32_t resumed_at;
     {
         int checkpoints_before = checkpoint_count;
-        hibernating_count = 0;
 
-        sconfig.hibernate[0].start_epoch = ANCHOR + 11400;
-        sconfig.hibernate[0].end_epoch = ANCHOR + 25200;
+        sconfig.hibernate[0].start_epoch = BLOCK0 + 11040;
+        sconfig.hibernate[0].end_epoch = BLOCK0 + 25200;
 
-        timestamp = ANCHOR + 11400;
+        timestamp = BLOCK0 + 11040;
         events = EVT_RTC_ALRAF;
         Running(T_CONT, 0);
-        assert(hibernating_count == 1 && "must hibernate at a sample boundary");
+        assert(hibernating_count == 1 && "must hibernate at a minute boundary");
 
         /* Resume well after the window: the grid has run far past the block's
-           last slot, so the resumed run re-anchors on a fresh block rather than
-           addressing slots it skipped. */
-        timestamp = ANCHOR + 25200;
+           last record, so the run re-anchors on a fresh block. */
+        timestamp = BLOCK0 + 25200;
         Running(T_INIT, 0);
-        /* ANCHOR + 25500 is the next point on the grid the old checkpoint
-           defines; a resumed run samples there, not at the first minute wake. */
-        timestamp = ANCHOR + 25500;
+        resumed_at = BLOCK0 + 25260;
+        timestamp = resumed_at;
         events = EVT_RTC_ALRAF;
         Running(T_CONT, 0);
         assert(checkpoint_count == checkpoints_before + 1);
         assert(checkpoints[checkpoint_count - 1].block ==
                checkpoints[checkpoints_before - 1].block + 1 &&
-               "resumed run must take the next external block");
-        assert(checkpoints[checkpoint_count - 1].epoch == ANCHOR + 25500 &&
-               "a resumed block is anchored at its own first sample");
-        printf("hibernate/resume: new block %u anchored at anchor+%d\n",
-               checkpoints[checkpoint_count - 1].block,
-               checkpoints[checkpoint_count - 1].epoch - ANCHOR);
+               "a resumed run takes the next external block");
+        assert(checkpoints[checkpoint_count - 1].epoch == resumed_at &&
+               "a resumed block is anchored at its own first record");
+        int w = find_write(checkpoints[checkpoint_count - 1].block * 32u);
+        assert(w >= 0 && writes[w].at == resumed_at);
+        assert(writes[w].record.activity == UIUCTAG_ACTIVITY_UNOBSERVED_WORD);
+        printf("hibernate/resume: new block %u anchored at +%d\n",
+               checkpoints[checkpoint_count - 1].block, resumed_at - BLOCK0);
     }
 
     /* ---------------------------------------------------------------- */
@@ -401,33 +355,33 @@ int main(int argc, char **argv)
         assert(minute_alarm_armed && "a running tag has its minute alarm");
 
         /* A wake from Standby (State_EVENT_OK) keeps the alarm untouched. */
-        timestamp = ANCHOR + 25530;
+        timestamp = resumed_at + 30;
         events = 0;
         Running(T_CONT, 0);
         assert(minute_alarm_armed);
 
         disableAllAlarms();           /* deviceInit() on a power-init boot */
-        timestamp = ANCHOR + 25540;   /* off the grid, no alarm event */
+        timestamp = resumed_at + 40;  /* between minutes, no alarm event */
         events = 0;
         Running(T_CONT, State_EVENT_POWERFAIL);
         assert(minute_alarm_armed &&
                "a reattach must re-arm the minute alarm");
         assert(write_count == writes_before &&
                checkpoint_count == checkpoints_before &&
-               "re-arming must not write a sample or open a block");
+               "re-arming must not write a record or open a block");
 
-        /* The resumed run samples at its next grid point, on the same grid. */
-        timestamp = ANCHOR + 25800;
+        /* The resumed run writes at its next minute, in the same block, and
+           pState carried the minute's activity across the reattach. */
+        timestamp = resumed_at + 60;
         events = EVT_RTC_ALRAF;
         Running(T_CONT, 0);
-        assert(write_count > writes_before && "the resumed run collects");
+        assert(write_count == writes_before + 1 && "the resumed run collects");
         assert(checkpoint_count == checkpoints_before &&
                "a reattach continues its block");
-        printf("reattach: minute alarm re-armed, sampling resumed at "
-               "anchor+%d\n", 25800);
+        assert(writes[write_count - 1].index ==
+               checkpoints[checkpoint_count - 1].block * 32u + 1u);
+        printf("reattach: minute alarm re-armed, collection resumed\n");
     }
-
-#endif /* SIM_DEFAULT_GEOMETRY */
 
     /* ---------------------------------------------------------------- */
     /* Emit the simulated external blocks and their checkpoints so the host
@@ -437,31 +391,18 @@ int main(int argc, char **argv)
         FILE *f = fopen(block_output_path, "wb");
         assert(f != NULL);
         for (int c = 0; c < checkpoint_count; c++) {
-            uint8_t image[UIUCTAG_SAMPLE_BYTES_MAX];
-            uint32_t base = checkpoints[c].block * UIUCTAG_LOG_SAMPLES;
-
-            memset(image, 0xFF, sizeof(image));   /* erased flash */
-            for (unsigned slot = 0; slot < UIUCTAG_LOG_SAMPLES; slot++) {
-                for (unsigned field = 0; field < 3; field++) {
-                    if (flash_written[base + slot][field]) {
-                        memcpy(&image[slot * UIUCTAG_SAMPLE_SIZE + field * 4],
-                               &flash[base + slot][field], 4);
-                    }
-                }
-            }
             int32_t epoch = checkpoints[c].epoch;
             uint16_t vdd100 = 300;
             fwrite(&epoch, sizeof(epoch), 1, f);
             fwrite(&vdd100, sizeof(vdd100), 1, f);
-            fwrite(image, sizeof(image), 1, f);
+            fwrite(&flash[checkpoints[c].block * UIUCTAG_BLOCK_BYTES],
+                   UIUCTAG_BLOCK_BYTES, 1, f);
         }
         fclose(f);
         printf("wrote %d simulated blocks to %s\n", checkpoint_count,
                block_output_path);
     }
 
-    printf("\nFIRMWARE SEQUENCER SIM: all assertions passed (%s)\n",
-           SIM_DEFAULT_GEOMETRY ? "default geometry"
-                                : "invariants only, period overridden");
+    printf("\nFIRMWARE SEQUENCER SIM: all assertions passed\n");
     return 0;
 }

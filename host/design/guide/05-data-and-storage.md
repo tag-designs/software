@@ -19,7 +19,7 @@ what it is good at:
 | --- | --- | --- |
 | **RTC backup registers** (a few dozen words, kept while the battery lasts, lost on power loss) | `pState`: the tag's state, validity magic, reset classification, counters that must survive standby | Readable and writable at any time, including from the lowest power states; the firmware's recovery journal |
 | **Internal flash** (the microcontroller's; 128 or 256 KB on the L432, 1 MB on the U375, less the image) | The stored `Config`; the **state-marker log** (one entry per transition); for tags with external flash, **page headers or checkpoints** that index the external log; on CompassTag and IMUTag, the **calibration store**; on BitTag, the data itself | Always present, byte-addressable reads, erased in pages; the firmware writes it with its own flash driver |
-| **External flash** (SPI NOR on the L432 families with one, 4 MB; SPI NAND on IMUTag, 256 MB) | The **data pages**: fixed-size pages of packed samples with a small header each (a 2048-byte NAND page on IMUTag, 296-byte blocks on UIUCTag, and so on, as `include/*_log_format.h` lays them out) | Capacity; powered down between writes through a load switch on most boards |
+| **External flash** (SPI NOR on the L432 families with one, 4 MB; SPI NAND on IMUTag, 256 MB) | The **data pages**: fixed-size pages of packed samples with a small header each (a 2048-byte NAND page on IMUTag, 256-byte blocks of 8-byte minute records on UIUCTag, and so on, as `include/*_log_format.h` lays them out) | Capacity; powered down between writes through a load switch on most boards |
 
 The invariants the firmware keeps, which the host relies on without
 checking:

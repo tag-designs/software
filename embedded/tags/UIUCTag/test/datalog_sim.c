@@ -10,15 +10,18 @@
  *          external NOR and a fake internal checkpoint array, and drives the
  *          minute alarm until the flash is full.
  *
- *          Its subject is A3 on the firmware-fix branch: the flash size is not
- *          a multiple of the 288-byte block, so the end of the part cuts the
- *          final block short. fw-v0.0.3 served only whole blocks, so that block
- *          was written and never downloaded. The final block must be served,
- *          hold every slot that was completed, keep the field of the slot that
- *          was cut short, and read nothing past the end of the part.
+ *          It checks the capacity claim and the end of the log: a 4 MiB part
+ *          holds 524,288 minute records (364 days) in 16,384 whole blocks, the
+ *          run ends cleanly when the next record would pass the end of the
+ *          part, every block downloads complete, nothing is read past the end,
+ *          and a request past the last block answers NODATA.
  *
- *          Every sample carries its sequence number in its pressure, so the
- *          download is checked slot by slot against what was written.
+ *          Every record carries its sequence number in its pressure, so the
+ *          download is checked record by record against what was written.
+ *
+ *          It also checks restoreLog(): after an empty log, a run partway into
+ *          its second block, a run with missed minutes, and a full part, the
+ *          recovered record count equals the one Running() kept.
  *
  * @note    Not part of any build. Build and run instructions are in
  *          test/README.md.
@@ -80,7 +83,7 @@ typedef uint16_t pb_size_t;
 typedef struct {
   int32_t epoch;
   float voltage;
-  struct { pb_size_t size; uint8_t bytes[288]; } samples;
+  struct { pb_size_t size; uint8_t bytes[256]; } samples;
 } UIUCTagLog;
 typedef enum { Ack_Err_OK = 0, Ack_Err_NODATA = 3 } Ack_Err;
 #define Ack_uiuctag_data_log_tag 17
@@ -166,7 +169,7 @@ void tagStorageRead(const TagStorageDevice *dev, uint32_t address,
 {
     (void)dev;
     assert(nor_awake && "external flash read while asleep");
-    /* The real part has no bytes past its end; reading them is the A3 bug. */
+    /* The real part has no bytes past its end. */
     assert(address + (uint32_t)num <= (uint32_t)sector_count * SECTOR_SIZE &&
            "read past the end of external flash");
     memcpy(buf, &nor[address], num);
@@ -188,12 +191,12 @@ void initDataCollection(void) {}
 int palReadLine(int line) { (void)line; return 0; }
 int encode_ack(void) { return 0; }
 
-/* Each sample carries its sequence number as its pressure (exact in a float
-   well past the 349525 samples 4 MiB holds). */
-bool samplePressure(float *pressure_hpa, float *temperature_c)
+/* Each record carries its sequence number as its raw pressure (24 bits hold
+   the 1,048,576 records 8 MiB holds). */
+bool samplePressureRaw(t_UIUCTagRecord *record)
 {
-    *pressure_hpa = (float)sample_seq;
-    *temperature_c = 20.0f;
+    uiuctagPut24(record->pressure, sample_seq);
+    uiuctagPut24(record->temperature, 20u * 65536u);
     sample_seq++;
     return true;
 }
@@ -202,17 +205,13 @@ bool samplePressure(float *pressure_hpa, float *temperature_c)
 #include "state_run.c"
 
 /* --- the simulation ------------------------------------------------------ */
-static const int32_t BLOCK0 = 1767225600;   /* multiple of 7200 */
+static const int32_t BLOCK0 = 1767225600;
 
 /**
- * Fill @p bytes of external flash with minute alarms, then download every
- * block and check it slot by slot.
+ * Erase the simulated flash and state for a fresh run on a part of @p bytes.
  */
-static void test_full(uint32_t bytes, const char *part)
+static void sim_reset(uint32_t bytes)
 {
-    static Ack ack;
-    const uint32_t block_bytes = DATALOG_BLOCK_BYTES;
-
     assert(bytes % SECTOR_SIZE == 0 && bytes <= MAX_FLASH);
     /* datalog.c compares checkpoint addresses as uint32_t, as it may on the
        32-bit tag. On a 64-bit host that is sound only while the array does
@@ -227,7 +226,69 @@ static void test_full(uint32_t bytes, const char *part)
     memset(sconfig.hibernate, 0, sizeof(sconfig.hibernate));
     sample_seq = 0;
     finished_count = 0;
+}
 
+/**
+ * Check that restoreLog() rebuilds the counters Running() kept, from flash
+ * alone, after the retained copies are lost.
+ */
+static void check_recovery(const char *what)
+{
+    const uint32_t pages = pState->pages;
+    const uint32_t records = pState->external_blocks;
+
+    pState->pages = 777;
+    pState->external_blocks = 12345;
+    assert(restoreLog() == 0);
+    assert(!nor_awake && "external flash left awake");
+    assert(pState->pages == pages && "checkpoint count recovered");
+    assert(pState->external_blocks == records && "record count recovered");
+    printf("recovery %s: %u checkpoints, %u records\n", what,
+           (unsigned)pages, (unsigned)records);
+}
+
+/**
+ * restoreLog() on an empty log, partway into a second block, after missed
+ * minutes, and (from test_full) on a full part.
+ */
+static void test_recovery(void)
+{
+    sim_reset(4u * 1024u * 1024u);
+    check_recovery("empty log");
+    assert(pState->external_blocks == 0);
+
+    /* 45 minute alarms: one full block and 13 records of the next. */
+    timestamp = BLOCK0 + 137;
+    events = 0;
+    Running(T_INIT, 0);
+    for (int i = 0; i < 45; i++) {
+        timestamp = BLOCK0 + 180 + 60 * i;
+        events = EVT_RTC_ALRAF;
+        Running(T_CONT, 0);
+    }
+    assert(pState->external_blocks == 45);
+    check_recovery("45 minutes");
+
+    /* Ten missed minutes, then three more records: the count is a position,
+       so the gap counts, as it does in the download. */
+    for (int i = 55; i < 58; i++) {
+        timestamp = BLOCK0 + 180 + 60 * i;
+        events = EVT_RTC_ALRAF;
+        Running(T_CONT, 0);
+    }
+    assert(pState->external_blocks == 58);
+    check_recovery("after missed minutes");
+}
+
+/**
+ * Fill @p bytes of external flash with minute alarms, then download every
+ * block and check it record by record.
+ */
+static void test_full(uint32_t bytes, const char *part)
+{
+    static Ack ack;
+
+    sim_reset(bytes);
     timestamp = BLOCK0 + 137;
     events = 0;
     Running(T_INIT, 0);
@@ -236,67 +297,52 @@ static void test_full(uint32_t bytes, const char *part)
         Running(T_CONT, 0);
     }
 
-    const uint32_t whole = bytes / block_bytes;
-    const uint32_t tail_bytes = bytes % block_bytes;
-    const uint32_t tail_slots = tail_bytes / UIUCTAG_SAMPLE_SIZE;
-    /* The slot cut short keeps the 4-byte fields that fit: pressure, then
-       temperature. Its activity word is the third field and never fits. */
-    const uint32_t tail_fields = (tail_bytes % UIUCTAG_SAMPLE_SIZE) / 4;
-    const bool tail_pressure = tail_fields >= 1;
-    assert(tail_slots > 0 && "choose a size that cuts the last block short");
-    assert(pState->pages == whole + 1 && "checkpoint for the cut-short block");
+    const uint32_t blocks = bytes / UIUCTAG_BLOCK_BYTES;
+    const uint32_t records = bytes / UIUCTAG_RECORD_SIZE;
+    assert(bytes % UIUCTAG_BLOCK_BYTES == 0 && "a part is whole blocks");
+    assert(pState->pages == blocks && "one checkpoint per block");
+    /* The wake after the last record took a reading and found no room. */
+    assert(sample_seq == records + 1);
 
     uint32_t seq = 0;
-    for (uint32_t b = 0; b <= whole; b++) {
+    for (uint32_t b = 0; b < blocks; b++) {
         memset(&ack, 0, sizeof(ack));
         data_logAck((int)b, &ack);
-        assert(ack.which_payload == Ack_uiuctag_data_log_tag &&
-               "block not served (the final partial block, if b == whole)");
+        assert(ack.which_payload == Ack_uiuctag_data_log_tag);
         const UIUCTagLog *log = &ack.payload.uiuctag_data_log;
         assert(log->epoch == vddHeader[b].epoch);
-        assert(log->samples.size % UIUCTAG_SAMPLE_SIZE == 0);
-        uint32_t slots = log->samples.size / UIUCTAG_SAMPLE_SIZE;
-        uint32_t complete = (b < whole) ? UIUCTAG_LOG_SAMPLES : tail_slots;
-        assert(slots == complete + ((b == whole && tail_pressure) ? 1 : 0));
+        assert(log->epoch == BLOCK0 + 180 + (int32_t)(b * UIUCTAG_DATA_LOG_SECONDS));
+        assert(log->samples.size == UIUCTAG_BLOCK_BYTES && "every block is full");
 
-        for (uint32_t s = 0; s < slots; s++, seq++) {
-            t_UIUCTagSample sample;
-            memcpy(&sample, &log->samples.bytes[s * UIUCTAG_SAMPLE_SIZE],
-                   sizeof(sample));
-            assert(uiuctagSampleHasPressure(&sample));
-            assert(sample.pressure == (float)seq && "slot out of sequence");
-            if (s < complete) {
-                assert(uiuctagSampleHasTemperature(&sample));
-                /* The last complete slot's activity is written at the next
-                   sample's wake; in the final block that wake ran out of
-                   flash after the activity and pressure, so it is there. */
-                assert(uiuctagSampleHasActivity(&sample));
-            } else {
-                /* Cut short: the fields that fit are written, the rest lie
-                   past the end of the part and are served as missing. */
-                assert(uiuctagSampleHasTemperature(&sample) == (tail_fields >= 2));
-                assert(!uiuctagSampleHasActivity(&sample));
-            }
+        for (uint32_t s = 0; s < UIUCTAG_LOG_RECORDS; s++, seq++) {
+            t_UIUCTagRecord record;
+            memcpy(&record, &log->samples.bytes[s * UIUCTAG_RECORD_SIZE],
+                   sizeof(record));
+            assert(!uiuctagRecordErased(&record));
+            assert(uiuctagRecordHasReading(&record) || seq == 0);
+            assert(uiuctagRecordPressureRaw(&record) == seq &&
+                   "record out of sequence");
+            assert(uiuctagRecordHasActivity(&record));
+            assert(record.activity ==
+                   (seq == 0 ? UIUCTAG_ACTIVITY_UNOBSERVED_WORD : 0u) &&
+                   "first minute unobserved, every later one watched");
         }
     }
 
     memset(&ack, 0, sizeof(ack));
-    data_logAck((int)whole + 1, &ack);
+    data_logAck((int)blocks, &ack);
     assert(ack.which_payload == 0 && ack.err == Ack_Err_NODATA);
-    /* At most one sample is lost: one taken at the wake whose first write
-       found the flash full. */
-    assert(sample_seq - seq <= 1);
+    assert(seq == records);
 
-    printf("A3 full %s: %u whole blocks + final block of %u slots%s; "
-           "%u samples downloaded\n",
-           part, (unsigned)whole, (unsigned)tail_slots,
-           tail_fields >= 2 ? " + one cut short (pressure, temperature)"
-           : tail_pressure ? " + one cut short (pressure)" : "",
-           (unsigned)seq);
+    printf("full %s: %u blocks, %u records = %.1f days of minute records\n",
+           part, (unsigned)blocks, (unsigned)seq, seq / 1440.0);
+    assert(pState->external_blocks == records);
+    check_recovery(part);
 }
 
 int main(void)
 {
+    test_recovery();
     test_full(4u * 1024u * 1024u, "4 MiB (AT25XE321D)");
     test_full(8u * 1024u * 1024u, "8 MiB");
     printf("UIUCTAG DATALOG SIM: all assertions passed\n");

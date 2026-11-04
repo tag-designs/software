@@ -252,19 +252,23 @@ queries work for both.
 
 | Table | Contents |
 | --- | --- |
-| `Voltage` | One row per two-hour block, at the block's start time. |
-| `Pressure` | One row per five-minute sample that has a pressure value, in mbar. |
-| `Temperature` | One row per five-minute sample that has a temperature value, in degrees C. |
-| `Activity` | Five rows per sample, one per one-minute bucket that follows it, as a percentage of the minute spent active. |
+| `Voltage` | One row per 32-minute block, at the block's start time. |
+| `Pressure` | One row per one-minute reading that succeeded, in mbar. |
+| `Temperature` | One row per one-minute reading that succeeded, in degrees C. |
+| `Activity` | Three rows per minute, one per 20-second bucket of the minute before each reading, as a percentage of the 20 seconds spent active. |
 
-A sample or activity word that was never written, or a conversion that failed,
-produces no row; missing measurements are omitted rather than stored as a
-placeholder, so gaps stay visible in plots and out of aggregates. The newest
-sample in a log normally has no activity rows yet, because its activity is
-recorded one sample period later.
+A reading that was never taken, or that failed, produces no row, and neither
+does a minute of activity the tag did not watch from end to end, such as the
+minute before the first reading of a run or the first after a hibernation
+window. Missing measurements are omitted rather than stored as a placeholder,
+so gaps stay visible in plots and out of aggregates.
 
 Block start times follow the run's first minute boundary, so they are generally
-not multiples of two hours.
+not multiples of 32 minutes.
+
+This describes UIUCTag firmware 2.0.0 and later. The host tools do not decode
+logs written by earlier UIUCTag firmware, which stored a reading every five
+minutes.
 
 ## CompassTag
 

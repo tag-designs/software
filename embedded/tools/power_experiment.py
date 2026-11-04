@@ -468,10 +468,10 @@ BITTAG_BUCKET_S = {
 }
 
 #: Seconds per UIUCTag Activity row: fixed in firmware, not configured
-#: (UIUCTAG_ACTIVITY_BUCKET_SECONDS; embedded/tags/UIUCTag/design/data-collection.md).
-#: Rows are written five at a time with each 300 s sample, so a run's last
-#: partial sample is missing from the count.
-UIUCTAG_BUCKET_S = 60.0
+#: (UIUCTAG_ACTIVITY_BUCKET_SECONDS in include/uiuctag_log_format.h). Each
+#: minute record carries three 20 s buckets for the minute before it; the
+#: run's first minute is not observed, so it has none.
+UIUCTAG_BUCKET_S = 20.0
 
 
 def config_odr_hz(cfg: dict | None) -> float | None:

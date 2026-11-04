@@ -30,7 +30,7 @@ must not collide:
 1. **File:** `<tag_family>_log_format.h`, lowercase (`imutag_log_format.h`).
 2. **Structs:** prefixed with the family: `t_<TagFamily>DataLog`,
    `t_<TagFamily>DataHeader`, and so on (`t_ImuTagDataLog`, `t_PresTagRawBlock`,
-   `t_UIUCTagSample`).
+   `t_UIUCTagRecord`).
 3. **Firmware alias:** the tag's private `datalog.h` aliases the shared type to
    the generic name the common code uses:
 
@@ -86,7 +86,7 @@ static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * siz
 (`families/IMUTag/src/datalog.c`; the PresTag family has the equivalent `>=`
 check against `t_PresTagRawBlock`, compiled only when `PRESTAG_RAW_LOG` is set,
 as it is for PresTagRaw.) A tag may send fewer records than the buffer holds:
-UIUCTag trims trailing never-written sample slots from a block before sending it
+UIUCTag trims trailing never-written records from a block before sending it
 (`UIUCTag/src/datalog.c`).
 
 ## Host decoding

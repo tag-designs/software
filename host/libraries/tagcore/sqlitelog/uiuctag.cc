@@ -1,21 +1,20 @@
 /**
  * @file    uiuctag.cc
- * @brief   SQLite decoder for UIUCTag packed pressure/activity log blocks.
+ * @brief   SQLite decoder for UIUCTag minute-record log blocks.
  *
- * @details UIUCTag downloads carry one two-hour block per ACK: up to 24 packed
- *          twelve-byte samples, each holding float pressure, float temperature,
- *          and five six-bit activity counts covering the five minutes that
- *          follow the sample. Unlike the other decoders in this directory,
- *          which unpack decoded protobuf record lists, the payload here is a
- *          byte image of t_UIUCTagSample[] copied straight out of external
- *          flash.
+ * @details UIUCTag downloads carry one 32-minute block per ACK: up to 32
+ *          8-byte records, each a raw BMP585 pressure and temperature reading
+ *          and three 20-second activity counts for the minute before it.
+ *          Unlike the other decoders in this directory, which unpack decoded
+ *          protobuf record lists, the payload here is a byte image of
+ *          t_UIUCTagRecord[] copied straight out of external flash.
  *
- *          Every layout and decode rule therefore comes from the shared
- *          include/uiuctag_log_format.h, which the firmware includes verbatim,
- *          rather than from constants repeated on this side. That sharing is
- *          deliberate: the two hard-coded and mutually inconsistent copies of
- *          the BitPresTag activity geometry, in pressure.cc and txtlogs.cc, are
- *          what it exists to avoid.
+ *          Every layout, conversion and decode rule therefore comes from the
+ *          shared include/uiuctag_log_format.h, which the firmware includes
+ *          verbatim, rather than from constants repeated on this side. That
+ *          sharing is deliberate: the two hard-coded and mutually inconsistent
+ *          copies of the BitPresTag activity geometry, in pressure.cc and
+ *          txtlogs.cc, are what it exists to avoid.
  *
  *          Rows land in the same tables as BitPresTag - Voltage, Pressure,
  *          Temperature, Activity - so viewers and analysis queries are
@@ -24,7 +23,7 @@
  * @note    Absent values produce no row at all. See dumpUIUCTagLog() for why.
  *
  * @see     sqlitelog/README.md, section "UIUCTag Downloader Fields"
- * @see     embedded/tags/UIUCTag/design/data-collection.md
+ * @see     embedded/tags/UIUCTag/design/overview.md
  */
 
 #include "sqlitelog/internal.h"
@@ -39,16 +38,14 @@ namespace tagcore::sqlite_log {
 
 namespace {
 
-constexpr size_t kSampleBytes = sizeof(t_UIUCTagSample);
-constexpr size_t kMaxBlockBytes = UIUCTAG_SAMPLE_BYTES_MAX;
-constexpr unsigned kBucketsPerSample =
-    UIUCTAG_ACTIVITY_BUCKETS_PER_EXTERNAL_BLOCK;
+constexpr size_t kRecordBytes = sizeof(t_UIUCTagRecord);
+constexpr size_t kMaxBlockBytes = UIUCTAG_BLOCK_BYTES;
 constexpr double kBucketSeconds = UIUCTAG_ACTIVITY_BUCKET_SECONDS;
 
-static_assert(kSampleBytes == UIUCTAG_SAMPLE_SIZE,
-              "UIUCTag host decoder expects the shared sample layout");
-static_assert(kMaxBlockBytes == kSampleBytes * UIUCTAG_LOG_SAMPLES,
-              "UIUCTag block size must match the shared sample count");
+static_assert(kRecordBytes == UIUCTAG_RECORD_SIZE,
+              "UIUCTag host decoder expects the shared record layout");
+static_assert(kMaxBlockBytes == kRecordBytes * UIUCTAG_LOG_RECORDS,
+              "UIUCTag block size must match the shared record count");
 
 /**
  * @brief   Convert a bucket's active-second count to percent occupancy.
@@ -72,29 +69,27 @@ double activityPercent(uint32_t active_seconds)
 /**
  * @brief   Unpack one downloaded UIUCTag block into SQLite rows.
  *
- * @details Writes one Voltage row per block at the raw checkpoint epoch, then
- *          per sample slot a Pressure row, a Temperature row, and five Activity
- *          rows, at epochs offset from the checkpoint epoch, which is the
- *          block's own slot 0. The payload index is the slot number: the
- *          firmware always sends a block from slot 0 and trims only trailing
- *          unwritten slots, so a short payload is a valid partial block rather
- *          than a shifted one.
+ * @details Writes one Voltage row per block at the checkpoint epoch, then per
+ *          record a Pressure and a Temperature row at the record's epoch and
+ *          up to three Activity rows at the starts of the 20-second buckets of
+ *          the minute before it. The payload index is the slot number: the
+ *          firmware always sends a block from record 0 and trims only trailing
+ *          unwritten records, so a short payload is a valid partial block
+ *          rather than a shifted one.
  *
- *          Absent values produce no row. A slot may be empty because no wake
- *          ever filled it, which reads as erased flash, or because the
- *          conversion failed, which stores a canonical NaN; the log cannot
- *          always tell those apart, but either way inserting a row would invent
- *          a measurement. Skipping keeps gaps visible in plots and out of
- *          aggregates, which storing NaN or zero would not.
+ *          Absent values produce no row: an erased record, a failed reading,
+ *          and an activity bucket the tag did not observe. Inserting a row
+ *          would invent a measurement; skipping keeps gaps visible in plots
+ *          and out of aggregates, which storing NaN or zero would not.
  *
  * @param[in,out] ctx Writer bridge supplying the database handle, the log-table
  *                    constructor, and the error reporters.
  * @param[in] log One downloaded block: checkpoint epoch, voltage, and the
- *                packed sample image.
+ *                block's records as stored.
  * @return  1 when the block was consumed, following the TagLogWriter
  *          records-consumed convention, or -2 on a malformed payload, a table
  *          creation failure, or any SQLite error. A payload whose length is not
- *          a whole number of samples, or is longer than one block, is rejected
+ *          a whole number of records, or is longer than one block, is rejected
  *          rather than partially decoded.
  *
  * @post    On any error return, ctx.setLastError() or ctx.setLastSqliteError()
@@ -109,16 +104,16 @@ int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log)
 
     const std::string &payload = log.samples();
 
-    if (payload.size() > kMaxBlockBytes || (payload.size() % kSampleBytes) != 0) {
+    if (payload.size() > kMaxBlockBytes || (payload.size() % kRecordBytes) != 0) {
         std::ostringstream error;
         error << "UIUCTag block has " << payload.size()
-              << " bytes, expected a multiple of " << kSampleBytes
+              << " bytes, expected a multiple of " << kRecordBytes
               << " up to " << kMaxBlockBytes;
         ctx.setLastError(error.str());
         return -2;
     }
 
-    const size_t sample_count = payload.size() / kSampleBytes;
+    const size_t record_count = payload.size() / kRecordBytes;
     const int32_t header_epoch = log.epoch();
 
     Statement voltage_insert(ctx.db, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
@@ -137,7 +132,7 @@ int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log)
     }
 
     // The voltage reading is taken as the block opens, which is also the time
-    // of its slot 0, so the header epoch is the right timestamp for it.
+    // of its record 0, so the header epoch is the right timestamp for it.
     if (!voltage_insert.bindInt64(1, header_epoch)
         || !voltage_insert.bindDouble(2, log.voltage())
         || !voltage_insert.stepDone()) {
@@ -145,43 +140,24 @@ int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log)
         return -2;
     }
 
-    for (size_t slot = 0; slot < sample_count; slot++) {
+    for (size_t slot = 0; slot < record_count; slot++) {
         // Copy rather than cast: protobuf bytes storage carries no alignment
-        // guarantee and t_UIUCTagSample is packed.
-        t_UIUCTagSample sample;
-        std::memcpy(&sample, payload.data() + (slot * kSampleBytes), kSampleBytes);
+        // guarantee and t_UIUCTagRecord is packed.
+        t_UIUCTagRecord record;
+        std::memcpy(&record, payload.data() + (slot * kRecordBytes), kRecordBytes);
 
-        const sqlite3_int64 sample_epoch =
-            uiuctagSampleEpoch(header_epoch, static_cast<unsigned>(slot));
-
-        if (uiuctagSampleHasPressure(&sample)) {
-            if (!pressure_insert.bindInt64(1, sample_epoch)
-                || !pressure_insert.bindDouble(2, sample.pressure)
-                || !pressure_insert.stepDone()) {
-                ctx.setLastSqliteError("UIUCTag pressure insert failed");
-                return -2;
-            }
-        }
-
-        if (uiuctagSampleHasTemperature(&sample)) {
-            if (!temperature_insert.bindInt64(1, sample_epoch)
-                || !temperature_insert.bindDouble(2, sample.temperature)
-                || !temperature_insert.stepDone()) {
-                ctx.setLastSqliteError("UIUCTag temperature insert failed");
-                return -2;
-            }
-        }
-
-        // The activity word for a slot is written one sample period after its
-        // pressure, so the newest slot of a live capture legitimately has none.
-        if (!uiuctagSampleHasActivity(&sample)) {
+        if (uiuctagRecordErased(&record)) {
             continue;
         }
 
-        for (unsigned bucket = 0; bucket < kBucketsPerSample; bucket++) {
+        for (unsigned bucket = 0; bucket < UIUCTAG_ACTIVITY_BUCKETS_PER_RECORD;
+             bucket++) {
+            const uint32_t active_seconds = uiuctagActivityBucket(&record, bucket);
+            if (active_seconds == UIUCTAG_ACTIVITY_NOT_OBSERVED) {
+                continue;
+            }
             const sqlite3_int64 bucket_epoch = uiuctagActivityBucketEpoch(
                 header_epoch, static_cast<unsigned>(slot), bucket);
-            const uint32_t active_seconds = uiuctagActivityBucket(&sample, bucket);
 
             if (!activity_insert.bindInt64(1, bucket_epoch)
                 || !activity_insert.bindDouble(2, activityPercent(active_seconds))
@@ -189,6 +165,27 @@ int dumpUIUCTagLog(WriterContext &ctx, const UIUCTagLog &log)
                 ctx.setLastSqliteError("UIUCTag activity insert failed");
                 return -2;
             }
+        }
+
+        if (!uiuctagRecordHasReading(&record)) {
+            continue;
+        }
+
+        const sqlite3_int64 record_epoch =
+            uiuctagRecordEpoch(header_epoch, static_cast<unsigned>(slot));
+
+        if (!pressure_insert.bindInt64(1, record_epoch)
+            || !pressure_insert.bindDouble(2, uiuctagRecordPressureHpa(&record))
+            || !pressure_insert.stepDone()) {
+            ctx.setLastSqliteError("UIUCTag pressure insert failed");
+            return -2;
+        }
+
+        if (!temperature_insert.bindInt64(1, record_epoch)
+            || !temperature_insert.bindDouble(2, uiuctagRecordTemperatureC(&record))
+            || !temperature_insert.stepDone()) {
+            ctx.setLastSqliteError("UIUCTag temperature insert failed");
+            return -2;
         }
     }
 

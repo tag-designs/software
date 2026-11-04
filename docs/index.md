@@ -87,6 +87,7 @@ design document.
 - [0041. Host: one Cargo workspace for the Rust code](decisions/0041-host-one-cargo-workspace.md) *(decision)* — All of the host's Rust crates form one Cargo workspace at host/Cargo.toml with one Cargo.lock and, in a CMake build, one shared cargo target directory, replacing six independent lock files and four application workspaces; the crates' directories and names are unchanged.
 - [0042. Host: the Rust applications and tools are the release from v4.0](decisions/0042-host-rust-default-release.md) *(decision)* — From host release v4.0 the packages carry the Rust applications and tools only; the Qt applications and the C++ tools with Rust equivalents build behind BUILD_LEGACY_HOST (off), Qt leaves the default build and CI, and dataprocessing, tag-txt-import, the recovery tools and tagcore_c stay C++.
 - [0043. Monitor commands are synchronous](decisions/0043-synchronous-monitor-commands.md) *(decision)* — The monitor's state-changing commands run their transition inside proto_eval() and reply with the resulting Status, PERM or NXIO, instead of acknowledging the request and leaving the work to a later state-machine pass; the main loop runs the state machine before serving the monitor, and the host reads the Status, polling only for older firmware.
+- [0044. UIUCTag stores one 8-byte record per minute](decisions/0044-uiuctag-minute-records.md) *(decision)* — UIUCTag stores one 8-byte record a minute -- three 20-second activity counts for the minute before, then raw BMP585 pressure and temperature -- written whole in one program, 32 to a 256-byte page; the 12-byte five-minute format (layout 1) is dropped, not decoded.
 
 ### Investigations
 
@@ -267,7 +268,7 @@ design document.
 
 ### Tags / Families / CompassTag / test
 
-- [CompassTag Datalog Simulation](../embedded/tags/families/CompassTag/test/README.md) — How to build and run the CompassTag datalog host simulation that checks the resume-cursor, partial-page and mid-block halt fixes.
+- [CompassTag Datalog Simulation](../embedded/tags/families/CompassTag/test/README.md) — How to build and run the CompassTag datalog host simulation that checks the resume-cursor, partial-page, mid-block halt and reattach re-arm fixes.
 
 ### Tags / Families / IMUTag
 
@@ -327,12 +328,12 @@ design document.
 
 ### Tags / UIUCTag
 
-- [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, now built, for the UIUCTag record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
-- [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the record layout, timing and firmware/host contract of its pressure and activity log.
-- [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies.
-- [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one block every five.
+- [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, built and since replaced by minute records, for the UIUCTag five-minute record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
+- [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
+- [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies; firmware 2.0 (minute records) runs at 0.79 uA.
+- [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one 8-byte record each wake.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
-- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- external_pages clobbered by every reset, the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, a rare Info failure in the release check (now reported with its reason), and confirming the internal-ADC fix.
+- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, a rare Info failure in the release check (now reported with its reason), and confirming the internal-ADC fix.
 
 ### Tags / UIUCTag / Investigations
 
@@ -341,7 +342,7 @@ design document.
 
 ### Tags / UIUCTag / Proposals
 
-- [UIUCTag Minute Sampling with 8-Byte Records](../embedded/tags/UIUCTag/design/proposals/minute-sampling.md) *(proposal, proposed)* — Proposal to change UIUCTag to a pressure/temperature reading every minute, stored as one 8-byte record (6 raw BMP585 bytes plus three 5-bit, 20-second activity counts), with an internal checkpoint every 32 minutes anchoring one 256-byte external page.
+- [UIUCTag Minute Sampling with 8-Byte Records](../embedded/tags/UIUCTag/design/proposals/minute-sampling.md) *(proposal, historical)* — Implemented, with two changes recorded in decision 0044 -- proposal to change UIUCTag to a pressure/temperature reading every minute, stored as one 8-byte record (6 raw BMP585 bytes plus three 5-bit, 20-second activity counts), with an internal checkpoint every 32 minutes anchoring one 256-byte external page.
 
 ### Tags / UIUCTag / test
 

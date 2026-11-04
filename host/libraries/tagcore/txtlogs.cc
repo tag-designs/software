@@ -322,65 +322,60 @@ static int dumpTagLog(std::ostream &out, const BitPresTagLog &log)
  * @brief   Write one UIUCTag block to the plain-text log format.
  *
  * @details Text output is the fallback format for UIUCTag; SQLite is the
- *          default and carries the same data with schema metadata. Geometry and
- *          the missing-value rule come from the shared uiuctag_log_format.h, so
- *          this dumper cannot drift from the SQLite decoder the way the two
- *          BitPresTag dumpers have drifted from each other.
+ *          default and carries the same data with schema metadata. Geometry,
+ *          conversions and the missing-value rules come from the shared
+ *          uiuctag_log_format.h, so this dumper cannot drift from the SQLite
+ *          decoder.
  *
  * @param[in,out] out Destination stream.
- * @param[in] log One downloaded block: checkpoint epoch, voltage, and packed
- *                samples.
+ * @param[in] log One downloaded block: checkpoint epoch, voltage, and the
+ *                block's records as stored.
  * @return  1 when the block was written, or -1 when the payload is not a whole
- *          number of samples or is longer than one block.
+ *          number of records or is longer than one block.
  */
 static int dumpTagLog(std::ostream &out, const UIUCTagLog &log)
 {
   const std::string &payload = log.samples();
 
-  if (payload.size() > UIUCTAG_SAMPLE_BYTES_MAX
-      || (payload.size() % sizeof(t_UIUCTagSample)) != 0)
+  if (payload.size() > UIUCTAG_BLOCK_BYTES
+      || (payload.size() % sizeof(t_UIUCTagRecord)) != 0)
   {
     return -1;
   }
 
   const int32_t header_epoch = log.epoch();
-  const size_t sample_count = payload.size() / sizeof(t_UIUCTagSample);
+  const size_t record_count = payload.size() / sizeof(t_UIUCTagRecord);
 
   out << "# UIUCTag" << std::endl;
   out << header_epoch << ",V:" << log.voltage() << std::endl;
 
-  for (size_t slot = 0; slot < sample_count; slot++)
+  for (size_t slot = 0; slot < record_count; slot++)
   {
-    t_UIUCTagSample sample;
-    std::memcpy(&sample, payload.data() + (slot * sizeof(sample)), sizeof(sample));
-    const int32_t sample_epoch =
-        uiuctagSampleEpoch(header_epoch, static_cast<unsigned>(slot));
+    t_UIUCTagRecord record;
+    std::memcpy(&record, payload.data() + (slot * sizeof(record)), sizeof(record));
+    const int32_t record_epoch =
+        uiuctagRecordEpoch(header_epoch, static_cast<unsigned>(slot));
 
     // Absent values are omitted rather than printed as a placeholder, matching
     // the SQLite decoder: a gap in this log means no measurement was taken.
-    if (uiuctagSampleHasActivity(&sample))
+    for (unsigned bucket = 0; bucket < UIUCTAG_ACTIVITY_BUCKETS_PER_RECORD;
+         bucket++)
     {
-      for (unsigned bucket = 0;
-           bucket < UIUCTAG_ACTIVITY_BUCKETS_PER_EXTERNAL_BLOCK;
-           bucket++)
-      {
-        out << uiuctagActivityBucketEpoch(header_epoch,
-                                          static_cast<unsigned>(slot), bucket)
-            << ",MIN:"
-            << (uiuctagActivityBucket(&sample, bucket) * 100.0
-                / UIUCTAG_ACTIVITY_BUCKET_SECONDS)
-            << std::endl;
-      }
+      const uint32_t active = uiuctagActivityBucket(&record, bucket);
+      if (active == UIUCTAG_ACTIVITY_NOT_OBSERVED)
+        continue;
+      out << uiuctagActivityBucketEpoch(header_epoch,
+                                        static_cast<unsigned>(slot), bucket)
+          << ",ACT:" << (active * 100.0 / UIUCTAG_ACTIVITY_BUCKET_SECONDS)
+          << std::endl;
     }
 
-    if (uiuctagSampleHasPressure(&sample))
+    if (uiuctagRecordHasReading(&record))
     {
-      out << sample_epoch << ",P:" << sample.pressure << std::endl;
-    }
-
-    if (uiuctagSampleHasTemperature(&sample))
-    {
-      out << sample_epoch << ",T:" << sample.temperature << std::endl;
+      out << record_epoch << ",P:" << uiuctagRecordPressureHpa(&record)
+          << std::endl;
+      out << record_epoch << ",T:" << uiuctagRecordTemperatureC(&record)
+          << std::endl;
     }
   }
 

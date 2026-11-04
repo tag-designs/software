@@ -2,7 +2,7 @@
 #define _CUSTOM_H_
 
 /* Firmware identity */
-#define FIRMWARE_STRING "UIUCTag, Firmware version 1.0.0"
+#define FIRMWARE_STRING "UIUCTag, Firmware version 2.0.0"
 #undef  BOARD_NAME
 #define BOARD_NAME "UIUCTag"
 #define TAG_TYPE UIUCTAG

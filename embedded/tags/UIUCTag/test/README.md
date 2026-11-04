@@ -11,17 +11,28 @@ the minimal stubs in `stub/`, and drives `Running()` over a synthetic
 minute-alarm timeline.
 
 It exists because the UIUCTag acquisition sequencer is almost entirely
-arithmetic over the acquisition clock — which slot a sample lands in, when its
-activity word follows, when a block rolls over, what happens after a reset — and
-none of that needs a tag to be wrong. Reproducing a two-hour block rollover, a
-mid-block reset, and a multi-hour hibernation window on hardware takes most of a
-day; here it takes a second.
+arithmetic over the acquisition clock — which record a minute lands in, which
+minute its activity covers, when a block rolls over, what happens after a reset
+— and none of that needs a tag to be wrong. Reproducing several 32-minute block
+rollovers, a mid-block reset, and a multi-hour hibernation window on hardware
+takes most of a day; here it takes a second.
 
-The fake external flash asserts on the two faults that are painful to diagnose
-on a real tag:
+The fake external flash asserts on the faults that are painful to diagnose on a
+real tag:
 
-- programming a NOR word twice, which silently ANDs bits rather than failing;
+- programming a NOR byte twice, which silently ANDs bits rather than failing;
+- a write that is not one whole, 8-byte-aligned record;
 - writing while the flash is in deep power-down.
+
+Over a three-hour run started mid-minute it checks one record a minute and one
+checkpoint every 32, each block starting exactly 1920 s after the last; that
+the first record's minute is stored as not observed and every later one as
+observed; that a failed reading stores the failure value in a written record
+that keeps its activity; and that activity lands in the right 20-second buckets
+of the minute before its record. It then checks the stop time, a mid-block
+reset (the grid resumes, the missed minute stays erased, the first minute after
+it is not observed), a hibernation window resuming into a fresh block, and a
+reattach.
 
 ## Build and run
 
@@ -59,17 +70,19 @@ external NOR and a fake internal checkpoint array, and drives the minute alarm
 until the flash is full. Then it downloads every block through the real
 `data_logAck()`.
 
-Its subject is fix A3 from the `firmware-fix` branch
-(see [firmware TODO](../../TODO.md)). Flash size is
-not a multiple of the 288-byte block, so the end of the part cuts the final
-block short. That block must still be served, with every slot that was
-completed plus the fields of the slot cut short that fit:
+It checks the capacity and the end of the log. Each simulated reading carries
+its sequence number as its pressure, so the download is checked record by
+record against what was written:
 
-- on 4 MiB (AT25XE321D), 13 slots plus the cut-short slot's pressure;
-- on 8 MiB, 2 slots plus the cut-short slot's pressure and temperature.
+- a 4 MiB part (AT25XE321D) holds 524,288 records, 364 days, in 16,384 whole
+  blocks; an 8 MiB part holds twice that. A block is one page, so no block is
+  cut short by the end of the part;
+- the run ends cleanly when the next record would pass the end of the part;
+- every block downloads complete, with only the first record's minute not
+  observed;
+- a request past the last block answers `NODATA`.
 
-fw-v0.0.3 served only whole blocks. The fake NOR also asserts on any read past
-the end of the part.
+The fake NOR also asserts on any read past the end of the part.
 
 ```sh
 cd embedded/tags/UIUCTag
@@ -79,8 +92,7 @@ cc -std=c11 -Wall -Wextra -Wno-pointer-to-int-cast -O1 \
 /tmp/uiuctag_datalog_sim
 ```
 
-The run should print `UIUCTAG DATALOG SIM: all assertions passed`. Built
-against the `datalog.c` from before A3, it fails with `block not served`.
+The run should print `UIUCTAG DATALOG SIM: all assertions passed`.
 
 `-Wno-pointer-to-int-cast` is needed because `datalog.c` compares flash
 addresses as `uint32_t`, which is exact on the 32-bit tag. On a 64-bit host the

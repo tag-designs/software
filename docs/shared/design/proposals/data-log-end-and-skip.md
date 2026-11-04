@@ -35,7 +35,7 @@ and counts in the units of the index:
 | BitTag | header record | nothing (always 0) | `OK`, short or empty list | none |
 | BitTagNG | page | samples, 15 per page | `NODATA` | none |
 | BitPresTag | page | samples, 12 per page (24 after `restoreLog()`) | `OK`, no payload | none |
-| UIUCTag | 2-hour block | samples, 24 per block | `NODATA` | none |
+| UIUCTag | 32-minute block | records, 32 per block | `NODATA` | none |
 | PresTag, PresTagRaw | page, or first page of a batch | samples, 60 per page | `OK`, no payload | none |
 | CompassTag | page | 16-bit words, 190 per page | `OK`, no payload | none |
 | IMUTag | logical page | logical pages | `NODATA` at `index >= external_blocks` | `NODATA` |
@@ -49,9 +49,9 @@ Applied to every family, the count-based rule costs:
 - **Wasted requests on UIUCTag and BitTagNG.** Both answer `NODATA` at the end
   of the log while their count is in samples, so `tag-dwnld`, qtmonitor and
   `tag_dwnld.py` keep skipping one index at a time until the index reaches the
-  sample count. A 30-day UIUCTag log is 360 blocks and 8,640 samples: the
-  download fetches 360 pages, then makes about 8,280 requests that each return
-  `NODATA`. The data is complete; the download is slow.
+  record count. A 30-day UIUCTag log is 1,350 blocks and 43,200 records: the
+  download fetches 1,350 pages, then makes about 41,850 requests that each
+  return `NODATA`. The data is complete; the download is slow.
 - **Silent truncation in qtmonitor**, which stops when the index reaches the
   count (`abstractdownload.cpp`). Most counts are inflated, which hides it; a
   low one cuts the download short.

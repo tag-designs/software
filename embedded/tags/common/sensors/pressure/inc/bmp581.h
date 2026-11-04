@@ -246,6 +246,30 @@ int bmp581_sample_forced_blocking_device(const TagPressureDevice *device,
                                          uint32_t timeout_us,
                                          float *pressure_hpa,
                                          int16_t *temperature_centi_c);
+/**
+ * @brief Trigger and wait for one forced-mode sample, returning the raw data
+ *        registers.
+ *
+ * @details Same conversion and wait as bmp581_sample_forced_blocking_device(),
+ *          but returns the six data registers as read, with no conversion:
+ *          @p raw[0..2] is TEMP_DATA_XLSB..MSB (signed 24-bit, degC =
+ *          value / 65536) and @p raw[3..5] is PRESS_DATA_XLSB..MSB (unsigned
+ *          24-bit, Pa = value / 64). The values are already compensated by the
+ *          sensor. For a tag that stores readings unconverted.
+ *
+ * @param[in] device Pressure device descriptor, configured for forced mode and
+ *                   powered.
+ * @param[in] timeout_us Maximum time to poll INT_STATUS for DRDY.
+ * @param[out] raw Six data-register bytes, in register order. Unchanged on
+ *                 failure before the read; undefined after a failed read.
+ * @return 0 on success, BMP581_E_DATA_READY_TIMEOUT when DRDY does not assert,
+ *         or a negative Bosch SensorAPI error.
+ *
+ * @warning Blocks for the conversion time; not for use from an ISR.
+ */
+int bmp581_sample_forced_raw_blocking_device(const TagPressureDevice *device,
+                                             uint32_t timeout_us,
+                                             uint8_t raw[6]);
 /** @} */
 
 #endif

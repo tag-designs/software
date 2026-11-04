@@ -8,7 +8,7 @@ BitTagLog.data max_count:30
 BitTagNgLog.activity max_count:15
 PresTagLog.data max_count:60
 BitPresTagLog.data max_count:12
-UIUCTagLog.samples max_size:288
+UIUCTagLog.samples max_size:256
 PresTagRawLog.samples max_size:3780
 CompassTagLog.data max_count:40
 CalibrationLog.data max_count:25

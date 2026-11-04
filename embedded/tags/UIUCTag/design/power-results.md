@@ -1,7 +1,7 @@
 ---
 type: results
 status: current
-summary: Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies.
+summary: Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies; firmware 2.0 (minute records) runs at 0.79 uA.
 ---
 
 # UIUCTag Power Measurement Log
@@ -332,3 +332,52 @@ _No measurements recorded yet._
     then flashed: version 0x21 over the DebugMonitor and in the block,
     `tag-test` 3 of 3 with no `0x81`. Not release-checked; the change is
     two constants.
+
+### 2026-11-04  firmware 2.0, one 8-byte record a minute — **0.79 µA running**
+
+- **build**: main `cc3f799e` plus the uncommitted firmware 2.0 working tree
+  ([decision 0044](../../../../docs/decisions/0044-uiuctag-minute-records.md)).
+  Two images, from the same tree a few minutes apart:
+  - `UIUCTag-minute-v2.elf`, SHA-256 `8d8173c0…`: the intermediate field
+    order, pressure first.
+  - `UIUCTag-minute-v2-actfirst.elf`, SHA-256 `94e55950…`: the shipped order,
+    activity first. 80 bytes less text; otherwise the same per-minute work,
+    one BMP585 forced conversion and one aligned 8-byte program.
+- **board**: UUID `2036354B3032500800520028`, on `tag-breakout-base-l432-v1`.
+- **conditions**: 2.496 V. `tag_lifecycle_check.py --use-server`, config
+  `uiuctag-default.json`, settle 75 s, rest 120 s, run gate widened to
+  0.3–3.0 µA so the run was measured rather than judged. Each image flashed
+  after `tag-flash erase`, then `tag-test` `ALL_PASSED`.
+- **result**:
+
+  | Point | Pressure first, 6000 s run | Activity first, 2400 s run |
+  | --- | ---: | ---: |
+  | `IDLE`, clock set | 0.16 µA | 0.16 µA |
+  | `RUNNING` | 0.79 µA | 0.79 µA |
+  | `FINISHED` | 0.16 µA | 0.16 µA |
+  | `IDLE` after a full cycle | 0.16 µA | 0.16 µA |
+  | download | failed, host side (below) | pass |
+
+  The activity-first download: 41 pressure and temperature rows exactly 60 s
+  apart (977.1–977.5 hPa, 23.6–24.0 °C), 120 activity rows exactly 20 s apart
+  (40 observed minutes; the run's first minute correctly unobserved, all 0 %
+  on a still bench), and two checkpoints 1920 s apart, the second block opened
+  on schedule.
+- **notes**:
+  - Running current rises from 0.56 µA (five-minute firmware, 2026-11-04
+    mailbox entry) to 0.79 µA: about 0.23 µA for a pressure conversion every
+    minute instead of every five. The release check's
+    UIUCTag `run_max_ua` was raised from 0.646 to 0.8 µA by user decision;
+    that leaves about 1 % above this figure, against 15 % for the other tags.
+  - The first attempt aborted at `tag-start` with an empty error. The image
+    shrank, so `.persistent` moved from `0x0800B800` to `0x0800B000`, onto a
+    page `tag-flash program` did not erase; the stored-config verify failed
+    and the start went to `ABORTED` (`CONFIGERROR`). Captured
+    (`capture-20261104-155952`), then `tag-flash erase` before programming.
+    `tag-start` prints its refusal on stdout, so the check showed no reason.
+  - The pressure-first download failed because `tag-dwnld` had not been
+    rebuilt and still carried the 12-byte decoder ("expected a multiple of 12
+    up to 288"). The check's final reset then erased the log, so that run's
+    records are lost; its current figures are unaffected.
+  - Activity counts above 0 were not exercised on the bench; the simulations
+    and host checks cover them.

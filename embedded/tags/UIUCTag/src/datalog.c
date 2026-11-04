@@ -5,19 +5,15 @@
  * @date 2026-08-31
  *
  * @details Tag-local replacement for the BitPresTag family log module. UIUCTag
- *          stores compact float pressure/activity records instead of the
- *          family layout (see include/uiuctag_log_format.h), so this file
+ *          stores 8-byte minute records instead of the family layout (see include/uiuctag_log_format.h), so this file
  *          diverges from ../families/BitPresTag/src/datalog.c while the other
  *          family variants keep using the shared version. The common makefile
  *          resolves ./src ahead of the family source directory, so this file
  *          replaces the family one for this target only.
  *
- * @note    Sample fields are programmed individually as they become available:
- *          pressure and temperature when a sample is taken, and the packed
- *          activity word one sample period later. Slot addresses come from the
- *          acquisition clock, so this module never has to track a partial
- *          record in RAM and a reset mid-block cannot re-program a written
- *          field.
+ * @note    Each minute wake programs one whole record. Record addresses come
+ *          from the acquisition clock, so a reset mid-block resumes at the
+ *          right record and cannot re-program written bytes.
  *
  * @see     ../design/data-collection.md
  */
@@ -46,7 +42,8 @@
 _Static_assert(offsetof(t_DataHeader, epoch) == 0, "UIUCTag data_headers layout: see capturesource.cc");
 _Static_assert(offsetof(t_DataHeader, vdd100) == 4, "UIUCTag data_headers layout: see capturesource.cc");
 _Static_assert(offsetof(t_DataHeader, extern_log_block) == 6, "UIUCTag data_headers layout: see capturesource.cc");
-_Static_assert(DATALOG_BLOCK_BYTES == 288U, "UIUCTag block layout: see capturesource.cc");
+_Static_assert(DATALOG_BLOCK_BYTES == 256U, "UIUCTag block layout: see capturesource.cc");
+_Static_assert(UIUCTAG_RECORD_SIZE == 8U, "UIUCTag record layout: see capturesource.cc");
 
 
 /** Exported for shared monitor code that reports download block size. */
@@ -289,38 +286,80 @@ int externalFlashSectorsToErasePlusOne(void)
 }
 
 /**
+ * @brief Count the records written in one external block.
+ *
+ * @details Scans the block's records backwards from its last slot and stops at
+ *          the first one that is not erased, so interior gaps (minutes a reset
+ *          or missed wake left unwritten) count as positions, as they do in
+ *          the download.
+ *
+ * @param[in] block External block index, from a checkpoint's extern_log_block.
+ * @return One past the last written slot, 0 to UIUCTAG_LOG_RECORDS; 0 when the
+ *         block lies past the end of external flash.
+ *
+ * @note Wakes and sleeps the external flash. Called only on the recovery path,
+ *       never on an ordinary minute wake.
+ */
+static uint32_t blockRecordsWritten(uint32_t block)
+{
+  const uint64_t base = (uint64_t)block * DATALOG_BLOCK_BYTES;
+  uint32_t written = DATALOG_SAMPLES;
+
+  if (base + DATALOG_BLOCK_BYTES > externalFlashSize())
+    return 0;
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  while (written > 0)
+  {
+    t_UIUCTagRecord record;
+
+    tagStorageRead(TAG_EXTERNAL_FLASH,
+                   (uint32_t)(base + (uint64_t)(written - 1U) * UIUCTAG_RECORD_SIZE),
+                   (uint8_t *)&record, (int)sizeof(record));
+    if (!uiuctagRecordErased(&record))
+      break;
+    written--;
+  }
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+  return written;
+}
+
+/**
  * @brief Recover persistent log cursors from internal flash headers.
  *
+ * @details Recounts checkpoints into pState->pages, then rebuilds
+ *          pState->external_blocks -- one past the global index of the last
+ *          written record, the value Running() keeps -- from the last
+ *          checkpoint's block and the records written in it. Before
+ *          2026-11-04 it was seeded with the checkpoint count, a quantity in
+ *          different units, so every recovery (and every status read that
+ *          followed one) reported up to 32 times too few records, and none
+ *          for a run still in its first block.
+ *
  * @return 0 when recovery completes.
+ *
+ * @post pState->pages and pState->external_blocks describe the log; both are
+ *       0 for an empty log.
+ *
+ * @note Reads at most one external block, and runs only on the power-on,
+ *       brown-out, exception and reset paths, never on a minute wake.
  */
 int restoreLog(void)
 {
+  t_DataHeader header;
+
   pState->pages = countInternalBlocks();
-  /*
-   * pState->external_blocks tracks the running external sample count (set
-   * per sample write in Running()), which recovery has no record of here --
-   * only the checkpoint count is known. Seed it with that as a conservative
-   * lower bound (still a valid, if stale, download bound for the host); it
-   * corrects itself at the very next successful sample write after resume.
-   */
-  pState->external_blocks = pState->pages;
+  pState->external_blocks = 0;
+  if ((pState->pages > 0) &&
+      readDataHeader((int)pState->pages - 1, &header) && (header.epoch != -1))
+  {
+    const uint32_t block = (uint32_t)header.extern_log_block;
+
+    pState->external_blocks =
+        (block * DATALOG_SAMPLES) + blockRecordsWritten(block);
+  }
   return 0;
 }
-
-/*
- * External sample-field writes.
- *
- * Each acquisition wake programs at most three 32-bit fields: the previous
- * sample's activity word, then the current sample's pressure and temperature.
- * A rest between program cycles lets the storage capacitor recharge, which is
- * the whole reason the fields are written separately rather than as one
- * twelve-byte record.
- */
-
-/** @brief Recharge rest between external program cycles, in milliseconds. */
-#ifndef UIUCTAG_WRITE_REST_MS
-#define UIUCTAG_WRITE_REST_MS 20U
-#endif
 
 /* Public API contract documented in datalog.h. */
 void dataLogWriteBegin(void)
@@ -335,27 +374,19 @@ void dataLogWriteEnd(void)
 }
 
 /* Public API contract documented in datalog.h. */
-enum LOGERR dataLogWriteField(uint32_t sample_index, uint32_t field_offset,
-                              const void *word)
+enum LOGERR dataLogWriteRecord(uint32_t index, const t_UIUCTagRecord *record)
 {
-  uint8_t buffer[4];
+  uint8_t buffer[UIUCTAG_RECORD_SIZE];
   int count = (int)sizeof(buffer);
-  uint32_t address = (sample_index * UIUCTAG_SAMPLE_SIZE) + field_offset;
+  const uint64_t address = (uint64_t)index * UIUCTAG_RECORD_SIZE;
 
-  if ((address + sizeof(buffer)) > externalFlashSize())
+  if (address + sizeof(buffer) > externalFlashSize())
     return LOGWRITE_FULL;
 
-  memcpy(buffer, word, sizeof(buffer));
-
-  if (!tagStorageWrite(TAG_EXTERNAL_FLASH, address, buffer, &count) ||
+  memcpy(buffer, record, sizeof(buffer));
+  if (!tagStorageWrite(TAG_EXTERNAL_FLASH, (uint32_t)address, buffer, &count) ||
       count != (int)sizeof(buffer))
     return LOGWRITE_ERROR;
-
-  /*
-   * Sleep rather than spin: the rest exists to let the storage capacitor
-   * recover, and burning MCU current through it would defeat the purpose.
-   */
-  stopMilliseconds(UIUCTAG_WRITE_REST_MS);
 
   return LOGWRITE_OK;
 }
@@ -407,14 +438,13 @@ enum LOGERR writeDataHeader(t_DataHeader *head)
  *
  * @details The response is the raw external block image plus the decoded
  *          checkpoint header, so the tag spends no energy converting units:
- *          pressure and temperature are already stored in engineering units and
- *          the host unpacks the packed samples with the shared helpers in
- *          uiuctag_log_format.h.
+ *          the host converts the raw readings and unpacks activity with the
+ *          shared helpers in uiuctag_log_format.h.
  *
- *          Trailing slots that were never written are trimmed from the payload
- *          so a partial final block returns only what it holds. Interior gaps
- *          are left in place, because slot position is what carries time: the
- *          host reads an unwritten field as NaN and skips it.
+ *          Trailing records that were never written are trimmed from the
+ *          payload so a partial final block returns only what it holds.
+ *          Interior gaps are left in place, because slot position is what
+ *          carries time: the host skips an unwritten record.
  *
  * @param[in] index Checkpoint index, one per external block.
  * @param[out] ack ACK message to fill. An index with no written checkpoint
@@ -443,13 +473,10 @@ int data_logAck(int index, Ack *ack)
         (uint64_t)header.extern_log_block * DATALOG_BLOCK_BYTES;
 
     /*
-     * Serve the final block even when the end of flash cuts it short. The log
-     * is written sample by sample until flash is full, and flash size is not a
-     * multiple of the block size; fw-v0.0.3 served only whole blocks, which
-     * left the last one written but never downloaded. Bytes beyond the end of
-     * flash read as 0xFF, the erased value: unwritten trailing slots are
-     * trimmed below, and a slot cut short keeps the fields that were written
-     * while the rest read as missing.
+     * Guard against a block cut short by the end of flash. A block is one
+     * page, so with a flash size that is a whole number of pages this cannot
+     * happen; bytes beyond the end would read as 0xFF, the erased value, and
+     * be trimmed below.
      */
     const uint64_t flash_size = externalFlashSize();
 
@@ -467,16 +494,16 @@ int data_logAck(int index, Ack *ack)
                      data->samples.bytes, count);
       tagStorageSleep(TAG_EXTERNAL_FLASH);
 
-      /* Trim trailing never-written slots; keep interior gaps in place. */
-      while (used >= UIUCTAG_SAMPLE_SIZE)
+      /* Trim trailing never-written records; keep interior gaps in place. */
+      while (used >= UIUCTAG_RECORD_SIZE)
       {
-        t_UIUCTagSample sample;
+        t_UIUCTagRecord record;
 
-        memcpy(&sample, &data->samples.bytes[used - UIUCTAG_SAMPLE_SIZE],
-               sizeof(sample));
-        if (!uiuctagSampleErased(&sample))
+        memcpy(&record, &data->samples.bytes[used - UIUCTAG_RECORD_SIZE],
+               sizeof(record));
+        if (!uiuctagRecordErased(&record))
           break;
-        used -= UIUCTAG_SAMPLE_SIZE;
+        used -= UIUCTAG_RECORD_SIZE;
       }
 
       ack->which_payload = Ack_uiuctag_data_log_tag;

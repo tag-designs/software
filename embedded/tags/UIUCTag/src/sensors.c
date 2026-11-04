@@ -5,7 +5,8 @@
  * @date 2026-08-31
  *
  * @details Implements the sensor half of UIUCTag acquisition: ADXL367 wake-mode
- *          activity detection and BMP585 forced-mode pressure sampling. The
+ *          activity detection and BMP585 forced-mode pressure sampling, stored
+ *          as the sensor's raw data registers. The
  *          RUNNING state handler in state_run.c uses only the sensors.h
  *          interface, which is what keeps the eventual LPS_RDY interrupt work
  *          confined to this file.
@@ -19,11 +20,13 @@
 
 #include "hal.h"
 #include <stdbool.h>
+#include <string.h>
 
 #include "tag.pb.h"
 #include "config.h"
 #include "devices.h"
 #include "sensors.h"
+#include "uiuctag_log_format.h"
 
 #include "ADXL367.h"
 #include "bmp581.h"
@@ -80,22 +83,6 @@ static const bmp581_interrupt_config_t uiuctag_pressure_interrupt_config =
 #define UIUCTAG_ADXL_INACT_THRESH_MG 1100U
 #define UIUCTAG_ADXL_UINT16SWAP(x) \
   ((((x) & 0xffU) << 8) | (((x) >> 8) & 0xffU))
-
-/**
- * @brief Return the quiet-NaN sentinel used for missing sensor samples.
- *
- * @details The log stores pressure and temperature as floats, and erased
- *          external flash reads back as all-ones — itself a quiet NaN. Writing
- *          NaN for a failed conversion therefore gives host loaders a single
- *          rule, "NaN means no measurement", that covers both a slot that was
- *          never written and a sample the sensor refused to produce.
- *
- * @return Quiet NaN.
- */
-static inline float missing_sample(void)
-{
-  return __builtin_nanf("");
-}
 
 /* Public API contract documented in sensors.h. */
 void initDataCollection(void)
@@ -188,30 +175,25 @@ void initDataCollection(void)
 }
 
 /* Public API contract documented in sensors.h. */
-bool samplePressure(float *pressure_hpa, float *temperature_c)
+bool samplePressureRaw(t_UIUCTagRecord *record)
 {
-  float pressure = 0.0f;
-  int16_t temperature_centi_c = 0;
+  uint8_t raw[6];
+  uint32_t pressure;
   int rc;
 
-  *pressure_hpa = missing_sample();
-  *temperature_c = missing_sample();
-
   /*
-   * UIUCTag fully powers the BMP585 rail off between samples, so every
-   * samplePressure() call is a genuine power-on reset -- exactly the
-   * precondition bmp581_config_forced_fast_device() requires (see its doc
-   * comment). Cuts config from 24 SPI transactions to 9.
+   * UIUCTag fully powers the BMP585 rail off between samples, so every call
+   * is a genuine power-on reset -- exactly the precondition
+   * bmp581_config_forced_fast_device() requires (see its doc comment). Cuts
+   * config from 24 SPI transactions to 9.
    */
   rc = bmp581_config_forced_fast_device(TAG_PRESSURE_DEVICE,
                                         UIUCTAG_PRESSURE_ODR,
                                         NULL);
-  if (rc == 0) {
-    rc = bmp581_sample_forced_blocking_device(TAG_PRESSURE_DEVICE,
-                                              UIUCTAG_PRESSURE_TIMEOUT_US,
-                                              &pressure,
-                                              &temperature_centi_c);
-  }
+  if (rc == 0)
+    rc = bmp581_sample_forced_raw_blocking_device(TAG_PRESSURE_DEVICE,
+                                                  UIUCTAG_PRESSURE_TIMEOUT_US,
+                                                  raw);
 
   /*
    * Power down on every path. bmp581_config_forced_device() leaves the rail on
@@ -221,10 +203,19 @@ bool samplePressure(float *pressure_hpa, float *temperature_c)
   tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
   tagPressureDeviceAfterPowerOff(TAG_PRESSURE_DEVICE);
 
-  if (rc != 0)
-    return false;
+  /* raw[] is in register order: temperature (0x1D..0x1F), pressure (0x20..0x22). */
+  pressure = (rc == 0) ? uiuctagGet24(&raw[3]) : 0U;
 
-  *pressure_hpa = pressure;
-  *temperature_c = (float)temperature_centi_c / 100.0f;
+  /* The range check also rejects a bus that read all ones. */
+  if ((rc != 0) || (pressure < UIUCTAG_PRESSURE_RAW_MIN) ||
+      (pressure > UIUCTAG_PRESSURE_RAW_MAX))
+  {
+    uiuctagPut24(record->pressure, UIUCTAG_RAW_FAILED);
+    uiuctagPut24(record->temperature, UIUCTAG_RAW_FAILED);
+    return false;
+  }
+
+  uiuctagPut24(record->pressure, pressure);
+  memcpy(record->temperature, &raw[0], 3U);
   return true;
 }
