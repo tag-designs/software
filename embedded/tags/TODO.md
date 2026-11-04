@@ -18,6 +18,28 @@ configuration's own page, the state-marker overflow and reset markers, PresTag
 F2/F3 and the L4 monitor's remaining checks -- and qualify once, rather than
 landing and measuring them one at a time. Host tool fixes are not held back.
 
+- **Re-arm the run's wake source on a POWERFAIL resume in CompassTag, BitTag
+  and the BitPresTag family.** On an L432 tag, an attach or external reset
+  that lands while the tag is awake boots as `resetPower`. Only a reset from
+  Standby is classified otherwise. The plain `deviceInit()` power-init path
+  then turns every alarm and the ticker off, and recovery resumes with
+  `Running(T_CONT, POWERFAIL)`.
+  - **Fixed so far:** PresTag (`a406eda7`, ticker) and UIUCTag (2026-11-03,
+    minute alarm). In both, `T_CONT` re-arms on POWERFAIL.
+  - **Still missing:** `families/CompassTag/src/state_run.c` (ticker),
+    `BitTag/src/bt_state_run.c` (minute alarm) and
+    `families/BitPresTag/src/state_run.c` (ticker). They re-arm nothing, so an
+    attach at the wrong moment leaves the run RUNNING and collecting nothing.
+  - **Evidence and test:** on UIUCTag this was measured and confirmed with
+    `RTC_CR` captures; see `UIUCTag/design/power-results.md`, 2026-11-03. Any
+    attach inside the ~1.5 s after `tag-start` reproduces it, as the release
+    check's first `tag-info` does once the start reply is synchronous. Verify
+    each fix with an attach straight after start, then 420 s of trace and a
+    download.
+  - **The general alternative:** skip the alarm and ticker teardown in the
+    L432 `deviceInit()` on a reattach, as `TAG_MONITOR_RESET_RECOVERY` does on
+    U3. That is broader and touches every L4 image's boot path.
+
 - **Give the stored configuration its own page (part 2).** Part 1 of
   [the proposal](design/proposals/stored-config-write-is-unchecked.md) landed
   in `dee8654d` and shipped in `fw-v0.6`: every target reads the write back with

@@ -329,7 +329,18 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       return Finished(T_INIT, State_EVENT_ENDTIM);
     }
 
-    if (reason == State_EVENT_EXCEPTION)
+    /*
+     * Recovery resumes here, not through T_INIT, and nothing else re-arms the
+     * minute alarm. EXCEPTION is a recovered fault. POWERFAIL is a reattach
+     * (a monitor attach or an external reset) that the boot classified as a
+     * power init: an attach that lands while the tag is awake, rather than in
+     * Standby, does exactly that, and deviceInit() then turned every alarm
+     * off. Without this the run stayed RUNNING with only the accelerometer
+     * armed and stored nothing more -- the harness's first tag-info after a
+     * start lands about a second in, while the tag is still awake. A wake
+     * from Standby resumes with State_EVENT_OK and keeps its alarm.
+     */
+    if ((reason == State_EVENT_EXCEPTION) || (reason == State_EVENT_POWERFAIL))
     {
       initDataCollection();
       disableAllAlarms();

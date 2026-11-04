@@ -1,7 +1,7 @@
 ---
 type: results
 status: current
-summary: Append-only log of UIUCTag power measurements -- resting states measured and good; the 2026-10-06 run verdict was retracted after the apparent fault proved to be the measurement.
+summary: Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until 2026-11-03, when Running() was fixed to re-arm the minute alarm.
 ---
 
 # UIUCTag Power Measurement Log
@@ -215,3 +215,75 @@ _No measurements recorded yet._
   `tag-info` after start printed `Info failed` once and the retry read
   `RUNNING`; possibly the same system-bus loss as the self-test poll below,
   not investigated.
+
+### 2026-11-03  `7079bf32` fails: an attach while awake stops collection; fixed — **PASS with the fix**
+
+- **images**:
+  - `sync-monitor-commands` `7079bf32` (SHA-256 `9cdede8af3ce7e5d…`), the image
+    that failed;
+  - fw-v0.7 (`169cda2c`), the control;
+  - `7079bf32` plus the re-arm fix in `../src/state_run.c` (SHA-256
+    `49a5246ebeb1ec63…`). This image was built in a clean worktree and reports
+    githash `7079bf32`, so the SHA is what identifies it. Only `Running()`
+    differs from `7079bf32`.
+- **board**: `2036354B3032500800520028` (the breakout), on
+  `tag-breakout-base-l432-v1`.
+- **conditions**: supply 2.4960 V, shipped default config.
+- **result, `7079bf32`**: `tag_release_check.py` failed. The 1800 s run read
+  0.244 µA with no activity rows, the "wakes but does not collect" signature.
+- **A/B, 1200 s each**. The harness polls `tag-info` straight after
+  `tag-start`, a single attach that lands about a second into the run:
+
+  | Image | Attach after start | Run current | Activity / pressure rows |
+  | --- | --- | ---: | --- |
+  | fw-v0.7 | yes | 0.5629 µA | 20 / 5 |
+  | `7079bf32` | yes | 0.2434 µA | 0 / 0 |
+  | `7079bf32` | no | 0.5629 µA | 20 / 5 |
+
+- **cause, confirmed**:
+  - **The trace.** A Joulescope trace with no attach shows the tag awake for
+    about 1.5 s after `tag-start`. It then settles at its 0.42 µA run floor
+    and wakes on the minute mark.
+  - **Awake versus Standby.** An attach inside that window resets an awake
+    tag, so the Standby flag is clear and `getResetCause()` classifies the
+    boot as `resetPower`. The L432 `deviceInit()` power-init path then calls
+    `disableAllAlarms()`.
+  - **No re-arm.** Recovery sees a reattach and resumes with
+    `Running(T_CONT, POWERFAIL)`, which re-armed nothing.
+  - **The two cases.** On `7079bf32`, with a 420 s trace each, then a
+    `tag-capture` that halts the core before any firmware runs:
+
+    | Attach | Minute wakes | `RTC_CR` | Rows |
+    | --- | --- | --- | --- |
+    | at once | none, median 0.2425 µA | `0x00000020`: ALRAE and ALRAIE clear | none |
+    | after 10 s, in Standby | present | `0x00001120`: both set | 5 activity, 2 pressure |
+
+  - **Why fw-v0.7 escaped.** Its `tag-start` polled in the same session until
+    RUNNING, so the harness's attach came later. By then the tag was in
+    Standby, and an attach from Standby boots as `resetStandby` and keeps its
+    alarm. The branch's synchronous reply ends `tag-start` at once, which
+    moved the attach into the awake window. The defect itself is older:
+    the 2026-10-06 register reads of `ALRAE = 0` after attaches to a running
+    fw-v0.6 tag were this defect. They were not, as that day's retraction
+    above concluded, only an artefact of the measurement.
+- **fix**: `Running(T_CONT)` now re-initialises the accelerometer and re-arms
+  the minute alarm for POWERFAIL as well as EXCEPTION, as PresTag has done
+  since `a406eda7`. The sequencer simulation's reattach phase fails without
+  the fix and passes with it.
+- **result, with the fix**:
+  - `tag-test`: `ALL_PASSED`.
+  - Attach at once: minute wakes, `RTC_CR` = `0x00001120`, 5 activity and
+    2 pressure rows in 420 s, the same as the attach after 10 s.
+  - `tag_release_check.py`:
+
+    | Point | Gate | Measured | Verdict |
+    | --- | --- | ---: | --- |
+    | `IDLE`, four 120 s trials | ≤ 0.3 µA | 0.1584 / 0.1584 / 0.1584 / 0.1582 µA | **pass** |
+    | `RUNNING`, 1800 s | 0.3–0.646 µA | 0.56 µA | **pass** |
+    | `FINISHED` | ≤ 0.3 µA | 0.16 µA | **pass** |
+    | `IDLE` after a full cycle | ≤ 0.3 µA | 0.16 µA | **pass** |
+    | download, activity | 1/60 Hz, ≥ 0.75x | 30 rows, 1.00x | **pass** |
+
+- **notes**: `tag-flash` printed "Programming failed" during verify while
+  flashing `7079bf32`. The tag then reported `7079bf32` and passed
+  `tag-test`. The fix image flashed cleanly. Not investigated.

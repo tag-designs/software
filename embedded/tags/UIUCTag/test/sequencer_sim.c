@@ -110,9 +110,11 @@ static int finished_count, hibernating_count;
 enum Sleep Finished(enum StateTrans t, State_Event r) { (void)t; (void)r; finished_count++; return SHUTDOWN; }
 enum Sleep Hibernating(enum StateTrans t, State_Event r) { (void)t; (void)r; hibernating_count++; return SHUTDOWN; }
 enum Sleep Aborted(enum StateTrans t, State_Event r) { (void)t; (void)r; return SHUTDOWN; }
-void disableAllAlarms(void) {}
+/* The minute alarm is all that wakes RUNNING, so its state is tracked. */
+static bool minute_alarm_armed;
+void disableAllAlarms(void) { minute_alarm_armed = false; }
 void disableTicker(void) {}
-void enableAlarm(unsigned int a, int type) { (void)a; (void)type; }
+void enableAlarm(unsigned int a, int type) { minute_alarm_armed = (a == 0) && (type == ALARM_MINUTE); }
 void adcVDD(uint16_t *vdd100, int16_t *temp10) { *vdd100 = 300; *temp10 = 250; }
 void recordState(State_Event reason) { (void)reason; }
 void initDataCollection(void) {}
@@ -384,6 +386,45 @@ int main(int argc, char **argv)
         printf("hibernate/resume: new block %u anchored at anchor+%d\n",
                checkpoints[checkpoint_count - 1].block,
                checkpoints[checkpoint_count - 1].epoch - ANCHOR);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Phase 4: reattach. An attach that lands while the tag is awake boots
+       as a power init, deviceInit() turns every alarm off, and recovery
+       resumes through T_CONT with POWERFAIL. The handler must re-arm the
+       minute alarm, or the run stays RUNNING and stores nothing more. */
+    /* ---------------------------------------------------------------- */
+    {
+        int writes_before = write_count;
+        int checkpoints_before = checkpoint_count;
+
+        assert(minute_alarm_armed && "a running tag has its minute alarm");
+
+        /* A wake from Standby (State_EVENT_OK) keeps the alarm untouched. */
+        timestamp = ANCHOR + 25530;
+        events = 0;
+        Running(T_CONT, 0);
+        assert(minute_alarm_armed);
+
+        disableAllAlarms();           /* deviceInit() on a power-init boot */
+        timestamp = ANCHOR + 25540;   /* off the grid, no alarm event */
+        events = 0;
+        Running(T_CONT, State_EVENT_POWERFAIL);
+        assert(minute_alarm_armed &&
+               "a reattach must re-arm the minute alarm");
+        assert(write_count == writes_before &&
+               checkpoint_count == checkpoints_before &&
+               "re-arming must not write a sample or open a block");
+
+        /* The resumed run samples at its next grid point, on the same grid. */
+        timestamp = ANCHOR + 25800;
+        events = EVT_RTC_ALRAF;
+        Running(T_CONT, 0);
+        assert(write_count > writes_before && "the resumed run collects");
+        assert(checkpoint_count == checkpoints_before &&
+               "a reattach continues its block");
+        printf("reattach: minute alarm re-armed, sampling resumed at "
+               "anchor+%d\n", 25800);
     }
 
 #endif /* SIM_DEFAULT_GEOMETRY */

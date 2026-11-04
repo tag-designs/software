@@ -10,4 +10,5 @@ typedef int TestResult;
 #define State_EVENT_INTERNALFULL 2
 #define State_EVENT_STARTHIB 3
 #define State_EVENT_EXCEPTION 4
+#define State_EVENT_POWERFAIL 5
 #endif

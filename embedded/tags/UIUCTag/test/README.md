@@ -37,6 +37,14 @@ must not reach firmware, and keeping it out of CMake is the simplest way to
 guarantee that. Expect `FIRMWARE SEQUENCER SIM: all assertions passed`; any
 failure aborts on the assertion that describes it.
 
+Its reattach phase covers recovery after a monitor attach or external reset
+that the boot classified as a power init. `deviceInit()` turns every alarm off
+on such a boot, and `Running(T_CONT, POWERFAIL)` must arm the minute alarm
+again. Before that was fixed (2026-11-03), an attach that landed while the tag
+was awake left the run in RUNNING, with only the accelerometer armed, storing
+nothing more. Built against that code, the phase fails with
+`a reattach must re-arm the minute alarm`.
+
 The optional argument names a file to receive the simulated external-flash block
 images. Feed that file to `uiuctag_end_to_end_check` in
 `host/libraries/tagcore/test` to decode firmware-produced bytes with the real
