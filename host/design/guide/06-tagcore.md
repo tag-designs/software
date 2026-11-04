@@ -112,6 +112,9 @@ fails every poll, after probe-rs releases a field base a burst of ST-LINK
 status `0x81` failures is normal, and a U375 in standby after a detach fails
 every read, so the first failure in a run is an `ERROR`, the rest are
 `DEBUG`, and the next success (or the detach) logs a `WARN` with the count.
+Where a failure is expected (a tag going back to standby after
+MONITORSTOP, or the L4 attach's first call, which is retried) the monitor
+tells the link, and the whole run is `DEBUG`.
 And `LIBUSB_ERROR_NO_DEVICE`, an unplugged base, closes the probe at once, so
 the monitor stops polling it rather than failing every poll to a timeout.
 

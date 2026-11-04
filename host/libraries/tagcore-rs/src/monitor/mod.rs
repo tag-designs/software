@@ -70,7 +70,7 @@ use std::fmt;
 use std::thread::sleep;
 use std::time::Duration;
 
-use log::{debug, error};
+use log::{Level, debug, error};
 
 use crate::link::{LinkAdapt, LinkAdaptStats, UsbDev};
 use crate::proto::{Req, req};
@@ -643,6 +643,17 @@ impl TagMonitor {
         false
     }
 
+    /// The level for a monitor-layer line reporting a failed link access:
+    /// [`Level::Error`], or [`Level::Debug`] while the link has been told
+    /// such failures are expected ([`LinkAdapt::expect_failures`]).
+    pub(super) fn failure_log_level(&self) -> Level {
+        if self.link.failures_expected() {
+            Level::Debug
+        } else {
+            Level::Error
+        }
+    }
+
     /// Ends the monitor session and closes the probe.
     ///
     /// Sends MONITORSTOP, after which the firmware clears its own debug state
@@ -655,6 +666,10 @@ impl TagMonitor {
     /// probe from being closed; the firmware then ends the session itself
     /// once the host goes quiet. Never fails and is safe to call twice. Port
     /// of `TagMonitor::Detach`.
+    ///
+    /// Link failures after MONITORSTOP is sent are logged at DEBUG: a tag
+    /// that has gone back to standby cannot be read, and that is the
+    /// detach succeeding, not a fault.
     pub fn detach(&mut self) {
         if !self.is_attached() {
             self.clear_all();
@@ -664,6 +679,11 @@ impl TagMonitor {
         // Before MONITORSTOP, which ends the session: the tag may then sleep
         // or start a run, and the clock is not the host's to leave on.
         self.release_l4_dma_clock();
+        // Once the firmware has seen MONITORSTOP it may drop into standby,
+        // and the reads that follow (the stop poll, the post-stop snapshot)
+        // fail as a matter of course. The link's own detach below turns
+        // failure reporting back on.
+        self.link.expect_failures(true);
         let stop = self.call(op::MONITORSTOP, 0);
         if self.transport == Transport::Mailbox {
             if let Some(s) = self.read_monitor_shared() {

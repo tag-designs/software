@@ -113,6 +113,14 @@ failed (debug-register status, memory last-R/W status):
 3. the next successful memory or debug-register access, or the detach, logs
    a WARN with the count if the run was two or more long.
 
+Where the monitor knows failures are routine it says so
+(`LinkAdapt::expect_failures`), and the whole run, summary included, is
+logged at DEBUG. It does that from MONITORSTOP to the end of the detach,
+when the tag may already be back in standby, and for the first L4 monitor
+call after attach, which is retried after a reset pulse (the retry's WARN
+records it, and a failed retry is an ERROR as usual). Before this, a
+passing release check carried one stray `0x81` ERROR per such event.
+
 A tag that is booting or held in reset fails every poll. After probe-rs
 releases a field base, a burst of reads failing with ST-LINK status `0x81`
 is normal, and a U375 that drops into standby on a detach fails the rest of

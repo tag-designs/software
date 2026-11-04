@@ -29,9 +29,12 @@
 //!   monitor's poll loops check [`LinkAdapt::is_attached`] and stop.
 //! - Failures are logged as runs: the first of a run at ERROR, the rest at
 //!   DEBUG, and a WARN with the count when an access succeeds again or the
-//!   probe is detached (`note_failure`, `end_failure_run`).
+//!   probe is detached (`note_failure`, `end_failure_run`). While the
+//!   monitor layer has said failures are expected
+//!   (`LinkAdapt::expect_failures`), the whole run, summary included, is
+//!   logged at DEBUG.
 //! - Errors are reported the way the C++ `LinkAdapt` reports them: the call
-//!   returns `false`/`None` and the reason goes to the [`log`] facade,
+//!   returns `false`/`None` and the reason goes to the [`log`](mod@log) facade,
 //!   spelled with libusb's own error names so logs read the same as the C++
 //!   tools'.
 //!
@@ -53,7 +56,7 @@
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use log::{Level, debug, error, warn};
+use log::{Level, debug, error, log, warn};
 use rusb::{Context, DeviceHandle};
 
 pub mod discovery;
@@ -242,6 +245,16 @@ pub struct LinkAdapt {
     /// Lets the "no device open" failures that follow an unplug be counted
     /// in the run (logged at DEBUG) rather than each logged as an error.
     probe_lost: bool,
+    /// True while the monitor layer expects target accesses to fail, so
+    /// that a failure is routine rather than a fault: set by
+    /// [`LinkAdapt::expect_failures`], cleared by it or by
+    /// [`LinkAdapt::detach`].
+    ///
+    /// The cases are a tag dropping into standby once MONITORSTOP has ended
+    /// its session, and the first L4 monitor call after attach, which the
+    /// monitor retries after a reset pulse. Failures are still counted, so
+    /// the run is still summarised, at DEBUG.
+    failures_expected: bool,
 }
 
 /// Same as [`LinkAdapt::new`].
@@ -268,6 +281,7 @@ impl LinkAdapt {
             stats: LinkAdaptStats::default(),
             failure_run: 0,
             probe_lost: false,
+            failures_expected: false,
         }
     }
 
@@ -472,11 +486,30 @@ impl LinkAdapt {
         }
         self.handle = None;
         self.end_failure_run(format_args!("detach"));
+        self.failures_expected = false;
+    }
+
+    /// Says whether the caller expects target accesses to fail for now.
+    ///
+    /// While `expected` is true every link failure, and the summary of a
+    /// run of them, is logged at DEBUG instead of ERROR and WARN; the
+    /// failures are still counted and the calls still return failure. Use
+    /// it around an access whose failure the caller handles as routine,
+    /// and turn it off again afterwards; [`detach`](Self::detach) also turns
+    /// it off, so a later session starts with failures reported.
+    pub(crate) fn expect_failures(&mut self, expected: bool) {
+        self.failures_expected = expected;
+    }
+
+    /// True while [`expect_failures`](Self::expect_failures) is in effect.
+    pub(crate) fn failures_expected(&self) -> bool {
+        self.failures_expected
     }
 
     /// Counts one failed link operation and returns the level to log it at:
     /// [`Level::Error`] for the first failure of a run, [`Level::Debug`]
-    /// for the rest.
+    /// for the rest, and [`Level::Debug`] for all of them while failures
+    /// are expected.
     ///
     /// Every failure the link logs goes through this, so a poll loop that
     /// fails thousands of times (a probe unplugged mid-call, a tag that
@@ -491,9 +524,9 @@ impl LinkAdapt {
 
     /// The level for a further line about the failure just counted:
     /// [`Level::Error`] while the run is one failure long, [`Level::Debug`]
-    /// after.
+    /// after, or always while failures are expected.
     pub(super) fn failure_level(&self) -> Level {
-        if self.failure_run <= 1 {
+        if self.failure_run <= 1 && !self.failures_expected {
             Level::Error
         } else {
             Level::Debug
@@ -502,13 +535,19 @@ impl LinkAdapt {
 
     /// Ends a run of failures because of a successful target access (or a
     /// detach), described by `what`; logs a WARN with the count if the run
-    /// was longer than one failure.
+    /// was longer than one failure (DEBUG while failures are expected).
     ///
     /// `what` is formatting arguments rather than a string so the success
     /// path, which runs once per poll, allocates nothing.
     pub(super) fn end_failure_run(&mut self, what: std::fmt::Arguments<'_>) {
         if self.failure_run > 1 {
-            warn!(
+            let level = if self.failures_expected {
+                Level::Debug
+            } else {
+                Level::Warn
+            };
+            log!(
+                level,
                 "{} link operations failed in a row before {what}{}",
                 self.failure_run,
                 if self.probe_lost {
@@ -598,6 +637,21 @@ mod tests {
         assert_eq!(link.note_failure(), Level::Debug);
         assert_eq!(link.failure_level(), Level::Debug);
         link.end_failure_run(format_args!("a test read"));
+        assert_eq!(link.note_failure(), Level::Error);
+    }
+
+    #[test]
+    fn expected_failures_log_only_at_debug_until_detach() {
+        capture();
+        let mut link = LinkAdapt::new();
+        link.expect_failures(true);
+        for _ in 0..3 {
+            assert_eq!(link.note_failure(), Level::Debug);
+        }
+        link.end_failure_run(format_args!("a test read"));
+        assert_eq!(count(Level::Warn), 0, "the summary is at DEBUG too");
+        link.detach();
+        assert!(!link.failures_expected(), "detach restores reporting");
         assert_eq!(link.note_failure(), Level::Error);
     }
 

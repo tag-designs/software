@@ -19,7 +19,7 @@
 
 use std::thread::sleep;
 
-use log::{debug, error, warn};
+use log::{debug, error, log, warn};
 
 use super::abi::{DEBUGVERSION_MAILBOX, command_word, info, op, operation_name, protocol};
 use super::cortex_m::*;
@@ -120,21 +120,22 @@ impl TagMonitor {
         let name = operation_name(operation);
 
         if !self.is_attached() {
-            error!("monitor not attached");
+            log!(self.failure_log_level(), "monitor not attached");
             return None;
         }
 
         // VC_CORERESET is the attachment flag the embedded app reads; it also
         // halts the core at the reset vector after a reset.
         let Some(mut demcr) = self.link.read_debug32(DEMCR) else {
-            error!("read reg failed");
+            log!(self.failure_log_level(), "read reg failed");
             return None;
         };
 
         // DCRDR is both the request and the response mailbox: do not write a
         // new request until the previous DebugMon transaction is idle.
         if demcr & (MON_PEND | MON_REQ) != 0 {
-            error!(
+            log!(
+                self.failure_log_level(),
                 "monitor pending bit already set op={name}(0x{operation:x}) operand={operand} \
                  demcr=0x{demcr:x}"
             );
@@ -148,7 +149,7 @@ impl TagMonitor {
                 .link
                 .write_debug32(DEMCR, demcr | MON_EN | MON_PEND | MON_REQ | VC_CORERESET)
         {
-            error!("write reg failed");
+            log!(self.failure_log_level(), "write reg failed");
             return None;
         }
 
@@ -167,7 +168,10 @@ impl TagMonitor {
                 // The probe has gone (unplugged): nothing can answer, and
                 // the timeout report could read nothing either.
                 None if !self.is_attached() => {
-                    error!("probe lost during monitor call op={name}(0x{operation:x})");
+                    log!(
+                        self.failure_log_level(),
+                        "probe lost during monitor call op={name}(0x{operation:x})"
+                    );
                     return None;
                 }
                 // read_debug32 logs the failure; keep polling.
@@ -193,12 +197,16 @@ impl TagMonitor {
                 return Some(result);
             }
             if !self.is_attached() {
-                error!("probe lost reading monitor result op={name}(0x{operation:x})");
+                log!(
+                    self.failure_log_level(),
+                    "probe lost reading monitor result op={name}(0x{operation:x})"
+                );
                 return None;
             }
             sleep(ms(1));
         }
-        error!(
+        log!(
+            self.failure_log_level(),
             "monitor result read timed out op={name}(0x{operation:x}) operand={operand} \
              demcr=0x{demcr:x}"
         );
@@ -213,7 +221,8 @@ impl TagMonitor {
     /// then halts the core (see
     /// [`halt_for_diagnostics`](Self::halt_for_diagnostics)) for its
     /// registers and both stacked exception frames, and logs everything as
-    /// one ERROR line in the C++ format. A reset-vector catch is recognised
+    /// one ERROR line in the C++ format (DEBUG while the link expects
+    /// failures, as on the first attach call, which is retried). A reset-vector catch is recognised
     /// by S_HALT and S_RESET_ST with no active exception and no fault; in
     /// that case the probe is also closed, so the caller's next request
     /// fails until it attaches again. A PC in system memory (0x1FFFxxxx)
@@ -258,7 +267,8 @@ impl TagMonitor {
             )
         };
 
-        error!(
+        log!(
+            self.failure_log_level(),
             "monitor call timed out op={}(0x{operation:x}) operand={operand} target={} \
              idcode=0x{:x} demcr=0x{demcr:x} dhcsr=0x{dhcsr:x} dcrdr=0x{dcrdr:x} \
              rcc_csr_addr=0x{rcc_csr_addr:x} rcc_csr=0x{rcc_csr:x} rcc_csr_ok={} \
@@ -313,13 +323,18 @@ impl TagMonitor {
                 } else {
                     "target still halted after release"
                 };
-                error!(
+                log!(
+                    self.failure_log_level(),
                     "monitor caught target reset; {outcome} pc=0x{:x} target={} \
                      rcc_csr_addr=0x{rcc_csr_addr:x} rcc_csr=0x{rcc_csr:x} dhcsr=0x{resume_dhcsr:x}",
-                    probe.pc, self.target_family
+                    probe.pc,
+                    self.target_family
                 );
             } else {
-                error!("monitor caught target reset but failed to resume target");
+                log!(
+                    self.failure_log_level(),
+                    "monitor caught target reset but failed to resume target"
+                );
             }
             // A reset into system memory is the ROM bootloader. On the L4 that
             // happens with BOOT0 low when FLASH_SR.PEMPTY is set; it is latched
@@ -327,7 +342,8 @@ impl TagMonitor {
             if self.target_family == TargetFamily::Stm32L4 && probe.pc & 0xFFFF_0000 == 0x1FFF_0000
             {
                 let flash_sr = self.link.read_debug32(L4_FLASH_SR);
-                error!(
+                log!(
+                    self.failure_log_level(),
                     "target is running the ROM bootloader (pc=0x{:x}), not the firmware; \
                      FLASH_SR={}{}. If PEMPTY (bit 17) is set, power-cycle the tag or reload \
                      its option bytes",
@@ -351,11 +367,15 @@ impl TagMonitor {
             if self.link.write_debug32(DEMCR, resume_demcr)
                 && self.link.write_debug32(DHCSR, DBGKEY | C_DEBUGEN)
             {
-                error!(
+                log!(
+                    self.failure_log_level(),
                     "monitor timeout diagnostics halted target; cleared pending request and resumed core"
                 );
             } else {
-                error!("monitor timeout diagnostics halted target but failed to resume it");
+                log!(
+                    self.failure_log_level(),
+                    "monitor timeout diagnostics halted target but failed to resume it"
+                );
             }
         }
     }
@@ -419,7 +439,9 @@ impl TagMonitor {
     /// to the ROM bootloader, then reads the monitor version. If that first
     /// call fails it pulses nRST, resets into the monitor again and retries
     /// once, so one missed first request (the C++ logs the same warning)
-    /// does not fail the attach.
+    /// does not fail the attach. The first attempt's link and call failures
+    /// are logged at DEBUG, leaving the retry warning as the record of it;
+    /// a failed retry is logged at ERROR as usual.
     /// An image reporting [`DEBUGVERSION_MAILBOX`] or later is asked
     /// which transport it uses; a mailbox image continues in
     /// [`attach_l4_mailbox`](Self::attach_l4_mailbox). Otherwise it reads the
@@ -452,7 +474,13 @@ impl TagMonitor {
             );
         }
 
-        self.version = match self.call(op::TAG_MONITORINFO, info::MONITORVERSION) {
+        // The first call can miss (a failed SWD access as the firmware
+        // boots); the retry below covers that, so its failure is reported
+        // at DEBUG and only a failed retry is an error.
+        self.link.expect_failures(true);
+        let first = self.call(op::TAG_MONITORINFO, info::MONITORVERSION);
+        self.link.expect_failures(false);
+        self.version = match first {
             Some(version) => version,
             None => {
                 warn!("L4 monitor version read failed; retrying attach after reset pulse");
