@@ -392,3 +392,31 @@ show; and STM32U375 tags.
   BitTag. The 0.584 uA bound came from the qualification board alone; both
   boards sit inside 0.3-0.584 uA, but a third with a higher run current would
   test it.
+
+### 2026-11-04  reattach re-arm on `5113d5cb` — **PASS; the fault did not reproduce**
+
+- **images**: `17199c53` (built 2026-11-03) on the tag at the start, which
+  resumes a reattach with `Running(T_CONT, POWERFAIL)` but re-arms nothing;
+  then `5113d5cb` plus the BitTag re-arm (`BitTag-fix.elf`, SHA-256
+  `f3c97a98b7125aa8…`): on POWERFAIL, `adxl362_init()`, `disableAllAlarms()`,
+  `enableAlarm(0, ALARM_MINUTE)`.
+- **board**: `2039354D30315012005E0068`, base `bittag-base-v7`, 2.4960 V,
+  IDLE at 0.129 uA before the session. `tag-flash program` mass-erased (no
+  calibration page); `tag-test` `ALL_PASSED`.
+- **attach straight after `tag-start --set-rtc --start-now`**, `BITPERSEC`:
+
+  | Run | Image | Activity rows | Voltage records | Run current |
+  | --- | --- | ---: | ---: | ---: |
+  | A | `17199c53` | 300 in 5 min | 5 | not measured (client timeout) |
+  | C | fix | 300 in 4 min 59 s | 5 | 0.446 uA |
+
+- **life cycle, fix**, release gates, 1200 s: idle 0.12 uA, running 0.45 uA,
+  FINISHED 0.12 uA, idle after the cycle 0.12 uA; `Activity` 1260 rows,
+  1.05x; **pass**. The same board read 0.12 / 0.44 / 0.12 / 0.12 uA on
+  2026-11-01.
+- **notes**: as on CompassTag, the attach found the tag already in Standby,
+  which boots as a Standby wake and turns nothing off, so the unfixed image
+  collected normally. The fault needs an attach or external reset during a
+  minute wake. BitTag has no host simulation, so the re-arm rests on the
+  same pattern verified for PresTag, UIUCTag (on the bench) and CompassTag
+  (in simulation); the bench shows it does not regress.

@@ -198,18 +198,15 @@ not been reproduced on a tag.
   odd number of words, and on STM32L4 `FLASH_Program_Array()` programs one word
   past the struct for an odd word count. The extra word lands in alignment
   padding. *Found by reading code.*
-- **BitTag and BitPresTag reattach paths are unchecked.** After the
-  2026-10-02 rule that only true failures abort (see
-  [the investigation](design/investigations/2026-10-reset-during-running-aborts.md)),
-  an L432 reattach that lands while the tag is awake boots as a power init,
-  `deviceInit()` turns the ticker and alarms off, and recovery resumes with
-  `Running(T_CONT, POWERFAIL)`. PresTag (a406eda7), UIUCTag (4458a749) and
-  CompassTag (2026-11-04) now re-arm there, and the common `Hibernating()`
-  re-arms its hourly alarm on the same reason (2026-11-04). BitTag and
-  BitPresTag have not been checked. The CompassTag and hibernation fixes are
-  verified in simulation only (`families/CompassTag/test/datalog_sim.c`);
-  confirm them on the bench with an attach straight after `tag-start`, as the
-  UIUCTag fix was.
+- **BitPresTag's reattach path is unchecked.** An L432 reattach that lands
+  while the tag is awake boots as a power init, `deviceInit()` turns the
+  ticker, alarms and sensors off, and recovery resumes with
+  `Running(T_CONT, POWERFAIL)`. PresTag (a406eda7), UIUCTag (4458a749),
+  CompassTag and BitTag (2026-11-04) re-arm there, and the common
+  `Hibernating()` re-arms its hourly alarm on the same reason. BitPresTag is
+  largely abandoned in favour of UIUCTag and was not checked. None of the
+  fixes reproduced the fault on the bench for CompassTag or BitTag, which sleep
+  at once after a start; see their power results.
 - **The `debug_log` module prevents low-power entry on STM32U375** (1.71 mA).
   This is a fault in the module itself, separate from the flash-flag and layout
   faults; see the warning in `IMUTagNandBmp581/project.mk`.

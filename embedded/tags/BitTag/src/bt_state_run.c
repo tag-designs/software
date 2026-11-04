@@ -105,6 +105,23 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    /*
+     * A reattach -- a monitor attach, or an external reset such as the one
+     * ending a tag-capture session -- resumes here with POWERFAIL rather than
+     * through T_INIT. One that lands while the tag is awake boots as a power
+     * init: deviceInit() shut the ADXL362 down and turned every alarm off, so
+     * the run stayed RUNNING with no minute wake left and stored nothing more.
+     * Re-arm both as T_INIT does, keeping the recovered state; the catch-up
+     * below handles the minutes missed. PresTag (a406eda7), UIUCTag
+     * (4458a749) and CompassTag had the same gap. A wake from Standby resumes
+     * with State_EVENT_OK and keeps its alarm.
+     */
+    if (reason == State_EVENT_POWERFAIL)
+    {
+      adxl362_init();
+      disableAllAlarms();
+      enableAlarm(0, ALARM_MINUTE);
+    }
 
     // restore state
 
