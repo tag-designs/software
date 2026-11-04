@@ -97,6 +97,24 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
   }
   else
   {
+    /*
+     * A reattach -- a monitor attach, or an external reset such as the one
+     * ending a tag-capture session -- resumes here with POWERFAIL rather than
+     * through T_INIT. On an STM32L432 one that lands while the tag is awake
+     * boots as a power init: deviceInit() turned the ticker and alarms off and
+     * shut the accelerometer down, so the run stayed RUNNING but took no
+     * further samples. Re-arm both as T_INIT does, keeping the recovered log
+     * cursor. The sample-time check below starts a new page if the gap moved
+     * the next sample off its slot. PresTag (a406eda7) and UIUCTag (4458a749)
+     * had the same gap.
+     */
+    if (reason == State_EVENT_POWERFAIL)
+    {
+      disableTicker();
+      lis2du12Deinit(TAG_ACCEL_DEVICE);
+      lis2du12Init(TAG_ACCEL_DEVICE, ACCEL_WAKEUP_MODE);
+      enableTicker(sample_period);
+    }
 
     // check for completion
 

@@ -65,9 +65,6 @@ landing and measuring them one at a time. Host tool fixes are not held back.
   measuring afterwards.
 - **Explain the 11% gap** between PresTag's fitted `I_rest` (0.1122 µA) and its
   measured `IDLE` (0.1261 µA). September had the two within 1.1%.
-- **Test `flash_release.py`'s PEMPTY clearing on hardware.** The conditional
-  clear has only ever reported "already clear"; the branch that writes the
-  register is unexercised.
 
 Open work only. Delete an item when it is done; put what was learned in an
 investigation or decision record. Items marked *found by reading code* have
@@ -197,33 +194,22 @@ not been reproduced on a tag.
   so attach storms do not burn the log. Weigh the flash write against
   endurance on a 12 mAh cell first; this is an open question in Field Data
   Extraction.
-- **`gd5fSectorErase()` reports success without erasing** on three paths:
-  logical block out of range, mapping failure, and physical block out of range.
-  A caller cannot tell "erased" from "silently skipped". *Found by reading
-  code.*
-- **`gd5fRead()` does not invalidate `gd5f_cache_active`.** Only
-  `gd5fProgramCacheLoad()` and `gd5fProgramExecuteCache()` clear the flag. A
-  read can therefore load a different page into the device cache register while
-  the flag still claims the programmed page is resident. *Found by reading
-  code.*
-- **Unbounded hardware waits** in the IMUTagNandBmp581 RTC LLD
-  (`IMUTagNandBmp581/src/hal_rtc_lld.c`): the `ALRAWF`, `ALRBWF` and `WUTWF`
-  waits, and the `do`/`while` inside a critical zone. Any of them hangs the tag
-  if the bit never sets. *Found by reading code.*
-- **Asymmetric wakeup-timer disable.** `rtcSTM32SetPeriodicWakeup()` waits for
-  `WUTWF` when arming but not when disarming. It was exonerated as a cause of
-  an idle fault, because compiling the wakeup timer out changed nothing, but
-  the asymmetry is still there. The IMUTag family never calls `enableTicker()`,
-  so it never arms the timer.
 - **BitTagNG writes stray RAM into flash.** Its 28-byte `t_storedconfig` is an
   odd number of words, and on STM32L4 `FLASH_Program_Array()` programs one word
   past the struct for an odd word count. The extra word lands in alignment
   padding. *Found by reading code.*
-- **CompassTag and UIUCTag reattach paths are unchecked.** After the
+- **BitTag and BitPresTag reattach paths are unchecked.** After the
   2026-10-02 rule that only true failures abort (see
   [the investigation](design/investigations/2026-10-reset-during-running-aborts.md)),
-  PresTag needed `Running(T_CONT, POWERFAIL)` to re-arm its sample ticker.
-  CompassTag and UIUCTag were not re-tested and may need the same re-arm.
+  an L432 reattach that lands while the tag is awake boots as a power init,
+  `deviceInit()` turns the ticker and alarms off, and recovery resumes with
+  `Running(T_CONT, POWERFAIL)`. PresTag (a406eda7), UIUCTag (4458a749) and
+  CompassTag (2026-11-04) now re-arm there, and the common `Hibernating()`
+  re-arms its hourly alarm on the same reason (2026-11-04). BitTag and
+  BitPresTag have not been checked. The CompassTag and hibernation fixes are
+  verified in simulation only (`families/CompassTag/test/datalog_sim.c`);
+  confirm them on the bench with an attach straight after `tag-start`, as the
+  UIUCTag fix was.
 - **The `debug_log` module prevents low-power entry on STM32U375** (1.71 mA).
   This is a fault in the module itself, separate from the flash-flag and layout
   faults; see the warning in `IMUTagNandBmp581/project.mk`.

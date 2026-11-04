@@ -301,6 +301,14 @@ static gd5f_page_read_result_t gd5fReadPhysicalPageColumn(
 {
   uint8_t status;
 
+  /*
+   * PAGE_READ loads the page into the chip's cache register, the same
+   * register PROGRAM_LOAD stages data in, so whatever was staged is gone
+   * from here on, whether or not the read succeeds. Without this a
+   * PROGRAM_LOAD_RANDOM or PROGRAM_EXECUTE after an interleaved read would
+   * be accepted and commit the read page's bytes to the programmed page.
+   */
+  gd5f_cache_active = false;
   if (!gd5fRowCommand(tagStorageSpiDevice(dev),
                       GD5F_CMD_PAGE_READ,
                       gd5fPageToRow(physical_page)))
@@ -689,6 +697,8 @@ static bool gd5fProgramPhysicalPage(const TagStorageDevice *dev,
 {
   uint8_t status;
 
+  /* PROGRAM_LOAD below replaces any staged cache contents. */
+  gd5f_cache_active = false;
   if (!gd5fWriteEnable(dev))
     return false;
   if (!gd5fColumnWrite(tagStorageSpiDevice(dev),
@@ -905,6 +915,18 @@ static bool gd5fErasePhysicalBlock(const TagStorageDevice *dev,
 
 /**
  * @brief Erase one logical NAND block through the flat map.
+ *
+ * @param[in] dev Storage device descriptor for the NAND.
+ * @param[in] address Logical byte address inside the block to erase.
+ * @return true only when a physical block was erased; false when the map is
+ *         missing, @p address is past the logical space, its map entry is
+ *         invalid, or the erase itself failed.
+ *
+ * @note Before 2026-11-04 the three mapping failures returned true, so a
+ *       caller could not tell "erased" from "silently skipped" and an erase
+ *       sweep would report a block clean that still held data. The IMUTag
+ *       sweep stays within GD5F_LOGICAL_BLOCK_COUNT, so none of them is part
+ *       of a normal sweep.
  */
 static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
 {
@@ -913,15 +935,24 @@ static bool gd5fSectorErase(const TagStorageDevice *dev, uint32_t address)
 
   if (!gd5fEnsureLogicalMap())
     return false;
-  if (logical_block >= GD5F_LOGICAL_BLOCK_COUNT)
-    return true;
+  if (logical_block >= GD5F_LOGICAL_BLOCK_COUNT) {
+    debug_log_printf("NAND: erase logical block %u out of range\r\n",
+                     (unsigned)logical_block);
+    return false;
+  }
 
   if (!gd5fMapLogicalPage(logical_block * GD5F_PAGES_PER_BLOCK,
-                          &physical_block))
-    return true;
+                          &physical_block)) {
+    debug_log_printf("NAND: erase logical block %u has no valid mapping\r\n",
+                     (unsigned)logical_block);
+    return false;
+  }
   physical_block /= GD5F_PAGES_PER_BLOCK;
-  if (physical_block >= GD5F_PHYSICAL_BLOCK_COUNT)
-    return true;
+  if (physical_block >= GD5F_PHYSICAL_BLOCK_COUNT) {
+    debug_log_printf("NAND: erase logical block %u maps out of range\r\n",
+                     (unsigned)logical_block);
+    return false;
+  }
   return gd5fErasePhysicalBlock(dev, physical_block);
 }
 /** @} */

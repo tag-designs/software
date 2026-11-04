@@ -1204,6 +1204,21 @@ enum Sleep Hibernating(enum StateTrans t, State_Event reason)
     disableTicker();
     enableAlarm(1, ALARM_HOUR);
   }
+  else if (reason == State_EVENT_POWERFAIL)
+  {
+    /*
+     * A reattach -- a monitor attach or an external reset -- resumes here
+     * with POWERFAIL. On an STM32L432 one that lands while the tag is awake
+     * boots as a power init, and deviceInit() turns every alarm off, so
+     * without this the tag stayed HIBERNATING with no wake left to end it.
+     * The hourly alarm matches on the hour, so re-arming it is harmless when
+     * it survived. A wake from Standby or Shutdown resumes with
+     * State_EVENT_OK and keeps its alarm.
+     */
+    disableAllAlarms();
+    disableTicker();
+    enableAlarm(1, ALARM_HOUR);
+  }
 
   // check if hibernation should continue;
 

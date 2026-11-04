@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run the CompassTag datalog host simulation that checks the resume-cursor, partial-page and mid-block halt fixes.
+summary: How to build and run the CompassTag datalog host simulation that checks the resume-cursor, partial-page, mid-block halt and reattach re-arm fixes.
 ---
 
 # CompassTag Datalog Simulation
@@ -30,6 +30,13 @@ slow to reproduce on a tag:
 
 It also checks A7. A 60 s halt mid-block must start a new page whose header
 places the next sample at its own time, dropping only the unfinished block.
+
+And it checks the reattach re-arm (2026-11-04). An attach that lands while an
+STM32L432 tag is awake boots as a power init, which turns the ticker and the
+accelerometer off, and recovery resumes with `Running(T_CONT, POWERFAIL)`. That
+call must re-arm both, or the run stays RUNNING and samples nothing more. The
+stubs record whether each is on; without the fix the check fails on
+`reattach left the sample ticker off`.
 
 Every sample carries its sequence number in `ax`/`ay`, so the download is
 checked sample by sample against what was written.

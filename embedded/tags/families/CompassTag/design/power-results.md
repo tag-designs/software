@@ -445,3 +445,44 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   treat that campaign's 0.2810 µA as a property of its conditions rather than
   of its firmware. See
   [the investigation](../../../design/investigations/2026-10-adc-and-the-power-floor.md).
+
+### 2026-11-04  reattach re-arm and hibernation re-arm, uncommitted on `cc3f799e` — **PASS; the fault did not reproduce**
+
+- **images**:
+  - `eb165461` (built 2026-11-03), on the tag at the start: includes the
+    reattach-resumes change (a406eda7) but no CompassTag re-arm.
+  - `cc3f799e` plus the uncommitted firmware batch (`CompassTagAT25-fix.elf`,
+    SHA-256 `86c284a1de1e31a9…`): `Running(T_CONT, POWERFAIL)` re-arms the
+    ticker and the accelerometer, and the common `Hibernating()` re-arms its
+    hourly alarm on the same reason.
+- **board**: CompassTagAT25, UUID `203633324B4250060022005E`, on the CompassTag
+  base `000C001C5556431520303537`, supply 2.496 V, stored default config.
+- **flash**: `tag-flash program` with its new default erase, pages 0-126 below
+  the calibration page; `tag-test` `ALL_PASSED`. The two calibration rows
+  downloaded before and after are byte-identical.
+- **attach straight after `tag-start --set-rtc --start-now`**, 240 s each:
+
+  | Run | Image | Attaches | Samples downloaded | Run current |
+  | --- | --- | --- | ---: | ---: |
+  | A | `eb165461` | one, at once | 6 | 1.94 µA |
+  | B | `eb165461` | three, back to back | 6 | 1.94 µA |
+  | C | fix | one, at once | 6 | 1.93 µA |
+
+  Six is every sample in a whole block of three; the unfinished block is
+  skipped by design.
+- **life cycle, fix**, `tag_lifecycle_check.py`, 1200 s run, gates widened to
+  measure: idle 0.22 µA, running 1.96 µA, FINISHED 0.22 µA, idle after the
+  cycle 0.22 µA, 42 activity rows; **pass**. In line with the 0.21-0.23 µA
+  idle and 1.93-1.95 µA run of the October entries.
+- **notes**:
+  - **The fault did not reproduce on the unfixed image.** UIUCTag stays awake
+    about 1.5 s after a start, so an immediate attach lands while it is awake
+    and boots as a power init. CompassTag answers the start and enters Standby
+    at once, so every attach here found it asleep and booted as a Standby wake,
+    which turns nothing off. The fault needs an attach or external reset during
+    a sample wake (tens of ms every 30 s). It is real but rare on this tag,
+    and the fix is verified in simulation
+    (`../test/datalog_sim.c`, which fails without it); on the bench it is
+    verified only not to regress.
+  - The hibernation re-arm was not exercised (the stored config has no
+    hibernation interval).

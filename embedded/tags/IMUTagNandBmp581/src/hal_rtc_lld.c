@@ -65,6 +65,49 @@ RTCDriver RTCD1;
 /* Driver local variables and types.                                         */
 /*===========================================================================*/
 
+/**
+ * @brief   Polls allowed for an RTC write-flag or register-read wait.
+ *
+ * @details ALRAWF, ALRBWF and WUTWF set within two RTCCLK cycles of the
+ *          enable bit clearing, about 61 us at 32.768 kHz. 10000 polls, the
+ *          limit rtc_enter_init() already uses, is several times that at any
+ *          core clock this tag runs, so only a fault (write protection still
+ *          on, the RTC unclocked) reaches it.
+ */
+#define RTC_WAIT_POLLS 10000U
+
+/**
+ * @brief   Number of bounded RTC waits that expired since boot.
+ *
+ * @details Each wait used to spin forever, inside a critical zone, if its
+ *          flag never set: a hung tag with no record of why. Now the wait
+ *          gives up, the caller carries on (the register write it was guarding
+ *          is then ignored by the hardware), and this counts it so a capture
+ *          can tell. Not reset: any nonzero value is a fault worth finding.
+ */
+volatile uint32_t rtc_lld_wait_timeouts;
+
+/**
+ * @brief   Waits, bounded, for an RTC ICSR flag to set.
+ *
+ * @param[in] rtcp      pointer to RTC driver structure.
+ * @param[in] flag      ICSR bit to wait for.
+ * @return  true when the flag set; false after RTC_WAIT_POLLS polls, counted
+ *          in rtc_lld_wait_timeouts.
+ *
+ * @note    Safe in a critical zone; it neither blocks nor logs.
+ */
+static bool rtc_wait_icsr(RTCDriver *rtcp, uint32_t flag) {
+
+  for (uint32_t polls = RTC_WAIT_POLLS; polls > 0U; polls--) {
+    if ((rtcp->rtc->ICSR & flag) != 0U) {
+      return true;
+    }
+  }
+  rtc_lld_wait_timeouts++;
+  return false;
+}
+
 /*===========================================================================*/
 /* Driver local functions.                                                   */
 /*===========================================================================*/
@@ -569,10 +612,14 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
   /* Entering a reentrant critical zone.*/
   sts = osalSysGetStatusAndLockX();
 
-  /* Repeated registers read until 2 matching sets are found.*/
+  /* Repeated registers read until 2 matching sets are found. Two reads a
+     few cycles apart differ only across a subsecond tick, so a match comes
+     within a few passes; the bound only stops a fault spinning forever in
+     this critical zone, and the last set read is used if it is reached.*/
   ssr = 0U;
   tr  = 0U;
   dr  = 0U;
+  uint32_t polls = RTC_WAIT_POLLS;
   do {
     prev_ssr = ssr;
     prev_tr  = tr;
@@ -580,6 +627,10 @@ void rtc_lld_get_time(RTCDriver *rtcp, RTCDateTime *timespec) {
     ssr = rtcp->rtc->SSR;
     tr  = rtcp->rtc->TR;
     dr  = rtcp->rtc->DR;
+    if (--polls == 0U) {
+      rtc_lld_wait_timeouts++;
+      break;
+    }
   } while ((ssr != prev_ssr) || (tr != prev_tr) || (dr != prev_dr));
 
   /* DST bit is in CR, no need to poll on this one.*/
@@ -628,8 +679,7 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
     if (alarmspec != NULL) {
       rtcp->rtc->CR &= ~RTC_CR_ALRAE;
 #if defined(RTC_ICSR_ALRAWF)
-      while (!(rtcp->rtc->ICSR & RTC_ICSR_ALRAWF))
-        ;
+      (void)rtc_wait_icsr(rtcp, RTC_ICSR_ALRAWF);
 #endif
       rtcp->rtc->ALRMAR = alarmspec->alrmr;
       rtcp->rtc->CR |= RTC_CR_ALRAE;
@@ -645,8 +695,7 @@ void rtc_lld_set_alarm(RTCDriver *rtcp,
     if (alarmspec != NULL) {
       rtcp->rtc->CR &= ~RTC_CR_ALRBE;
 #if defined(RTC_ICSR_ALRBWF)
-      while (!(rtcp->rtc->ICSR & RTC_ICSR_ALRBWF))
-        ;
+      (void)rtc_wait_icsr(rtcp, RTC_ICSR_ALRBWF);
 #endif
       rtcp->rtc->ALRMBR = alarmspec->alrmr;
       rtcp->rtc->CR |= RTC_CR_ALRBE;
@@ -724,8 +773,7 @@ void rtcSTM32SetPeriodicWakeup(RTCDriver *rtcp, const RTCWakeup *wakeupspec) {
 
     rtcp->rtc->CR &= ~RTC_CR_WUTE;
     rtcp->rtc->CR &= ~RTC_CR_WUTIE;
-    while (!(rtcp->rtc->ICSR & RTC_ICSR_WUTWF))
-      ;
+    (void)rtc_wait_icsr(rtcp, RTC_ICSR_WUTWF);
     rtcp->rtc->WUTR = wakeupspec->wutr & 0xFFFF;
     rtcp->rtc->CR &= ~RTC_CR_WUCKSEL;
     rtcp->rtc->CR |= (wakeupspec->wutr >> 16) & RTC_CR_WUCKSEL;
@@ -735,6 +783,9 @@ void rtcSTM32SetPeriodicWakeup(RTCDriver *rtcp, const RTCWakeup *wakeupspec) {
   else {
     rtcp->rtc->CR &= ~RTC_CR_WUTE;
     rtcp->rtc->CR &= ~RTC_CR_WUTIE;
+    /* As when arming: WUTWF sets once the counter has actually stopped, so
+       the caller does not go on to sleep with a wakeup still able to fire.*/
+    (void)rtc_wait_icsr(rtcp, RTC_ICSR_WUTWF);
   }
 
   /* Leaving a reentrant critical zone.*/

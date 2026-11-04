@@ -19,6 +19,9 @@
  *          - A3: when the external flash fills, the final page, cut short by
  *            the end of the part, is downloaded and holds exactly the blocks
  *            that were completed.
+ *          - A reattach that boots as a power init turns the ticker and the
+ *            accelerometer off; Running(T_CONT, POWERFAIL) must re-arm both,
+ *            or the run stays RUNNING and samples nothing more.
  *
  *          Every sample carries its sequence number in ax/ay, so the download
  *          is checked sample by sample against what was written.
@@ -130,14 +133,18 @@ static uint32_t sample_seq;
 enum Sleep Finished(enum StateTrans t, State_Event r) { (void)t; finished_count++; finished_reason = r; return SHUTDOWN; }
 enum Sleep Hibernating(enum StateTrans t, State_Event r) { (void)t; (void)r; assert(!"unexpected hibernation"); return SHUTDOWN; }
 enum Sleep Aborted(enum StateTrans t, State_Event r) { (void)t; (void)r; assert(!"unexpected abort"); return SHUTDOWN; }
+/* What a reattach must restore: deviceInit()'s power-init path turns both off. */
+static bool ticker_armed;
+static bool accel_on;
+
 void disableAllAlarms(void) {}
-void disableTicker(void) {}
-void enableTicker(uint16_t interval) { assert(interval == COMPASS_SAMPLE_PERIOD_S); }
+void disableTicker(void) { ticker_armed = false; }
+void enableTicker(uint16_t interval) { assert(interval == COMPASS_SAMPLE_PERIOD_S); ticker_armed = true; }
 void adcVDD(uint16_t *vdd100, int16_t *temp10) { *vdd100 = 300; *temp10 = -55; }
 bool tagCompassAccelWakeActive(void) { return false; }
 void recordState(State_Event reason) { (void)reason; }
-void lis2du12Init(const TagRegisterDevice *d, lis2du12mode_t m) { (void)d; (void)m; }
-void lis2du12Deinit(const TagRegisterDevice *d) { (void)d; }
+void lis2du12Init(const TagRegisterDevice *d, lis2du12mode_t m) { (void)d; (void)m; accel_on = true; }
+void lis2du12Deinit(const TagRegisterDevice *d) { (void)d; accel_on = false; }
 int encode_ack(void) { return 0; }
 
 /* Each sample carries its sequence number: ax = seq % 30000, ay = seq / 30000. */
@@ -349,8 +356,39 @@ static void test_gap(void)
            "unfinished block dropped\n");
 }
 
+/**
+ * A reattach while awake: the boot's power-init cleanup turns the ticker and
+ * the accelerometer off, and recovery resumes with Running(T_CONT, POWERFAIL).
+ * Sampling must continue on the next tick.
+ */
+static void test_reattach(void)
+{
+    reset_world(4u * 1024u * 1024u);
+    Running(T_INIT, 0);
+    assert(ticker_armed && accel_on);
+    for (int i = 0; i < 4; i++)
+        assert(tick());
+
+    /* deviceInit(), power-init path. */
+    ticker_armed = false;
+    accel_on = false;
+    timestamp += 1;                    /* the attach lands just after a wake */
+    events = 0;
+    Running(T_CONT, State_EVENT_POWERFAIL);
+    assert(ticker_armed && "reattach left the sample ticker off");
+    assert(accel_on && "reattach left the accelerometer off");
+
+    const uint32_t before = sample_seq;
+    timestamp -= 1;
+    for (int i = 0; i < 4; i++)
+        assert(tick());
+    assert(sample_seq == before + 4 && "sampling did not continue");
+    printf("reattach: ticker and accelerometer re-armed, sampling continues\n");
+}
+
 int main(void)
 {
+    test_reattach();
     test_resume();
     test_gap();
     test_full(4u * 1024u * 1024u, "4 MiB (AT25XE321D)");
