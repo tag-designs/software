@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View): what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
+summary: Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View) -- what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
 ---
 
 # 11. The applications

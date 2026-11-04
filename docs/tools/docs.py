@@ -153,6 +153,38 @@ def parse_front_matter(text: str) -> dict | None:
     return meta
 
 
+#: Characters that start a YAML indicator when they begin a plain scalar.
+YAML_INDICATORS = tuple("&*!|>%@`[]{},?#")
+
+
+def front_matter_problems(text: str) -> list[str]:
+    """Return the front-matter lines a strict YAML parser would reject.
+
+    parse_front_matter() is deliberately lenient, so a value it accepts can
+    still break every other reader of the file: an editor's preview, the
+    portal's MkDocs build, or any YAML library. A plain (unquoted) value must
+    not contain ": " or " #", end in ":", or start with a YAML indicator.
+    Reword the value, or quote it.
+    """
+    m = FRONT_RE.match(text)
+    if not m:
+        return []
+    bad = []
+    for line in m.group(1).splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        key, sep, value = line.partition(":")
+        value = value.strip()
+        if not sep or not value:
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            continue
+        if ": " in value or " #" in value or value.endswith(":") or value.startswith(YAML_INDICATORS):
+            bad.append(f"front matter '{key.strip()}' is not valid YAML (a colon, ' #' or leading "
+                       f"indicator in an unquoted value); reword it or quote it")
+    return bad
+
+
 def load(path: str) -> Doc:
     text = (ROOT / path).read_text(encoding="utf-8")
     meta = parse_front_matter(text) or {}
@@ -207,6 +239,8 @@ def cmd_check(_args) -> int:
             problems.append(f"{d.path}: status '{d.status}' is not one of {sorted(STATUSES)}")
         if d.meta and not d.summary:
             problems.append(f"{d.path}: no summary")
+        for p in front_matter_problems((ROOT / d.path).read_text(encoding="utf-8")):
+            problems.append(f"{d.path}: {p}")
         if d.status == "superseded" and not d.meta.get("superseded-by"):
             problems.append(f"{d.path}: superseded but no superseded-by")
         name = Path(d.path).name

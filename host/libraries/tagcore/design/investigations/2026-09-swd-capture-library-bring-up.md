@@ -1,7 +1,7 @@
 ---
 type: investigation
 status: closed
-summary: Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
+summary: Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02 -- what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 ---
 
 # SWD Capture Library Bring-up

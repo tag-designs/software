@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open gaps and questions in the reproducible firmware build: provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
+summary: Open gaps and questions in the reproducible firmware build -- provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
 ---
 
 # Build Worklist

@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Orientation to the embedded tree: boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
+summary: Orientation to the embedded tree -- boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
 ---
 
 # Embedded Source Layout

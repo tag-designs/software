@@ -1,7 +1,7 @@
 ---
 type: investigation
 status: open
-summary: Measurements behind the qtcalibrate quality replacement, 2026-10-10: the two reference captures, the leverage retention comparison, the 76 mg accelerometer zero-g offset and the 1.1 degree of dip spread removing it bought.
+summary: Measurements behind the qtcalibrate quality replacement, 2026-10-10 -- the two reference captures, the leverage retention comparison, the 76 mg accelerometer zero-g offset and the 1.1 degree of dip spread removing it bought.
 ---
 
 # QtCalibrate Quality Replacement: Measurements

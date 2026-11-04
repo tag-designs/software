@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Replace the inherited magcal/quality.c with owned code: a leverage-based retention policy, robust residual statistics, an accelerometer dip-consistency check, and a heading-accuracy headline metric.
+summary: Replace the inherited magcal/quality.c with owned code -- a leverage-based retention policy, robust residual statistics, an accelerometer dip-consistency check, and a heading-accuracy headline metric.
 ---
 
 # Replacing qtcalibrate's Calibration Quality Code

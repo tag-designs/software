@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open work on the base and programmer firmware: SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
+summary: Open work on the base and programmer firmware -- SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 ---
 
 # Bases Worklist

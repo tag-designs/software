@@ -1,7 +1,7 @@
 ---
 type: investigation
 status: closed
-summary: UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
+summary: UIUCTag bring-up sessions -- six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
 ---
 
 # UIUCTag Bring-Up Report

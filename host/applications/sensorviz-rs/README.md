@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
+summary: Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core -- the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 ---
 
 # Tag View: sensorViz (Rust)

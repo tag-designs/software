@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Contents of the core runtime: state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
+summary: Contents of the core runtime -- state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
 ---
 
 # Core Runtime

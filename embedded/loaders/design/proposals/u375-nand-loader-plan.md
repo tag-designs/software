@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: historical
-summary: Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375: raw and ECC page reads, NAND power, shared SPI bus and work order.
+summary: Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375 -- raw and ECC page reads, NAND power, shared SPI bus and work order.
 ---
 
 # Plan: an STM32U375 SPI-NAND Loader (GD5F2GM7RE_IMUTagNandv2)

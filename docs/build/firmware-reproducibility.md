@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
+summary: The reproducible firmware build as implemented -- distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
 ---
 
 # Tag Firmware Build Reproducibility

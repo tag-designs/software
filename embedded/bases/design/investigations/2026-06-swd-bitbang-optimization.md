@@ -1,7 +1,7 @@
 ---
 type: investigation
 status: closed
-summary: The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1: about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
+summary: The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1 -- about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
 ---
 
 # SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)

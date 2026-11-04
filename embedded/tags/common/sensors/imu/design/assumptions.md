@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: The LSM6DSV16X driver contract: descriptor model, modes, trigger ownership, ODR-triggered FIFO policy, environmental samples and self-test.
+summary: The LSM6DSV16X driver contract -- descriptor model, modes, trigger ownership, ODR-triggered FIFO policy, environmental samples and self-test.
 ---
 
 # LSM6DSV16X Driver Design Assumptions

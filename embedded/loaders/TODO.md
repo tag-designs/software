@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open work on the external flash loaders: the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
+summary: Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
 ---
 
 # Loaders Worklist

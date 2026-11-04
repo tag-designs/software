@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: Conventions for the packed C log structs in include/ that host and firmware both compile: naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
+summary: Conventions for the packed C log structs in include/ that host and firmware both compile -- naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
 ---
 
 # Shared Binary Log Formats

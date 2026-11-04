@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
+summary: Layout, CMake shape and descriptions of the base and programmer board firmware targets -- MCU, board and SWD implementation of each.
 ---
 
 # Embedded Bases

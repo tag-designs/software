@@ -1,7 +1,7 @@
 ---
 type: investigation
 status: closed
-summary: Why a CubeProgrammer loader session changed the next boot's recorded reset cause (RTC_BKP2R 2 -> 1): CubeProgrammer's exit lets the firmware boot, not the loader.
+summary: Why a CubeProgrammer loader session changed the next boot's recorded reset cause (RTC_BKP2R 2 -> 1) -- CubeProgrammer's exit lets the firmware boot, not the loader.
 ---
 
 # Loader session changes the recorded reset cause (2026-10)

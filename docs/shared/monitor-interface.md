@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
+summary: Reference for the monitor transport as implemented -- attach, calls, detach and sleep interaction for the L4 DebugMonitor, the U3 shared-memory mailbox and the L4 mailbox (UIUCTag).
 ---
 
 # Tag Monitor Interface

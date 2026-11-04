@@ -1,7 +1,7 @@
 ---
 type: proposal
 status: proposed
-summary: Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
+summary: Proposed Python binding for tagcore -- API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 ---
 
 # TagCore Python Interface Design

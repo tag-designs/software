@@ -37,8 +37,8 @@ design document.
 ### Build
 
 - [Build](build/README.md) — The firmware and host build model; setup steps per platform are in the root README.
-- [Build Worklist](build/TODO.md) *(worklist)* — Open gaps and questions in the reproducible firmware build: provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
-- [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented: distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
+- [Build Worklist](build/TODO.md) *(worklist)* — Open gaps and questions in the reproducible firmware build -- provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
+- [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented -- distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
 - [Toolchain inventory](build/toolchain-inventory.md) *(procedure)* — Every tool the tag-designs work depends on across all five repositories, with version, install path and what it serves; written for rebuilding a macOS workstation.
 
 ### Decision Records
@@ -104,10 +104,10 @@ design document.
 
 - [Shared Contracts](shared/README.md) — The contracts host tools and tag firmware both compile against, and where each is documented.
 - [Magnetometer and Accelerometer Axes](shared/sensor-axes.md) — Tag firmware rotates each magnetometer and accelerometer part into a common tag frame, and the host orientation code assumes one fixed magnetometer-to-accelerometer alignment; what each family applies, and how to check a capture against it.
-- [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile: naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
+- [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile -- naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
 - [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
 - [Tag Configuration Model](shared/design/configuration-model.md) — How a tag's configuration is defined, which fields each tag supports (its default config, read by tagcore's ConfigShape), how qtmonitor shows and writes it with fixed panels per tag type, how files are merged, the fields with tag-specific meanings, and how all of it is checked without hardware.
-- [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented: L4 DebugMonitor and U3 shared-memory attach, calls, detach, and sleep interaction.
+- [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented -- attach, calls, detach and sleep interaction for the L4 DebugMonitor, the U3 shared-memory mailbox and the L4 mailbox (UIUCTag).
 
 ### Shared Contracts / Proposals
 
@@ -120,17 +120,17 @@ design document.
 
 ## Embedded
 
-- [Embedded Source Layout](../embedded/design/source-layout.md) — Orientation to the embedded tree: boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
+- [Embedded Source Layout](../embedded/design/source-layout.md) — Orientation to the embedded tree -- boards, proto-c, bases, tags and loaders, and how CMake ties firmware targets to them.
 
 ### Bases
 
-- [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets: MCU, board and SWD implementation of each.
-- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware: SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
+- [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets -- MCU, board and SWD implementation of each.
+- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware -- SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
 
 ### Bases / Investigations
 
-- [SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)](../embedded/bases/design/investigations/2026-06-swd-bitbang-optimization.md) *(investigation, closed)* — The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1: about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
+- [SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)](../embedded/bases/design/investigations/2026-06-swd-bitbang-optimization.md) *(investigation, closed)* — The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1 -- about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
 - [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
 
 ### Boards
@@ -147,7 +147,7 @@ design document.
 
 ### Boards / Tools
 
-- [Board configuration tools](../embedded/boards/tools/README.md) — The JSON-customized board generation tools: input format, LSE bypass, standby masks, standalone fmpp workflow and CMake integration.
+- [Board configuration tools](../embedded/boards/tools/README.md) — The JSON-customized board generation tools -- input format, LSE bypass, standby masks, standalone fmpp workflow and CMake integration.
 
 ### Boards / Tools / example
 
@@ -157,15 +157,15 @@ design document.
 
 - [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
-- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders: the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
+- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
 
 ### Loaders / Investigations
 
-- [Loader session changes the recorded reset cause (2026-10)](../embedded/loaders/design/investigations/2026-10-loader-session-reset-cause.md) *(investigation, closed)* — Why a CubeProgrammer loader session changed the next boot's recorded reset cause (RTC_BKP2R 2 -> 1): CubeProgrammer's exit lets the firmware boot, not the loader.
+- [Loader session changes the recorded reset cause (2026-10)](../embedded/loaders/design/investigations/2026-10-loader-session-reset-cause.md) *(investigation, closed)* — Why a CubeProgrammer loader session changed the next boot's recorded reset cause (RTC_BKP2R 2 -> 1) -- CubeProgrammer's exit lets the firmware boot, not the loader.
 
 ### Loaders / Proposals
 
-- [Plan: an STM32U375 SPI-NAND Loader (GD5F2GM7RE_IMUTagNandv2)](../embedded/loaders/design/proposals/u375-nand-loader-plan.md) *(proposal, historical)* — Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375: raw and ECC page reads, NAND power, shared SPI bus and work order.
+- [Plan: an STM32U375 SPI-NAND Loader (GD5F2GM7RE_IMUTagNandv2)](../embedded/loaders/design/proposals/u375-nand-loader-plan.md) *(proposal, historical)* — Plan, now built, for the GD5F2GM7RE SPI-NAND loader on STM32U375 -- raw and ECC page reads, NAND power, shared SPI bus and work order.
 
 ### Loaders / RV3028_PresTagv3
 
@@ -189,11 +189,11 @@ design document.
 
 ### Tags / Common Firmware
 
-- [Common Tag Firmware Code](../embedded/tags/common/README.md) — Map of shared tag firmware code by ownership: core, sensors, storage, rtc and test, with maintenance rules.
+- [Common Tag Firmware Code](../embedded/tags/common/README.md) — Map of shared tag firmware code by ownership -- core, sensors, storage, rtc and test, with maintenance rules.
 
 ### Tags / Common Firmware / core
 
-- [Core Runtime](../embedded/tags/common/core/README.md) — Contents of the core runtime: state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
+- [Core Runtime](../embedded/tags/common/core/README.md) — Contents of the core runtime -- state machine, monitor handlers, persistent state, power and bus ownership, and the bus layer split.
 - [`stopMilliseconds()` LPTIM ARR-Match Delay Design](../embedded/tags/common/core/design/stop-milliseconds-lptim-arr-delay.md) — How STM32L432 stopMilliseconds() delays on a single LPTIM1 autoreload match at 1024 Hz, with spurious-wake filtering.
 - [I2C Backend Model](../embedded/tags/common/core/design/i2c-backend-model.md) — How tag I2C controllers select hardware or software backends through descriptors, the pin policy, and how the RTC binds to a bus.
 - [I2C Bus Recovery](../embedded/tags/common/core/design/i2c-bus-recovery.md) — Why a reset mid-transaction wedges the shared I2C bus, and the bus-clear recovery, its call sites and pin-mode rules on STM32U3 IMUTag targets.
@@ -227,7 +227,7 @@ design document.
 
 ### Tags / Common Firmware / sensors / imu
 
-- [LSM6DSV16X Driver Design Assumptions](../embedded/tags/common/sensors/imu/design/assumptions.md) — The LSM6DSV16X driver contract: descriptor model, modes, trigger ownership, ODR-triggered FIFO policy, environmental samples and self-test.
+- [LSM6DSV16X Driver Design Assumptions](../embedded/tags/common/sensors/imu/design/assumptions.md) — The LSM6DSV16X driver contract -- descriptor model, modes, trigger ownership, ODR-triggered FIFO policy, environmental samples and self-test.
 
 ### Tags / Common Firmware / sensors / mag
 
@@ -337,7 +337,7 @@ design document.
 ### Tags / UIUCTag / Investigations
 
 - [UIUCTag Wake Fault, Retracted (2026-10)](../embedded/tags/UIUCTag/design/investigations/2026-10-uiuctag-wake-fault-retracted.md) *(investigation, closed)* — The 2026-10-04/06 UIUCTag "never wakes" and "tag-test fails" reports -- how three polled runs reached the same wrong answer, and the current trace that showed the tag was healthy.
-- [UIUCTag Bring-Up Report](../embedded/tags/UIUCTag/design/investigations/bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions: six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
+- [UIUCTag Bring-Up Report](../embedded/tags/UIUCTag/design/investigations/bringup-report.md) *(investigation, closed)* — UIUCTag bring-up sessions -- six bugs found and fixed, wake timing, extended power measurement and deployment battery projections.
 
 ### Tags / UIUCTag / Proposals
 
@@ -411,7 +411,7 @@ design document.
 
 ### Applications / sensorviz-rs
 
-- [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core: the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
+- [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core -- the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 - [Tag View (sensorViz in Rust): architecture and source map](../host/applications/sensorviz-rs/design/architecture.md) — How Tag View (sensorViz in Rust) is put together - one engine thread over sensorViz's C++ core through sensorviz-session, a page that draws the plot with uPlot from M4 envelopes, a map of every file and the Qt sensorviz code it follows, how a view change and a redraw travel, and where to make common changes.
 - [Tag View TODO](../host/applications/sensorviz-rs/TODO.md) *(worklist)* — Open Tag View work - features of the Qt sensorViz not carried into the v4.0 release, starting with the activity filter.
 
@@ -476,7 +476,7 @@ design document.
 - [8. The bridge to the C++ libraries](../host/design/guide/08-cpp-bridge.md) — Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its three parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
 - [9. The command-line tools](../host/design/guide/09-command-line-tools.md) — Chapter 9 of the Host Software Guide - the Rust command-line tools in commandline-rs (the shape every tool follows, the shared crate behind them, what each tool does, a walk through tag-dwnld, how they are held to the C++ tools, and how to add one) and the C++ tools that have no port.
 - [10. The application pattern](../host/design/guide/10-application-pattern.md) — Chapter 10 of the Host Software Guide - the pattern all four Rust applications share (a toolkit-free engine that owns every rule and all state, a tag thread, a whole view state published after every change, dialogs as prompts, a Tauri shell with two commands and two events, a web page on the shared UI kit that draws and never decides), why it was chosen, how a command and a redraw travel, and how such an application is read, run without hardware and tested.
-- [11. The applications](../host/design/guide/11-applications.md) — Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View): what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
+- [11. The applications](../host/design/guide/11-applications.md) — Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View) -- what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
 - [12. External dependencies](../host/design/guide/12-external-dependencies.md) — Chapter 12 of the Host Software Guide - every external module the host software depends on (the Rust crates, the vendored JavaScript libraries, the C++ libraries and Qt, and the tools), what each is for, why it was chosen or what it replaced, where its version is pinned, and the rules for adding or updating one.
 - [13. Building and testing](../host/design/guide/13-building-and-testing.md) — Chapter 13 of the Host Software Guide - the toolchains, the cargo and CMake commands, the features and environment variables that change what is built, how the packages are assembled per platform, the test strategy (unit tests, oracles against the Qt applications, hardware tests, byte-identical downloads), the documentation checks, and what CI does.
 - [14. Rust in this code base](../host/design/guide/14-rust-for-this-codebase.md) — Chapter 14 of the Host Software Guide - the Rust the host code relies on, explained for an engineer who knows C++ (ownership and borrowing as the replacement for the C++ mutexes, Result and Option, enums with data and match, traits, threads and channels, Send and Sync, Drop, closures, features and build scripts, the generated protobuf types, the FFI rules, the documentation lints), each with where it appears in this tree.
@@ -522,7 +522,7 @@ design document.
 
 ### Libraries / tagcore / Investigations
 
-- [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02: what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
+- [SWD Capture Library Bring-up](../host/libraries/tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md) *(investigation, closed)* — Dated build log of the SWD capture library, 2026-09-30 to 2026-10-02 -- what each implementation step measured on bench tags, the C_MASKINTS stall, and how the resetCause question was settled.
 - [Cost of a gRPC Server in the Host Build (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-grpc-cost.md) *(investigation, closed)* — Measured cost of a gRPC server in the host build on macOS arm64 - official gRPC C++ (+12 MB per executable, over an hour of cold dependency build, a c-ares failure on the static triplet) against grpcxx (+0.24 MB, half a minute), with a Python grpcio client working against grpcxx.
 - [Rare L4 attach failure: SWD enter during the wake from Shutdown (2026-10)](../host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md) *(investigation, closed)* — Why about one attach in 150 to an idle STM32L432 tag failed with status 0x81 on its first debug read - the SWD enter sent just after nRST wakes the tag from Shutdown occasionally reaches the debug port before it is powered, and the host ignored the failed enter - and the retry that fixes it in both tagcore libraries.
 
@@ -534,7 +534,7 @@ design document.
 - [Retiring the Text Log Format and btviz](../host/libraries/tagcore/design/proposals/retire-text-logs.md) *(proposal, proposed)* — Retire the legacy .txt sensor-log format and btviz - convert the existing BitTag and PresTag .txt collection to SQLite with a command-line importer that round-trip-verifies every conversion, use the conversion and a dual-format field download to prove the SQLite writer on real experiments, then delete the text writer, btviz and their docs; actograms and filtering move to general-purpose tools reading SQLite.
 - [Rust host applications over the C++ libraries](../host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md) *(proposal, proposed)* — How Rust (or other non-Qt) host applications should use the C++ libraries they depend on - what is already Qt-free, one C interface library over them (prototyped for the SQLite writer with a Rust tag-dwnld), shared against static linking measured, and where leaving Qt actually costs.
 - [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
-- [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore: API, protobuf boundary, shared download service, threading, packaging and tests; not built.
+- [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore -- API, protobuf boundary, shared download service, threading, packaging and tests; not built.
 
 ### Libraries / tagcore / recovery
 
@@ -632,13 +632,13 @@ design document.
 
 ### User Guide Tooling / Investigations
 
-- [QtCalibrate Quality Replacement: Measurements](../host/docs/design/investigations/2026-10-qtcalibrate-quality-experiments.md) *(investigation, open)* — Measurements behind the qtcalibrate quality replacement, 2026-10-10: the two reference captures, the leverage retention comparison, the 76 mg accelerometer zero-g offset and the 1.1 degree of dip spread removing it bought.
+- [QtCalibrate Quality Replacement: Measurements](../host/docs/design/investigations/2026-10-qtcalibrate-quality-experiments.md) *(investigation, open)* — Measurements behind the qtcalibrate quality replacement, 2026-10-10 -- the two reference captures, the leverage retention comparison, the 76 mg accelerometer zero-g offset and the 1.1 degree of dip spread removing it bought.
 
 ### User Guide Tooling / Proposals
 
 - [Host User Guide Screenshot Automation](../host/docs/design/proposals/screenshot-automation.md) *(proposal, historical)* — Pilot plan for deterministic qtcalibrate screenshots and generated annotations; the screenshot hooks were built, the qtcalibrate_docshots target and annotation renderer were not.
 - [QtMonitor Documentation Screenshot Automation Design](../host/docs/design/proposals/qtmonitor-screenshot-automation.md) *(proposal, historical)* — Plan, largely built, for qtmonitor fake-tag fixtures and per-tag configuration and state screenshots.
-- [Replacing qtcalibrate's Calibration Quality Code](../host/docs/design/proposals/qtcalibrate-quality-replacement.md) *(proposal, proposed)* — Replace the inherited magcal/quality.c with owned code: a leverage-based retention policy, robust residual statistics, an accelerometer dip-consistency check, and a heading-accuracy headline metric.
+- [Replacing qtcalibrate's Calibration Quality Code](../host/docs/design/proposals/qtcalibrate-quality-replacement.md) *(proposal, proposed)* — Replace the inherited magcal/quality.c with owned code -- a leverage-based retention policy, robust residual statistics, an accelerometer dip-consistency check, and a heading-accuracy headline metric.
 
 ## Other
 

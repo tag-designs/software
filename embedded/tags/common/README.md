@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: Map of shared tag firmware code by ownership: core, sensors, storage, rtc and test, with maintenance rules.
+summary: Map of shared tag firmware code by ownership -- core, sensors, storage, rtc and test, with maintenance rules.
 ---
 
 # Common Tag Firmware Code
