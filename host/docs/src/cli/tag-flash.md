@@ -57,6 +57,11 @@ image agree.
 with `Programmed, verified and started`. The exit status is 0 on success, 1
 on failure and 2 for a mistake in the options.
 
+The first time an IMUTag image runs on a new STM32U375, it sets the chip's
+boot option bytes so the tag boots from flash after a power cycle, and resets
+once to apply them. This happens straight after `program`, needs nothing from
+you, and does not happen again on that tag.
+
 ## Troubleshooting
 
 - **No base is on USB.** Check the cable, and on Linux that the udev rules in

@@ -25,6 +25,13 @@ landing and measuring them one at a time. Host tool fixes are not held back.
   versions). Hosts up to v4.0.1 refuse a 0x21 IMUTag, so the host release that
   accepts it must ship first.
 
+- **STM32U375 boot option bytes ride in the batch (verified 2026-11-05).**
+  Every U375 image sets `nSWBOOT0 = 0`, `nBOOT0 = 1` at its first start on a
+  new board and resets once (`tagFixBootOptionBytes()` in
+  `common/core/src/main.c`; see
+  [Restart Recovery](common/core/design/restart-recovery.md#stm32u375-boot-option-bytes)).
+  Qualification should include one never-flashed board.
+
 - **Re-arm the run's wake source on a POWERFAIL resume in CompassTag, BitTag
   and the BitPresTag family.** On an L432 tag, an attach or external reset
   that lands while the tag is awake boots as `resetPower`. Only a reset from

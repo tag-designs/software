@@ -48,6 +48,28 @@ Early boot in `main.c` decides `resetCause` before the reset flags are cleared:
   `tag-capture` or `tag-xflash` session. It is recorded for the recovery
   decision and does not change `resetCause`.
 
+### STM32U375 boot option bytes
+
+A factory-fresh STM32U375 reads `FLASH_OPTR = 0x1FEFF0AA`: `nSWBOOT0 = 1`,
+so it takes its boot selection from the BOOT0 pin, and a correctly programmed
+tag can boot something other than its image after a power cycle. The image
+fixes this itself. `tagFixBootOptionBytes()` runs first in `main()`, before
+the reset flags are read. When `nSWBOOT0 = 1` or `nBOOT0 = 0`, and only with
+TrustZone off, RDP at level 0 and `BOOT0R` selecting `0x08000000`, it clears
+`nSWBOOT0`, sets `nBOOT0` and launches an option-byte load. Any other state,
+or any error in the write, leaves the option bytes alone and the boot goes on.
+
+This works on a virgin part because the programmers start the image from its
+vector table after programming rather than resetting into it. The load is a
+system reset with `RCC_CSR.OBLRSTF` set. On a new board `pState` is not valid,
+so the boot that follows is `resetPower`. On the next boot the bits read
+correctly and the routine returns at once, so the write happens once per
+board.
+
+Verified 2026-11-05 on a never-flashed U375 breakout: `OPTR` went from
+`0x1FEFF0AA` to `0x1BEFF0AA` (only `nSWBOOT0` changed). The image booted
+after a power cycle, and a second programming left `OPTR` unchanged.
+
 ## Reattach versus failure
 
 Recovery resumes an active run when the boot is a reattach:

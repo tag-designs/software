@@ -783,6 +783,154 @@ t_resetCause getResetCause(uint32_t rstFlags)
 }
 /** @} */
 
+#if TAG_STM32U3_FLASH
+/** @name STM32U375 boot option bytes
+ * A factory-fresh STM32U375 takes its boot selection from the BOOT0 pin
+ * rather than from flash, so a correctly programmed tag may never run its
+ * image after a power cycle. The image fixes this itself, once per board.
+ * @{
+ */
+
+/** @brief First word of the FLASH_KEYR unlock sequence (STM32U3 reference manual). */
+#define TAG_OB_FLASH_KEY1 0x45670123U
+/** @brief Second word of the FLASH_KEYR unlock sequence. */
+#define TAG_OB_FLASH_KEY2 0xCDEF89ABU
+/** @brief First word of the FLASH_OPTKEYR unlock sequence (STM32U3 reference manual). */
+#define TAG_OB_OPT_KEY1 0x08192A3BU
+/** @brief Second word of the FLASH_OPTKEYR unlock sequence. */
+#define TAG_OB_OPT_KEY2 0x4C5D6E7FU
+
+/**
+ * @brief Upper bound on FLASH_SR.BSY polls around the option-byte write.
+ *
+ * @details Each poll is a few cycles at the reset clock, so this allows
+ *          several hundred milliseconds, far beyond the option-byte
+ *          programming time. Expiry abandons the write without an
+ *          option-byte load.
+ */
+#define TAG_OB_BSY_POLLS 2000000U
+
+/** @brief RDP level 0, the only level at which the write is attempted. */
+#define TAG_OB_RDP_LEVEL0 0xAAU
+
+/** @brief Flash base the non-secure boot address must already select. */
+#define TAG_OB_FLASH_BOOT_ADDRESS 0x08000000U
+
+/**
+ * @brief FLASH_SR bits that report a failed flash or option-byte operation.
+ */
+#define TAG_OB_SR_ERRORS                                                      \
+  (FLASH_SR_OPERR | FLASH_SR_PROGERR | FLASH_SR_WRPERR | FLASH_SR_PGAERR |    \
+   FLASH_SR_SIZERR | FLASH_SR_PGSERR | FLASH_SR_OPTWERR)
+
+/**
+ * @brief Wait, bounded, for FLASH_SR.BSY to clear.
+ *
+ * @return true when BSY cleared, false when TAG_OB_BSY_POLLS expired first.
+ */
+static bool tagBootOptionWaitIdle(void)
+{
+  for (uint32_t polls = 0; polls < TAG_OB_BSY_POLLS; polls++)
+  {
+    if ((FLASH->SR & FLASH_SR_BSY) == 0U)
+      return true;
+  }
+  return false;
+}
+
+/**
+ * @brief Make the STM32U375 boot from flash regardless of the BOOT0 pin.
+ *
+ * @details Sets `nSWBOOT0 = 0` (boot selection from the option byte, not the
+ *          pin) and `nBOOT0 = 1` (boot from the non-secure boot address,
+ *          which is user flash) in FLASH_OPTR, then launches an option-byte
+ *          load, which resets the part. On the next boot the bits read
+ *          correctly and this returns at once, so the write happens once per
+ *          board.
+ *
+ *          This works on a virgin part because the programmers start the
+ *          image from its vector table after programming rather than
+ *          resetting into it, so the image runs whatever the boot selection
+ *          says.
+ *
+ *          Only those two bits change, and only when it is safe: TrustZone
+ *          off (the non-secure registers cannot change OPTR otherwise), RDP
+ *          at level 0, and the non-secure boot address already pointing at
+ *          flash. Any other state is left untouched and the boot continues.
+ *          So does any failure: a busy wait that expires or an error bit
+ *          after the write abandons the load, relocks flash and returns. The
+ *          image still runs this time; it simply may not boot after the next
+ *          power cycle.
+ *
+ * @pre     Called first in main(), before ChibiOS, clocks, pState or devices
+ *          are touched: the option-byte load discards everything done before
+ *          it. Flash and option registers locked, as after reset.
+ * @post    Either the bits were already correct and nothing was written, or
+ *          the part has reset (this does not return: should the load not
+ *          reset it, a system reset follows), or flash and option
+ *          registers are locked again and the bits are unchanged.
+ *
+ * @warning The option-byte load is a system reset with RCC_CSR.OBLRSTF set.
+ *          Backup registers survive it. On a virgin board `pState` is not
+ *          valid, so getResetCause() reports resetPower.
+ * @warning Losing power during the write can corrupt the option bytes, as
+ *          with any option-byte change. It runs once per board, normally on
+ *          the bench straight after the first programming.
+ *
+ * @see     host/libraries/tagprobe-rs/TODO.md, STM32U3 reference manual, "Boot configuration"
+ */
+static void tagFixBootOptionBytes(void)
+{
+  const uint32_t optr = FLASH->OPTR;
+
+  if ((optr & (FLASH_OPTR_nSWBOOT0 | FLASH_OPTR_nBOOT0)) == FLASH_OPTR_nBOOT0)
+    return; // already boots from flash: the normal case
+
+  if ((optr & FLASH_OPTR_TZEN) != 0U)
+    return;
+  if ((optr & FLASH_OPTR_RDP) != TAG_OB_RDP_LEVEL0)
+    return;
+  if ((FLASH->BOOT0R & FLASH_BOOT0R_ADD) != TAG_OB_FLASH_BOOT_ADDRESS)
+    return;
+
+  if (!tagBootOptionWaitIdle())
+    return;
+
+  // A key written while already unlocked locks the register until reset, so
+  // unlock only what is locked.
+  if ((FLASH->CR & FLASH_CR_LOCK) != 0U)
+  {
+    FLASH->KEYR = TAG_OB_FLASH_KEY1;
+    FLASH->KEYR = TAG_OB_FLASH_KEY2;
+  }
+  if ((FLASH->CR & FLASH_CR_OPTLOCK) != 0U)
+  {
+    FLASH->OPTKEYR = TAG_OB_OPT_KEY1;
+    FLASH->OPTKEYR = TAG_OB_OPT_KEY2;
+  }
+
+  bool ok = (FLASH->CR & (FLASH_CR_LOCK | FLASH_CR_OPTLOCK)) == 0U;
+  if (ok)
+  {
+    FLASH->SR = TAG_OB_SR_ERRORS | FLASH_SR_EOP; // clear stale flags (rc_w1)
+    FLASH->OPTR = (optr & ~FLASH_OPTR_nSWBOOT0) | FLASH_OPTR_nBOOT0;
+    FLASH->CR |= FLASH_CR_OPTSTRT;
+    ok = tagBootOptionWaitIdle() && ((FLASH->SR & TAG_OB_SR_ERRORS) == 0U);
+  }
+
+  if (ok)
+  {
+    FLASH->CR |= FLASH_CR_OBL_LAUNCH; // resets the part
+    (void)tagBootOptionWaitIdle();    // a bounded pause should it not
+    NVIC_SystemReset();
+  }
+
+  FLASH->CR |= FLASH_CR_OPTLOCK;
+  FLASH->CR |= FLASH_CR_LOCK;
+}
+/** @} */
+#endif
+
 uint32_t start_cycles;
 
 /** @name Firmware entry points
@@ -797,6 +945,11 @@ uint32_t start_cycles;
  */
 int main(void)
 {
+#if TAG_STM32U3_FLASH
+  // Before anything else: this may reset the part (once per board).
+  tagFixBootOptionBytes();
+#endif
+
   // read the reset flags
 
   uint32_t rstFlags = RCC->CSR;
