@@ -56,8 +56,10 @@ from power_experiment import DEFAULT_BIN, resolve_measure_python  # noqa: E402
 #:   samples of the fw-v0.6 qualification
 #:   (embedded/tags/families/PresTag/design/power-results.md).
 #: - UIUCTag: idle 0.15-0.16 uA. Firmware 2.0 reads pressure every minute
-#:   (decision 0044) and ran at 0.79 uA over 100 min on 2026-11-04; the bound
-#:   is 0.8 uA by user decision, little margin above that one figure. (The
+#:   (decision 0044) and ran at 0.79 uA over 100 min on 2026-11-04 and over
+#:   1800 s at the fw-v0.8 qualification; the bound is 0.85 uA by user
+#:   decision (2026-11-05), raised from 0.8 to leave board-to-board and
+#:   temperature margin above those figures. (The
 #:   five-minute firmware ran 0.562 uA, bound 0.646.) The run floor also
 #:   catches a run that wakes but does not collect, which read 0.24 uA on
 #:   2026-10-06 (embedded/tags/UIUCTag/design/power-results.md).
@@ -75,7 +77,7 @@ PROFILES: dict[str, dict] = {
                     run_min_ua=0.22, run_max_ua=0.47, run_duration=1800.0,
                     rest_duration=120.0, settle=75.0, storm_sets=0),
     "UIUCTag": dict(config="uiuctag-default.json", idle_max_ua=0.3, idle_window_s=120.0,
-                    run_min_ua=0.3, run_max_ua=0.8, run_duration=1800.0,
+                    run_min_ua=0.3, run_max_ua=0.85, run_duration=1800.0,
                     rest_duration=120.0, settle=75.0, storm_sets=0),
 }
 
