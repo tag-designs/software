@@ -32,36 +32,6 @@ landing and measuring them one at a time. Host tool fixes are not held back.
   [Restart Recovery](common/core/design/restart-recovery.md#stm32u375-boot-option-bytes)).
   Qualification should include one never-flashed board.
 
-- **Re-arm the run's wake source on a POWERFAIL resume in CompassTag, BitTag
-  and the BitPresTag family.** On an L432 tag, an attach or external reset
-  that lands while the tag is awake boots as `resetPower`. Only a reset from
-  Standby is classified otherwise. The plain `deviceInit()` power-init path
-  then turns every alarm and the ticker off, and recovery resumes with
-  `Running(T_CONT, POWERFAIL)`.
-  - **Fixed so far:** PresTag (`a406eda7`, ticker) and UIUCTag (2026-11-03,
-    minute alarm). In both, `T_CONT` re-arms on POWERFAIL.
-  - **Still missing:** `families/CompassTag/src/state_run.c` (ticker),
-    `BitTag/src/bt_state_run.c` (minute alarm) and
-    `families/BitPresTag/src/state_run.c` (ticker). They re-arm nothing, so an
-    attach at the wrong moment leaves the run RUNNING and collecting nothing.
-  - **Evidence and test:** on UIUCTag this was measured and confirmed with
-    `RTC_CR` captures; see `UIUCTag/design/power-results.md`, 2026-11-03. Any
-    attach inside the ~1.5 s after `tag-start` reproduces it, as the release
-    check's first `tag-info` does once the start reply is synchronous. Verify
-    each fix with an attach straight after start, then 420 s of trace and a
-    download.
-  - **CompassTag did not reproduce it with the harness's timing**
-    (2026-11-04, `eb165461`, 2.496 V, UUID `203633324B4250060022005E`). A
-    `tag-info` straight after `tag-start --start-now` and one 10 s later both
-    left the wakeup timer on (`RTC_CR` = `0x4424`) and collected 6 activity
-    and 6 compass rows in 180 s. Its start goes CONFIGURED to RUNNING in the
-    same second and it reaches Standby before the next attach lands, where
-    UIUCTag stays awake about 1.5 s. The code path is unchanged, so an attach
-    that does land while it is awake (around a tick) should still stop it.
-  - **The general alternative:** skip the alarm and ticker teardown in the
-    L432 `deviceInit()` on a reattach, as `TAG_MONITOR_RESET_RECOVERY` does on
-    U3. That is broader and touches every L4 image's boot path.
-
 - **Give the stored configuration its own page (part 2).** Part 1 of
   [the proposal](design/proposals/stored-config-write-is-unchecked.md) landed
   in `dee8654d` and shipped in `fw-v0.6`: every target reads the write back with
