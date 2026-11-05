@@ -563,6 +563,10 @@ design document.
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 - [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
 
+### Libraries / tagcore-rs / Proposals
+
+- [SWD Recovery in Rust](../host/libraries/tagcore-rs/design/proposals/swd-recovery-in-rust.md) *(proposal, proposed)* — Port the SWD capture, loader and rescue code from C++ tagcore/recovery to a recovery module in tagcore-rs, on tagcore-rs's own LinkAdapt rather than probe-rs, with the external-flash loaders shipped as a directory of images the tools load by name; ends CubeProgrammer use on the bench.
+
 ### Libraries / taglogwriter-rs
 
 - [taglogwriter (Rust)](../host/libraries/taglogwriter-rs/README.md) — taglogwriter, a safe Rust wrapper that writes tag SQLite logs through the C++ writer in tagcore_c - building and linking it (shared or static), its API, and how it is checked against the C++ tools.
