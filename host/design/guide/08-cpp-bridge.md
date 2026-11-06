@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its three parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
+summary: Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its four parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
 ---
 
 # 8. The bridge to the C++ libraries
@@ -27,47 +27,53 @@ flowchart TB
     tlw["taglogwriter::LogWriter"]
     tcs["calibsession::Session"]
     svz["sensorviz_session::Session"]
+    rbd["taglogwriter::rebuild_from_capture"]
   end
   sys["tagcore-c-sys: declares the C functions, links the library"]
-  lib["libtagcore_c (host/libraries/tagcore-c): taglogwriter_c.cc, calibsession_c.cc, sensorviz_c.cc"]
+  lib["libtagcore_c (host/libraries/tagcore-c): taglogwriter_c.cc, calibsession_c.cc, sensorviz_c.cc, rebuild_c.cc"]
   subgraph cpp["C++"]
     w["SqliteTagLogWriter (tagcore/sqlitelog)"]
     s["calibcore::CalibrationSession (sensoranalysis/core)"]
     v["sensorviz::Session (applications/sensorviz/core, sensordata)"]
+    r["recovery::CaptureSource (tagcore/recovery)"]
   end
   dw --> tlw -- "tlw_*" --> sys
   tc --> tcs -- "tcs_*" --> sys
   tv --> svz -- "svz_*" --> sys
+  rb["tag-rebuild"] --> rbd -- "rbd_*" --> sys
   sys --> lib
   lib --> w
   lib --> s
   lib --> v
+  lib --> r
 ```
 
-## Why a C interface, and why these three
+## Why a C interface, and why these four
 
 Rust and C++ have no common calling convention beyond C's. A C interface
 (`extern "C"` functions, plain data) is the one thing both compile without
 help. The project's rule, from the
 [proposal](../../libraries/tagcore/design/proposals/rust-over-cpp-libraries.md)
 that measured the options, is that a Rust host application may depend on the
-C++ libraries, and that porting them is not pursued. The three interfaces
-exist because the three applications needed them, in order: the writer for
-`tag-dwnld` and Tag Monitor, the calibration for Tag Calibrator, sensorViz's
-core for Tag View. The tag interface itself was ported rather than wrapped,
+C++ libraries, and that porting them is not pursued. The interfaces exist
+because the programs needed them, in order: the writer for `tag-dwnld` and
+Tag Monitor, the calibration for Tag Calibrator, sensorViz's core for Tag
+View, and the offline rebuild of a capture for `tag-rebuild`, which drives
+the same writer through each family's capture decoder. The tag interface itself was ported rather than wrapped,
 because it is small, its wire behaviour is specified, and a wrapper would
 have brought libusb's threading into Rust through C++.
 
 ## The C interface: `tagcore_c`
 
 `libraries/tagcore-c` is one C++ library exporting only C functions, in
-three headers whose Doxygen is the authority on each call:
+four headers whose Doxygen is the authority on each call:
 
 | Header | Prefix | Wraps | Crosses the boundary as |
 | --- | --- | --- | --- |
 | `taglogwriter_c.h` | `tlw_*` | `SqliteTagLogWriter` | **Protobuf wire bytes.** The Rust side encodes `Config`, `TagInfo`, `CalibrationConstants`, `State` and each page's `Ack` with prost; the C side parses them with the C++ protobuf library. Both compile `proto/`, so the encoding is the whole contract and no value is converted |
 | `calibsession_c.h` | `tcs_*` | `calibcore::CalibrationSession`, `displayAngles()`, the model rotation | **Plain numbers.** Samples go in as `float[3]` arrays; results come out as `#[repr(C)]` structs the header defines |
 | `sensorviz_c.h` | `svz_*` | `sensorviz::Session`, `PreferenceStore` | **JSON text out, arrays in.** Descriptions (catalog, view, plot spec, parameters, hover rows) come out as JSON the C side writes; envelopes and compass samples are copied into caller arrays; setters take plain C arrays and return change bits |
+| `rebuild_c.h` | `rbd_*` | `recovery::RebuildSqliteFromCapture()` (`CaptureSource`) | **Paths in, a count out.** The capture directory and the output file go in as C strings; the number of records written comes back through a pointer, and an error message in a caller buffer; the wrapper is `taglogwriter::rebuild_from_capture` |
 
 The rules every entry point keeps:
 
@@ -199,7 +205,7 @@ specification:
 
 | When this changes | Do this |
 | --- | --- |
-| A `tlw_*`/`tcs_*`/`svz_*` signature, meaning, struct or JSON schema | Raise the header's ABI version and the crate's constant; change the `-sys` declaration and the safe method |
+| A `tlw_*`/`tcs_*`/`svz_*`/`rbd_*` signature, meaning, struct or JSON schema | Raise the header's ABI version and the crate's constant; change the `-sys` declaration and the safe method |
 | A new function in an existing interface | Mark it exported (`TLW_API` and its siblings); declare it in the `-sys` module; wrap it. The export lists match the prefixes, so visibility needs nothing more |
 | A new interface | A new header and shim in `tagcore-c`, a new module in `tagcore-c-sys`, a new wrapper crate added to the workspace |
 | `proto/` | Nothing in these interfaces; rebuild both sides so prost and protoc see the same definitions |

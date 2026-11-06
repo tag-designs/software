@@ -132,9 +132,8 @@ these procedures catch.
   cannot alter behaviour moves idle current, suspect layout before logic.
   [U375 low power](embedded/tags/common/core/design/u375-low-power.md).
 - **Capture before anything resets or erases a failed tag**, with
-  `tag-capture`, which halts the core before any firmware runs (the
-  CubeProgrammer-based `tag_capture_state.py` lets the tag start booting, and is
-  U375-only). Run `tag_rebuild_check.py` after any
+  `tag-capture`, which halts the core before any firmware runs; on a U375 add
+  `--sram` for the scratchpad and `--with-build` to store the image. Run `tag_rebuild_check.py` after any
   change to a family's `data_logAck()`, `readConfig()` or `system_logAck()`.
   [Capturing a tag](docs/bench/capturing-a-tag.md).
 - **The flashing protocol, in order. Do not skip steps.**

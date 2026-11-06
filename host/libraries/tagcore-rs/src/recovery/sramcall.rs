@@ -1,7 +1,7 @@
 //! Download an image into a halted tag's SRAM and call its functions, with
 //! the calling convention STM32CubeProgrammer uses for external loaders.
 //!
-//! Port of `tagcore/recovery/sramcall.cc`. The convention, as traced from
+//! Ported from the deleted C++ `tagcore/recovery/sramcall.cc`. The convention, as traced from
 //! CubeProgrammer (`embedded/loaders/design/loader-runtime.md`, "The
 //! contract"):
 //!

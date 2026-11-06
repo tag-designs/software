@@ -1,9 +1,9 @@
 //! The attach-without-boot SWD session.
 //!
-//! Port of `tagcore/recovery/swdsession.cc`, call for call, onto
+//! Ported from the deleted C++ `tagcore/recovery/swdsession.cc`, call for call, onto
 //! [`LinkAdapt`]: the same register writes in the same order, because what a
 //! capture shows depends on them. The sequence and its reasons are in
-//! `host/libraries/tagcore/design/swd-recovery.md`, "Attaching without
+//! `host/libraries/tagcore-rs/design/swd-recovery.md`, "Attaching without
 //! booting the firmware"; the rules that matter most are repeated on
 //! [`Session::open`] and [`Session::close`].
 

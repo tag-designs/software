@@ -33,7 +33,7 @@ targets use STM32_Programmer_CLI.
 | `embedded/tools/flash_release.py` | program, partial or mass erase, PEMPTY check | `tag-flash program --erase ...` (the script keeps its manifest and record work) |
 | `embedded/tools/stm32_programmer_select.py` | chooses an ST-LINK by serial or index | `--base` on each tool; the script is retired |
 | `embedded/tools/decode_scratchpad.py` | `-u 0x2003E000 8192` | `tag-flash read` |
-| `embedded/tools/tag_capture_state.py` | register and memory reads | already replaced by `tag-capture`; retire |
+| `embedded/tools/tag_capture_state.py` | register and memory reads | replaced by `tag-capture --sram --with-build`; retired 2026-11-06 |
 | `embedded/loaders/` | build `.stldr` external loaders | nothing to replace: `tag-xflash` runs them itself. The format stays ST's, so they still work in CubeProgrammer. |
 
 ## `tag-flash`
@@ -257,7 +257,7 @@ the firmware that wrote the log, flash, self-test):
 5. Retire `stm32_programmer_select.py` and `tag_capture_state.py`; drop the
    STM32_Programmer_CLI fallback, leaving STM32CubeProgrammer only as Tag
    Programmer's Qt build's dependency until that build is removed.
-   *Done 2026-11-04, except `tag_capture_state.py`*: the fallback,
+   *Done 2026-11-04; `tag_capture_state.py` retired 2026-11-06*: the fallback,
    `EMBEDDED_PROGRAMMER`, `STM32_PROGRAMMER_PROBE` and the selector script are
    gone from the build and `flash_release.py`, and a Rust toolchain is
    assumed.

@@ -21,11 +21,11 @@ flowchart LR
   mon --> fm["firmware: compiled"]
   logs["include/*_log_format.h"] --> hl["host: decoded only by the C++ SQLite writer"]
   logs --> fl["firmware: compiled"]
-  loader["include/loader_service.h"] --> hlo["host: the C++ recovery library"]
+  loader["include/loader_service.h"] --> hlo["host: the recovery module of tagcore-rs, xflash.rs"]
   loader --> flo["the external-flash loaders"]
   dc["embedded/proto-c/*/default-config.json"] --> hd["host: embedded at build time, read by ConfigShape"]
   dc --> fd["firmware: compiled into the image"]
-  tgid["the identity record (TGID)"] --> ht["host: parsed by tagprobe, Tag Programmer and the recovery library"]
+  tgid["the identity record (TGID)"] --> ht["host: parsed by tagcore-rs recovery (for Tag Programmer and tag-flash too) and the C++ rebuild"]
   tgid --> ft["firmware: written by tag_identity.c"]
 ```
 
@@ -219,12 +219,13 @@ loader and decoder names, and a numbers block whose first word is the
 `TagType`. Unknown ids are skipped, so the record can grow.
 
 Three readers use it: the firmware's own `infoAck()`, so that `TagInfo`
-reports the record's values; the C++ recovery library, which reads it from a
-captured tag to choose the loader and decoder for an offline rebuild; and
-Tag Programmer and `tag-flash`, which read it from an **ELF file**
-(`tagprogram-core/src/model/identity.rs`) to say which target and board an
-image is for without trusting its file name, and to match an image to the
-attached tag's `TagInfo`.
+reports the record's values; the recovery module of tagcore-rs
+(`src/recovery/identity.rs`), which reads it from a captured tag to choose
+the loader and decoder; and Tag Programmer and `tag-flash`, which read it
+from an **ELF file** through the same parser to say which target and board
+an image is for without trusting its file name, and to match an image to the
+attached tag's `TagInfo`. The C++ rebuild (`CaptureSource`) keeps its own
+parser, `tagcore/recovery/identityrecord.cc`.
 
 ## The loader service block: `include/loader_service.h`
 
@@ -234,10 +235,10 @@ host loads a small **loader** program into the tag's SRAM over SWD and
 drives it through a command block the header defines: the host fills a
 command, increments `seq`; the loader runs it and copies `seq` to `ack`,
 with status, detail and progress. `LOADER_SERVICE_VERSION` guards the
-layout. The loaders are in `embedded/loaders`; the host side is the C++
-recovery library (`libraries/tagcore/recovery`), behind `tag-xflash` and the
-external stage of `tag-capture`. There is no Rust counterpart yet; the Rust
-command-line README lists these tools as not ported for that reason.
+layout. The loaders are in `embedded/loaders`; the host side is
+`ExternalFlash` in tagcore-rs (`src/recovery/xflash.rs`), behind `tag-xflash`
+and the external stage of `tag-capture`. Its `#[repr(C)]` copy of the block
+is checked against the header's sizes and offsets by a test.
 
 ## The base identity string
 

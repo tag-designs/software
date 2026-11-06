@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Decode a capture taken by tag_capture_state.py.
+"""Decode a capture taken by the retired tag_capture_state.py.
+
+@note    It reads only part of a tag-capture directory (it does not find the
+         ELF that --with-build stores under build/); see
+         host/libraries/tagcore-rs/TODO.md.
 
 @details Reads named globals out of the SRAM image and the retained state out
          of the backup registers, using the ELF stored alongside the capture to

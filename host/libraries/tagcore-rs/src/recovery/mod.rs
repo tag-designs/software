@@ -1,8 +1,9 @@
 //! SWD capture and recovery: reach a tag without booting its firmware.
 //!
-//! Port of the C++ `tagcore/recovery` library onto [`LinkAdapt`], the same
-//! link the monitor uses. The design is
-//! `host/libraries/tagcore/design/swd-recovery.md`; why the port runs on
+//! Ported from the C++ `tagcore/recovery` library (deleted but for the
+//! rebuild, `CaptureSource`) onto [`LinkAdapt`], the same link the monitor
+//! uses. The design is
+//! `host/libraries/tagcore-rs/design/swd-recovery.md`; why the port runs on
 //! `LinkAdapt` rather than probe-rs is in
 //! `host/libraries/tagcore-rs/design/proposals/swd-recovery-in-rust.md`.
 //!

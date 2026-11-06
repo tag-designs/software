@@ -1,32 +1,36 @@
 ---
 type: design
 status: current
-summary: How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
+summary: How the SWD capture and recovery library (tagcore-rs recovery module) works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 ---
 
 # SWD Capture and Recovery Library
 
-`tagcore/recovery` captures a tag's whole state over SWD **without running its
-firmware**, and reads its external flash through an SRAM-resident loader. The
+`tagcore::recovery` (in tagcore-rs) captures a tag's whole state over SWD
+**without running its firmware**, and reads its external flash through an SRAM-resident loader. The
 session halts the core at its reset vector before the first instruction runs. It
 reads registers, internal flash, optionally SRAM, and then external flash
-through the loader that the image's identity record names. The library is C++,
-Qt-free, and drives the loaders in `embedded/loaders` through their `Serve()`
-entry point, with no dependency on STM32CubeProgrammer.
+through the loader that the image's identity record names. The library is
+Rust, on tagcore-rs's own `LinkAdapt`, and drives the loaders in
+`embedded/loaders` through their `Serve()` entry point, with no dependency on
+STM32CubeProgrammer. It replaced the C++ `tagcore/recovery` library in
+November 2026 (decision [0045](../../../../docs/decisions/0045-swd-recovery-in-rust.md)); only the
+offline rebuild, `CaptureSource`, is still C++.
 
-These tools are built on it:
+These tools, in `host/commandline-rs`, are built on it:
 - `tag-capture`;
 - `tag-xflash` (`dump`, `nand`);
 - `tag-sramcall`;
-- `tag-rebuild`, through `CaptureSource`.
+- `tag-rebuild`, which calls the C++ `CaptureSource` through the `rbd_*`
+  interface of `tagcore_c`.
 
 Their usage is in the
-[command-line tools README](../../../commandline/README.md#tag-capture), and the
+[command-line tools README](../../../commandline-rs/README.md), and the
 bench procedure is [Capturing a Tag](../../../../docs/bench/capturing-a-tag.md).
 Three pieces are not built: the Python binding, identification of images
 without an identity record, and rescue erase. They are proposed in
-[Identification, Rescue and Python](proposals/recovery-identification-rescue-python.md).
-Open work is in [recovery/TODO.md](../recovery/TODO.md).
+[Identification, Rescue and Python](../../tagcore/design/proposals/recovery-identification-rescue-python.md).
+Open work is in [the tagcore-rs TODO](../TODO.md).
 
 Background:
 
@@ -37,8 +41,10 @@ Background:
   why external flash is read by an SRAM loader and not by a recovery firmware.
 - [Decision 0018](../../../../docs/decisions/0018-offline-rebuild-capture-backed-source.md):
   how a capture is turned back into a SQLite download.
-- [SWD Capture Library Bring-up](investigations/2026-09-swd-capture-library-bring-up.md):
-  how each layer was checked on bench tags, with the measurements.
+- [SWD Capture Library Bring-up](../../tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md):
+  how each layer of the C++ original was checked on bench tags, with the
+  measurements. The Rust port was checked against it byte for byte
+  ([the port proposal](proposals/swd-recovery-in-rust.md#acceptance)).
 
 ## Scope
 
@@ -55,7 +61,7 @@ captured data. `CaptureSource` feeds captures to the existing SQLite writer.
 ## Session model
 
 A tag has one SWD connection, and that connection is one claimed USB interface
-on one base. There is no sharing. A **recovery session** (`SwdSession`) and a
+on one base. There is no sharing. A **recovery session** (`Session`) and a
 **monitor session** (`TagMonitor`) are alternatives. Each claims the device for
 its lifetime, and opening one while the other holds the device fails. The
 library reports that failure plainly -- "the base is in use by another session
@@ -77,7 +83,7 @@ first thing done to a returned tag.
 
 ## Attaching without booting the firmware
 
-**Attach.** With NRST asserted, `SwdSession`:
+**Attach.** With NRST asserted, `Session::open`:
 1. enters SWD mode;
 2. identifies the MCU from `DBGMCU_IDCODE`, reads the target voltage, and
    records `DHCSR`, `DEMCR` and `DBGMCU_APB1FZR1` as found;
@@ -90,22 +96,22 @@ session confirms `DHCSR.S_HALT` and reads PC. PC must equal the reset vector
 read from the second word of flash; the only exception is blank flash. If PC is
 wrong, the session closes and refuses to go on, because the capture would not
 be of a tag that had not run. It then sets `DBGMCU_APB1FZR1.DBG_IWDG_STOP`, so a
-hardware watchdog cannot reset the tag while the core is halted. `Close()`
+hardware watchdog cannot reset the tag while the core is halted. `close()`
 restores the bit's earlier value.
 
 **The vector-catch bit is shared with the monitor.** On every tag the monitor
 uses `DEMCR.VC_CORERESET` as its attachment flag to the firmware: both the L4
-and the U3 attach in `tagmonitor.cc` set it, and the firmware reads it as
+and the U3 attach in the monitor (`monitor/l4.rs`, `monitor/u3.rs`) set it, and the firmware reads it as
 `MONCONNECTED` (`core_types.h`). If a recovery session left it set, the next boot would
 believe a monitor was attached, and the tag would stay awake: a held monitor
-reads as a high average. So `Close()` clears `DEMCR` and then ends the session
+reads as a high average. So `close()` clears `DEMCR` and then ends the session
 in one of two declared ways (`SwdExit`):
 
-- `HardwareReset`, the default: pulse NRST with `DHCSR.C_DEBUGEN` clear, so
+- `SwdExit::HardwareReset`, the default: pulse NRST with `DHCSR.C_DEBUGEN` clear, so
   the tag boots exactly as it would after a plain connection.
-- `LeaveHalted`: the core stays halted, for a follow-on step that needs it.
+- `SwdExit::LeaveHalted`: the core stays halted, for a follow-on step that needs it.
 
-**`DHCSR.C_MASKINTS` is cleared too, while halted.** `Run()` and `Halt()` set
+**`DHCSR.C_MASKINTS` is cleared too, while halted.** `run()` and `halt()` set
 it so that loader code never takes the tag's interrupts.
 - A system reset does not clear it. Only a power-on clears it, or a Standby or
   Shutdown that powers down the core's debug logic.
@@ -117,9 +123,9 @@ it so that loader code never takes the tag's interrupts.
   `C_DEBUGEN`, the monitor included, masks every interrupt, and the firmware
   sits in its idle thread without answering.
 
-`Close()` therefore clears it first: it halts if needed, writes
+`close()` therefore clears it first: it halts if needed, writes
 `DBGKEY | C_DEBUGEN | C_HALT`, and checks the bit. As a second line of defence,
-the monitor attach (`TagMonitor::ClearStaleMaskInts()`) clears a stale bit
+the monitor attach (`clear_stale_mask_ints` in `monitor/cortex_m.rs`) clears a stale bit
 while it holds the core at the reset vector, and logs that it did. That
 recovers a tag left this way by an older build or by another tool.
 
@@ -139,13 +145,13 @@ consecutive `STM32_Programmer_CLI -c port=SWD mode=UR` reads of SRAM1 on the
 same bench PresTag differed in about 14,900 of 49,152 bytes (recorded
 2026-09-30, commit `dd9987de`). So the firmware runs
 between reset release and CubeProgrammer's halt. Anything captured through
-CubeProgrammer, including by `tag_capture_state.py`, describes a tag that has
-started to boot.
+CubeProgrammer describes a tag that has
+started to boot. That is why `tag_capture_state.py`, which captured through it,
+was retired in favour of `tag-capture --sram --with-build`.
 
 ## What a capture contains
 
-The regions are read least disturbing first (`statecapture.*`,
-`externalcapture.*`):
+The regions are read least disturbing first (`capture.rs`, `external.rs`):
 
 | # | Region | How | Notes |
 | --- | --- | --- | --- |
@@ -177,7 +183,7 @@ The addresses and rules below come from RM0394 Rev 5 (STM32L41x-L46x) and
 RM0487 Rev 3 (STM32U3). Peripheral bases are cross-checked against the CMSIS
 device headers in the ChibiOS submodule (`stm32l432xx.h`, `stm32u375xx.h`).
 U375 addresses are the nonsecure aliases. They live in one table per MCU in
-`swdmcu.cc`, not in the procedures.
+`mcu.rs`, not in the procedures.
 
 **No protections are set on tags.** Tags ship at readout-protection level 0,
 with no write protection, no PCROP, and TrustZone off. This library assumes
@@ -242,9 +248,8 @@ reset. The bench PresTag has `IWDG_SW` = 1 (software watchdog; 2026-09-30
 capture).
 
 **Backup registers read as zeros until their bus clock is on.** Connecting under
-reset resets RCC. Set `RTCAPBEN` before reading them, as `tag_capture_state.py`
-does on the U375. The register differs between the two parts, which is one
-reason that script fails on the L432.
+reset resets RCC. The capture sets `RTCAPBEN` before reading them. The
+register differs between the two parts, so it is in the MCU table.
 
 ## Identifying the tag, and choosing a loader
 
@@ -253,7 +258,8 @@ the capture has already read. Every image built since the identity record
 carries one directly after the interrupt vectors. The session already knows the
 MCU from `DBGMCU_IDCODE`, and the vector table has a fixed size per MCU, so the
 record sits at a known address: `0x080001A0` on the STM32L432 and `0x08000240`
-on the STM32U375. It is read in one step, with no scan (`identityrecord.*`). It
+on the STM32U375. It is read in one step, with no scan (`identity.rs`). Tag Programmer and
+`tag-flash` use the same parser. It
 names the loader and the decoder, and it carries the layout facts a decoder
 needs. The format and the reasons for it are in
 [decision 0021](../../../../docs/decisions/0021-offline-rebuild-tag-identity-record.md);
@@ -295,7 +301,7 @@ declared in `include/loader_service.h` and shared by loader and host:
   what the flash's 8 MHz SPI delivers. The loader fills a buffer far faster
   than the host can fetch it, so double buffering would buy nothing. A
   `Serve()` read runs at about 78 KB/s, close to that bound. The measurements
-  are in the [bring-up investigation](investigations/2026-09-swd-capture-library-bring-up.md#implementation-sequence).
+  are in the [bring-up investigation](../../tagcore/design/investigations/2026-09-swd-capture-library-bring-up.md#implementation-sequence).
 - **Detailed results.** `detail[]` carries what the ST convention throws away:
   - the part's identity;
   - the status register as found (the protect bits are evidence);
@@ -314,7 +320,7 @@ declared in `include/loader_service.h` and shared by loader and host:
   `LOADER_STATUS_READ_ONLY`. The code is absent, as it is for the ST entry
   points.
 
-The library also keeps a generic path, `SramCall`, that calls a named
+The library also keeps a generic path, `SramCall` (`sramcall.rs`), that calls a named
 ST-style entry point with the traced convention:
 - a `BKPT` return trap at the start of SRAM1, with LR set to it;
 - MSP 1 KB past the image;
@@ -326,22 +332,26 @@ and so does an SRAM probe such as `RV3028_PresTagv3` (`tag-sramcall`).
 
 ## Library architecture
 
-Everything is C++ in `tagcore`, and Qt-free. The layers, lowest first:
+Everything but the rebuild is Rust, in tagcore-rs's `recovery` module. The
+layers, lowest first:
 
 | Layer | Files | Responsibility |
 | --- | --- | --- |
-| `LinkAdapt` | `linkadapt.*` | USB claim, ST-LINK protocol, memory and debug-register access, NRST |
-| `SwdSession` | `recovery/swdsession.*`, `recovery/swdmcu.*` | Owns the connection for a recovery session: attach-without-boot, declared exit, core control (halt, run, wait-for-halt, core registers through `DCRSR`/`DCRDR`), and register and memory reads of named regions per MCU |
-| `TargetImage` | `recovery/targetimage.*` | Minimal ELF32 reader: loadable segments and symbols, with no external dependency |
-| `SramCall` | `recovery/sramcall.*` | Download a `TargetImage` into SRAM and call a symbol, with the traced convention and a timeout |
-| `ExternalFlash` | `recovery/externalflash.*` | A loader session through `Serve()`: probe, read, read page, erase, program |
-| `IdentityRecord` | `recovery/identityrecord.*` | Parse the identity record from captured internal flash |
-| Capture | `recovery/statecapture.*`, `recovery/externalcapture.*` | The capture procedure: ordering, output directory, manifest |
-| `CaptureSource` | `recovery/capturesource.*` | Rebuild the monitor replies from a capture, through a per-family decoder chosen by the record's `decoder` name |
+| `LinkAdapt` | `link/` | USB claim, ST-LINK protocol, memory and debug-register access, NRST |
+| `Session` | `recovery/session.rs`, `recovery/mcu.rs` | Owns the connection for a recovery session: attach-without-boot, declared exit (`SwdExit`), core control (halt, run, wait-for-halt, core registers through `DCRSR`/`DCRDR`), and register and memory reads of named regions per MCU |
+| `TargetImage` | `recovery/image.rs` | Loadable segments and symbols of an ELF32 ARM image, on the `object` crate |
+| `SramCall` | `recovery/sramcall.rs` | Download a `TargetImage` into SRAM and call a symbol, with the traced convention and a timeout |
+| `ExternalFlash` | `recovery/xflash.rs` | A loader session through `Serve()`: probe, read, read page; the `LoaderServiceBlock` layout is checked against `include/loader_service.h` by a test |
+| `IdentityRecord` | `recovery/identity.rs` | Find and parse the identity record in internal flash; shared with Tag Programmer and `tag-flash` |
+| Capture | `recovery/capture.rs`, `recovery/external.rs`, `recovery/build.rs` | The capture procedure: ordering, output directory, manifest, and the optional build files (`--with-build`) |
+| `CaptureSource` | C++, `host/libraries/tagcore/recovery/capturesource.*` | Rebuild the monitor replies from a capture, through a per-family decoder chosen by the record's `decoder` name; reached from Rust through `rbd_rebuild()` in `tagcore_c` |
 
 Halting goes through `DHCSR` writes over `LinkAdapt`'s debug-register access,
 so the base's `FORCEDEBUG` handler is not used. MCU knowledge lives in one
-table per MCU in `swdmcu.cc`, not in the procedures: the flash base and page
+table per MCU in `mcu.rs`, not in the procedures: the flash base and page
 size, the SRAM ranges, register addresses (including the flash-size register,
-from which the capture sizes internal flash at run time), the backup-register enable, the IWDG freeze bit and the
-identity-record address.
+from which the capture sizes internal flash at run time), the backup-register
+enable, the IWDG freeze bit and the identity-record address.
+
+The capture directory and manifest are the ones the C++ library wrote, so
+`tag-rebuild` reads captures from either.

@@ -3,7 +3,8 @@
 
   It owns the USB link to a base (libusb), the tag monitor protocol
   (tagmonitor, tagclass), log download and the SQLite/text log writers, the
-  SWD capture and recovery code under recovery/, and ConfigShape, which says
+  offline rebuild of a capture under recovery/ (the capture itself is
+  tagcore-rs), and ConfigShape, which says
   which Config fields each tag type supports.
 
   Dependencies that are easy to miss:
@@ -106,14 +107,8 @@ target_sources(tagcore
          log.c
          linkadapt.h
          recovery/sha256.cc
-         recovery/swdmcu.cc
-         recovery/swdsession.cc
          recovery/targetimage.cc
-         recovery/sramcall.cc
-         recovery/externalflash.cc
-         recovery/externalcapture.cc
          recovery/identityrecord.cc
-         recovery/statecapture.cc
          recovery/capturesource.cc
     PUBLIC
          log.h
@@ -125,14 +120,8 @@ target_sources(tagcore
          linkadapt.h
          configshape.h
          recovery/sha256.h
-         recovery/swdmcu.h
-         recovery/swdsession.h
          recovery/targetimage.h
-         recovery/sramcall.h
-         recovery/externalflash.h
-         recovery/externalcapture.h
          recovery/identityrecord.h
-         recovery/statecapture.h
          recovery/capturesource.h
    )
 

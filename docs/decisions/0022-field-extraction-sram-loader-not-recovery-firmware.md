@@ -117,6 +117,6 @@ their runtime rules in
 [Loader Runtime Design](../../embedded/loaders/design/loader-runtime.md). The
 host library that drives them in place of STM32CubeProgrammer, and enforces the
 capture-first order, is
-[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md).
 `tag-capture` reads SPI NAND both raw and through on-die ECC, as the revision
 above requires.

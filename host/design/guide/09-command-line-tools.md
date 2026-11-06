@@ -101,10 +101,17 @@ what a release carries.
 
 ### Not ported
 
-`tag-capture`, `tag-xflash`, `tag-sramcall` and `tag-rebuild` need the C++
-SWD capture and recovery library; `tag-txt-import` needs the C++ text-log
-reader; `dataprocessing` needs `sensoranalysis_core` and
-SQLite. All stay C++ in `host/commandline`, whose README describes them.
+`tag-txt-import` needs the C++ text-log reader, and `dataprocessing` needs
+`sensoranalysis_core` and SQLite. Both stay C++ in `host/commandline`, whose
+README describes them.
+
+The SWD capture and recovery tools, `tag-capture`, `tag-xflash`,
+`tag-sramcall` and `tag-rebuild`, are Rust on tagcore-rs's `recovery` module,
+and their C++ versions are gone (decision
+[0045](../../../docs/decisions/0045-swd-recovery-in-rust.md)). `tag-rebuild`
+still rebuilds through the C++ `CaptureSource`, over `tagcore_c`'s `rbd_*`
+interface, as `tag-dwnld` writes through the C++ SQLite writer. Their usage
+is in `host/commandline`'s README.
 
 ## tag-dwnld, line by line
 
@@ -175,5 +182,5 @@ comparison above and by `tagcore`'s own tests.
 - `commandline-rs/src/lib.rs`: the shared code, which is short and fully
   commented.
 - [`commandline/README.md`](../../commandline/README.md): the C++ tools,
-  including the recovery tools and `dataprocessing`.
+  `dataprocessing` among them, and the usage of the Rust recovery tools.
 - The user manual's `cli/` pages for what a user sees.

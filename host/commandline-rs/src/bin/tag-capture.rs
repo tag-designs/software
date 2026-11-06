@@ -1,7 +1,7 @@
 //! `tag-capture`: capture a tag's registers, internal flash, SRAM and
 //! external flash over SWD without booting its firmware.
 //!
-//! Port of `host/commandline/tag-capture.cc` onto `tagcore::recovery`. The
+//! Ported from the deleted C++ `host/commandline/tag-capture.cc` onto `tagcore::recovery`. The
 //! first thing to run on a returned tag, before `tag-info` or any other
 //! monitor tool: a monitor attach lets the firmware boot, which clears the
 //! reset flags and can rewrite `pState` and the marker log.
@@ -21,19 +21,18 @@
 //! manifest, and any `--extra` files such as the target's `project.mk`. The
 //! manifest records their hashes, the image's region symbols, and whether
 //! the ELF matches the captured internal flash -- that is, whether it is the
-//! image that was running. With `--sram` this holds everything
-//! `tag_capture_state.py` stored.
+//! image that was running. With `--sram` this holds everything the retired
+//! CubeProgrammer script `tag_capture_state.py` stored.
 //!
 //! Without `--with-build` the capture directory is the same as the C++
-//! tool's, file for file, so `decode_capture.py` and `tag-rebuild` read
-//! either.
+//! tool's, file for file, so `tag-rebuild` reads either.
 //!
 //! # Exit status
 //!
 //! 0 complete, 2 written but some region failed, 1 no capture. Option
 //! errors exit 2 (clap).
 //!
-//! See `host/libraries/tagcore/design/swd-recovery.md`.
+//! See `host/libraries/tagcore-rs/design/swd-recovery.md`.
 
 use std::path::PathBuf;
 use std::process::ExitCode;

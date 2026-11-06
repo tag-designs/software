@@ -30,7 +30,7 @@ from internal and external flash) to the host decoder in
 
 Related: [Field Data Extraction](../../embedded/tags/design/proposals/field-data-extraction.md) (why raw dumps are
 not self-describing; the session superblock proposal) and
-[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md)
+[SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md)
 (the capture tool these inputs come from).
 
 ## The inputs

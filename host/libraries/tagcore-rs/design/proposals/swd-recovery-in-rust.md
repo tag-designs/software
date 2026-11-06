@@ -1,10 +1,17 @@
 ---
 type: proposal
-status: proposed
+status: historical
 summary: Port the SWD capture, loader and rescue code from C++ tagcore/recovery to a recovery module in tagcore-rs, on tagcore-rs's own LinkAdapt rather than probe-rs, with the external-flash loaders shipped as a directory of images the tools load by name; ends CubeProgrammer use on the bench.
 ---
 
 # SWD Recovery in Rust
+
+> **Built, 2026-11-06.** The port is done and the C++ library and tools are
+> deleted: see [SWD Capture and Recovery Library](../swd-recovery.md) for the
+> design and decision
+> [0045](../../../../../docs/decisions/0045-swd-recovery-in-rust.md) for the
+> record. This proposal is kept for its acceptance plan; links in it to the C++
+> files point at code that no longer exists.
 
 The SWD recovery code -- capture without booting, the external-flash loaders'
 `Serve()` sessions, and the offline rebuild -- can move from C++
@@ -31,7 +38,7 @@ calls a loader's entry points itself. The remaining uses are:
 
 | Use | What it is for | After this proposal |
 | --- | --- | --- |
-| `embedded/tools/tag_capture_state.py` | U375 bench captures (`mode=UR`) with the ELF and build files beside them | Retired: `tag-capture --sram --with-build` covers it, and halts before the firmware runs, which `mode=UR` does not ([SWD Capture and Recovery Library](../../../tagcore/design/swd-recovery.md#attaching-without-booting-the-firmware)) |
+| `embedded/tools/tag_capture_state.py` | U375 bench captures (`mode=UR`) with the ELF and build files beside them | Retired: `tag-capture --sram --with-build` covers it, and halts before the firmware runs, which `mode=UR` does not ([SWD Capture and Recovery Library](../swd-recovery.md#attaching-without-booting-the-firmware)) |
 | `STM32_Programmer_CLI -el <loader>` in the [loaders README](../../../../../embedded/loaders/README.md#using-a-loader-with-stm32cubeprogrammer) | Reading external flash by hand | Kept as an optional note; the loaders keep the `.stldr` layout |
 
 So the work is a port to Rust, which matters because the C++ host is being
@@ -153,7 +160,7 @@ binding over the C++ classes. That binding was never built. Two options:
   checks size and offsets against the header, through `bindgen` or a C
   `offsetof` table.
 - **Idle current after a recovery session detaches has never been measured**
-  ([recovery TODO](../../../tagcore/recovery/TODO.md#checks-never-run)). The
+  ([recovery TODO](../../TODO.md#checks-never-run)). The
   port is a good moment to run it once, on both implementations.
 
 ## Acceptance

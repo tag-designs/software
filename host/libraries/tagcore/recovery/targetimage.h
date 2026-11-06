@@ -2,12 +2,13 @@
  * @file    targetimage.h
  * @brief   Minimal ELF32 reader for images the host downloads into a tag.
  *
- * @details Reads what SramCall needs from a little-endian ARM ELF32
- *          executable, such as an external-flash loader (`.stldr` is an ELF
- *          under another name): the loadable segments and the symbol table.
- *          No relocation, no debug information, and no external dependency.
+ * @details Reads the loadable segments and the symbol table of a
+ *          little-endian ARM ELF32 executable. No relocation, no debug
+ *          information, and no external dependency. Its remaining user is the
+ *          legacy qtprogram (BUILD_LEGACY_HOST); the SWD recovery code that
+ *          also used it is now Rust (tagcore-rs `recovery/image.rs`).
  *
- * @see     host/libraries/tagcore/design/swd-recovery.md, "Library architecture"
+ * @see     host/libraries/tagcore-rs/design/swd-recovery.md, "Library architecture"
  */
 
 #ifndef TAGCORE_RECOVERY_TARGETIMAGE_H

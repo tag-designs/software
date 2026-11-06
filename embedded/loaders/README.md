@@ -18,7 +18,7 @@ The images follow STM32CubeProgrammer's external-loader (`.stldr`) contract, so
 `STM32_Programmer_CLI -el` can drive them. The host library in `tagcore` drives
 the same images without CubeProgrammer. It uses their `Serve()` entry point,
 and `tag-xflash dump` reads a whole part with it. See
-[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md).
 
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
@@ -120,8 +120,8 @@ tag, unpack the firmware release of the image it runs and point
 ## Using a loader with STM32CubeProgrammer
 
 Capture the tag's state **first**. The loader overwrites the start of SRAM, and
-that SRAM is evidence. See `embedded/tools/tag_capture_state.py`, and note its
-limitation on STM32L432 in [TODO.md](TODO.md).
+that SRAM is evidence: run `tag-capture --sram` before CubeProgrammer, whose
+`mode=UR` also lets the firmware start booting.
 
 ```sh
 LDR=$PWD/<build-dir>/embedded/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3/build/AT25XE_PresTagv3.stldr

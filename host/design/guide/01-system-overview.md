@@ -125,7 +125,7 @@ Each job below is one or two programs, described in chapters 9 and 11.
 | **Monitor** an attached tag: state, clock error, voltage, test results | Tag Monitor, `tag-info` | Any time a tag is on a base |
 | **Stop, download and erase** a returned tag | Tag Monitor, `tag-stop`, `tag-dwnld`, `tag-reset` | Recovery |
 | **View and process** the downloaded data | Tag View (`tagview`), `dataprocessing` | Analysis |
-| **Recover** a tag that cannot run its firmware: capture its memory, read its external flash through a loader, rebuild the download offline | `tag-capture`, `tag-xflash`, `tag-rebuild` (C++ only) | Failure analysis |
+| **Recover** a tag that cannot run its firmware: capture its memory, read its external flash through a loader, rebuild the download offline | `tag-capture`, `tag-xflash`, `tag-rebuild` | Failure analysis |
 
 Two facts shape all of them:
 

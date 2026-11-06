@@ -1,7 +1,7 @@
 //! A tag's external flash, read (and in rescue, erased and programmed)
 //! through a loader's `Serve()` entry point.
 //!
-//! Port of `tagcore/recovery/externalflash.cc`. [`ExternalFlash::open`]
+//! Ported from the deleted C++ `tagcore/recovery/externalflash.cc`. [`ExternalFlash::open`]
 //! downloads the loader into SRAM1 and starts `Serve(buffer, size)`, which
 //! initialises the part once and then runs commands from the
 //! `loaderService` block (`include/loader_service.h`). The host submits a

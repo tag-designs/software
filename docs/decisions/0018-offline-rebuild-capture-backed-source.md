@@ -136,7 +136,7 @@ external flash sample by sample.
 
 The mid-run captures also exposed a capture-path fault. The SWD session left
 `DHCSR.C_MASKINTS` set, which stalled the next monitor attach. It is fixed;
-see `host/libraries/tagcore/design/swd-recovery.md`, "Attaching without
+see `host/libraries/tagcore-rs/design/swd-recovery.md`, "Attaching without
 booting the firmware".
 
 **Gaps.**

@@ -196,7 +196,8 @@ set(HOST_RUST_SHIPPED_TOOLS
 #]]
 set(HOST_RUST_INTERNAL_TOOLS
     tag-peek tag-attach-cycle tag-monitor-test tag-side-channel-check
-    tag-test-example tag-cal-write qtmonitor-fixture-capture tag-log-import)
+    tag-test-example tag-cal-write qtmonitor-fixture-capture tag-log-import
+    tag-capture tag-xflash tag-sramcall tag-rebuild)
 
 #[[
   @brief  Defines rust_tools, the target that builds every command-line tool

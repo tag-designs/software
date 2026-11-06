@@ -169,9 +169,9 @@ compiler and the ChibiOS submodule.
 | Joulescope desktop app | Setting and confirming supply voltage. Detach before scripted runs. |
 | `joulescope-js220` MCP server | Not to be used; it holds the device. Kill stray `joulescope-mcp` processes. |
 | ST-LINK probes | Tag programmer base `0483:3748` (preferred), STLINK-V3PWR `0483:3757`. `tag-flash --base <serial>` (or `-DTAG_FLASH_BASE`) picks one. |
-| STM32CubeProgrammer CLI | Not used for programming; `tag_capture_state.py` and the legacy qtprogram still call it. 2.4.0 here. |
+| STM32CubeProgrammer CLI | Not used for programming or capture; only the legacy qtprogram still calls it. 2.4.0 here. |
 | `tag-flash`, `base-flash` | Program tags through a base and bases over DFU; built by the `flash_tools` target and run by the embedded `-download`, `-erase` and `-dfu` targets and `flash_release.py`. A Rust toolchain is assumed. |
-| `tag-capture` | Host tool from this repo; halts the core before firmware runs. |
+| `tag-capture`, `tag-xflash` | Rust host tools from this repo, in `bin/internal`; halt the core before firmware runs, and read external flash through the loaders. |
 | `embedded-debugger` MCP | Probe inspection, core control, memory reads, breakpoints, RTT, over probe-rs or OpenOCD. **probe-rs has no STM32U3 target**, so U375 work needs the OpenOCD backend at `/usr/local/bin/openocd`. |
 | GDB over SWD | `arm-none-eabi-gdb` from the Arm toolchain; the VS Code configs use `cortex-debug`. |
 

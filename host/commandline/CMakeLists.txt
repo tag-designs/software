@@ -62,12 +62,9 @@ endfunction()
 # into bin/; the developer and bench tools, marked INTERNAL, into
 # bin/internal. host/commandline/README.md says which is which and why.
 #
-# The tools with no Rust equivalent are always built: the SWD capture and
-# recovery tools and tag-txt-import.
-host_cli_tool(tag-capture INTERNAL WIN32 tag-capture.cc)
-host_cli_tool(tag-xflash INTERNAL WIN32 tag-xflash.cc)
-host_cli_tool(tag-sramcall INTERNAL WIN32 tag-sramcall.cc)
-host_cli_tool(tag-rebuild INTERNAL WIN32 tag-rebuild.cc)
+# The one tool with no Rust equivalent, tag-txt-import, is always built. The
+# SWD capture and recovery tools (tag-capture, tag-xflash, tag-sramcall,
+# tag-rebuild) are Rust only, in host/commandline-rs.
 host_cli_tool(tag-txt-import WIN32 tag-txt-import.cc)
 
 # The tools the Rust tools in host/commandline-rs replace from v4.0, built

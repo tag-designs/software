@@ -19,7 +19,7 @@
  *          it requires a new ::LOADER_SERVICE_VERSION; the host refuses a
  *          version it does not know.
  *
- * @see     host/libraries/tagcore/design/swd-recovery.md, "Loader protocol"
+ * @see     host/libraries/tagcore-rs/design/swd-recovery.md, "Loader protocol"
  * @see     embedded/loaders/design/loader-runtime.md
  */
 

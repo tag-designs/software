@@ -33,23 +33,18 @@ are documented for users in
 authoritative schema; [`sqlitelog/README.md`](sqlitelog/README.md) covers the
 writer internals and decoder rules behind them.
 
-`recovery/` holds the SWD capture and recovery code, separate from the monitor
-path:
+`recovery/` holds what is left in C++ of the SWD capture and recovery code.
+The capture itself (the session, the loaders, `tag-capture`, `tag-xflash`,
+`tag-sramcall`) is Rust, in tagcore-rs's `recovery` module; see
+[SWD Capture and Recovery Library](../tagcore-rs/design/swd-recovery.md). What
+stays:
 
-- `swdsession`: an exclusive session that halts the tag at its reset vector
-  before the firmware runs;
-- `swdmcu`: per-MCU memory and register maps;
-- `statecapture`: registers, internal flash and SRAM capture, behind
-  `tag-capture`;
-- `identityrecord`: parses the tag identity record from captured internal
-  flash;
-- `targetimage` and `sramcall`: load an ELF image into SRAM and call its
-  functions, behind `tag-sramcall`;
-- `externalflash` and `externalcapture`: read (and in rescue erase) external
-  flash through an `embedded/loaders` image, behind `tag-xflash` and the
-  external stage of `tag-capture`;
-- `capturesource`: rebuilds a download from a capture, behind `tag-rebuild`;
-- `sha256`: hashes captured regions for the manifest.
+- `capturesource`: rebuilds a download from a capture, behind the Rust
+  `tag-rebuild`, which reaches it through `rbd_rebuild()` in `tagcore_c`;
+- `identityrecord`: parses the tag identity record, for `capturesource` and
+  the legacy qtprogram;
+- `targetimage`: reads an ELF's loadable segments, for the legacy qtprogram;
+- `sha256`: hashes, for `capturesource`.
 
 `test/` holds standalone offline checks, of the decoders and of `ConfigShape`;
 see
@@ -60,12 +55,13 @@ Design documents:
 - [Tag Configuration Model](../../../docs/shared/design/configuration-model.md):
   which configuration fields each tag supports, `ConfigShape`, the merge used
   by Restore and `tag-start --merge`, and how it is checked.
-- [`design/swd-recovery.md`](design/swd-recovery.md): design of the SWD capture
-  and recovery library -- capture without booting the firmware, external flash
-  through the loaders, tag identification, and the layered API. Its bring-up
-  log is
-  [`design/investigations/2026-09-swd-capture-library-bring-up.md`](design/investigations/2026-09-swd-capture-library-bring-up.md)
-  and its open work is in [`recovery/TODO.md`](recovery/TODO.md).
+- [SWD Capture and Recovery Library](../tagcore-rs/design/swd-recovery.md),
+  now in tagcore-rs: capture without booting the firmware, external flash
+  through the loaders, tag identification, and the layered API. The C++
+  original's bring-up log stays here, in
+  [`design/investigations/2026-09-swd-capture-library-bring-up.md`](design/investigations/2026-09-swd-capture-library-bring-up.md);
+  open work, `CaptureSource`'s included, is in the
+  [tagcore-rs TODO](../tagcore-rs/TODO.md).
 - [`design/proposals/python-interface.md`](design/proposals/python-interface.md):
   proposed Python binding API, native/protobuf boundary, shared download
   service, packaging, and testing plan. No binding exists yet.

@@ -169,7 +169,7 @@ embedded/tools/decode_scratchpad.py scratch.bin
 ```
 
 `decode_scratchpad.py` names the states and reasons in `STAT` records. A
-`tag-capture --sram` or `tag_capture_state.py` capture includes the page too;
+`tag-capture --sram` capture includes the page too;
 see [Capturing a Tag](capturing-a-tag.md).
 
 ### Reading state out of a tag that cannot talk

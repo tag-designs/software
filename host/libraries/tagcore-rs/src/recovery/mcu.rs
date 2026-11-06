@@ -2,10 +2,10 @@
 //!
 //! Everything the capture needs to know about a part lives here, in one
 //! table per MCU, so the procedures in [`super::capture`] stay MCU-neutral.
-//! Port of `tagcore/recovery/swdmcu.cc`; the values are the same, from the
+//! Ported from the deleted C++ `tagcore/recovery/swdmcu.cc`; the values are the same, from the
 //! STM32L43x and STM32U3 reference manuals, cross-checked against the CMSIS
 //! headers in the ChibiOS submodule. See the MCU reference section of
-//! `host/libraries/tagcore/design/swd-recovery.md`.
+//! `host/libraries/tagcore-rs/design/swd-recovery.md`.
 //!
 //! The STM32L432 table has been used on hardware since 2026-09-30, the
 //! STM32U375 table since 2026-10-02 (an IMUTagNandBmp581).

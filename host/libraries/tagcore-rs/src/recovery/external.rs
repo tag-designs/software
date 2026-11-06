@@ -1,6 +1,6 @@
 //! External-flash capture through a loader's `Serve()`.
 //!
-//! Port of `tagcore/recovery/externalcapture.cc`; the files and their
+//! Ported from the deleted C++ `tagcore/recovery/externalcapture.cc`; the files and their
 //! contents are the same, so a Rust capture reads exactly as a C++ one.
 //!
 //! - A linear part (NOR) is read whole into `<prefix>flash.bin`.

@@ -67,7 +67,7 @@ states for working with real tags, and are not repeated in full.
 | **Downloading changes nothing on the tag**, so a download can be repeated and compared | chapter 5 |
 | **Configuration files carry proto field names and every field**, and are merged by the tag type's shape on Open and `--merge` | `config-files.md`; `configuration-model.md` |
 | **The record CSV is append-only**; a row for every attempt; the file must be appendable before a tag is touched | Tag Programmer's engine design |
-| **A capture is taken before anything runs the firmware**, because a boot rewrites the evidence | `swd-recovery.md`; `capturing-a-tag.md` |
+| **A capture is taken before anything runs the firmware**, because a boot rewrites the evidence | tagcore-rs `swd-recovery.md`; `capturing-a-tag.md` |
 | **Preference files are per tag type**; a saved file is written as the Qt application writes it, so both front ends read it | `sensorviz-session` tests |
 | **The calibration capture's schema is qtcalibrate's**, so captures replay in both programs | `capture.rs`; decision 0039 |
 

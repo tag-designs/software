@@ -252,7 +252,7 @@ registers as found. All loaders are version 2, and the host accepts 1 or 2.
 Choosing which pages to read is the host's job: `tag-xflash nand` and
 `tag-capture` read page 0 of each block raw, skip the block if that page is
 blank, and otherwise read every page of the block raw and through ECC; see
-[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore-rs/design/swd-recovery.md).
 On the bench, a scan of the whole part with one used block took 74 s.
 
 ## The Serve() entry point
@@ -265,7 +265,7 @@ commands are answered `LOADER_STATUS_READ_ONLY` in an image built without
 `LOADER_ALLOW_WRITE`. Because the service block is in `.bss`, the image now has
 a non-empty `.bss`, so ld would warn about an RWX segment; `make.mk` passes
 `--no-warn-rwx-segments`. The protocol and the host side are in
-[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md#loader-protocol-a-service-wrapper-around-the-st-entry-points).
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore-rs/design/swd-recovery.md#loader-protocol-a-service-wrapper-around-the-st-entry-points).
 
 ## Driving a loader: CubeProgrammer and the host library
 
@@ -278,7 +278,7 @@ the firmware boot as it leaves, which changes the next boot's recorded
 The host library in `tagcore` (`host/libraries/tagcore/recovery/`, used by
 `tag-xflash` and `tag-capture`) drives the same images through `Serve()` and
 controls the exit; see
-[SWD Capture and Recovery Library](../../../host/libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../../../host/libraries/tagcore-rs/design/swd-recovery.md).
 
 ## Open issues
 

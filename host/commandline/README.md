@@ -17,12 +17,15 @@ replace the C++ tools of the same names**: `tag-dwnld`, `tag-info`,
 `tag-reset`, `tag-start`, `tag-stop`, `tag-cal`, `tag-test`,
 `tag-test-example`, `tag-monitor-test`, `tag-attach-cycle`, `tag-peek`,
 `tag-side-channel-check`, `tag-cal-write`, `tag-log-import` and
-`qtmonitor-fixture-capture`. Those C++ tools are built only with
+`qtmonitor-fixture-capture`. The SWD capture and recovery tools
+(`tag-capture`, `tag-xflash`, `tag-sramcall`, `tag-rebuild`) are Rust only:
+their C++ versions were deleted in November 2026 (decision
+[0045](../../docs/decisions/0045-swd-recovery-in-rust.md)), and their usage
+is below. The replaced C++ tools are built only with
 `BUILD_LEGACY_HOST=ON`, into `<build>/<Config>/bin/legacy` when the Rust ones
 are built too, and are not released; they stay as the reference the ports
 are compared with. Always built here, because nothing replaces them:
-`dataprocessing`, `tag-txt-import` and the SWD capture and recovery tools
-(`tag-capture`, `tag-xflash`, `tag-sramcall`, `tag-rebuild`).
+`dataprocessing` and `tag-txt-import`.
 
 Distributed tools -- the C++ ones in `host_cli_install_targets` in
 `../CMakeLists.txt` are `dataprocessing` and `tag-txt-import`; the others in
@@ -120,13 +123,23 @@ build-host/bin/internal/tag-capture --reason "returned from site 3, would not st
 It writes `captures/capture-YYYYmmdd-HHMMSS/` with one `.bin` per region and a
 `manifest.json` holding the decoded registers and each file's SHA-256. The tag
 is then reset and boots normally. `--sram` also captures SRAM, which is rarely
-useful because Shutdown and Standby do not keep it. `--leave-halted` leaves the
-core stopped.
+useful on an STM32L432 because Shutdown and Standby do not keep it; on an
+STM32U375 it holds the `TAG_SCRATCHPAD` page. `--leave-halted` leaves the core
+stopped.
+
+`--with-build <dir|elf>` stores the firmware build with the capture, under
+`build/`: the ELF, its `.map`, `.list` and build manifest, and any
+`--extra <file>` (repeatable), such as the target's `project.mk`. The manifest
+records their hashes, the image's region symbols, and whether the ELF matches
+the captured internal flash, that is, whether it is the image that was
+running. A capture of a bench failure should always carry it: a test image
+differs from a shipping one by a `-D` that leaves no trace in the git hash.
 
 It then captures the external flash. It reads the tag's identity record from
 the internal flash just captured, finds the loader the record names
 (`<loader>.stldr` under `--loader-dir`, `$TAG_LOADER_DIR` or
-`build-host/embedded/loaders`), and checks the part's JEDEC ID against the
+`build-host/embedded/loaders`; a firmware release carries its loaders under
+`firmware/loaders/`), and checks the part's JEDEC ID against the
 record. The output is:
 - for NOR: `external_flash.bin`;
 - for SPI NAND: `external_raw.bin`, `external_ecc.bin` and
@@ -135,14 +148,13 @@ record. The output is:
 
 `--loader` names the image explicitly, for an image with no identity record.
 `--no-external` skips this stage. See
-[SWD Capture and Recovery Library](../libraries/tagcore/design/swd-recovery.md).
+[SWD Capture and Recovery Library](../libraries/tagcore-rs/design/swd-recovery.md).
 
 ## tag-xflash
 
 Reads a tag's external flash over SWD, again **without booting its firmware**.
 It halts the tag at its reset vector, downloads an external-flash loader from
-`embedded/loaders` into SRAM, and calls the loader's `Init` and `Read` from the
-host. CubeProgrammer is not involved, and internal flash is not written.
+`embedded/loaders` into SRAM, and drives it from the host. CubeProgrammer is not involved, and internal flash is not written.
 
 ```sh
 build-host/bin/internal/tag-xflash dump \

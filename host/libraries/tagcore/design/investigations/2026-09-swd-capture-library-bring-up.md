@@ -10,8 +10,8 @@ The dated record of building `tagcore/recovery` and the `tag-capture` and
 `tag-xflash` tools on bench tags, from 2026-09-30 to 2026-10-02. It holds the
 status as last recorded, each implementation step with its original plan and
 what its check found, and two findings made along the way. Closed:
-- the design as built is [SWD Capture and Recovery Library](../swd-recovery.md);
-- the checks still open are in [recovery/TODO.md](../../recovery/TODO.md);
+- the design as built is [SWD Capture and Recovery Library](../../../tagcore-rs/design/swd-recovery.md);
+- the checks still open are in [recovery/TODO.md](../../../tagcore-rs/TODO.md);
 - the unbuilt steps 6-8 are in
   [their proposal](../proposals/recovery-identification-rescue-python.md).
 
@@ -88,7 +88,7 @@ A first failure there was a tag with no power (configured to take it from an
 absent Joulescope). Every tool, CubeProgrammer included, then reports
 `enter swd mode` / `Unable to get core ID`, with the base sensing 1.80 V.
 Original plan: `SwdSession` region reads and the MCU
-tables of [MCU reference](../swd-recovery.md#mcu-reference), with the capture directory and
+tables of [MCU reference](../../../tagcore-rs/design/swd-recovery.md#mcu-reference), with the capture directory and
 manifest for steps 1-3 of a capture.
 *Check:*
 - the regions are byte-identical to CubeProgrammer reads of the same tag at the

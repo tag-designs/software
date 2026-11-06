@@ -374,10 +374,9 @@ These ship separately but are needed for the firmware changes to be useful.
   ([0018](../../docs/decisions/0018-offline-rebuild-capture-backed-source.md)).
   Still to do: the fw-v0.0.3 layouts, and the GD5F logical block count in the
   identity record.
-- **D2:** in `tagcore/recovery`, read the identity record at the per-MCU address
-  (add it to `swdmcu`). Check its magic, size and end entry (the record has no
-  CRC), and use it to choose the loader and decoder. Without the record, fall
-  back to hash or string identification.
+- **D2:** the identity record is read at the per-MCU address and chooses the
+  loader and decoder (tagcore-rs `recovery/identity.rs`, `mcu.rs`). Still to
+  do: without the record, fall back to hash or string identification.
 - **D3, capture additions:** the EEOffset over I2C for tags already deployed;
   NAND pages read through on-die ECC, with their status; internal-flash ECC
   faults.

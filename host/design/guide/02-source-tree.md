@@ -34,10 +34,11 @@ host/
 ├── README.md, AGENTS.md        the map (tables of directories, crates and names) and the working rules
 ├── libraries/
 │   ├── tagcore/                C++: the original tag interface, ConfigShape, the SQLite and text log writers,
-│   │                                the SWD capture and recovery library (recovery/)
-│   ├── tagcore-rs/             Rust: the tag interface, ported from tagcore's Tag classes      (chapter 6)
+│   │                                the offline rebuild of a capture (recovery/)
+│   ├── tagcore-rs/             Rust: the tag interface, ported from tagcore's Tag classes, and
+│   │                                the SWD capture and recovery module (src/recovery)      (chapter 6)
 │   ├── tagprobe-rs/            Rust: programming through probe-rs; bases over DFU               (chapter 7)
-│   ├── tagcore-c/              C++: the C interface (tlw_*, tcs_*, svz_*) Rust calls            (chapter 8)
+│   ├── tagcore-c/              C++: the C interface (tlw_*, tcs_*, svz_*, rbd_*) Rust calls     (chapter 8)
 │   ├── tagcore-c-sys/          Rust: links tagcore_c and declares its functions                 (chapter 8)
 │   ├── taglogwriter-rs/        Rust: the SQLite writer, through tlw_*                           (chapter 8)
 │   ├── calibsession-rs/        Rust: the calibration session, through tcs_*                     (chapter 8)
@@ -46,7 +47,7 @@ host/
 │   ├── sensordata/             C++: decimating SQLite log reader (sqlite3 only)
 │   ├── sensorui/               C++/Qt: shared widgets for the Qt apps
 │   └── qcustomplot/            vendored plotting for the Qt viewers
-├── commandline/                C++ tools: tag-*.cc, dwnld.cc, dataprocessing.cc, the recovery tools
+├── commandline/                C++ tools: tag-*.cc, dwnld.cc, dataprocessing.cc, tag-txt-import.cc
 ├── commandline-rs/             Rust tools: src/bin/<tool>.rs, src/lib.rs (what they share)     (chapter 9)
 ├── applications/
 │   ├── qtmon/ qtprogram/ qtcalibrate/ sensorviz/                the Qt applications

@@ -1,7 +1,7 @@
 //! `tag-rebuild`: rebuild a SQLite download from a `tag-capture` directory,
 //! without the tag.
 //!
-//! Port of `host/commandline/tag-rebuild.cc`. The rebuild itself stays C++:
+//! Ported from the deleted C++ `host/commandline/tag-rebuild.cc`. The rebuild itself stays C++:
 //! the family decoders in `tagcore/recovery/capturesource` turn the capture's
 //! internal flash, backup registers and external flash back into the messages
 //! the firmware would have served, and the same `SqliteTagLogWriter` as

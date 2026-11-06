@@ -1,7 +1,7 @@
 //! `tag-xflash`: read a tag's external flash over SWD through an
 //! SRAM-resident loader, without booting the tag's firmware.
 //!
-//! Port of `host/commandline/tag-xflash.cc` onto `tagcore::recovery`.
+//! Ported from the deleted C++ `host/commandline/tag-xflash.cc` onto `tagcore::recovery`.
 //!
 //! - `tag-xflash dump --loader <image.stldr> -o <file>` halts the tag at its
 //!   reset vector (as `tag-capture` does), downloads the loader into SRAM1

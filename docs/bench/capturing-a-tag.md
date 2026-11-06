@@ -15,22 +15,9 @@ marker log. `tag-rebuild` then turns a capture into the SQLite file
 
 Usage of `tag-capture`, `tag-xflash`, `tag-sramcall` and `tag-rebuild` is in
 the [command-line tools README](../../host/commandline/README.md#tag-capture).
+They are Rust, in `host/commandline-rs`, built into `<build>/<Config>/bin/internal`.
 How the library behind them works is in
-[SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md).
-
-## Which tool
-
-| Tool | How it attaches | Reads | Use it for |
-| --- | --- | --- | --- |
-| `tag-capture` | Halts the core at the reset vector; nothing runs | Registers, backup registers, internal flash, OTP, option bytes; SRAM with `--sram`; external flash through the loader the identity record names | A returned tag, a mid-run capture, the input to `tag-rebuild`. Both MCUs. |
-| `embedded/tools/tag_capture_state.py` | STM32CubeProgrammer `mode=UR`, which lets the firmware start booting before it halts | SRAM, the writable part of internal flash, backup registers | A bench failure on an STM32U375 tag, especially one built with `TAG_SCRATCHPAD`; it stores the ELF and build files with the capture |
-
-`tag_capture_state.py` does not work on STM32L432 tags. Its SRAM and
-backup-register steps use U375 constants; see
-[Loader Runtime Design, open issues](../../embedded/loaders/design/loader-runtime.md#open-issues).
-Its captures also describe a tag that has started to boot. Two consecutive
-CubeProgrammer `mode=UR` reads of SRAM1 on the same PresTag differed in about
-14,900 of 49,152 bytes.
+[SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md).
 
 ## Capturing after a bench failure
 
@@ -38,28 +25,33 @@ Run the capture **before** anything resets or erases the tag.
 `tag_attach_storm.py --stop-on-failure` exists so that you can.
 
 ```sh
-embedded/tools/tag_capture_state.py --reason "storm round 2 aborted" \
-    --elf build-embedded/embedded/tags/<Tag>/build/<Tag>.elf \
+build-host/bin/internal/tag-capture --reason "storm round 2 aborted" --sram \
+    --with-build build-embedded/embedded/tags/<Tag>/build \
     --extra embedded/tags/<Tag>/project.mk
 ```
 
-- **Always pass `--elf`.** The script reads the region bounds from it,
-  because flash size and the persistent floor (`__tag_code_limit__`,
-  `__tag_config_start__`, `__tag_nand_map_start__`, `__flash0_end__`) are
-  per-target linker symbols, not constants. The ELF is also the only reliable
-  record of what was running: a test image differs from a shipping one by a
-  `-D` that leaves no trace in the git hash. A capture with no image stored
-  says so in its manifest.
+- **Always pass `--with-build`.** It stores the ELF, `.map`, `.list` and build
+  manifest under `build/`, and the manifest records the image's region symbols
+  (`__tag_code_limit__`, `__tag_config_start__`, `__tag_nand_map_start__`,
+  `__flash0_end__`) and whether the ELF matches the captured flash. The ELF is
+  the only reliable record of what was running: a test image differs from a
+  shipping one by a `-D` that leaves no trace in the git hash.
 - **Pass the target's `project.mk` as `--extra`**, for the same reason.
-  `--extra` is repeatable, so a `.map` can go too.
-- **The persistent-flash sweep stops at the first wholly erased page.** That
-  cut one real capture from 909,312 bytes to 8,192. The config and NAND-map
-  pages sit above it, so the script captures them by address. Otherwise the
-  sweep would never reach them. `--keep-blank` stores the whole region.
+  `--extra` is repeatable.
+- **`--sram` is what a bench failure on an STM32U375 needs**, for the
+  `TAG_SCRATCHPAD` page in the last 8 KB of SRAM2. On an STM32L432 the
+  scratchpad does not exist; see the next points.
+
+This replaces `tag_capture_state.py`, retired in November 2026. It captured
+through CubeProgrammer's `mode=UR`, which lets the firmware start booting
+before it halts: two consecutive reads of SRAM1 on the same PresTag differed in
+about 14,900 of 49,152 bytes. `tag-capture` halts at the reset vector, so
+nothing runs.
+
 - **The backup registers read as all zeros unless `RCC_APB1ENR1_RTCAPBEN` is
   set first.** Holding the core in reset also resets RCC. A zero read looks
   exactly like a backup domain that was really lost, and telling those two
-  apart is what the capture is for. Both tools set the bit before reading.
+  apart is what the capture is for. `tag-capture` sets the bit before reading.
 - **SRAM1 is not retained through Standby, and cannot be.** The part offers
   `PWR_CR1_RRSB1..RRSB3`, which retain SRAM2 pages. The `SRAMxPDS` bits in
   `PWR_CR2` are Stop-mode controls and do nothing for Standby. Ordinary
@@ -69,13 +61,14 @@ embedded/tools/tag_capture_state.py --reason "storm round 2 aborted" \
   which is SRAM2 page 3. Building with `-DTAG_RETAINED_RUN_DIAGNOSTICS=1`
   copies the boot decision there.
 - **SRAM can capture as noise.** If the tag is caught mid-Standby, SRAM is
-  powered down, and `mode=UR` holds the core in reset so nothing repopulates
-  it. The dump then decodes as plausible garbage instead of failing. A live
+  powered down, and the attach holds the core at its reset vector so nothing
+  repopulates it. The dump then decodes as plausible garbage instead of failing. A live
   image has a large zeroed `.bss` and readable strings, and noise has neither.
   The backup registers do not have this problem.
 
-`embedded/tools/decode_capture.py <capture-dir>` decodes the named globals and
-`pState` using the stored ELF.
+`embedded/tools/decode_capture.py` decoded the named globals and `pState` of a
+`tag_capture_state.py` capture. It reads only part of a `tag-capture`
+directory; see the [tagcore-rs TODO](../../host/libraries/tagcore-rs/TODO.md).
 
 ## Capturing a returned tag
 
@@ -110,7 +103,7 @@ stalled every later monitor attach on a running tag: `tag-info` timed out
 with the tag in its idle thread. The monitor attach now clears a stale bit too.
 After changing the capture path, attach with `tag-info` straight after a
 mid-run capture. `tag_rebuild_check.py run` does this for you. The mechanism is
-in [SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md#attaching-without-booting-the-firmware).
+in [SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md#attaching-without-booting-the-firmware).
 
 To read the identity record of a capture, run
 `embedded/tools/decode_tag_identity.py <capture-dir>`.

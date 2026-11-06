@@ -64,7 +64,7 @@ When a tag cannot run its firmware, its flash can still be read without
 changing it. SRAM-resident [external flash loaders](../../embedded/loaders/README.md)
 read the external flash, `tag-capture` stores the tag's state, and
 `tag-rebuild` reconstructs the SQLite download from that capture
-([SWD Capture and Recovery Library](../../host/libraries/tagcore/design/swd-recovery.md)).
+([SWD Capture and Recovery Library](../../host/libraries/tagcore-rs/design/swd-recovery.md)).
 
 ## Host tools
 

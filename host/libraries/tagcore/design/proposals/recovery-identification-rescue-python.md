@@ -7,7 +7,7 @@ summary: The unbuilt parts of the SWD recovery library - identifying older image
 # Recovery Library: Identification, Rescue and Python
 
 None of this is built. The capture and loader parts of the library are built and
-described in [SWD Capture and Recovery Library](../swd-recovery.md). What remains
+described in [SWD Capture and Recovery Library](../../../tagcore-rs/design/swd-recovery.md). What remains
 is three pieces, each ended by a check on a bench tag, in whatever order they are
 needed:
 

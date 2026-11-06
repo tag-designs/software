@@ -197,4 +197,6 @@ check which one the firmware agrees with before porting either way.
 - The rustdoc (`cargo doc -p tagcore --no-deps --document-private-items`):
   every type and function, with the C++ name it follows.
 - `libraries/tagcore/README.md` for the C++ library, which also holds what
-  the Rust does not: the SQLite writer and the recovery library.
+  the Rust does not: the SQLite writer and the offline rebuild of a capture.
+- [`libraries/tagcore-rs/design/swd-recovery.md`](../../libraries/tagcore-rs/design/swd-recovery.md):
+  the SWD capture and recovery module, `src/recovery`.

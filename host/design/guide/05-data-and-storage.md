@@ -176,8 +176,10 @@ through a capture-backed source, labelling the output "as captured"
 ([decision 0018](../../../docs/decisions/0018-offline-rebuild-capture-backed-source.md)):
 one writer again, so an offline rebuild and a live download of the same tag
 are comparable files. The identity record tells the rebuild which decoder
-and loader to use. This path has no Rust port; its design is
-[`swd-recovery.md`](../../libraries/tagcore/design/swd-recovery.md) and its
+and loader to use. The capture is Rust (tagcore-rs's `recovery` module); the
+rebuild stays C++ and is reached through `tagcore_c`'s `rbd_*` interface. The
+design is
+[`swd-recovery.md`](../../libraries/tagcore-rs/design/swd-recovery.md) and its
 bench procedure [`docs/bench/capturing-a-tag.md`](../../../docs/bench/capturing-a-tag.md).
 
 ## Where to read next

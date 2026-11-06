@@ -1,7 +1,7 @@
 //! Capture a tag's registers, internal flash, SRAM and external flash over
 //! SWD without booting it.
 //!
-//! Port of `tagcore/recovery/statecapture.cc`. The first thing done to a
+//! Ported from the deleted C++ `tagcore/recovery/statecapture.cc`. The first thing done to a
 //! returned tag. Reads, in order of how much they disturb the tag:
 //!
 //! 1. registers: `FLASH_OPTR`, the flash ECC registers (before the flash is
@@ -18,8 +18,8 @@
 //! Nothing on the tag runs: the session holds the core at its reset vector
 //! throughout. The result is one timestamped directory holding one file per
 //! region and a `manifest.json`, in the same layout and the same JSON text
-//! as the C++ capture, so `decode_capture.py`, the C++ rebuild and a byte
-//! comparison of the two tools all work on either. A region that fails is
+//! as the deleted C++ capture, so the C++ rebuild reads captures from
+//! either, and the two were compared byte for byte before it went. A region that fails is
 //! recorded and the capture continues.
 
 use std::fmt::Write as _;

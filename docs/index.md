@@ -88,6 +88,7 @@ design document.
 - [0042. Host: the Rust applications and tools are the release from v4.0](decisions/0042-host-rust-default-release.md) *(decision)* — From host release v4.0 the packages carry the Rust applications and tools only; the Qt applications and the C++ tools with Rust equivalents build behind BUILD_LEGACY_HOST (off), Qt leaves the default build and CI, and dataprocessing, tag-txt-import, the recovery tools and tagcore_c stay C++.
 - [0043. Monitor commands are synchronous](decisions/0043-synchronous-monitor-commands.md) *(decision)* — The monitor's state-changing commands run their transition inside proto_eval() and reply with the resulting Status, PERM or NXIO, instead of acknowledging the request and leaving the work to a later state-machine pass; the main loop runs the state machine before serving the monitor, and the host reads the Status, polling only for older firmware.
 - [0044. UIUCTag stores one 8-byte record per minute](decisions/0044-uiuctag-minute-records.md) *(decision)* — UIUCTag stores one 8-byte record a minute -- three 20-second activity counts for the minute before, then raw BMP585 pressure and temperature -- written whole in one program, 32 to a 256-byte page; the 12-byte five-minute format (layout 1) is dropped, not decoded.
+- [0045. Host: SWD capture and recovery move to Rust](decisions/0045-swd-recovery-in-rust.md) *(decision)* — The SWD capture and recovery library and its four tools (tag-capture, tag-xflash, tag-sramcall, tag-rebuild) are Rust, in tagcore-rs on its own LinkAdapt; the C++ library and tools and tag_capture_state.py are deleted, and only the offline rebuild (CaptureSource) stays C++, behind tagcore_c's rbd_* interface.
 
 ### Investigations
 
@@ -474,7 +475,7 @@ design document.
 - [5. Data and storage](../host/design/guide/05-data-and-storage.md) — Chapter 5 of the Host Software Guide - the storage model end to end (what a tag keeps in internal flash, external flash and its backup registers, how a download walks the log one page at a time and why the writer decides where it ends, the SQLite file's layout and who writes it, the other files the host reads and writes, and the offline route from a capture to a download).
 - [6. tagcore: the tag interface](../host/design/guide/06-tagcore.md) — Chapter 6 of the Host Software Guide - the Rust tagcore crate that every tool and application uses to talk to a tag, its three layers and the ownership between them, the concurrency model, how failures are reported and logged, the code generated at build time, how to use it, and how it is kept in step with the C++ it ports.
 - [7. Programming tags and bases](../host/design/guide/07-programming-and-flash-tools.md) — Chapter 7 of the Host Software Guide - how the host programs a tag's firmware and a base's (tagprobe over probe-rs, the two ST-LINK drivers and how a base's identity chooses between them, the erase plan and the program sequence, programming a base through its ROM bootloader over USB DFU) and the two command-line tools, tag-flash and base-flash, that expose it.
-- [8. The bridge to the C++ libraries](../host/design/guide/08-cpp-bridge.md) — Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its three parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
+- [8. The bridge to the C++ libraries](../host/design/guide/08-cpp-bridge.md) — Chapter 8 of the Host Software Guide - how Rust programs use the C++ host libraries instead of porting them (why, the tagcore_c C interface and its four parts, the Rust -sys crate and the three safe wrappers, how messages and data cross the boundary, how the library is built and linked on each platform, the safety rules, and what to keep in step).
 - [9. The command-line tools](../host/design/guide/09-command-line-tools.md) — Chapter 9 of the Host Software Guide - the Rust command-line tools in commandline-rs (the shape every tool follows, the shared crate behind them, what each tool does, a walk through tag-dwnld, how they are held to the C++ tools, and how to add one) and the C++ tools that have no port.
 - [10. The application pattern](../host/design/guide/10-application-pattern.md) — Chapter 10 of the Host Software Guide - the pattern all four Rust applications share (a toolkit-free engine that owns every rule and all state, a tag thread, a whole view state published after every change, dialogs as prompts, a Tauri shell with two commands and two events, a web page on the shared UI kit that draws and never decides), why it was chosen, how a command and a redraw travel, and how such an application is read, run without hardware and tested.
 - [11. The applications](../host/design/guide/11-applications.md) — Chapter 11 of the Host Software Guide - the four Rust applications one by one (Tag Programmer, Tag Monitor, Tag Calibrator, Tag View) -- what each does, how it is built from the pattern, its threads, its state, the C++ it reaches, its code map, the oracles that hold it to the Qt application it ports, and where it deliberately differs.
@@ -518,7 +519,6 @@ design document.
 ### Libraries / tagcore
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
-- [SWD Capture and Recovery Library](../host/libraries/tagcore/design/swd-recovery.md) — How the tagcore SWD capture and recovery library works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 - [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 
 ### Libraries / tagcore / Investigations
@@ -536,10 +536,6 @@ design document.
 - [Rust host applications over the C++ libraries](../host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md) *(proposal, proposed)* — How Rust (or other non-Qt) host applications should use the C++ libraries they depend on - what is already Qt-free, one C interface library over them (prototyped for the SQLite writer with a Rust tag-dwnld), shared against static linking measured, and where leaving Qt actually costs.
 - [Simulated Tags and a Tag Server for Testing](../host/libraries/tagcore/design/proposals/tag-server.md) *(proposal, proposed)* — Two testing capabilities - Qt applications and command line tools running in-process against a simulated tag, and Python (or any gRPC language) driving a real tag through a standalone grpcxx-based tag-server that mirrors the Tag API and adds a memory read/write side channel; shipped applications gain no new dependency.
 - [TagCore Python Interface Design](../host/libraries/tagcore/design/proposals/python-interface.md) *(proposal, proposed)* — Proposed Python binding for tagcore -- API, protobuf boundary, shared download service, threading, packaging and tests; not built.
-
-### Libraries / tagcore / recovery
-
-- [tagcore/recovery TODO](../host/libraries/tagcore/recovery/TODO.md) *(worklist)* — Open work on the SWD capture, loader and offline-rebuild code in tagcore/recovery.
 
 ### Libraries / tagcore / sqlitelog
 
@@ -561,11 +557,13 @@ design document.
 ### Libraries / tagcore-rs
 
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
+- [SWD Capture and Recovery Library](../host/libraries/tagcore-rs/design/swd-recovery.md) — How the SWD capture and recovery library (tagcore-rs recovery module) works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 - [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
+- [tagcore-rs recovery TODO](../host/libraries/tagcore-rs/TODO.md) *(worklist)* — Open work on the SWD capture and loader code in tagcore-rs's recovery module, and on the C++ offline rebuild (CaptureSource) it feeds.
 
 ### Libraries / tagcore-rs / Proposals
 
-- [SWD Recovery in Rust](../host/libraries/tagcore-rs/design/proposals/swd-recovery-in-rust.md) *(proposal, proposed)* — Port the SWD capture, loader and rescue code from C++ tagcore/recovery to a recovery module in tagcore-rs, on tagcore-rs's own LinkAdapt rather than probe-rs, with the external-flash loaders shipped as a directory of images the tools load by name; ends CubeProgrammer use on the bench.
+- [SWD Recovery in Rust](../host/libraries/tagcore-rs/design/proposals/swd-recovery-in-rust.md) *(proposal, historical)* — Port the SWD capture, loader and rescue code from C++ tagcore/recovery to a recovery module in tagcore-rs, on tagcore-rs's own LinkAdapt rather than probe-rs, with the external-flash loaders shipped as a directory of images the tools load by name; ends CubeProgrammer use on the bench.
 
 ### Libraries / taglogwriter-rs
 

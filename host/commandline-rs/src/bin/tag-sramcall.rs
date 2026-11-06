@@ -1,7 +1,7 @@
 //! `tag-sramcall`: call one function of an SRAM-resident image on a halted
 //! tag and print the transfer buffer.
 //!
-//! Port of `host/commandline/tag-sramcall.cc` onto `tagcore::recovery`.
+//! Ported from the deleted C++ `host/commandline/tag-sramcall.cc` onto `tagcore::recovery`.
 //! Halts the tag at its reset vector (as `tag-capture` does), downloads an
 //! image built with the loader framework into SRAM1, calls the named
 //! function with the given arguments, and hex-dumps the first bytes of the
