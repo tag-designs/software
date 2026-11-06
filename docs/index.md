@@ -136,6 +136,10 @@ design document.
 - [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
 - [Breakout base read the turnaround as parity (2026-11)](../embedded/bases/design/investigations/2026-11-breakout-parity-bit.md) *(investigation, closed)* — Why long loader sessions failed only on tag-breakout-base-l432-v1 (2026-11) - its SWD read checked the turnaround bit instead of the parity bit, so even-parity words read as parity errors whenever the released line rose in time - and the one-line fix, also applied to tag-base-c071.
 
+### Bases / Proposals
+
+- [Entering DFU from the running base](../embedded/bases/design/proposals/enter-dfu-command.md) *(proposal, proposed)* — A tag-base vendor command (F6 9A plus a key) that answers, then restarts the base into its MCU's ROM DFU bootloader, so base-flash can update a base without its button - analysed for the STM32F042 bases in use and an STM32L432 base, with a reset-then-jump design that works the same on both.
+
 ### Boards
 
 - [Embedded Boards](../embedded/boards/README.md) — How board directories generate ChibiOS board files, which firmware targets consume each board, and how to rename or check boards.
