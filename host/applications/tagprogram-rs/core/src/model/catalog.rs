@@ -708,6 +708,14 @@ mod tests {
         assert!(!acceptable_member("firmware/BitTag/PresTag.elf"));
         assert!(!acceptable_member("firmware/../BitTag/BitTag.elf"));
         assert!(!acceptable_member("firmware/BitTag/BitTag.bin"));
+        // The external-flash loaders ship one level deeper and are not tag
+        // images: never extracted, so never verified as one.
+        assert!(!acceptable_member(
+            "firmware/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3.elf"
+        ));
+        assert!(!acceptable_member(
+            "firmware/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3-build-manifest.json"
+        ));
     }
 
     #[test]

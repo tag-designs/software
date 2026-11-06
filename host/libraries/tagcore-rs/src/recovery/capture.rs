@@ -701,3 +701,51 @@ pub fn capture_tag(
     s.close(o.exit);
     r.map_err(|e| (e, *s.attach_info()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Creates empty files at `paths` under a fresh temporary directory and
+    /// returns it.
+    fn tree(name: &str, paths: &[&str]) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("tagcore-find-loader-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for p in paths {
+            let f = root.join(p);
+            std::fs::create_dir_all(f.parent().unwrap()).unwrap();
+            std::fs::write(f, b"").unwrap();
+        }
+        root
+    }
+
+    /// The firmware release archive (`firmware/loaders/<image>/`) and the
+    /// build tree (`embedded/loaders/<dir>/<image>/build/`) both resolve,
+    /// and the read-only image is never confused with its `-RW` sibling.
+    #[test]
+    fn find_loader_in_release_and_build_layouts() {
+        let release = tree(
+            "release",
+            &[
+                "firmware/PresTag/PresTag.elf",
+                "firmware/loaders/AT25XE_PresTagv3-RW/AT25XE_PresTagv3-RW.stldr",
+                "firmware/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3.stldr",
+            ],
+        );
+        let found = find_loader("AT25XE_PresTagv3", &[release.join("firmware")]).unwrap();
+        assert!(found.ends_with("loaders/AT25XE_PresTagv3/AT25XE_PresTagv3.stldr"));
+
+        let build = tree(
+            "build",
+            &["embedded/loaders/AT25XE_PresTagv3/AT25XE_PresTagv3/build/AT25XE_PresTagv3.stldr"],
+        );
+        // Searched in order: a missing directory is skipped, the first hit wins.
+        let dirs = [release.join("missing"), build.clone(), release.clone()];
+        let found = find_loader("AT25XE_PresTagv3", &dirs).unwrap();
+        assert!(found.starts_with(&build));
+        assert!(find_loader("GD5F2GM7RE_IMUTagNandv2", &dirs).is_none());
+
+        let _ = std::fs::remove_dir_all(release);
+        let _ = std::fs::remove_dir_all(build);
+    }
+}

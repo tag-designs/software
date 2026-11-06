@@ -87,7 +87,7 @@ serves both. Names follow ST's `<MEMORY>_<BOARD>` convention:
 | `AT25XE_PresTagv3-RW.stldr` | Erase and program, each verified by read-back. Rescue and bench testing. |
 | `AT25XE_CompassTagv1.stldr`, `-RW` | The same pair for CompassTagAT25 and CompassTagAT25Breakout. |
 | `AT25XE_UIUCTag.stldr`, `-RW` | The same pair for UIUCTag. |
-| `GD5F2GM7RE_IMUTagNandv2.stldr` | Read-only, for IMUTagNandBmp581; not marked `DISTRIBUTE`, so it is not in the release (see [TODO.md](TODO.md)). Paged: the host reads it page by page through `Serve()`'s `READ_PAGE`, raw or through ECC (`tag-xflash nand`, `tag-capture`). |
+| `GD5F2GM7RE_IMUTagNandv2.stldr` | Read-only, for IMUTagNandBmp581. Paged: the host reads it page by page through `Serve()`'s `READ_PAGE`, raw or through ECC (`tag-xflash nand`, `tag-capture`). |
 
 The two are one source directory built twice. The read-only image is built with
 `LOADER_ALLOW_WRITE=0` and does not contain the erase or program code at all; it
@@ -107,8 +107,15 @@ build manifest beside the image; the make scaffold (`common/make.mk` or
 `<build-dir>/embedded/loaders/<dir>/<image>/build/`. Loaders marked `DISTRIBUTE`
 are installed to `share/<package>/loaders/<image>/` and are built by
 `distributed_firmware`, so a tag's loader ships from the same archive as its
-firmware. Only the AT25XE loaders are marked; the NAND loader and the RV3028
-probes are not.
+firmware: the firmware release puts each under `firmware/loaders/<image>/`.
+The AT25XE pairs and the NAND loader are marked; the RV3028 probes, which are
+bench tools, are not.
+
+`tag-capture` finds the loader the tag's identity record names by searching,
+recursively and in order, `--loader-dir`, then `$TAG_LOADER_DIR`, then
+`build-host/embedded/loaders`; `--loader` names one outright. For a returned
+tag, unpack the firmware release of the image it runs and point
+`TAG_LOADER_DIR` at its `firmware/` directory.
 
 ## Using a loader with STM32CubeProgrammer
 

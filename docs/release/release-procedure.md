@@ -39,7 +39,7 @@ ships, or invite it to be skipped.
 | Tag | Workflow | Produces |
 | --- | --- | --- |
 | `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP and the Linux tarball of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
-| `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags marked `DISTRIBUTE` |
+| `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags and external loaders marked `DISTRIBUTE` |
 
 The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not
 affect host package naming.
@@ -48,8 +48,12 @@ affect host package naming.
 the tags marked `DISTRIBUTE` and attaches one archive,
 `tag-firmware-fw-vX.Y.tar.gz`, to the release. It holds `firmware/<Tag>/` for
 each tag: the `.elf`, `.map`, `.bin`, `.hex`, `.dmp` and `.list`, with the
-build manifest beside them. The distributed external loaders are built by the
-same target but are not collected into the archive. The manifest records the
+build manifest beside them. The external-flash loaders marked `DISTRIBUTE` follow
+under `firmware/loaders/<image>/`, with the same files plus the `.stldr`, so
+`tag-capture` and `tag-xflash` can read a returned tag's external flash from
+the release alone (`TAG_LOADER_DIR=<release>`). They sit one level deeper than
+the tags, so Tag Programmer and `flash_release.py`, which take
+`firmware/<T>/<T>.elf`, never mistake one for a tag. The manifest records the
 commit, whether the tree was dirty, the ChibiOS commit and the branch it tracks, the toolchain and nanopb versions, and
 the SHA-256 of the image itself. That hash, not the commit, is what identifies a
 build: a `-D` leaves no trace in the git hash, so two materially different

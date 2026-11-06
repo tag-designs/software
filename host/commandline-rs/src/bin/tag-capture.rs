@@ -11,7 +11,9 @@
 //! bytes, OTP and internal flash; SRAM only with `--sram`; then the external
 //! flash, through the loader the tag's identity record names, found under
 //! `--loader-dir`, then `$TAG_LOADER_DIR`, then `build-host/embedded/loaders`;
-//! or `--loader`. `--no-external` skips it. For SPI NAND, blank blocks are
+//! or `--loader`. A firmware release carries its loaders under
+//! `firmware/loaders/`, so for a returned tag point `TAG_LOADER_DIR` at the
+//! unpacked release of the image it runs. `--no-external` skips it. For SPI NAND, blank blocks are
 //! skipped (`--external-full` reads them).
 //!
 //! `--with-build DIR` stores the firmware build under `build/`: the ELF in

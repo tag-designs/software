@@ -124,7 +124,7 @@ jobs:
           set -euo pipefail
           mkdir -p firmware
           # Tags and the bases marked DISTRIBUTE, whose images base-flash
-          # writes, side by side as firmware/<target>.
+          # writes, side by side as firmware/<target>; the loaders follow.
           for d in build/embedded/tags/*/build build/embedded/bases/*/build; do
             tag="$(basename "$(dirname "$d")")"
             # Only targets that produced a manifest were built, which is the
@@ -137,6 +137,17 @@ jobs:
             # recorded versions only make a rebuild possible, not certain.
             cp "$d/$tag".* "firmware/$tag/"
             cp "$d/$tag-build-manifest.json" "firmware/$tag/"
+          done
+          # The external-flash loaders marked DISTRIBUTE, as
+          # firmware/loaders/<image>, so tag-capture and tag-xflash on a
+          # returned tag find the loader its identity record names with
+          # --loader-dir or TAG_LOADER_DIR pointing at the unpacked archive.
+          for d in build/embedded/loaders/*/*/build; do
+            image="$(basename "$(dirname "$d")")"
+            [ -f "$d/$image-build-manifest.json" ] || continue
+            mkdir -p "firmware/loaders/$image"
+            cp "$d/$image".* "firmware/loaders/$image/"
+            cp "$d/$image-build-manifest.json" "firmware/loaders/$image/"
           done
           # The images are conveyed under GPL-3.0 (they link ChibiOS/RT), so the
           # licenses, every third-party notice and the source offer go with them.
@@ -181,6 +192,6 @@ jobs:
           else
             gh release create "$TAG" \
               --title "$TAG" \
-              --notes "Tag and base firmware for the distributed targets. Each image ships with its build manifest, which records the commit, the ChibiOS commit and branch, the toolchain and nanopb versions, and the SHA-256 of the image itself. These images have not been bench-tested for power behaviour by CI; that is a separate step before flight." \
+              --notes "Tag and base firmware for the distributed targets, and under loaders/ the external-flash loaders that tag-capture and tag-xflash use to read a tag without its firmware. Each image ships with its build manifest, which records the commit, the ChibiOS commit and branch, the toolchain and nanopb versions, and the SHA-256 of the image itself. These images have not been bench-tested for power behaviour by CI; that is a separate step before flight." \
               artifacts/*
           fi

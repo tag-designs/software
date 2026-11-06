@@ -158,7 +158,7 @@ design document.
 
 - [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
-- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
+- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, and untested MassErase.
 
 ### Loaders / Investigations
 

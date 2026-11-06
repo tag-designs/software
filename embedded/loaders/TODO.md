@@ -1,7 +1,7 @@
 ---
 type: worklist
 status: current
-summary: Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, untested MassErase, and NAND loader distribution.
+summary: Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, and untested MassErase.
 ---
 
 # Loaders Worklist
@@ -30,10 +30,3 @@ Delete an item when it is done. Runtime rules are in
   with a loader loaded also erases internal flash, and it was not tried on a
   tag with firmware worth keeping. Sector erase is tested, through the
   programmer's erase-before-write.
-- **Distribute the NAND loader?** `IMUTagNandBmp581` is a distributed tag, but
-  `GD5F2GM7RE_IMUTagNandv2` is not marked `DISTRIBUTE`, unlike the AT25XE
-  loaders, so it does not ship in the firmware release beside the tag it reads.
-- **Run the linear path through `tag-capture` on a PresTag.** The AT25 loaders
-  use the same code through `tag-capture` as through `tag-xflash dump`. The
-  [U375 loader plan](design/proposals/u375-nand-loader-plan.md) recorded on
-  2026-10-02 that this combination had not yet been run on a PresTag.
