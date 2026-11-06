@@ -14,8 +14,17 @@
 //! or `--loader`. `--no-external` skips it. For SPI NAND, blank blocks are
 //! skipped (`--external-full` reads them).
 //!
-//! The capture directory is the same as the C++ tool's, file for file, so
-//! `decode_capture.py` and `tag-rebuild` read either.
+//! `--with-build DIR` stores the firmware build under `build/`: the ELF in
+//! DIR (or DIR itself, when it names an ELF), its `.map`, `.list` and build
+//! manifest, and any `--extra` files such as the target's `project.mk`. The
+//! manifest records their hashes, the image's region symbols, and whether
+//! the ELF matches the captured internal flash -- that is, whether it is the
+//! image that was running. With `--sram` this holds everything
+//! `tag_capture_state.py` stored.
+//!
+//! Without `--with-build` the capture directory is the same as the C++
+//! tool's, file for file, so `decode_capture.py` and `tag-rebuild` read
+//! either.
 //!
 //! # Exit status
 //!
@@ -29,7 +38,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use tag_tools::{BaseArgs, init_logging, select_base_from};
-use tagcore::recovery::{CaptureOptions, Session, SwdExit, capture_tag};
+use tagcore::recovery::{BuildFiles, CaptureOptions, ImageCheck, Session, SwdExit, capture_tag};
 
 /// capture a tag's state over SWD without booting it
 #[derive(Parser)]
@@ -71,6 +80,16 @@ struct Cli {
     /// SPI NAND: read every block, blank or not
     #[arg(long)]
     external_full: bool,
+
+    /// Store the firmware build with the capture: a build directory holding
+    /// one .elf, or the .elf itself
+    #[arg(long, value_name = "DIR|ELF")]
+    with_build: Option<PathBuf>,
+
+    /// Another file to store under build/, such as project.mk (repeatable;
+    /// needs --with-build)
+    #[arg(long, value_name = "FILE", requires = "with_build")]
+    extra: Vec<PathBuf>,
 }
 
 /// Parses options, selects a base, captures, and prints a summary.
@@ -85,6 +104,16 @@ fn main() -> ExitCode {
     }
     loader_dirs.push("build-host/embedded/loaders".into());
 
+    // Checked before attaching, so a wrong path costs nothing on the tag.
+    let build = match cli.with_build.as_deref().map(|b| BuildFiles::resolve(b, &cli.extra)) {
+        None => None,
+        Some(Ok(b)) => Some(b),
+        Some(Err(e)) => {
+            eprintln!("--with-build: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
     let mut print = |line: &str| println!("  {line}");
     let mut o = CaptureOptions {
         parent_dir: cli.out_dir.clone(),
@@ -95,6 +124,7 @@ fn main() -> ExitCode {
         loader_dirs,
         external_full: cli.external_full,
         exit: if cli.leave_halted { SwdExit::LeaveHalted } else { SwdExit::HardwareReset },
+        build,
         progress: Some(&mut print),
     };
 
@@ -163,6 +193,19 @@ fn main() -> ExitCode {
     }
     if !r.external_note.is_empty() {
         println!("  external flash: {}", r.external_note);
+    }
+    if let Some(b) = &r.build {
+        let check = match &b.image_check {
+            ImageCheck::Matches { bytes } => format!("matches the captured flash ({bytes} bytes)"),
+            ImageCheck::Differs { first_difference, .. } => {
+                format!("DIFFERS from the captured flash at 0x{first_difference:08X}")
+            }
+            ImageCheck::NotChecked(why) => format!("not checked: {why}"),
+        };
+        println!("  build: {} files stored, {} {check}", b.files.len(), b.elf);
+        for e in &b.errors {
+            println!("      {e}");
+        }
     }
     println!(
         "{}\n{}",

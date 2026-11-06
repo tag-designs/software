@@ -28,6 +28,7 @@ use std::time::Instant;
 
 use log::error;
 
+use super::build::{BuildFiles, BuildRecord};
 use super::external::{
     ExternalCaptureOptions, ExternalCaptureResult, capture_external_flash, sha256_hex,
 };
@@ -59,6 +60,10 @@ pub struct CaptureOptions<'a> {
     pub external_full: bool,
     /// How to leave the tag (used by [`capture_tag`]).
     pub exit: SwdExit,
+    /// The firmware build to store under `build/`, resolved with
+    /// [`BuildFiles::resolve`] before the capture; `None` stores nothing and
+    /// leaves the manifest as the C++ capture wrote it.
+    pub build: Option<BuildFiles>,
     /// Called with one line per progress update.
     pub progress: Option<&'a mut dyn FnMut(&str)>,
 }
@@ -74,6 +79,7 @@ impl Default for CaptureOptions<'_> {
             loader_dirs: Vec::new(),
             external_full: false,
             exit: SwdExit::HardwareReset,
+            build: None,
             progress: None,
         }
     }
@@ -138,6 +144,8 @@ pub struct CaptureResult {
     pub external_note: String,
     /// What it read.
     pub external: ExternalCaptureResult,
+    /// What [`CaptureOptions::build`] stored, when one was given.
+    pub build: Option<BuildRecord>,
     /// Every region was read in full.
     pub complete: bool,
 }
@@ -471,6 +479,9 @@ fn build_manifest(
         );
     }
     j += "  ],\n";
+    if let Some(b) = &r.build {
+        let _ = writeln!(j, "  \"build\": {},", b.to_json(&json_string));
+    }
     let _ = writeln!(j, "  \"complete\": {},", jbool(r.complete));
     let _ = writeln!(j, "  \"exit\": {}", json_string(o.exit.manifest_name()));
     j += "}\n";
@@ -500,6 +511,7 @@ pub fn capture_state(s: &mut Session, o: &mut CaptureOptions) -> Result<CaptureR
         external_attempted: false,
         external_note: String::new(),
         external: ExternalCaptureResult::default(),
+        build: None,
         complete: false,
     };
 
@@ -649,6 +661,17 @@ pub fn capture_state(s: &mut Session, o: &mut CaptureOptions) -> Result<CaptureR
         r.complete = r.complete && r.external_attempted && r.external.ok;
     }
     r.complete = r.complete && r.registers.iter().all(|g| g.ok) && r.regions.iter().all(|g| g.ok);
+
+    // The build last: it needs nothing from the tag, only the flash file.
+    if let Some(build) = o.build.clone() {
+        progress(o, &format!("storing the build from {}", build.source_dir.display()));
+        let flash = r
+            .regions
+            .iter()
+            .find(|g| g.name == "internal_flash" && g.ok)
+            .and_then(|g| std::fs::read(dir.join(&g.file)).ok().map(|d| (d, g.addr)));
+        r.build = Some(build.store(&dir, flash.as_ref().map(|(d, a)| (d.as_slice(), *a))));
+    }
 
     let manifest = dir.join("manifest.json");
     std::fs::write(&manifest, build_manifest(o, &r, m, flash_kb, &clock_notes))

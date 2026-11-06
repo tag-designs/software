@@ -114,6 +114,20 @@ impl TargetImage {
         })
     }
 
+    /// An image of the given `(address, data)` segments and no symbols,
+    /// for tests of code that walks segments.
+    #[cfg(test)]
+    pub(crate) fn from_segments_for_test(segments: Vec<(u32, Vec<u8>)>) -> TargetImage {
+        TargetImage {
+            path: PathBuf::from("test.elf"),
+            segments: segments
+                .into_iter()
+                .map(|(addr, data)| ImageSegment { addr, memsz: data.len() as u32, data })
+                .collect(),
+            symbols: HashMap::new(),
+        }
+    }
+
     /// The PT_LOAD segments with a non-zero memory size, in file order.
     pub fn segments(&self) -> &[ImageSegment] {
         &self.segments

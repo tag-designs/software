@@ -17,6 +17,7 @@
 //! | [`xflash`] | A loader's `Serve()` session: probe, read, read page, erase, program |
 //! | [`identity`] | Parse the identity record from captured internal flash |
 //! | [`external`], [`capture`] | The capture procedure: ordering, output directory, manifest |
+//! | [`build`] | The firmware build stored with a capture, and whether it matches the flash |
 //!
 //! A recovery session and a monitor session are alternatives: each claims
 //! the base for its lifetime. Procedures that need both run them in
@@ -24,6 +25,7 @@
 //!
 //! [`LinkAdapt`]: crate::LinkAdapt
 
+pub mod build;
 pub mod capture;
 pub mod external;
 pub mod identity;
@@ -33,6 +35,7 @@ pub mod session;
 pub mod sramcall;
 pub mod xflash;
 
+pub use build::{BuildFiles, BuildRecord, ImageCheck};
 pub use capture::{CaptureOptions, CaptureResult, capture_state, capture_tag, find_loader};
 pub use external::{ExternalCaptureOptions, ExternalCaptureResult, capture_external_flash};
 pub use identity::{IdentityRecord, parse_identity_record};
