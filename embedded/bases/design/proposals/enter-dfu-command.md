@@ -71,8 +71,45 @@ knowledge of what the firmware had running.
 
 1. `stlink_eval()` handles `F6 9A`: check the key; if it does not match, or
    the build has no `TAGBASE_DFU_SYSTEM_MEMORY` (below), answer `FAULT` and
-   carry on. Otherwise answer `OK`, wait for the IN transfer to complete, and
-   wait about 50 ms more so the host's read returns before the device goes.
+   carry on. Otherwise answer `OK` and **do not reset until the USB output
+   queues are empty**:
+   - The reply goes out through `BULK_Transmit()`, that is ChibiOS's
+     synchronous `usbTransmit()`, which returns only when the host has taken
+     the last packet of the IN transfer. A reset before that would lose the
+     reply, and the host could not tell a base that is restarting from one
+     that failed.
+   - In a logging build (`USE_CDC_EPRINTF`), lines written by
+     `debug_printf()` sit in the CDC port's output queue (`SDU1`) and drain
+     asynchronously. The handler writes a last line ("entering DFU"), then
+     waits until it has gone out, so the log shows why the base disappeared.
+     In ChibiOS 21.11 the SerialUSB driver's output is a buffer queue,
+     `SDU1.obqueue`, not a byte queue (`oqueue` is the older API and the
+     plain serial driver's), so the test is:
+
+     ```c
+     obqFlush(&SDU1.obqueue);          /* post a partly filled buffer now */
+     for (;;) {                        /* bounded by the timeout below */
+       osalSysLock();
+       bool flushed = obqIsEmptyI(&SDU1.obqueue) &&
+                      !usbGetTransmitStatusI(&USBD1, CDC_BULK_EP);
+       osalSysUnlock();
+       if (flushed) break;
+       chThdSleepMilliseconds(1);
+     }
+     ```
+
+     `obqIsEmptyI()` alone is not enough: it does not count a buffer that
+     `debug_printf()` has only partly filled (the SOF hook,
+     `sduSOFHookI()`, posts that one on the next frame), and the last
+     buffer can still be on the endpoint after the queue reads empty. A port that no program has open never drains, and
+     `debug_printf()` already drops lines rather than block for that reason,
+     so this wait is bounded (about 500 ms); a log nobody is reading is the
+     one thing the reset may discard.
+   - Any other IN endpoint a base adds later (the trace endpoint is defined
+     but unused today) joins the same wait.
+
+   Then wait a few milliseconds more, so the last USB transaction's
+   handshake completes before D+ drops.
 2. Write the flag to a variable placed in section `.ram0`
    (`__attribute__((section(".ram0")))`), which ChibiOS's `rules_memory.ld`
    puts after `__ram0_noinit__`, in RAM that is neither loaded nor cleared: two words, `0xDF11B007` and its
