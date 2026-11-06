@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*, svz_*), so the safe wrappers over it - taglogwriter, calibsession, sensorviz-session - can be used together in one program.
+summary: tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*, svz_*, rbd_*), so the safe wrappers over it - taglogwriter, calibsession, sensorviz-session - can be used together in one program.
 ---
 
 # tagcore-c-sys (Rust)
@@ -15,6 +15,7 @@ header, written by hand.
 | `tlw` | [`taglogwriter_c.h`](../tagcore-c/taglogwriter_c.h) | [`taglogwriter`](../taglogwriter-rs/README.md) |
 | `tcs` | [`calibsession_c.h`](../tagcore-c/calibsession_c.h) | [`calibsession`](../calibsession-rs/README.md) |
 | `svz` | [`sensorviz_c.h`](../tagcore-c/sensorviz_c.h) | [`sensorviz-session`](../sensorviz-session-rs/README.md) |
+| `rbd` | [`rebuild_c.h`](../tagcore-c/rebuild_c.h) | [`taglogwriter`](../taglogwriter-rs/README.md) (`rebuild_from_capture`) |
 
 Programs use the wrappers, not this crate. It exists because Cargo allows
 only one crate in a build to declare `links = "tagcore_c"`: while each wrapper
@@ -42,4 +43,5 @@ crate (see `host/commandline-rs/build.rs`).
 When a header changes, change its module here and the safe wrapper over it,
 together; each wrapper's "Maintaining" section has the steps, including the
 interface version each must match. A new interface in `tagcore_c` gets a new
-module here and its own wrapper crate.
+module here and its own wrapper crate. `rbd` is the exception: one function
+that writes a SQLite log, so it lives in `taglogwriter` beside the writer.

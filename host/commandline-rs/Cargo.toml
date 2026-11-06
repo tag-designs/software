@@ -25,7 +25,7 @@ tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", option
 libc = "0.2.191"
 
 [features]
-# tag-dwnld and tag-log-import write their logs through the C++ writer, so it needs libtagcore_c
+# tag-dwnld, tag-log-import and tag-rebuild write their logs through the C++ writer, so it needs libtagcore_c
 # built by CMake (-DBUILD_TAGCORE_C=ON) and TAGCORE_C_LIB_DIR naming it. Off
 # by default so the other tools still build with cargo alone.
 sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]
@@ -36,6 +36,10 @@ required-features = ["sqlitelog"]
 
 [[bin]]
 name = "tag-log-import"
+required-features = ["sqlitelog"]
+
+[[bin]]
+name = "tag-rebuild"
 required-features = ["sqlitelog"]
 
 # Every item is documented, private ones included (AGENTS.md,

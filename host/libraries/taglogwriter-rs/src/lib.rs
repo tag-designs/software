@@ -86,10 +86,15 @@
 //! wire encoding is the contract between them. A field added to `proto/`
 //! reaches the C++ writer once both are rebuilt.
 //!
+//! [`rebuild_from_capture`] is over a second interface, `tagcore_c_sys::rbd`
+//! (`src/rbd.rs` there), from `host/libraries/tagcore-c/rebuild_c.h`: one
+//! function, kept in step the same way, with `RBD_ABI_VERSION` checked on
+//! every call.
+//!
 //! The design, including how the library is built and why, is in
 //! `host/libraries/tagcore-c/design/architecture.md`.
 
-use std::ffi::{CStr, CString, c_int};
+use std::ffi::{CStr, CString, c_char, c_int};
 use std::fmt;
 use std::path::Path;
 use std::ptr::NonNull;
@@ -99,6 +104,8 @@ use tagcore::proto::{Ack, CalibrationConstants, Config, State, TagInfo};
 
 /// The raw C interface, in `tagcore-c-sys`, which links the library.
 use tagcore_c_sys::tlw as ffi;
+/// The raw rebuild interface, `rebuild_c.h`.
+use tagcore_c_sys::rbd;
 
 
 /// Why a writer call failed: the C++ writer's own message, or the
@@ -332,4 +339,61 @@ impl Drop for LogWriter {
         // SAFETY: `raw` came from tlw_open() and is closed only here.
         unsafe { ffi::tlw_close(self.raw.as_ptr()) }
     }
+}
+
+/// Bytes reserved for the rebuild's error message, terminator included.
+const REBUILD_ERROR_LEN: usize = 1024;
+
+/// Rebuilds a SQLite download from a `tag-capture` directory, without the
+/// tag, and returns the number of data-log records written.
+///
+/// The C++ family decoders turn the capture's internal flash, backup
+/// registers and external flash back into the messages the firmware would
+/// have served, and the same C++ writer as [`LogWriter`] writes them, so the
+/// file is the one the C++ `tag-rebuild` wrote. Its `info` table records
+/// `source` = `capture`, the capture directory and the capture time. `db_path`
+/// is replaced if it exists; it is left untouched when the capture is
+/// refused, and removed when a rebuild fails part way.
+///
+/// Diagnostics follow [`set_debug`].
+///
+/// # Errors
+///
+/// When the library was built from a different interface version, a path is
+/// not UTF-8 or contains a NUL, or the rebuild fails: files missing from the
+/// capture, no identity record, a family with no decoder, a malformed
+/// capture, or a SQLite failure (the C++ message says which).
+pub fn rebuild_from_capture(capture_dir: &Path, db_path: &Path) -> Result<u32, WriterError> {
+    // SAFETY: no arguments, no preconditions.
+    let version = unsafe { rbd::rbd_abi_version() };
+    if version != rbd::RBD_ABI_VERSION {
+        return Err(WriterError(format!(
+            "libtagcore_c has rebuild interface version {version}; this program needs {}",
+            rbd::RBD_ABI_VERSION
+        )));
+    }
+    let c_path = |p: &Path| -> Result<CString, WriterError> {
+        let text = p
+            .to_str()
+            .ok_or_else(|| WriterError(format!("Path is not UTF-8: {}", p.display())))?;
+        CString::new(text).map_err(|_| WriterError(format!("Path contains a NUL byte: {text}")))
+    };
+    let dir = c_path(capture_dir)?;
+    let db = c_path(db_path)?;
+    let mut records = 0u32;
+    let mut error = [0 as c_char; REBUILD_ERROR_LEN];
+    // SAFETY: `dir` and `db` are NUL-terminated strings, `records` a u32 and
+    // `error` a buffer of `error.len()` bytes, all live for the call; the
+    // library keeps no pointer after it returns and always NUL-terminates
+    // `error` within its length.
+    let ok = unsafe {
+        rbd::rbd_rebuild(dir.as_ptr(), db.as_ptr(), &mut records, error.as_mut_ptr(), error.len())
+    };
+    if ok != 0 {
+        return Ok(records);
+    }
+    // SAFETY: the library NUL-terminated `error` within its length (it was
+    // zeroed beforehand as well), and it lives for this borrow.
+    let message = unsafe { CStr::from_ptr(error.as_ptr()) }.to_string_lossy().into_owned();
+    Err(WriterError(if message.is_empty() { "rebuild failed".into() } else { message }))
 }

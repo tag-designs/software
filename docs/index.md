@@ -551,12 +551,12 @@ design document.
 
 ### Libraries / tagcore-c
 
-- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_* and svz_* functions, the shared and static builds, symbol hiding, and how it was checked.
+- [tagcore_c (C interface)](../host/libraries/tagcore-c/README.md) — tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_*, svz_* and rbd_* functions, the shared and static builds, symbol hiding, and how it was checked.
 - [tagcore_c and taglogwriter: architecture](../host/libraries/tagcore-c/design/architecture.md) — How Rust tools write tag SQLite logs through the C++ writer, calibrate through the C++ calibration session, and view logs through sensorViz's core - the layers (tag-dwnld, taglogwriter-rs, calibsession-rs, sensorviz-session-rs, tagcore-c-sys, tagcore_c, SqliteTagLogWriter, CalibrationSession, sensorviz::Session), the tlw_* contract, how the static and shared libraries are built and linked per platform, the Rust safety model, and what a maintainer must keep in step.
 
 ### Libraries / tagcore-c-sys
 
-- [tagcore-c-sys (Rust)](../host/libraries/tagcore-c-sys/README.md) — tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*, svz_*), so the safe wrappers over it - taglogwriter, calibsession, sensorviz-session - can be used together in one program.
+- [tagcore-c-sys (Rust)](../host/libraries/tagcore-c-sys/README.md) — tagcore-c-sys, the one Rust crate that links the tagcore_c library and declares its C functions (tlw_*, tcs_*, svz_*, rbd_*), so the safe wrappers over it - taglogwriter, calibsession, sensorviz-session - can be used together in one program.
 
 ### Libraries / tagcore-rs
 

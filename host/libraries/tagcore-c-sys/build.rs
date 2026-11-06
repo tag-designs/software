@@ -16,7 +16,7 @@
 //!
 //! - `static` (the macOS default): `libtagcore_c.a`, the
 //!   shim pre-linked with the C++ writer, libprotobuf, abseil and SQLite into
-//!   one object with only the `tlw_*`, `tcs_*` and `svz_*` functions global (target
+//!   one object with only the `tlw_*`, `tcs_*`, `svz_*` and `rbd_*` functions global (target
 //!   `tagcore_c_static`). The executable needs nothing at run time, but links
 //!   the C++ runtime and, on macOS, the frameworks libusb uses (it comes in
 //!   with tagcore's `Tag`).

@@ -3,7 +3,9 @@
   library for programs in other languages (the Rust tag-dwnld first).
 
   It exports only the tlw_* functions in taglogwriter_c.h, the tcs_*
-  functions in calibsession_c.h and the svz_* functions in sensorviz_c.h.
+  functions in calibsession_c.h, the svz_* functions in sensorviz_c.h and
+  the rbd_* functions in rebuild_c.h (the offline rebuild from a tag-capture
+  directory, tagcore's recovery/capturesource).
   The C++ writer (tagcore), libprotobuf with abseil, and SQLite are linked
   statically inside it with every other symbol hidden, as are
   sensoranalysis's Qt-free calibration core behind tcs_* and sensorViz's
@@ -20,6 +22,7 @@
 
 add_library(tagcore_c SHARED
   calibsession_c.cc calibsession_c.h
+  rebuild_c.cc rebuild_c.h
   sensorviz_c.cc sensorviz_c.h
   taglogwriter_c.cc taglogwriter_c.h)
 
@@ -36,7 +39,7 @@ target_compile_definitions(tagcore_c PRIVATE TAGCORE_C_BUILDING)
 target_include_directories(tagcore_c PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tagcore_c PRIVATE tagcore sensoranalysis_core sensorviz_core)
 
-# Hide everything but the tlw_* and tcs_* entry points. Windows DLLs export only what is
+# Hide everything but the tlw_*, tcs_*, svz_* and rbd_* entry points. Windows DLLs export only what is
 # marked dllexport, so they need no list.
 set_target_properties(tagcore_c PROPERTIES
   CXX_VISIBILITY_PRESET hidden

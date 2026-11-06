@@ -78,9 +78,23 @@ setters take plain C arrays, so the C++ side parses nothing, and return the
 change bits, collected through the view model's listener so that a transform
 remaking its outputs reports them too. The session is
 the code qtcalibrate's `CompassData` runs, and `calibsession-rs`'s replay test
-reproduces qtcalibrate's logged figures for the reference capture. Both
-interfaces are exported from both builds; the export lists name `tlw_*` and
-`tcs_*`, and `sensoranalysis_core` is compiled position-independent with
+reproduces qtcalibrate's logged figures for the reference capture. A fourth, `rbd_*` ([`rebuild_c.h`](../rebuild_c.h)), is a single call over
+tagcore's `RebuildSqliteFromCapture()`, for the Rust `tag-rebuild`:
+
+```
+tag-rebuild (host/commandline-rs)
+ └─ taglogwriter-rs ── rebuild_from_capture(): safe Rust over rbd_*
+     └─ tagcore-c-sys ── links the library; declares rbd_* (src/rbd.rs)
+         └─ tagcore_c (C ABI: rbd_*) ── two paths in, a count and a message out
+             └─ tagcore::recovery::CaptureSource + SqliteTagLogWriter
+```
+
+The capture is read and the database written entirely on the C++ side, so
+nothing crosses but the paths, the record count and an error string copied
+into the caller's buffer. It lives in `taglogwriter-rs` rather than a crate of
+its own because what it produces is a log from the same writer. Every
+interface is exported from both builds; the export lists name `tlw_*`,
+`tcs_*`, `svz_*` and `rbd_*`, and `sensoranalysis_core` is compiled position-independent with
 `tagcore` and `proto`.
 
 ## The contract

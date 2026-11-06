@@ -11,6 +11,7 @@
 //! | [`tlw`] | `taglogwriter_c.h` | `taglogwriter` |
 //! | [`tcs`] | `calibsession_c.h` | `calibsession` |
 //! | [`svz`] | `sensorviz_c.h` | `sensorviz-session` |
+//! | [`rbd`] | `rebuild_c.h` | `taglogwriter` (`rebuild_from_capture`) |
 //!
 //! Programs use the safe wrappers, which may be used together; each keeps
 //! its own safety argument and says how to keep its module in step with the
@@ -19,6 +20,7 @@
 //! only to direct dependents of this crate.
 #![no_std]
 
+pub mod rbd;
 pub mod svz;
 pub mod tcs;
 pub mod tlw;

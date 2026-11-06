@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_* and svz_* functions, the shared and static builds, symbol hiding, and how it was checked.
+summary: tagcore_c, a C interface to the C++ SQLite log writer, the calibration session and sensorViz's core for Rust and other languages - the tlw_*, tcs_*, svz_* and rbd_* functions, the shared and static builds, symbol hiding, and how it was checked.
 ---
 
 # tagcore_c (C interface)
@@ -28,6 +28,11 @@ Qt-free core (`sensorviz::Session`) -- opening a log, the display transforms,
 the plot spec, envelopes, the hover readout and the preference file -- for the
 Rust sensorViz through
 [`sensorviz-session-rs`](../sensorviz-session-rs/README.md).
+
+And the `rbd_*` functions of [`rebuild_c.h`](rebuild_c.h): the offline
+rebuild of a SQLite download from a `tag-capture` directory (tagcore's
+`recovery/capturesource`, whose family decoders stay C++), for the Rust
+`tag-rebuild` through `taglogwriter-rs`'s `rebuild_from_capture`.
 
 In Rust, [`tagcore-c-sys`](../tagcore-c-sys/README.md) links the library and
 declares all three sets of functions, so the three wrappers can be used in one
