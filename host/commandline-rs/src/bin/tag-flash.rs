@@ -58,7 +58,7 @@ use tagcore::UsbDev;
 use tagprobe::{Driver, Erase, Progress};
 use tagprogram_core::model::elf::Elf;
 use tagprogram_core::model::flashplan::{self, plan_flash};
-use tagprogram_core::model::identity::find_identity_record;
+use tagcore::recovery::find_identity_record;
 
 /// How long to wait after a command that attaches before exiting, so the
 /// next tool can attach to the base.
@@ -332,7 +332,7 @@ fn check_persistent_unmoved(
     let old = find_identity_record(&flash)
         .map_err(|e| format!("tag flash: {e}"))
         .and_then(|r| {
-            r.persistent_start
+            r.persistent_start()
                 .ok_or_else(|| "tag flash: identity record has no persistent region".into())
         })
         .map_err(|e: String| {

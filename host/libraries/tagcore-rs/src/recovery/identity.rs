@@ -9,8 +9,14 @@
 //! size and its end entry all agree. The host-side counterpart of
 //! `embedded/tools/decode_tag_identity.py`, limited to what a capture and a
 //! rebuild need.
+//!
+//! Tag Programmer and `tag-flash` read records with this parser too, from an
+//! image's flash or from a tag's: [`find_identity_record`] tries each MCU's
+//! offset in turn.
 
 use std::collections::BTreeMap;
+
+use super::mcu::ALL_MCUS;
 
 /// The header magic, `"TGID"` read as a little-endian `u32`.
 const MAGIC: u32 = 0x4449_4754;
@@ -170,6 +176,45 @@ impl IdentityRecord {
     pub fn has_no_external_flash(&self) -> bool {
         self.external_flash.is_none_or(|x| x.flash_size == 0)
     }
+
+    /// The `TagType` value from the numbers entry, when present.
+    pub fn tag_type(&self) -> Option<u32> {
+        self.numbers.map(|n| n.tag_type)
+    }
+
+    /// First byte of the persistent region (the image's
+    /// `__persistent_start__`), when the record has that region entry.
+    pub fn persistent_start(&self) -> Option<u32> {
+        self.regions.get("persistent").map(|g| g.start)
+    }
+}
+
+/// Offsets from the flash base where a record may sit, one per supported
+/// MCU in [`ALL_MCUS`] order (STM32L432 `0x1A0`, then STM32U375 `0x240`).
+pub fn record_offsets() -> impl Iterator<Item = u32> {
+    ALL_MCUS.iter().map(|m| m.identity_offset)
+}
+
+/// Finds and parses the identity record in `flash`, internal flash read from
+/// its base, whichever MCU it came from.
+///
+/// The [`record_offsets`] are tried in order; the first that holds the
+/// `"TGID"` magic decides, so a malformed record there is an error rather
+/// than a fall-through to the next offset.
+///
+/// # Errors
+///
+/// [`parse_identity_record`]'s errors, or "no tag identity record after the
+/// vectors" when no offset holds the magic -- an erased part, or an image
+/// built before identity records.
+pub fn find_identity_record(flash: &[u8]) -> Result<IdentityRecord, String> {
+    for offset in record_offsets() {
+        let at = offset as usize;
+        if flash.len() >= at + 4 && u32_at(flash, at) == MAGIC {
+            return parse_identity_record(flash, offset);
+        }
+    }
+    Err("no tag identity record after the vectors".into())
 }
 
 /// A little-endian `u16` at `o`; the caller has checked the range.
@@ -339,5 +384,33 @@ mod tests {
         f[0x16] = 40; // declared size past the end entry
         f.resize(len + 64, 0);
         assert!(parse_identity_record(&f, 0x10).is_err());
+    }
+
+    /// The record is found at either MCU's offset in erased-filled flash,
+    /// with its tag type and persistent region; erased flash has none.
+    #[test]
+    fn finds_record_at_either_offset() {
+        let rec = image(&[
+            (0x0101, b"UIUCTag\0".to_vec()),
+            (NUMBERS, words(&[7, 0, 0, 0, 0, 0])),
+            (0x0302, words(&[0x0800_B000, 0, 0, 0, 1])),
+        ])
+        .split_off(0x10);
+        for offset in [0x1A0usize, 0x240] {
+            let mut flash = vec![0xFFu8; offset];
+            flash.extend_from_slice(&rec);
+            let r = find_identity_record(&flash).unwrap();
+            assert_eq!(r.string("target"), "UIUCTag");
+            assert_eq!(r.tag_type(), Some(7));
+            assert_eq!(r.persistent_start(), Some(0x0800_B000));
+        }
+        let mut flash = vec![0u8; 0x1A0];
+        flash.extend_from_slice(&image(&[]).split_off(0x10));
+        let r = find_identity_record(&flash).unwrap();
+        assert_eq!((r.tag_type(), r.persistent_start()), (None, None));
+        assert_eq!(
+            find_identity_record(&[0xFFu8; 4096]).unwrap_err(),
+            "no tag identity record after the vectors"
+        );
     }
 }

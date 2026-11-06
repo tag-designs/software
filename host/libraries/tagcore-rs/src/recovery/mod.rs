@@ -38,7 +38,7 @@ pub mod xflash;
 pub use build::{BuildFiles, BuildRecord, ImageCheck};
 pub use capture::{CaptureOptions, CaptureResult, capture_state, capture_tag, find_loader};
 pub use external::{ExternalCaptureOptions, ExternalCaptureResult, capture_external_flash};
-pub use identity::{IdentityRecord, parse_identity_record};
+pub use identity::{IdentityRecord, find_identity_record, parse_identity_record, record_offsets};
 pub use image::TargetImage;
 pub use mcu::{McuMap, McuRegion, find_mcu};
 pub use session::{AddressRange, AttachInfo, Session, SwdExit};

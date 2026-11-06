@@ -206,8 +206,9 @@ none touches USB.
   `keeps_configuration()`, `record_label()` (`"none"`, `"below-calibration"`,
   `"all"`). qtprogram's `flashplan.cpp` exactly.
 - `identity.rs` -- `ImageIdentity` and `read_image_identity(path)`: the TGID
-  record at `0x08000000 + 0x1A0` or `+ 0x240` (port of
-  `recovery/identityrecord.cc`'s parsing, limited to what qtprogram reads).
+  record at `0x08000000 + 0x1A0` or `+ 0x240`, parsed by
+  `tagcore::recovery::identity`, the parser capture, rebuild and `tag-flash`
+  share; this module only finds it in the ELF and keeps what qtprogram read.
 - `image.rs` -- `FirmwareImage` (fields as qtprogram's), `load_firmware_image
   (path, release: Option<&str>)`, `display_name()`, `version()`, `usable()`,
   `image_flash_range(path) -> Result<(start, len), String>`,
