@@ -26,10 +26,6 @@ The capture additions still to build are D3 in
 
 ## Open work
 
-- **`decode_capture.py` reads only part of a `tag-capture` directory.** It was
-  written for the retired `tag_capture_state.py` layout: it does not find the
-  ELF that `--with-build` stores under `build/`, and its backup-register layout
-  is the U375's. Teach it the `tag-capture` manifest, or retire it.
 - **The GD5F logical block count (2008) is a constant in the IMUTag capture
   decoder.** Move it into the identity record's numbers, so the record carries
   every constant the decoder multiplies by.

@@ -66,9 +66,13 @@ nothing runs.
   image has a large zeroed `.bss` and readable strings, and noise has neither.
   The backup registers do not have this problem.
 
-`embedded/tools/decode_capture.py` decoded the named globals and `pState` of a
-`tag_capture_state.py` capture. It reads only part of a `tag-capture`
-directory; see the [tagcore-rs TODO](../../host/libraries/tagcore-rs/TODO.md).
+`embedded/tools/decode_capture.py <capture-dir>` prints what was captured, the
+stored build and whether it matched the captured flash, and `pState` decoded
+with the layout the image's identity record gives (`BackupState` differs by
+family). With SRAM captured it also prints the `tag_backup_diag_*` boot
+diagnostics through the stored ELF's symbols, and `--scratchpad-out FILE`
+writes the retained scratchpad page for `decode_scratchpad.py`. It reads
+captures from the retired `tag_capture_state.py` too.
 
 ## Capturing a returned tag
 
