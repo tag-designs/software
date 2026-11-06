@@ -21,11 +21,16 @@ default = ["instrumentation"]
 instrumentation = []
 
 [dependencies]
+chrono = "0.4.45"
 log = "0.4.34"
+# ELF reading for SRAM loader and probe images (recovery::image).
+object = { version = "0.39.1", default-features = false, features = ["read_core", "elf", "std"] }
 prost = "0.14.4"
 prost-reflect = { version = "0.16.5", features = ["derive", "serde", "text-format"] }
 rusb = { version = "0.9.4", features = ["vendored"] }
 serde_json = "1.0.154"
+# Hashes recorded in capture manifests (recovery::capture).
+sha2 = "0.10.9"
 
 [build-dependencies]
 protoc-bin-vendored = "3"

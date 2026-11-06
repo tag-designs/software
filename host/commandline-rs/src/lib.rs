@@ -148,7 +148,15 @@ pub fn restore_sigpipe() {
 ///
 /// Only USB enumeration happens here; nothing is sent to the base or tag.
 pub fn select_base<C: CommandFactory>(tag: &Tag, args: &BaseArgs) -> UsbDev {
-    let devs = tag.available();
+    select_base_from::<C>(tag.available(), args)
+}
+
+/// [`select_base`] from a list of bases already enumerated, for tools that
+/// hold no [`Tag`] (the SWD recovery tools list bases through
+/// `tagcore::recovery::Session::available`).
+///
+/// Exits as [`select_base`] does.
+pub fn select_base_from<C: CommandFactory>(devs: Vec<UsbDev>, args: &BaseArgs) -> UsbDev {
     let device = args.base.clone().unwrap_or_default();
     let mut found = if devs.is_empty() { None } else { Some(0) };
 

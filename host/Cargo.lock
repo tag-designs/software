@@ -4505,8 +4505,10 @@ dependencies = [
 name = "tagcore"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "env_logger",
  "log",
+ "object",
  "prost",
  "prost-build",
  "prost-reflect",
@@ -4514,6 +4516,7 @@ dependencies = [
  "protoc-bin-vendored",
  "rusb",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

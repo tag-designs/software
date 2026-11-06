@@ -47,6 +47,7 @@ pub mod configshape;
 pub mod link;
 pub mod monitor;
 pub mod proto;
+pub mod recovery;
 pub mod tag;
 pub mod textformat;
 
