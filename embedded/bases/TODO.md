@@ -8,6 +8,14 @@ summary: Open work on the base and programmer firmware -- SWD fault diagnostics 
 
 Delete an item when it is done.
 
+- **One failed read can fail the next several block reads.** With the parity
+  bug of [2026-11](design/investigations/2026-11-breakout-parity-bit.md) on
+  `tag-breakout-base-l432-v1`, 112 single parity errors left 25 block reads
+  failed twice, in two bursts of 5 and 9 within a few milliseconds, each
+  ended only by a host retry. So the base's recovery after a failed `DRW`
+  read (`errorClear()`, the abort, the dummy `RDBUFF` read) does not always
+  return the AP to a usable state. Find out why with the serial log, by
+  injecting a fault; any real link error would cascade the same way.
 - **SWD fault diagnostics on field bases.** `bittag-base-v7` and
   `tag-breakout-base-l432-v1` log SWD faults on a USB serial port (branch
   `base-0x81`), which found the 0x81 cause

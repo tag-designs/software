@@ -26,14 +26,6 @@ The capture additions still to build are D3 in
 
 ## Open work
 
-- **Long loader sessions fail on `tag-breakout-base-l432-v1`.** On 2026-11-06,
-  with the UIUCTag breakout (UUID `2036354B3032500800520028`), full 4 MB
-  `tag-xflash dump` and `tag-capture` runs failed with both the Rust and the
-  C++ tools: dozens of status `0x81` replies to reads of the loader's service
-  block, each retried, until one write failed on every retry. 512 KB reads
-  mostly succeeded and matched byte for byte. The same reads on
-  `bittag-base-v7` with a PresTag and a CompassTag never failed. Suspect the
-  base: an SWD WAIT outlasting its retries (see `embedded/bases/TODO.md`).
 - **`decode_capture.py` reads only part of a `tag-capture` directory.** It was
   written for the retired `tag_capture_state.py` layout: it does not find the
   ELF that `--with-build` stores under `build/`, and its backup-register layout

@@ -134,6 +134,7 @@ design document.
 
 - [SWD bitbang optimization on tag-breakout-base-l432-v1 (2026-06)](../embedded/bases/design/investigations/2026-06-swd-bitbang-optimization.md) *(investigation, closed)* — The 2026-06 SWD bitbang optimization of the F042 bridge on tag-breakout-base-l432-v1 -- about 23% faster downloads, and why ll_swd.c stays at the normal optimization level.
 - [0x81 bursts on L4 tags: DBG_SLEEP clear during a monitor session (2026-10)](../embedded/bases/design/investigations/2026-10-0x81-dbg-sleep.md) *(investigation, closed)* — Why host tools saw bursts of 0x81 (STLINK_DEBUG_ERR_FAULT) while an STM32L4 tag set its clock or ran self-tests - DBGMCU_CR.DBG_SLEEP was clear, so the tag's idle WFI stopped HCLK and held off SWD past the base's WAIT retries - and the host-side fix.
+- [Breakout base read the turnaround as parity (2026-11)](../embedded/bases/design/investigations/2026-11-breakout-parity-bit.md) *(investigation, closed)* — Why long loader sessions failed only on tag-breakout-base-l432-v1 (2026-11) - its SWD read checked the turnaround bit instead of the parity bit, so even-parity words read as parity errors whenever the released line rose in time - and the one-line fix, also applied to tag-base-c071.
 
 ### Boards
 

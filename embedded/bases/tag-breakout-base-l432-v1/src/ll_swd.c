@@ -295,8 +295,10 @@ static uint32_t SWD_TransactionBB(uint32_t req, uint32_t *data)
     {        
       *data = SW_ShiftIn24(); // get 24 bits data
        tmp = SW_ShiftIn9();   // get 8 bits data + trn
-      // combine data, parity
-      pbit = (tmp >> 8) & 1;
+      // combine data, parity. tmp holds data bits 25-31 in bits 0-6, the
+      // parity bit in bit 7 and the turnaround in bit 8; the parity bit
+      // falls off the top when the word is shifted left below.
+      pbit = (tmp >> 7) & 1;
       *data = (tmp << 24) | (*data & 0xffffff);    //combine
       *data = (*data << 1) | d0_bit;
 
