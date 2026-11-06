@@ -81,11 +81,11 @@ struct Cli {
     out: PathBuf,
 
     /// First byte of the part to read
-    #[arg(long, default_value_t = 0)]
+    #[arg(long, default_value_t = 0, value_parser = parse_u32)]
     offset: u32,
 
     /// Bytes to read (default: to the end of the part)
-    #[arg(long)]
+    #[arg(long, value_parser = parse_u32)]
     length: Option<u32>,
 
     /// nand: read every block, blank or not
@@ -93,11 +93,11 @@ struct Cli {
     full: bool,
 
     /// nand: first block to scan
-    #[arg(long, default_value_t = 0)]
+    #[arg(long, default_value_t = 0, value_parser = parse_u32)]
     first_block: u32,
 
     /// nand: blocks to scan (default: to the end of the part)
-    #[arg(long, default_value_t = 0)]
+    #[arg(long, default_value_t = 0, value_parser = parse_u32)]
     blocks: u32,
 
     /// Use the STM32CubeProgrammer entry points (Init, Read) even when the
@@ -132,6 +132,19 @@ impl Meter {
             self.next = done + 256 * 1024;
         }
     }
+}
+
+/// Parses a numeric option, decimal or `0x` hex, as the C++ tool accepted.
+///
+/// # Errors
+///
+/// A message naming the text when it is not a number that fits in 32 bits.
+fn parse_u32(text: &str) -> Result<u32, String> {
+    let parsed = match text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+        Some(hex) => u32::from_str_radix(hex, 16),
+        None => text.parse(),
+    };
+    parsed.map_err(|_| format!("{text} is not a number"))
 }
 
 /// Resolves the range to read: `offset` to the end of a part of `size`
