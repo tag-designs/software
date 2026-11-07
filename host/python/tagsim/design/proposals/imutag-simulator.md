@@ -133,7 +133,7 @@ not built unless a filter result shows they matter.
 | Untested cases | Multi-segment IMUTag logs and real gaps (no log on hand has more than one segment), and saturation |
 | Calibration | Known hard-iron and soft-iron distortion and accelerometer offset, so calibrated field magnitude and dip can be checked against the model |
 | `dataprocessing` | `imu-compass-orientation` scored against true attitude |
-| Post-processing filters | Ground truth for the planned forward EKF and backward smoother ([open design](../../../../commandline/TODO.md#imutag-orientation-post-processing)), scored by attitude and heading error |
+| Post-processing filters | Ground truth for the planned forward EKF and backward smoother ([open design](../../../../../TODO.md#imutag-orientation-post-processing)), scored by attitude and heading error |
 | Choosing ranges | Per-axis saturation statistics for any ODR and full-scale setting. The first logs already suggest ±4 g is too narrow (next paragraph) |
 
 **A first estimate of ranges from the first logs.** These figures come from

@@ -29,7 +29,7 @@
  *            reported as a transport failure. It ends the run.
  *
  *          Prints one PASS or FAIL line per check and exits 1 on any FAIL.
- *          See host/libraries/tagcore/TODO.md. Not for shipping.
+ *          See TODO.md, Host > Libraries > tagcore. Not for shipping.
  */
 #include <atomic>
 #include <chrono>

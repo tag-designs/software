@@ -413,8 +413,9 @@ frozen legacy target.
 
 ## Design Notes
 
-- `TODO.md` is the open firmware work: defects, low-power and recovery
-  questions, NAND bring-up, and the remaining next-release items.
+- The open firmware work -- defects, low-power and recovery questions, NAND
+  bring-up, and the remaining next-release items -- is in the root
+  [`TODO.md`](../../TODO.md#tags), under Embedded > Tags.
 - `common/core/design/u375-low-power.md` is how STM32U375 tags sleep: Stop 3
   as the terminal sleep, Stop 2 or Stop 1 between IMU wakes, Sleep as the idle
   default, scoped STOP around SPI transfers, the monitor guards, and the layout

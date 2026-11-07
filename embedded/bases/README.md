@@ -18,7 +18,6 @@ do not compile tag nanopb protocol sources.
 embedded/bases/
   CMakeLists.txt              Active base target list
   BUILD_SOURCES.md            Source inventory from successful builds
-  TODO.md                     Open work on the bases
   design/investigations/      Dated measurement records
   common/
     inc/                      Shared USB, SWD, ST-Link, and app headers
@@ -159,7 +158,7 @@ ChibiOS `STM32C071xB.ld` from `$(STARTUPLD)` (`common/make-c071.mk`); the
 the hybrid approach: SPI handles `SW_ShiftOutBytes()`, and reads switch back to
 GPIO bitbang. `src/stlink-local.c` is present but not compiled.
 
-Open work on the bases is in [TODO.md](TODO.md).
+Open work on the bases is in [TODO.md](../../TODO.md#bases).
 
 ## Identifying a Base
 

@@ -294,4 +294,4 @@ denominator for dirty-log erase progress.
 ## Open items
 
 Open recovery work, including the unimplemented acquisition-phase sentinels and
-the unchecked monitor-attach adoption, is in [the tag TODO](../../../TODO.md).
+the unchecked monitor-attach adoption, is in [the tag TODO](../../../../../TODO.md#common).

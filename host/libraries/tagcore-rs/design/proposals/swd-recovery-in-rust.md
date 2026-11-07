@@ -160,7 +160,7 @@ binding over the C++ classes. That binding was never built. Two options:
   checks size and offsets against the header, through `bindgen` or a C
   `offsetof` table.
 - **Idle current after a recovery session detaches has never been measured**
-  ([recovery TODO](../../TODO.md#checks-never-run)). The
+  ([recovery TODO](../../../../../TODO.md#tagcore-rs)). The
   port is a good moment to run it once, on both implementations.
 
 ## Acceptance

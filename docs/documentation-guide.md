@@ -29,7 +29,7 @@ types in one file. Split them.
 | `investigation` | What was measured or tried while chasing a fault | Past, dated | Append while open, then `closed` with a link to the decision or fix | `design/investigations/` next to the owner, or [`docs/investigations/`](investigations/) when cross-cutting |
 | `procedure` | How to do a repeatable task | Imperative | Edited in place | [`docs/bench/`](bench/), [`docs/release/`](release/), or the owning tool's README |
 | `results` | Raw measurements with the build and conditions | Past, dated | Append-only | Beside the procedure that produced them |
-| `worklist` | What is still open | Present | Items deleted when done, never struck through | `TODO.md` in the owning directory |
+| `worklist` | What is still open | Present | Items deleted when done, never struck through | The one root [`TODO.md`](../TODO.md), in the owning directory's section |
 | `index` | A list of other documents | — | Generated | [`docs/index.md`](index.md) |
 
 ## Rules

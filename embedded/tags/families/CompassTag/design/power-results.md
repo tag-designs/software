@@ -15,7 +15,7 @@ Procedure: [`power-test-plan.md`](power-test-plan.md), and the shared
 [power testing procedure](../../../../../docs/bench/power-testing.md). The
 fault these entries chase is written up in
 [the investigation](investigations/2026-09-compasstag-standby-after-attach.md);
-open items are in [`../TODO.md`](../TODO.md).
+open items are in [`../TODO.md`](../../../../../TODO.md#compasstag).
 
 ## Format
 
@@ -170,7 +170,7 @@ external flash) both before and after the fix — the change is confined to the
 All gates in the plan's gates met on `CompassTagAT25Breakout`. The fix restores
 the never-attached idle-current baseline after every attach pattern tested.
 
-The items this session left open are in [`../TODO.md`](../TODO.md).
+The items this session left open are in [`../TODO.md`](../../../../../TODO.md#compasstag).
 
 ### 2026-09-24  `CompassTagAT25` on real production hardware — full validation, two fixes plus the 30 s interval change
 
@@ -426,7 +426,7 @@ The items this session left open are in [`../TODO.md`](../TODO.md).
   calibration page begins at `0x0800b000`. Before F3 the gap was 936 bytes.
   Nothing warns when it closes: the next change to this target can push
   calibration to a new page and silently orphan every calibrated board. See
-  [the worklist](../TODO.md).
+  [the worklist](../../../../../TODO.md#compasstag).
 
 - **Idle tracks room temperature, not the build.** Three sessions on this one
   board at the same supply:

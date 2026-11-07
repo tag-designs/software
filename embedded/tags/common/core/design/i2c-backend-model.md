@@ -167,4 +167,4 @@ The IMUTag family overrides the weak RTC binding in
 hardware backend, shared with the BMM350, with a board-supplied `reset` hook for
 [I2C bus recovery](i2c-bus-recovery.md). Other tags use the weak common
 RV3028 default in `rtc_device.c`. Remaining work on the descriptor model is in
-[the tag TODO](../../../TODO.md).
+[the tag TODO](../../../../../TODO.md#common).

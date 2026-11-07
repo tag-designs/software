@@ -35,7 +35,7 @@ const STOP_RESEND_FOR: Duration = Duration::from_secs(30);
 /// How long the polls pause after Synchronize Clock or Self-Test is accepted.
 ///
 /// While the tag sets its RTC or runs its self-tests, debug access to an L4
-/// tag fails in bursts (base 0x81; `embedded/bases/TODO.md`), so polling then
+/// tag fails in bursts (base 0x81; TODO.md, Embedded > Bases), so polling then
 /// only fills the log with errors. One status is read when the pause ends.
 const QUIET_AFTER_BUSY: Duration = Duration::from_millis(1500);
 

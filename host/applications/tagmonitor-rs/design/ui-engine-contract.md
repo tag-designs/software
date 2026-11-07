@@ -34,7 +34,7 @@ The engine thread never touches the tag and never waits for it, so the view
 stays live during a download, and a query is answered after at most the
 messages already queued. After Synchronize Clock or Self-Test is accepted the
 tag thread pauses its polls for 1.5 s, as qtmonitor does (base 0x81 bursts on
-L4 tags; `embedded/bases/TODO.md`).
+L4 tags; `TODO.md`, Embedded > Bases).
 
 ## Transport
 

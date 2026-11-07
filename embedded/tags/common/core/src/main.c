@@ -877,7 +877,7 @@ static bool tagBootOptionWaitIdle(void)
  *          with any option-byte change. It runs once per board, normally on
  *          the bench straight after the first programming.
  *
- * @see     host/libraries/tagprobe-rs/TODO.md, STM32U3 reference manual, "Boot configuration"
+ * @see     TODO.md, Host > Libraries > tagprobe-rs, STM32U3 reference manual, "Boot configuration"
  */
 static void tagFixBootOptionBytes(void)
 {

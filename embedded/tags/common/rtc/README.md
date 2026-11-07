@@ -27,4 +27,4 @@ register access and power/session callbacks.
 
 The IMUTag family overrides the weak binding with its own hardware-I2C
 `TagRtcDevice` in `families/IMUTag/src/devices.c`. Open descriptor work is in
-[the tag TODO](../../TODO.md#cleanup).
+[the tag TODO](../../../../TODO.md#cleanup).

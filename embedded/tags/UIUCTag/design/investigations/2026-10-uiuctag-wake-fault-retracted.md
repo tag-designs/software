@@ -6,7 +6,7 @@ summary: The 2026-10-04/06 UIUCTag "never wakes" and "tag-test fails" reports --
 
 # UIUCTag Wake Fault, Retracted (2026-10)
 
-Moved from the [UIUCTag worklist](../../TODO.md) on 2026-11-01. All of this
+Moved from the [UIUCTag worklist](../../../../../TODO.md#uiuctag) on 2026-11-01. All of this
 came from sessions on the shared breakout board, UUID
 `2036354B3032500800520028`. The tag was then qualified on `fw-v0.6` on
 2026-10-08 ([power results](../power-results.md)). The measurement rules that

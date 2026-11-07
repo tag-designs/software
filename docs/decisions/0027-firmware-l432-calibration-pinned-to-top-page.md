@@ -9,7 +9,7 @@ summary: On STM32L432 tags that store calibration (CompassTag), the calibration 
 Date: 2026-10-10
 
 Reverses the rejection of 2026-10-05 recorded in
-[the CompassTag TODO](../../embedded/tags/families/CompassTag/TODO.md), for
+[the CompassTag TODO](../../TODO.md#compasstag), for
 calibration only. The reasons given there for not pinning `.persistent` still
 stand.
 

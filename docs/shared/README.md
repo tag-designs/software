@@ -25,4 +25,4 @@ firmware structs are a contract too: the firmware `_Static_assert`s every struct
 offset the decoders in `host/libraries/tagcore/recovery/capturesource.cc` read.
 When one fires, see [Capturing a tag](../bench/capturing-a-tag.md).
 
-Open work on these contracts is in the [shared contracts worklist](TODO.md).
+Open work on these contracts is in the [shared contracts worklist](../../TODO.md#shared-contracts).

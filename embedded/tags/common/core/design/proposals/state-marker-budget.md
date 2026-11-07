@@ -85,7 +85,7 @@ have no scratchpad
 ([Field Data Extraction](../../../../design/proposals/field-data-extraction.md),
 Gap 2).
 
-**Resets and faults are mostly covered already.** `embedded/tags/TODO.md`
+**Resets and faults are mostly covered already.** `TODO.md`, Embedded > Tags > Common
 said they leave no marker. The code now does better:
 
 | Event | Today |

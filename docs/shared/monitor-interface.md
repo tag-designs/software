@@ -15,7 +15,7 @@ and host tools. It covers the three supported target paths:
   shared-memory RPC transport.
 
 This is a reference for the current implementation. Open work on the transport
-is in the [shared contracts worklist](TODO.md).
+is in the [shared contracts worklist](../../TODO.md#shared-contracts).
 
 ## Common Model
 
@@ -175,7 +175,7 @@ another is still pending is dropped with `monitorClearRequest()`, which clears
 the pending request's `MON_REQ` too. The host then reads a reply that was never
 written, and the pending request is never served. With the wait above, the
 host does not send that second request; the firmware fix is recorded in
-`embedded/tags/TODO.md`.
+`TODO.md`, Embedded > Tags > Common.
 
 ### L4 Detach And Timeout
 
@@ -385,7 +385,7 @@ DebugMonitor as well, and only its own detach clears it; the firmware clears
 only a bit it set. A session that ends on the heartbeat or watchdog therefore
 leaves the clock on. It costs nothing measurable on the L432 tags, which rest
 and run in Standby or Shutdown and reset RCC on every wake. Recorded in
-`embedded/tags/TODO.md`.
+`TODO.md`, Embedded > Tags > Common.
 
 ## Main-Thread Service
 

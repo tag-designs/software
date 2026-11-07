@@ -98,7 +98,7 @@ _No measurements recorded yet._
 
 - **notes**: earlier runs on this board were polled with `tag-info` during
   collection, which resets the tag; those numbers are withdrawn and are not the
-  basis of this entry. See [the worklist](../TODO.md).
+  basis of this entry. See [the worklist](../../../../TODO.md#uiuctag).
 
 ### 2026-10-06  `fw-v0.6` functional run — **collects correctly**
 
@@ -209,7 +209,7 @@ _No measurements recorded yet._
   nothing at rest. Running current is within 2% of the 0.5620 µA qualification.
 - **Monitor checks**: `tag-test` passed six times out of six with no base
   0x81, and Tag Monitor's `session_check` passed every step; see the L4
-  monitor item in `../../TODO.md`.
+  monitor item in `TODO.md`, Embedded > Tags > Common.
 - **notes**: the profile's run floor (0.3 µA) also fails the "wakes but does
   not collect" run of 2026-10-06, which read 0.24 µA. The harness's first
   `tag-info` after start printed `Info failed` once and the retry read

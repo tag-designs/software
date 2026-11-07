@@ -26,7 +26,7 @@ Start, stop and hibernation do not depend on the period, so they are tested
 once, at a single period. The rig, the Joulescope server, flashing, windows,
 supply voltage and what to record are in the shared
 [power testing procedure](../../../../../docs/bench/power-testing.md). Open
-work is in [`../TODO.md`](../TODO.md). The history is in two investigations:
+work is in [`../TODO.md`](../../../../../TODO.md#prestag). The history is in two investigations:
 how the power figures were reached is in
 [the campaign investigation](investigations/2026-09-prestag-stop2-and-power-campaign.md),
 and the log-cursor fix is in
@@ -62,7 +62,7 @@ again, and the run state is recovered from the RTC backup registers through
 Below 10 s `Running()` asks for Stop 2. On the L432, `godown()` turns that
 into a silent no-op: `tagPowerEnterTerminalSleep()` handles only Standby and
 Shutdown. So a sub-10 s period never sleeps at all, and measured 530.7 µA flat
-(F2 in the [TODO](../TODO.md)). **Periods below 10 s are a bench
+(F2 in the [TODO](../../../../../TODO.md#prestag)). **Periods below 10 s are a bench
 configuration**, and nothing is deployed in that regime.
 
 ### 1.3 The stop-delay tick: RTC Alarm A
@@ -170,7 +170,7 @@ hour, on the hour**. Hibernation therefore costs one wake an hour, and the tag
 returns to `RUNNING` up to about an hour after the window closes. The recorded
 hibernation figures (0.3769 µA, wakes every 60.0 s, exit within ~60 s) were
 measured before that change. Re-measuring them is in the
-[TODO](../TODO.md).
+[TODO](../../../../../TODO.md#prestag).
 
 At most two hibernate windows are stored (`hibernate[2]` in `t_storedconfig`).
 
@@ -193,7 +193,7 @@ The shared procedure applies unchanged. What is specific to PresTag:
 - **Flash only after `tag-stop` and `tag-reset`**, and keep `-g 0x08000000` in
   the download target. Both are explained in the shared procedure.
 - **Check the period from the data** -- burst spacing, or the download's epoch
-  step. Do not trust the host's echo (F3 in the [TODO](../TODO.md)).
+  step. Do not trust the host's echo (F3 in the [TODO](../../../../../TODO.md#prestag)).
 - The U375 Standby and Stop 3 findings do not apply to this L432 part, which
   has a working Shutdown. The discipline does carry over: measure after every
   firmware change.

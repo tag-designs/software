@@ -23,7 +23,7 @@ and `tag-xflash dump` reads a whole part with it. See
 Runtime rules, the entry-point contract and what the bench established are in
 [Loader Runtime Design](design/loader-runtime.md). Read it before changing
 anything in `common/`. It also covers the STM32U375 SPI-NAND loader,
-`GD5F2GM7RE_IMUTagNandv2`. Open work is in [TODO.md](TODO.md).
+`GD5F2GM7RE_IMUTagNandv2`. Open work is in [TODO.md](../../TODO.md#loaders).
 
 ## Layout
 

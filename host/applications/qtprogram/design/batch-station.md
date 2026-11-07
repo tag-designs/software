@@ -153,7 +153,7 @@ programmer runs asynchronously:
 The programmer does not start the tag: a start belongs to a deployment. An
 earlier version finished by starting, stopping and erasing it once more; on a
 PresTag the start left the RTC write-protected, and the clock setting after
-the final erase hung the firmware (`embedded/tags/TODO.md`, Defects).
+the final erase hung the firmware (`TODO.md`, Embedded > Tags > Common, Defects).
 
 Cancel is accepted before step 2 and at step 3, never while the programmer is
 writing. The self-tests disturb the tag's clock, so the session sets it again

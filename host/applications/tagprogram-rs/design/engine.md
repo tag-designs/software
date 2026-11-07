@@ -82,7 +82,7 @@ the firmware answers. A call that gets no answer waits for tagcore's monitor
 timeout: on an STM32L4 tag a protobuf request allows 65000 poll iterations,
 about 120 s; on an STM32U3 tag every call gives up after 2.5 s. The engine is stuck for that
 long, and so is every query (each returns `null` after 10 s). The PresTag
-SetRtc hang (`embedded/tags/TODO.md`) showed this. Moving monitor calls onto a
+SetRtc hang (`TODO.md`, Embedded > Tags > Common) showed this. Moving monitor calls onto a
 worker would need a second owner for `Tag`; it has not been done.
 
 ### What runs on workers
@@ -254,7 +254,7 @@ retest:   [Reading (worker), if IDLE and an image matches] ─► Connecting ─
 The session ends with the tag **IDLE**. It never starts the tag. A start
 belongs to a deployment, and on a PresTag a start leaves the RTC
 write-protected until reset, so a later SetRtc hangs the firmware
-(`embedded/tags/TODO.md`).
+(`TODO.md`, Embedded > Tags > Common).
 
 `finish` writes the record row, reads the tag's info again, and resumes the
 status poll. The info read again sets the Tag row and re-checks the firmware,

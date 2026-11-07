@@ -348,7 +348,7 @@ database untouched, copies it to a new output path, writes derived tables and
 stream metadata, and records processing provenance in a `ProcessingRun` table.
 The design, output tables and provenance format are in
 [design/dataprocessing.md](design/dataprocessing.md); open work is in
-[TODO.md](TODO.md).
+[TODO.md](../../TODO.md#command-line).
 
 Current processors:
 

@@ -28,7 +28,7 @@
 //!   transport failure. It ends the run.
 //!
 //! Prints one PASS or FAIL line per check and exits 1 on any FAIL. See
-//! `host/libraries/tagcore/TODO.md`. Not for shipping.
+//! TODO.md, Host > Libraries > tagcore. Not for shipping.
 //!
 //! Usage: `tag-side-channel-check [-d] [-b BUS:DEVICE] [--idle S]
 //! [--interval S] [--no-keepalive] [--threads S] [--write-test ADDR]

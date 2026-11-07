@@ -26,7 +26,7 @@ sweep; see
 The datasheet estimates, the Stop 1 era, and the LDO-versus-SMPS sweeps at
 2.5 V and 3.3 V that this sweep checks are in
 [investigations/2026-09-imutag-regulator-and-sleep-sweeps.md](investigations/2026-09-imutag-regulator-and-sleep-sweeps.md).
-No figure there is current. Open power questions are in [`../TODO.md`](../TODO.md).
+No figure there is current. Open power questions are in [`../TODO.md`](../../../../../TODO.md#imutag).
 
 ## Measured SMPS Board, Full Rate Sweep at 3.7 V (2026-11-03), Shipping Configuration
 

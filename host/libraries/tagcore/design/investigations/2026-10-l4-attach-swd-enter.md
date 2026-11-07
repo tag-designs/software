@@ -57,7 +57,7 @@ still held.
 | A 10 ms pause between nRST and the first enter | 0 failures in 120, too few to call it a fix |
 
 The rate, about one enter in 150, is why it looked like a rare and
-history-dependent fault: the 2026-10-20 note in `../../TODO.md` saw 2 of
+history-dependent fault: the 2026-10-20 note in `TODO.md`, Host > Libraries > tagcore saw 2 of
 about 32, and 2026-10-31's bench session three in a dozen attaches made a
 few seconds apart.
 

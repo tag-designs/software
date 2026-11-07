@@ -37,7 +37,6 @@ design document.
 ### Build
 
 - [Build](build/README.md) — The firmware and host build model; setup steps per platform are in the root README.
-- [Build Worklist](build/TODO.md) *(worklist)* — Open gaps and questions in the reproducible firmware build -- provenance not in the image, unrecorded qualification hashes, uncollected bench manifests, the old board path, and pending pins.
 - [Tag Firmware Build Reproducibility](build/firmware-reproducibility.md) — The reproducible firmware build as implemented -- distributed-tag scope, committed generated sources, per-image SHA-256 manifests, configure-time checks, CI, and how to maintain it.
 - [Toolchain inventory](build/toolchain-inventory.md) *(procedure)* — Every tool the tag-designs work depends on across all five repositories, with version, install path and what it serves; written for rebuilding a macOS workstation.
 
@@ -107,7 +106,6 @@ design document.
 - [Shared Contracts](shared/README.md) — The contracts host tools and tag firmware both compile against, and where each is documented.
 - [Magnetometer and Accelerometer Axes](shared/sensor-axes.md) — Tag firmware rotates each magnetometer and accelerometer part into a common tag frame, and the host orientation code assumes one fixed magnetometer-to-accelerometer alignment; what each family applies, and how to check a capture against it.
 - [Shared Binary Log Formats](shared/binary-datalogs.md) — Conventions for the packed C log structs in include/ that host and firmware both compile -- naming, packing, size and endianness checks, nanopb buffer coherence, and copy-not-cast host decoding.
-- [Shared Contracts Worklist](shared/TODO.md) *(worklist)* — Open work on the contracts host and firmware share, starting with the monitor transport's stale VC_CORERESET after a timeout.
 - [Tag Configuration Model](shared/design/configuration-model.md) — How a tag's configuration is defined, which fields each tag supports (its default config, read by tagcore's ConfigShape), how qtmonitor shows and writes it with fixed panels per tag type, how files are merged, the fields with tag-specific meanings, and how all of it is checked without hardware.
 - [Tag Monitor Interface](shared/monitor-interface.md) — Reference for the monitor transport as implemented -- attach, calls, detach and sleep interaction for the L4 DebugMonitor, the U3 shared-memory mailbox and the L4 mailbox (UIUCTag).
 
@@ -127,7 +125,6 @@ design document.
 ### Bases
 
 - [Embedded Bases](../embedded/bases/README.md) — Layout, CMake shape and descriptions of the base and programmer board firmware targets -- MCU, board and SWD implementation of each.
-- [Bases Worklist](../embedded/bases/TODO.md) *(worklist)* — Open work on the base and programmer firmware -- SWD fault diagnostics for field bases, unbuilt SPI SWD sources, and SWD speed ideas for a future base.
 - [Embedded Base Build Sources](../embedded/bases/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each active base firmware target, extracted from dependency files.
 
 ### Bases / Investigations
@@ -164,7 +161,6 @@ design document.
 
 - [External Flash Loaders](../embedded/loaders/README.md) — SRAM-resident external flash loaders for STM32L432 NOR and STM32U375 NAND tags; layout, per-board naming, building, use with STM32CubeProgrammer, adding a loader and bench testing.
 - [Loader Runtime Design](../embedded/loaders/design/loader-runtime.md) — The external loader contract as traced on hardware and the runtime rules it imposes -- no startup code, interrupts or OSAL sleeps, rescue erase, Serve() -- for the STM32L432 NOR loaders and the STM32U375 SPI-NAND loader.
-- [Loaders Worklist](../embedded/loaders/TODO.md) *(worklist)* — Open work on the external flash loaders -- the L432 state-capture script, watchdog refresh in the ST entry points, and untested MassErase.
 
 ### Loaders / Investigations
 
@@ -183,7 +179,6 @@ design document.
 - [Embedded Tag Firmware](../embedded/tags/README.md) — How tag targets are assembled from modules, families and local sources, diagnostics, the template tag directory and local override rules.
 - [Embedded Tag Build Sources](../embedded/tags/BUILD_SOURCES.md) — Inventory of repo-local C and header files compiled into each tag firmware target, extracted from dependency files.
 - [Tag `custom.h` Build Defines](../embedded/tags/design/custom-defines.md) — Reference of custom.h defines per active tag target, module-generated TAG_ feature switches, and retired defines.
-- [Tag Firmware TODO](../embedded/tags/TODO.md) *(worklist)* — Open tag firmware work -- defects found by reading code, low-power and recovery questions, NAND bring-up, the next release's remaining items and their host counterparts, and cleanup.
 
 ### Tags / BitTag
 
@@ -267,7 +262,6 @@ design document.
 - [CompassTag Family](../embedded/tags/families/CompassTag/README.md) — What the CompassTag family variants share, where family-specific drivers live, and links to design notes and the host simulation.
 - [CompassTag Power Measurement Log](../embedded/tags/families/CompassTag/design/power-results.md) *(results)* — Append-only log of CompassTag power measurements -- the Standby-after-attach fault before and after its fix, and the production CompassTagAT25 validation.
 - [CompassTag Power Test Plan](../embedded/tags/families/CompassTag/design/power-test-plan.md) *(procedure)* — CompassTag power test plan -- qualifying a CompassTagAT25 release image for idle, running and finished current, with the Standby-after-attach regression as a standing gate; calibration must survive the flash.
-- [CompassTag TODO](../embedded/tags/families/CompassTag/TODO.md) *(worklist)* — Open CompassTag power and monitor items left by the 2026-09 Standby-after-attach work.
 
 ### Tags / Families / CompassTag / Investigations
 
@@ -280,7 +274,6 @@ design document.
 ### Tags / Families / IMUTag
 
 - [IMUTag Family](../embedded/tags/families/IMUTag/README.md) — What the IMUTag family shares between IMUTagNand and IMUTagNandBmp581, with an annotated list of family design notes.
-- [IMUTag Family: Open Items](../embedded/tags/families/IMUTag/TODO.md) *(worklist)* — Open questions for the IMUTag family -- cell voltage, supply noise on the SMPS board, the idle split, the 3.7 V projection trend, and timing-metadata gaps.
 - [IMUTag Internal Header Checkpoints](../embedded/tags/families/IMUTag/design/internal-header-checkpoints.md) — Sparse internal-flash checkpoint headers that let NAND-backed IMUTag tags find their external log cursor after a reset.
 - [IMUTag Power and Runtime](../embedded/tags/families/IMUTag/design/power.md) *(results)* — Measured IMUTagNandBmp581 current at 3.7 V on the SMPS board per sample rate, and the battery and storage runtime each rate implies.
 - [IMUTag Sample Timing](../embedded/tags/families/IMUTag/design/sample-timing.md) — How IMUTag sample times are produced -- a jitter-free raw 32.768 kHz sampling clock, a smooth-calibrated STM32 RTC, 1024 Hz page anchors with resync flags, and host reconstruction from sample count.
@@ -302,7 +295,6 @@ design document.
 - [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, with links to the power test plan, results, open items and host simulation.
 - [PresTag Power and Schedule Test Plan](../embedded/tags/families/PresTag/design/power-test-plan.md) *(procedure)* — PresTag power and schedule test plan -- what the firmware does in each state, the configs, the resting-state, period-sweep, schedule and data phases, the power model and the gates.
 - [PresTag Power Measurement Log](../embedded/tags/families/PresTag/design/power-results.md) *(results)* — Append-only log of every PresTag power measurement with build and conditions, plus the campaign's fit, lifetime, schedule and data verdicts -- the source for figures quoted elsewhere.
-- [PresTag TODO](../embedded/tags/families/PresTag/TODO.md) *(worklist)* — Open PresTag items -- the config write that can still be refused (F3), the silent Stop 2 no-op (F2), the brownout regression test, and measurements the hourly hibernation alarm made stale.
 
 ### Tags / Families / PresTag / Investigations
 
@@ -340,7 +332,6 @@ design document.
 - [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies; firmware 2.0 (minute records) runs at 0.79 uA.
 - [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one 8-byte record each wake.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.
-- [UIUCTag TODO](../embedded/tags/UIUCTag/TODO.md) *(worklist)* — Open UIUCTag items -- the debug port losing the bus matrix in a session while no DMA clock is on, a tag-test link failure probably fixed, a rare Info failure in the release check (now reported with its reason), and confirming the internal-ADC fix.
 
 ### Tags / UIUCTag / Investigations
 
@@ -403,7 +394,6 @@ design document.
 ### Applications / sensorviz
 
 - [sensorViz](../host/applications/sensorviz/README.md) — What sensorviz does, its architecture, design rules, data model, plotting rules, preferences, transforms, documentation capture hooks, known limitations and build check.
-- [sensorViz TODO](../host/applications/sensorviz/TODO.md) *(worklist)* — Open sensorviz work - validation, load warnings, transform registry, session files and GUI tests.
 
 ### Applications / sensorviz / Proposals
 
@@ -421,7 +411,6 @@ design document.
 
 - [Tag View: sensorViz (Rust)](../host/applications/sensorviz-rs/README.md) — Tag View (tagview), sensorViz in Rust - the Tauri port of the Qt sensorviz over sensorViz's C++ core -- the engine, the shell and the uPlot page; how to build, run and package it, how it differs from the Qt app, and what the plot spike that chose uPlot and jsPDF showed.
 - [Tag View (sensorViz in Rust): architecture and source map](../host/applications/sensorviz-rs/design/architecture.md) — How Tag View (sensorViz in Rust) is put together - one engine thread over sensorViz's C++ core through sensorviz-session, a page that draws the plot with uPlot from M4 envelopes, a map of every file and the Qt sensorviz code it follows, how a view change and a redraw travel, and where to make common changes.
-- [Tag View TODO](../host/applications/sensorviz-rs/TODO.md) *(worklist)* — Open Tag View work - features of the Qt sensorViz not carried into the v4.0 release, starting with the activity filter.
 
 ### Applications / tagcalibrate-rs
 
@@ -448,7 +437,6 @@ design document.
 ### Command Line
 
 - [Command-Line Tools](../host/commandline/README.md) — Distributed and bench-only command-line tools, with usage notes for tag-capture, tag-xflash, tag-sramcall, tag-rebuild, tag-log-import, tag-txt-import, tag-cal-write and dataprocessing.
-- [Command-Line Tools TODO](../host/commandline/TODO.md) *(worklist)* — Open command-line tool work - dataprocessing tests, further processors and SensorViz support for processed files.
 - [DataProcessing Post-Processing Application Design](../host/commandline/design/dataprocessing.md) — How the dataprocessing CLI copies a SQLite log and adds calibrated CompassTag streams and IMUTag orientation with provenance, and how the work is split with sensoranalysis, qtcalibrate and SensorViz.
 
 ### Command Line / Proposals
@@ -525,7 +513,6 @@ design document.
 ### Libraries / tagcore
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
-- [tagcore TODO](../host/libraries/tagcore/TODO.md) *(worklist)* — Open work in tagcore - hardware verification of the monitor side channel, keepalive and LastError added for the tag server proposal.
 
 ### Libraries / tagcore / Investigations
 
@@ -565,7 +552,6 @@ design document.
 - [tagcore (Rust)](../host/libraries/tagcore-rs/README.md) — Rust port of tagcore's tag interface (Tag, TagMonitor, LinkAdapt) and ConfigShape - layout, how it maps to the C++, where it deliberately differs, and how to build and test it.
 - [SWD Capture and Recovery Library](../host/libraries/tagcore-rs/design/swd-recovery.md) — How the SWD capture and recovery library (tagcore-rs recovery module) works - attaching without booting, what a capture holds, the per-MCU rules, the identity record and the Serve() loader protocol.
 - [tagcore-rs design](../host/libraries/tagcore-rs/design/architecture.md) — How the Rust tagcore is put together - the three layers and who owns the USB link, the concurrency model, how failures are reported and logged, the generated protobuf types, and the rules for keeping the port in step with the C++ tagcore.
-- [tagcore-rs recovery TODO](../host/libraries/tagcore-rs/TODO.md) *(worklist)* — Open work on the SWD capture and loader code in tagcore-rs's recovery module, and on the C++ offline rebuild (CaptureSource) it feeds.
 
 ### Libraries / tagcore-rs / Proposals
 
@@ -579,7 +565,6 @@ design document.
 
 - [tagprobe (Rust)](../host/libraries/tagprobe-rs/README.md) — tagprobe - programming, connect checks and flash read-back for tags through a base, on probe-rs, with a field-safe ST-LINK driver for bases whose firmware predates the identify command.
 - [tagprobe design](../host/libraries/tagprobe-rs/design/architecture.md) — How tagprobe programs tags through probe-rs - choosing a driver from the base's identity, how the field-safe driver maps probe-rs's DAP model onto the commands every base supports, one session per operation under reset, the program sequence (erase plan, verify, PEMPTY, start), and the threading and base-sharing rules callers must keep.
-- [tagprobe TODO](../host/libraries/tagprobe-rs/TODO.md) *(worklist)* — Open work in tagprobe -- none at present.
 
 ### Proposals
 
@@ -655,7 +640,8 @@ design document.
 
 ## Other
 
+- [TODO](../TODO.md) *(worklist)* — The repository's one list of open work, by area -- host (applications, command line, libraries), embedded (tags, bases, loaders) and repository-wide (build, shared contracts, licensing).
+
 ### LICENSES
 
 - [Licenses](../LICENSES/README.md) — The project's MIT license, which programs and firmware are distributed under GPL-3.0 and why (from v4.0 only the firmware and the unreleased legacy Qt applications), the third-party inventory behind the notice files, and how to keep them current.
-- [Licensing Worklist](../LICENSES/TODO.md) *(worklist)* — Remaining licensing follow-ups from the 2026-10-06 inventory.

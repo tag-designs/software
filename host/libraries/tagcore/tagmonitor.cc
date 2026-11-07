@@ -916,7 +916,7 @@ bool TagMonitor::AttachL4()
     // clear, Sleep mode (the tag's RTOS idle WFI) stops HCLK, so each wait in
     // the tag (an I2C transfer, a test delay, a flash poll) holds every debug
     // access off past the base's SWD WAIT retries, which return 0x81 in bursts
-    // (embedded/bases/TODO.md, 2026-10-27). Set only now: until the session is
+    // (TODO.md, Embedded > Bases, 2026-10-27). Set only now: until the session is
     // open the tag's Stop path clears the register, and it clears it again
     // when the session ends, so resting current is unaffected. A failure only
     // makes the session slower to answer while the tag waits.

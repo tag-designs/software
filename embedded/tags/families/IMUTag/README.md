@@ -45,7 +45,7 @@ Design notes:
   recover their external log cursor after a reset.
 - [`design/power.md`](design/power.md): measured current per sample rate at
   3.7 V and the battery and storage runtime each implies.
-- [`TODO.md`](TODO.md): open power and timing questions.
+- [`TODO.md`](../../../../TODO.md#imutag): open power and timing questions.
 
 Records:
 

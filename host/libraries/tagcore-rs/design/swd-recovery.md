@@ -33,7 +33,7 @@ usable from Python as the `tagcore` package, a PyO3 binding
 is not built: identification of images without an identity record. It is
 proposed in
 [Identification, Rescue and Python](../../tagcore/design/proposals/recovery-identification-rescue-python.md).
-Open work is in [the tagcore-rs TODO](../TODO.md).
+Open work is in [the tagcore-rs TODO](../../../../TODO.md#tagcore-rs).
 
 Background:
 

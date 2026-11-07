@@ -602,7 +602,7 @@ sensoranalysis input are unchanged.
    readout, cursors, ranges and print.
 3. **Derived streams through `addDerived()` and `forEachRow()`:** the
    magnitudes, altitude, activity filter and compass. This lines up with the
-   transform registry in [TODO.md](../../TODO.md#larger-refactors).
+   transform registry in [TODO.md](../../../../../TODO.md#larger-refactors).
 4. **Optional:** break lines at segment gaps by emitting a gap marker (NaN
    for QCustomPlot, `null` for uPlot). Today's plot joins across gaps.
 

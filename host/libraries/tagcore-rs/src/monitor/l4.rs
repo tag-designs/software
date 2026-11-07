@@ -593,7 +593,7 @@ impl TagMonitor {
     /// every debug access waits until the tag wakes: each wait in the tag
     /// (an I2C transfer, a test delay, a flash poll) then outlasts the base's
     /// SWD WAIT retries and comes back as STLINK_DEBUG_ERR_FAULT (0x81) in
-    /// bursts (`embedded/bases/TODO.md`, 2026-10-27). Set only after
+    /// bursts (TODO.md, Embedded > Bases, 2026-10-27). Set only after
     /// MONITORSTART: until the session is open, the tag's own Stop path
     /// clears the register, and it clears it again when the session ends, so
     /// resting current is unaffected. A failure is logged and the attach
@@ -619,7 +619,7 @@ impl TagMonitor {
     /// while a self-test sleeps is lost and the tag answers NANOPB. Enabling
     /// a DMA clock keeps the matrix running (`DMA1SMEN` is set from reset).
     /// Found on UIUCTag, which enables no DMA, 2026-11-02
-    /// (`embedded/tags/UIUCTag/TODO.md`).
+    /// (TODO.md, Embedded > Tags > UIUCTag).
     ///
     /// Set only when clear, and recorded, so that
     /// [`release_l4_dma_clock`](Self::release_l4_dma_clock) clears only what

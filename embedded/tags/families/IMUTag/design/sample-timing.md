@@ -129,4 +129,4 @@ Moving page anchors to 8192 Hz would cut the header quantisation to about
 ±61 us without changing in-segment timing, but the anchor would reach that only
 if the host also stopped rounding it to milliseconds; it was considered and not
 built (see the
-plan's *Future Consideration*). Open items are in [`../TODO.md`](../TODO.md).
+plan's *Future Consideration*). Open items are in [`../TODO.md`](../../../../../TODO.md#imutag).

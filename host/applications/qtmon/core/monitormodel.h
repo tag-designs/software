@@ -45,7 +45,7 @@ inline constexpr std::int64_t kTestTimeoutMs = 60000;
  * @details A failed status read is skipped silently, so without this a tag
  *          (or base) that stops answering looks like a tag whose state has
  *          not changed. Bursts of base errors (0x81) while a tag is busy can
- *          cause it; see embedded/bases/TODO.md.
+ *          cause it; see TODO.md, Embedded > Bases.
  */
 inline constexpr std::int64_t kNoAnswerMs = 3000;
 /**

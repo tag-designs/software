@@ -31,7 +31,7 @@ download log format.
 - [Power campaign investigation](design/investigations/2026-09-prestag-stop2-and-power-campaign.md)
   and [log-cursor investigation](design/investigations/2026-09-prestag-log-cursor-round-up.md):
   how the 2026-09 figures were reached, and the cursor fix.
-- [TODO](TODO.md): open items (F2, F3, T4, re-measuring hibernation).
+- [TODO](../../../../TODO.md#prestag): open items (F2, F3, T4, re-measuring hibernation).
 
 ## Host simulation
 

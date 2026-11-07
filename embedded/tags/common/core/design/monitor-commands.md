@@ -122,7 +122,7 @@ Both are split so the reply comes before the long work:
   boot's first pass resumes the sweep before any request is served. On an
   STM32L4 tag the first request of a new session is then answered only when
   the sweep has ended, so there it finds the erase done and replies PERM
-  ([tags worklist](../../../TODO.md)).
+  ([tags worklist](../../../../../TODO.md#common)).
 - **Self-test.** `SelfTest(T_INIT)` initialises the devices, sets TEST and
   `test_status` TEST_RUNNING, and sets the RAM flag `test_pending`. The next
   pass, `SelfTest(T_CONT)`, runs `test()` if the flag is set, then returns to

@@ -17,7 +17,7 @@ number appears once and has provenance. The procedure is
 [power testing](../../../../../docs/bench/power-testing.md). The diagnosis
 behind the 2026-09 entries is in
 [the campaign investigation](investigations/2026-09-prestag-stop2-and-power-campaign.md);
-open items are in [`../TODO.md`](../TODO.md). The 2026-09-08/09 campaign
+open items are in [`../TODO.md`](../../../../../TODO.md#prestag). The 2026-09-08/09 campaign
 summary at the end holds the fit, the lifetime tables and the gate verdicts.
 
 ## Format

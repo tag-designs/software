@@ -15,7 +15,7 @@ sources (see [What a build actually needs](#what-a-build-actually-needs)).
 Generated sources are committed for the distributed set, every image carries a manifest keyed
 on its own SHA-256, and the conditions that would quietly make a build
 unreproducible are detected at configure time. A commit determines its image
-byte for byte. The gaps that remain are in the [build worklist](TODO.md).
+byte for byte. The gaps that remain are in the [build worklist](../../TODO.md#build).
 
 ## Purpose and scope
 
@@ -147,7 +147,7 @@ Three choices in there are worth keeping in mind:
   one machine and not another would cause false staleness. Instead configure
   checks the `fmpp` it finds against the `FMPP_VERSION` pin (0.9.16) whenever
   boards can regenerate. The per-image build manifest does not record `fmpp`
-  either; that gap is in the [build worklist](TODO.md).
+  either; that gap is in the [build worklist](../../TODO.md#build).
 
 ### The two switches
 
@@ -223,7 +223,7 @@ build.
 `GIT_COMMIT_SUBJECT`, `GIT_REPO`, `GIT_DIRTY`, `GIT_DIRTY_STR`,
 `CHIBIOS_SHA` and `NANOPB_RUNTIME_VERSION`. The last four are macros that cost
 nothing unless referenced, and nothing references them yet -- see the
-[build worklist](TODO.md).
+[build worklist](../../TODO.md#build).
 
 ### What a build actually needs
 
@@ -431,4 +431,4 @@ The choices behind this model, with the evidence for each:
 
 How the build was found to be unreproducible, and the first release run, are in
 the [build reproducibility investigation](../investigations/2026-09-firmware-build-reproducibility.md).
-Known gaps and open questions are in the [build worklist](TODO.md).
+Known gaps and open questions are in the [build worklist](../../TODO.md#build).

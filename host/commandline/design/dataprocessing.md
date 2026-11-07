@@ -11,7 +11,7 @@ a new file and adds durable derived tables, stream metadata, and a
 `ProcessingRun` provenance row to the copy. It has three processors: two for
 CompassTag, `compass-calibrated` and `compass-orientation`, and one for IMUTag,
 `imu-compass-orientation`. The input file is never modified. Usage is in the [command-line README](../README.md#dataprocessing);
-open work is in [TODO.md](../TODO.md).
+open work is in [TODO.md](../../../TODO.md#command-line).
 
 ## Why It Exists
 
@@ -307,12 +307,12 @@ the quaternions itself with `CompassProcessor`. Heading, pitch and roll are
 then computed from the quaternion in either case, so an IMUTag log -- for which
 SensorViz derives no orientation itself -- gets the same compass streams and
 panel once processed. File Info names the source. SensorViz does not read
-`ProcessingRun`. The remaining open questions are in [TODO.md](../TODO.md).
+`ProcessingRun`. The remaining open questions are in [TODO.md](../../../TODO.md#command-line).
 
 ## Verification
 
 There are no automated tests for `dataprocessing`. The checks to make by hand
-or in a future test are listed in [TODO.md](../TODO.md).
+or in a future test are listed in [TODO.md](../../../TODO.md#command-line).
 
 The original step-by-step implementation plan is kept, as history, in
 [proposals/dataprocessing-implementation-plan.md](proposals/dataprocessing-implementation-plan.md).

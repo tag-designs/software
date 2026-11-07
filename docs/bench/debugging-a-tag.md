@@ -138,7 +138,7 @@ reaches it. What is known about keeping it:
   `SRAMxPDSn` Stop-mode power-down bit stays at its reset value of 0 (page
   powered), and the wake ends in a software reset, which does not clear SRAM.
   No A/B has been run on this path; it is open in the
-  [TODO](../../embedded/tags/TODO.md).
+  [TODO](../../TODO.md#common).
 - **A real Standby, with `tagScratchRetain()` armed.** This was checked by A/B
   on the retired Standby path: the armed build came back with `seq` counting
   every boot, and the unarmed control came back as noise
@@ -526,7 +526,7 @@ Every item here was learned by doing it.
 
 ## See also
 
-- [`embedded/tags/TODO.md`](../../embedded/tags/TODO.md) -- known unfixed defects
+- [`TODO.md`, Embedded > Tags > Common](../../TODO.md#common) -- known unfixed defects
 - `embedded/tags/common/core/design/restart-recovery.md` -- boot and recovery paths
 - `embedded/tags/common/core/design/i2c-bus-recovery.md` -- why attach resets matter
 - [Power Testing](power-testing.md) -- measurement procedure

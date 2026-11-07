@@ -12,7 +12,7 @@ synthetic sample ticker into a fake external NOR and a fake internal header
 array, then downloads every page through the real `data_logAck()`.
 
 Its subject is fix A3 from the `firmware-fix` branch
-(see [firmware TODO](../../../TODO.md)):
+(see [firmware TODO](../../../../../TODO.md#common)):
 
 - Flash size is not a multiple of the 240-byte page, so the end of the part cuts
   the final page short. When the flash fills, that page must still be downloaded

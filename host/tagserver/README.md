@@ -104,7 +104,7 @@ expect it to take the better part of an hour.
 ### Recording the results
 
 Record a platform that passes in
-[tagcore's TODO](../libraries/tagcore/TODO.md#verify-tag-server-on-hardware-and-other-platforms):
+[tagcore's TODO](../../TODO.md#verify-tag-server-on-hardware-and-other-platforms):
 the OS and compiler, the test counts, and the tag used for the hardware run.
 When both platforms pass, delete the item. For a failure, note the first
 error in the same place.

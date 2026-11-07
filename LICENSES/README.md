@@ -25,7 +25,7 @@ the legacy option (`-DBUILD_LEGACY_HOST=ON`) and are not released. The
 external flash loaders contain no GPL code either.
 
 Where something still needs fixing before a release is fully compliant, it is
-in [TODO.md](TODO.md).
+in [TODO.md](../TODO.md#licensing).
 
 ## What is here
 

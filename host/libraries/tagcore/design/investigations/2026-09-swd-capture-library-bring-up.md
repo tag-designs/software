@@ -11,7 +11,7 @@ The dated record of building `tagcore/recovery` and the `tag-capture` and
 status as last recorded, each implementation step with its original plan and
 what its check found, and two findings made along the way. Closed:
 - the design as built is [SWD Capture and Recovery Library](../../../tagcore-rs/design/swd-recovery.md);
-- the checks still open are in [recovery/TODO.md](../../../tagcore-rs/TODO.md);
+- the checks still open are in [recovery/TODO.md](../../../../../TODO.md#tagcore-rs);
 - the unbuilt steps 6-8 are in
   [their proposal](../proposals/recovery-identification-rescue-python.md).
 
@@ -198,7 +198,7 @@ around `tag-capture`.
 downloaded normally, with its data intact.
 
 **9. Identity record (firmware).** *Done in the firmware, ahead of steps 4-8*
-(`embedded/tags/TODO.md` B1). It is in every family.
+(`TODO.md`, Embedded > Tags > Common B1). It is in every family.
 It was checked on hardware on a PresTag. What remains here is the host side:
 identification (step 7) should read the record first.
 Original plan: specify it with the session superblock, add

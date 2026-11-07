@@ -8,7 +8,7 @@ summary: Two testing capabilities - Qt applications and command line tools runni
 
 **Status:** phases 1 and 2 are built. The monitor side channel, keepalive and
 `LastError` are in tagcore, verified on L4 and U3 tags
-([TODO](../../TODO.md)). `tag-server` is in
+([TODO](../../../../../TODO.md#tagcore)). `tag-server` is in
 [`host/tagserver`](../../../../tagserver/README.md) and its Python client in
 [`host/python/tagclient`](../../../../python/tagclient/README.md). Phase 3, the
 simulator, is not built.

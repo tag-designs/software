@@ -24,7 +24,7 @@
  *          with the CPU the only enabled bus master, the bus matrix stops in
  *          Sleep, and every debug access to SRAM then reads zero as a success
  *          and drops writes, which would break the mailbox while the tag
- *          idles (embedded/tags/UIUCTag/TODO.md).
+ *          idles (TODO.md, Embedded > Tags > UIUCTag).
  *
  *          The service path, heartbeat and kick dispatch mirror handlersU3.c.
  *          They are kept separate for now so that the qualified STM32U375

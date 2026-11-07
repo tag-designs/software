@@ -8,7 +8,7 @@ summary: Two ADC defects dating to the initial commit, found because one breakou
 
 2026-10-04 to 2026-10-05. Everything here is on the bench at 2.496 V, the
 unregulated cell voltage the L432 tags run from. Open items are in
-[the tag worklist](../../TODO.md) and the per-tag worklists it links.
+[the tag worklist](../../../../TODO.md#common) and the per-tag worklists it links.
 
 ## 1. What started it
 

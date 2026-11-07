@@ -74,7 +74,7 @@ the write succeed.
 erase before programming as IMUTag does. This is what actually fixes the write.
 It is a linker change per target and wants measuring afterwards, since it
 moves regions in internal flash -- see the calibration relocation in
-[the CompassTag worklist](../../families/CompassTag/TODO.md) for the same class
+[the CompassTag worklist](../../../../TODO.md#compasstag) for the same class
 of change and what it costs.
 
 Part 1 is worth doing on its own and should land first: it is small, it is

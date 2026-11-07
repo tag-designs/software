@@ -34,7 +34,7 @@ it says so below.
 - **No final start, stop and erase.** As qtprogram since a05900f6, the
   session ends after the self-tests with the tag IDLE: a start belongs to a
   deployment, and on a PresTag it left the RTC locked so the clock setting
-  after the final erase hung the firmware (`embedded/tags/TODO.md`).
+  after the final erase hung the firmware (`TODO.md`, Embedded > Tags > Common).
   `qtprogram-spec.md` describes the earlier sequence.
 - A program failure reads "Programming failed (<error>). The probe's
   messages are in the log." and the Retest read-back failure reads "probe-rs

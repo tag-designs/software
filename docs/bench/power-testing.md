@@ -167,7 +167,7 @@ attempts, because the device renumbers. Afterwards the range mode reads 0
 - **Check the configuration from the data, not from the host's echo.**
   `tag-start` prints the configuration it requested, not the one that was
   programmed. On PresTag a stale stored configuration has silently survived a
-  reset-and-start (see the PresTag [TODO](../../embedded/tags/families/PresTag/TODO.md)).
+  reset-and-start (see the PresTag [TODO](../../TODO.md#prestag)).
 
 ## 4. Taking the measurement
 

@@ -71,7 +71,7 @@ qtprogram --flash-plan <elf>...
 The programmer never starts the tag: a start belongs to a deployment. It used
 to start, stop and erase it once more after the tests; on a PresTag that start
 leaves the RTC write-protected until the next reset, and the clock setting
-that followed hung the firmware (`embedded/tags/TODO.md`, Defects).
+that followed hung the firmware (`TODO.md`, Embedded > Tags > Common, Defects).
 
 A board whose firmware does not answer (blank, or in its bootloader) starts at
 step 3. If the new image does not answer, the window asks for a power cycle;

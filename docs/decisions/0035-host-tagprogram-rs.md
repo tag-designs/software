@@ -62,7 +62,7 @@ approach general enough for the other host applications.
   PresTag the start left the RTC write-protected, and the SetRtc that followed
   hung the firmware for the monitor's whole timeout. A start belongs to a
   deployment. The session now ends IDLE after the self-tests. The firmware
-  defect, accepting SetRtc after a start, is in `embedded/tags/TODO.md`.
+  defect, accepting SetRtc after a start, is in `TODO.md`, Embedded > Tags > Common.
 - **Confirm a label already recorded for another tag.** qtprogram only noted
   it in the Program dialog. Tag Programmer asks again before going on, with
   Cancel the default.

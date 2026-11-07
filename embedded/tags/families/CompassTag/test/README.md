@@ -12,7 +12,7 @@ synthetic 30 s ticker into a fake external NOR and a fake internal header array,
 then downloads every page through the real `data_logAck()`.
 
 It checks two fixes from the `firmware-fix` branch
-(see [firmware TODO](../../../TODO.md)). Both are
+(see [firmware TODO](../../../../../TODO.md#common)). Both are
 slow to reproduce on a tag:
 
 - **A1, resume cursor.** After a reset, `restoreLog()` followed by

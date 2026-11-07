@@ -27,7 +27,7 @@ either, and neither figure came from a release image.
 The rig, the Joulescope server, flashing, supply voltage and what to record are
 in the shared
 [power testing procedure](../../../../../docs/bench/power-testing.md). Open work
-is in [`../TODO.md`](../TODO.md). Measurements go in
+is in [`../TODO.md`](../../../../../TODO.md#compasstag). Measurements go in
 [`power-results.md`](power-results.md).
 
 ## 0. Inputs
@@ -313,7 +313,7 @@ artefacts GPIO markers have produced on this bench.
 - **Sample-period sweep.** There is no sweep to run: the period is a
   compile-time constant.
 - **Scheduled start and stop, and hibernation.** Exercised on real hardware in
-  2026-09 but not part of this gate; see [`../TODO.md`](../TODO.md).
+  2026-09 but not part of this gate; see [`../TODO.md`](../../../../../TODO.md#compasstag).
 - **Board-to-board spread.** CompassTag boards have needed per-board attention.
   Record the UUID and do not generalise from one unit.
 - **Relocating calibration across a firmware update.** This plan refuses to

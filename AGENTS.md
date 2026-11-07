@@ -44,7 +44,7 @@ that save the most time.
 | Design rationale for an existing subsystem | the nearest `design/` directory; every document is listed in `docs/index.md` |
 | Measuring power, verifying a firmware change on hardware, debugging or capturing a tag | `docs/bench/README.md` |
 | Why something was built the way it was | `docs/decisions/` (numbered records), then the owner's `design/investigations/` |
-| Open work for a subsystem | the `TODO.md` in that subsystem's directory, e.g. `embedded/tags/TODO.md` |
+| Open work for a subsystem | [`TODO.md`](TODO.md) at the root: one list, in sections that follow the tree (Host, Embedded, Repository) |
 
 Two conventions that are easy to miss and expensive to rediscover:
 

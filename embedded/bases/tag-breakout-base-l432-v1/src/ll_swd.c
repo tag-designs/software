@@ -362,7 +362,7 @@ static uint32_t SWD_Transaction(uint32_t req, uint32_t *data, uint32_t retry)
             (unsigned)TIME_I2MS(chVTTimeElapsedSinceX(start)), (unsigned)ack,
             (unsigned)req);
   // A WAIT that outlasts every retry is the first suspect for 0x81 bursts
-  // (embedded/bases/TODO.md); say how long the target held the bus off.
+  // (TODO.md, Embedded > Bases); say how long the target held the bus off.
   if (ack == SW_ACK_WAIT && waits > 1)
     EPRINTF("swd wait x%u req %02x\r\n", (unsigned)waits, (unsigned)req);
   return ack; // errors handled up call chain

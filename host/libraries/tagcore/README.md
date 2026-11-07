@@ -61,7 +61,7 @@ Design documents:
   original's bring-up log stays here, in
   [`design/investigations/2026-09-swd-capture-library-bring-up.md`](design/investigations/2026-09-swd-capture-library-bring-up.md);
   open work, `CaptureSource`'s included, is in the
-  [tagcore-rs TODO](../tagcore-rs/TODO.md).
+  [tagcore-rs TODO](../../../TODO.md#tagcore-rs).
 - [`design/proposals/python-interface.md`](design/proposals/python-interface.md):
   proposed Python binding API, native/protobuf boundary, shared download
   service, packaging, and testing plan. No binding exists yet.

@@ -15,7 +15,7 @@
 //! The session deliberately does **not** start the tag at the end, unlike
 //! the sequence in `design/qtprogram-spec.md`: a start belongs to the tag's
 //! deployment, and on a PresTag a SetRtc after a start hangs the firmware
-//! (`embedded/tags/TODO.md`). The tag is left IDLE.
+//! (TODO.md, Embedded > Tags > Common). The tag is left IDLE.
 //!
 //! # Retest
 //!
@@ -622,7 +622,7 @@ impl Station {
         // Done. The programmer does not start the tag: a start belongs to
         // its deployment, and on a PresTag it leaves the RTC write-protected
         // until the next reset, so a later SetRtc hangs the firmware
-        // (embedded/tags/TODO.md). The tag stays IDLE.
+        // (TODO.md, Embedded > Tags > Common). The tag stays IDLE.
         let s = self.sess();
         let (result, message) = if s.commit_mismatch {
             (

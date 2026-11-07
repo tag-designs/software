@@ -26,8 +26,8 @@ remaining 0x81 errors come from the protocol or from the base.
 On a UIUCTag breakout (STM32L432, `tag-breakout-base-l432-v1`), Synchronize
 Clock and Self-Test each set off bursts of base 0x81
 (`STLINK_DEBUG_ERR_FAULT`) errors. The details are in the Defects item of
-[the tags worklist](../../../../TODO.md) and the 0x81 item of
-[the bases worklist](../../../../../bases/TODO.md). In short:
+[the tags worklist](../../../../../../TODO.md#common) and the 0x81 item of
+[the bases worklist](../../../../../../TODO.md#bases). In short:
 
 - **The handler drops overlapping requests.** `DebugMon_Handler`
   (`common/core/src/handlersL4.c`) latches a PROTOBUF request and leaves

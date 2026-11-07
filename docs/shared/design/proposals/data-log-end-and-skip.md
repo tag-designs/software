@@ -19,7 +19,7 @@ returns from `data_logAck()`:
 Every other reply without records ends the log, as it already does on every
 family. Each downloader follows that one rule, implemented once in tagcore, and
 no download decision reads a data count. It closes the "missing blocks" item in
-the [shared contracts worklist](../../TODO.md#data-log-download).
+the [shared contracts worklist](../../../../TODO.md#data-log-download).
 
 ## Why the counts cannot be the rule
 

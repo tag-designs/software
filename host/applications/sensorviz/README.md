@@ -15,7 +15,7 @@ is tested against ([decision 0042](../../../docs/decisions/0042-host-rust-defaul
 written by the host download tools: BitTag, BitPresTag, PresTag, UIUCTag,
 CompassTag and IMUTag. It replaces the retired `compviz`.
 
-Open work is in [TODO.md](TODO.md). The original plan for the user-guide
+Open work is in [TODO.md](../../../TODO.md#sensorviz). The original plan for the user-guide
 screenshot hooks is kept, as history, in
 [screenshot-capture-plan.md](design/proposals/screenshot-capture-plan.md); the
 hooks as built are described under
@@ -539,7 +539,7 @@ menu entries.
 There is no dialog screenshot suite. The dialogs in `stream_actions.cpp`,
 `controls.cpp`, and `transforms.cpp` are blocking, so they cannot be shown
 modelessly, captured, and closed without user input; the refactor that would
-allow it is in [TODO.md](TODO.md).
+allow it is in [TODO.md](../../../TODO.md#sensorviz).
 
 Example local checks:
 
@@ -602,7 +602,7 @@ diff /tmp/before.txt /tmp/after.txt
 - There are no automated GUI tests for menu organization, preference
   load/store, metadata-box interaction, or plot-title behavior.
 
-Planned work on these is in [TODO.md](TODO.md).
+Planned work on these is in [TODO.md](../../../TODO.md#sensorviz).
 
 ## Build Check
 

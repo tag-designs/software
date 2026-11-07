@@ -107,7 +107,7 @@ Each is small; together they are the first phase.
    Qt layer. Shipping Tag View alone drops the feature. **Decided
    2026-10-31: release without it.** The Tag View manual page says so, and
    porting it into the core (the proposal `toolkit-neutral-core.md`
-   reserved it) goes to `host/applications/sensorviz-rs/TODO.md` for a
+   reserved it) goes to `TODO.md`, Host > Applications > Tag View for a
    later release.
 5. **`tag-log-import`.** Promote `taglogwriter`'s `log-import` example to a
    `tag-tools` binary of that name (an afternoon), so the only C++ tools
@@ -149,7 +149,7 @@ C++ tool's on a tagsim download, linked both ways, and tagsim's tests pass
 with it; `taglogwriter`'s `log-import` example, which it supersedes, is
 removed. Retiring the C++ tool waits for `BUILD_LEGACY_HOST` in phase 2, as
 does building the Rust one into `bin/internal`. The activity filter is
-recorded in `host/applications/sensorviz-rs/TODO.md` and the Tag View manual
+recorded in `TODO.md`, Host > Applications > Tag View and the Tag View manual
 page. Bench checks 1 to 4 below passed the same day on a BitTag V6 and the
 IMUTagNandBmp581; the results are in `host/commandline-rs/README.md` and
 Tag Programmer's README, and check 5 waits for the phase 2 packages.

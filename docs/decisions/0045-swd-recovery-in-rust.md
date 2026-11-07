@@ -70,7 +70,7 @@ On 2026-11-06, Rust against C++ on the same tag state, all at fw `3a49003b`:
 - **UIUCTag breakout** (`2036354B3032500800520028`): internal captures
   identical and 512 KB reads identical, but long loader sessions failed with
   both tools on its `tag-breakout-base-l432-v1` base, a base fault recorded in
-  the [tagcore-rs TODO](../../host/libraries/tagcore-rs/TODO.md).
+  the [tagcore-rs TODO](../../TODO.md#tagcore-rs).
 - C++ and Rust `tag-rebuild` gave identical SQLite on every capture, and the
   data tables matched the download.
 

@@ -1,5 +1,5 @@
 //! `provoke_0x81`: provokes the base's 0x81 (STLINK_DEBUG_ERR_FAULT) bursts
-//! on an L4 tag and counts them, for `embedded/bases/TODO.md`.
+//! on an L4 tag and counts them, for TODO.md, Embedded > Bases.
 //!
 //! Talks to the tag with tagcore directly, not through the engine, because the
 //! engine pauses its polls after exactly the commands that set the bursts off.

@@ -87,7 +87,7 @@ recalibration instead.
   CompassTag power measurement.
 - [Standby-after-attach investigation](design/investigations/2026-09-compasstag-standby-after-attach.md):
   the 2026-09 fault that drew ~365 uA in every terminal state after an attach.
-- [TODO](TODO.md): open power and monitor items.
+- [TODO](../../../../TODO.md#compasstag): open power and monitor items.
 
 ## Host simulation
 

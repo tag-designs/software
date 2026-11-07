@@ -375,7 +375,7 @@ void ProgramSession::tick()
     // Done. The programmer does not start the tag: a Start belongs to its
     // deployment, and on a PresTag it arms the stop-mode RTC ticker, which
     // leaves the RTC write-protected until the next reset (a SetRtc then
-    // hangs the firmware; embedded/tags/TODO.md). The tag stays IDLE.
+    // hangs the firmware; TODO.md, Embedded > Tags > Common). The tag stays IDLE.
     {
       const bool passed = result_.testStatus == QLatin1String("ALL_PASSED");
       finish(mismatch_ ? QStringLiteral("MISMATCH")

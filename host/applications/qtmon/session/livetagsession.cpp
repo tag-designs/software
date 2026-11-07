@@ -24,7 +24,7 @@ constexpr int kAfterStopMs = 250;
  *
  * @details While the tag sets its RTC or runs its self-tests, debug access
  *          to it fails in bursts (the base reports 0x81; see
- *          embedded/bases/TODO.md), so polling then only fills the log with
+ *          TODO.md, Embedded > Bases), so polling then only fills the log with
  *          errors. One status is read when the pause ends, and the model
  *          judges the command from it as before. It is shorter than
  *          qtmon::kNoAnswerMs, so the pause alone never shows the tag as not

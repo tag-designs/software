@@ -202,7 +202,7 @@ the reasons are in [Tag Monitor Interface](../../../../../docs/shared/monitor-in
 and [0006](../../../../../docs/decisions/0006-monitor-u3-attachment-is-the-shared-session.md).
 The difference between the two paths means that during an attach grace period, Stop 3 can
 be entered while returned-idle STOP cannot. Whether that is intended is an open
-question in [the tag TODO](../../../TODO.md). Debugger attachment alone is not
+question in [the tag TODO](../../../../../TODO.md#common). Debugger attachment alone is not
 monitor attachment: `monitorIsAttached()` can be false under a debugger.
 
 ## What is not provided
