@@ -126,6 +126,61 @@ whose region layout version the decoder does not know. A rebuild that fails
 part way removes its output. How the rebuild is built is in
 [decision 0018](../decisions/0018-offline-rebuild-capture-backed-source.md).
 
+## Rescuing a tag
+
+A rescue erases both flashes of a tag whose own firmware cannot erase its log:
+a corrupted log, an image that will not boot, or a log written by firmware
+that is gone. It is three steps, each its own session, run one at a time so
+that each can be watched and checked before the next. The order is fixed by
+[Loader Runtime Design, Rescue erase](../../embedded/loaders/design/loader-runtime.md#rescue-erase):
+a blank internal flash over a still-written external flash makes the next run
+program new pages over old data without any error, so the external flash
+goes first, and an interruption after it leaves a state `tag-reset` repairs.
+
+0. **Capture the tag**, with its build, before anything else:
+
+   ```sh
+   build-host/bin/internal/tag-capture --reason "before rescue" \
+       --with-build <build dir of the image it runs>
+   ```
+
+1. **Erase the external flash and prove it blank**, through the `-RW` build of
+   the tag's loader, naming the capture:
+
+   ```sh
+   build-host/bin/internal/tag-xflash rescue-erase \
+       --loader <loaders>/AT25XE_PresTagv3/AT25XE_PresTagv3-RW/build/AT25XE_PresTagv3-RW.stldr \
+       --capture captures/capture-YYYYmmdd-HHMMSS
+   ```
+
+   It reads every sector, erases those that hold data and reads each of them
+   back blank. It refuses a capture of another tag (matched by chip UID), a
+   read-only loader, and a part the image's identity record does not name;
+   `--no-capture` erases without a capture. NOR parts only: the IMUTag's SPI
+   NAND has no writable loader yet. A 4 MB AT25XE takes about a minute.
+
+2. **Erase the internal flash and reflash**, then run the self-tests:
+
+   ```sh
+   build-host/bin/tag-flash program --erase plan <image.elf>
+   build-host/bin/tag-test
+   ```
+
+   `--erase plan` erases everything but the calibration page on an
+   STM32L432; `--erase all` erases that too.
+
+3. **`tag-reset`**, so the firmware erases what its index covers and clears
+   `pState`.
+
+Then run the tag briefly and download it, or run
+`tag_rebuild_check.py run`, which does both and checks the result. On
+2026-11-06 this procedure was run on the bench PresTag
+`20333050364150040063005F` (fw `3a49003b`) holding a 1,801-sample log: step 1
+erased the 2 sectors in use and read all 4 MB back blank in 55 s (an
+independent dump agreed); after step 2 the firmware had already reset
+`pState` to IDLE with no pages; and a 180 s run at 1 s then passed the
+rebuild check with only the new samples in its download.
+
 ## Keeping the rebuild in step with the firmware
 
 The decoders in `host/libraries/tagcore/recovery/capturesource.cc` are a second

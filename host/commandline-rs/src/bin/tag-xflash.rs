@@ -17,13 +17,24 @@
 //!   raw and through ECC. Writes `raw.bin`, `ecc.bin`, `pages.csv` and
 //!   `summary.txt`.
 //!
+//! - `tag-xflash rescue-erase --loader <image-RW.stldr> (--capture <dir> |
+//!   --no-capture)` is step 1 of a rescue: it erases every sector of a NOR
+//!   part that is not blank and reads each one back blank
+//!   (`tagcore::recovery::rescue`). It refuses a read-only loader, a paged
+//!   part, a part the image's identity record does not name, and, unless
+//!   `--no-capture` is given, a capture directory of a different tag
+//!   (matched by chip UID). Steps 2 (`tag-flash` internal erase and
+//!   reflash) and 3 (`tag-reset`) are run separately, so each can be
+//!   watched; see `docs/bench/capturing-a-tag.md`, "Rescuing a tag".
+//!
 //! No code from internal flash runs, and internal flash is not written.
 //! Downloading the loader overwrites the start of SRAM1: run `tag-capture`
 //! first if SRAM matters.
 //!
 //! # Exit status
 //!
-//! 0 the whole range was read, 1 otherwise. Option errors exit 2 (clap).
+//! 0 the whole range was read (or, for `rescue-erase`, the part is proved
+//! blank), 1 otherwise. Option errors exit 2 (clap).
 
 use std::fs::File;
 use std::io::Write as _;
@@ -34,8 +45,8 @@ use std::time::{Duration, Instant};
 use clap::{Parser, ValueEnum};
 use tag_tools::{BaseArgs, init_logging, select_base_from};
 use tagcore::recovery::{
-    ExternalCaptureOptions, ExternalFlash, Session, SramCall, SwdExit, TargetImage,
-    capture_external_flash,
+    CaptureCheck, ExternalCaptureOptions, ExternalFlash, RescueProgress, Session, SramCall,
+    SwdExit, TargetImage, capture_external_flash, rescue_erase,
 };
 
 /// Offset of the device name in the loader's `StorageInfo`
@@ -58,6 +69,9 @@ enum Command {
     Dump,
     /// Whole pages, raw and through ECC, into the --out directory
     Nand,
+    /// Rescue step 1: erase the external flash and prove it blank (NOR,
+    /// -RW loader)
+    RescueErase,
 }
 
 /// read a tag's external flash over SWD through a loader
@@ -68,8 +82,8 @@ struct Cli {
     #[command(flatten)]
     base: BaseArgs,
 
-    /// dump (linear data) or nand (whole pages, raw and ECC, into the --out
-    /// directory)
+    /// dump (linear data), nand (whole pages, raw and ECC, into the --out
+    /// directory) or rescue-erase
     command: Command,
 
     /// Loader image (.stldr or .elf)
@@ -77,8 +91,17 @@ struct Cli {
     loader: PathBuf,
 
     /// Output file (dump) or existing directory (nand)
-    #[arg(short, long)]
-    out: PathBuf,
+    #[arg(short, long, required_if_eq_any([("command", "dump"), ("command", "nand")]))]
+    out: Option<PathBuf>,
+
+    /// rescue-erase: a tag-capture directory of this tag (matched by chip
+    /// UID), proving its evidence was kept
+    #[arg(long, conflicts_with = "no_capture")]
+    capture: Option<PathBuf>,
+
+    /// rescue-erase: erase without a capture of the tag
+    #[arg(long)]
+    no_capture: bool,
 
     /// First byte of the part to read
     #[arg(long, default_value_t = 0, value_parser = parse_u32)]
@@ -305,11 +328,66 @@ fn dump_nand(s: &mut Session, loader: &TargetImage, cli: &Cli, dir: &Path) -> Re
     Ok(())
 }
 
+/// The `--out` path, which clap requires for `dump` and `nand`.
+fn out_path(cli: &Cli) -> &Path {
+    cli.out.as_deref().expect("clap requires --out for dump and nand")
+}
+
+/// Rescue step 1: erases the external flash and proves it blank.
+fn rescue(s: &mut Session, loader: &TargetImage, cli: &Cli) -> Result<(), String> {
+    let check = match (&cli.capture, cli.no_capture) {
+        (Some(dir), _) => CaptureCheck::Capture(dir),
+        (None, true) => CaptureCheck::NoCapture,
+        (None, false) => {
+            return Err("rescue-erase needs --capture <dir> of this tag, or --no-capture".into());
+        }
+    };
+    println!("loader  {} (Serve)", loader.path().display());
+    let t0 = Instant::now();
+    let mut next = 0u32;
+    let mut show = |p: &RescueProgress| {
+        if p.done >= next || p.done == p.total {
+            print!(
+                "\r        {} / {} bytes scanned, {} sectors erased, {:.0} s",
+                p.done,
+                p.total,
+                p.erased,
+                t0.elapsed().as_secs_f64()
+            );
+            let _ = std::io::stdout().flush();
+            next = p.done + 128 * 1024;
+        }
+    };
+    let r = rescue_erase(s, loader, check, Some(&mut show));
+    println!();
+    let r = r?;
+    println!(
+        "        tag {}  JEDEC 0x{:06X}  SR1 as found 0x{:02X}",
+        r.uid, r.jedec, r.sr1
+    );
+    for n in &r.notes {
+        println!("        note: {n}");
+    }
+    println!(
+        "        {} of {} {}-byte sectors held data and were erased; all {} bytes read back blank in {:.1} s",
+        r.sectors_erased, r.sectors_scanned, r.sector_size, r.size, r.seconds
+    );
+    println!(
+        "        next: step 2, erase and reflash the internal flash (tag-flash); then step 3, tag-reset"
+    );
+    Ok(())
+}
+
 /// Parses options and runs the command.
 fn main() -> ExitCode {
     tag_tools::restore_sigpipe();
     let cli = Cli::parse();
     init_logging(&cli.base);
+    // Checked before attaching, so a missing option costs nothing on the tag.
+    if matches!(cli.command, Command::RescueErase) && cli.capture.is_none() && !cli.no_capture {
+        eprintln!("rescue-erase needs --capture <dir> of this tag, or --no-capture");
+        return ExitCode::from(2);
+    }
 
     let loader = match TargetImage::load(&cli.loader) {
         Ok(l) => l,
@@ -331,9 +409,10 @@ fn main() -> ExitCode {
     );
 
     let result = match cli.command {
-        Command::Nand => dump_nand(&mut s, &loader, &cli, &cli.out),
-        Command::Dump => match File::create(&cli.out) {
-            Err(_) => Err(format!("cannot write {}", cli.out.display())),
+        Command::RescueErase => rescue(&mut s, &loader, &cli),
+        Command::Nand => dump_nand(&mut s, &loader, &cli, out_path(&cli)),
+        Command::Dump => match File::create(out_path(&cli)) {
+            Err(_) => Err(format!("cannot write {}", out_path(&cli).display())),
             Ok(mut out) => {
                 if !cli.st && loader.symbol("loaderService").is_some() {
                     dump_serve(&mut s, &loader, &cli, &mut out)

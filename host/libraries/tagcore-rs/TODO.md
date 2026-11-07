@@ -19,13 +19,19 @@ The capture additions still to build are D3 in
 
 ## Checks never run
 
-- **Erase through `Serve()`.** The read-only image must refuse erase through
-  `Serve()`, and the loaders README bench sequence (pattern, overwrite, refuse,
-  restore) must pass through `ExternalFlash` with the `-RW` image. No tool
-  issues an erase yet.
+- **Program through `Serve()`, and the read-only image's own refusal.** Erase
+  through `Serve()` has run (the rescue erase, 2026-11-06), but no tool has
+  programmed through it, and `rescue-erase` refuses a read-only image on the
+  host before the loader is asked. The loaders README bench sequence (pattern,
+  overwrite, refuse, restore) must pass through `ExternalFlash` with the `-RW`
+  and read-only images; it is the Python binding's check.
 
 ## Open work
 
+- **A NAND rescue.** `rescue-erase` is NOR only. The IMUTag's GD5F has no
+  writable loader, and a NAND erase must skip factory-marked bad blocks (and
+  leave the firmware's bad-block map, which lives in internal flash, to be
+  rebuilt by `tag-test`).
 - **The GD5F logical block count (2008) is a constant in the IMUTag capture
   decoder.** Move it into the identity record's numbers, so the record carries
   every constant the decoder multiplies by.

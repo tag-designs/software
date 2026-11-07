@@ -6,7 +6,7 @@ summary: The unbuilt parts of the SWD recovery library - identifying older image
 
 # Recovery Library: Identification, Rescue and Python
 
-None of this is built. The capture and loader parts of the library are built and
+Of this, the rescue is built (for NOR parts); the rest is not. The capture and loader parts of the library are built and
 described in [SWD Capture and Recovery Library](../../../tagcore-rs/design/swd-recovery.md). What remains
 is three pieces, each ended by a check on a bench tag, in whatever order they are
 needed:
@@ -92,6 +92,12 @@ derive the distributed board set. For the mapping from board to loader,
 - a mismatched explicit argument is reported.
 
 ## Rescue
+
+*Built 2026-11-06, NOR parts only*: `tag-xflash rescue-erase` (step 1, in
+tagcore-rs `recovery/rescue.rs`), with steps 2 and 3 kept as separate,
+watched sessions ([Capturing a Tag, Rescuing a tag](../../../../../docs/bench/capturing-a-tag.md#rescuing-a-tag)).
+The check below passed on a bench PresTag. A NAND rescue needs a writable
+NAND loader first. What follows is the plan as written.
 
 A `Rescue` procedure and `tag-xflash rescue-erase`. The order is:
 1. external erase, with a blank-check;

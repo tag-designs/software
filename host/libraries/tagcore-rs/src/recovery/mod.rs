@@ -19,6 +19,7 @@
 //! | [`identity`] | Parse the identity record from captured internal flash |
 //! | [`external`], [`capture`] | The capture procedure: ordering, output directory, manifest |
 //! | [`build`] | The firmware build stored with a capture, and whether it matches the flash |
+//! | [`rescue`] | The rescue erase: blank the external flash, proved, before an internal erase |
 //!
 //! A recovery session and a monitor session are alternatives: each claims
 //! the base for its lifetime. Procedures that need both run them in
@@ -32,6 +33,7 @@ pub mod external;
 pub mod identity;
 pub mod image;
 pub mod mcu;
+pub mod rescue;
 pub mod session;
 pub mod sramcall;
 pub mod xflash;
@@ -42,6 +44,7 @@ pub use external::{ExternalCaptureOptions, ExternalCaptureResult, capture_extern
 pub use identity::{IdentityRecord, find_identity_record, parse_identity_record, record_offsets};
 pub use image::TargetImage;
 pub use mcu::{McuMap, McuRegion, find_mcu};
+pub use rescue::{CaptureCheck, RescueProgress, RescueReport, rescue_erase};
 pub use session::{AddressRange, AttachInfo, Session, SwdExit};
 pub use sramcall::SramCall;
 pub use xflash::ExternalFlash;

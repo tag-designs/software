@@ -182,6 +182,14 @@ it is chosen by hand. Downloading the loader overwrites the start of SRAM1, so
 run `tag-capture` first if SRAM matters. A 4 MiB part takes about a minute.
 See [Loader Runtime Design](../../embedded/loaders/design/loader-runtime.md).
 
+`tag-xflash rescue-erase --loader <...-RW.stldr> --capture <dir>` is step 1 of
+a rescue: it erases every sector of a NOR part that holds data and reads each
+back blank, refusing a capture of another tag (by chip UID), a read-only
+loader and a part the image does not name; `--no-capture` erases without a
+capture. Steps 2 and 3 (`tag-flash program --erase plan`, then `tag-reset`) are
+run separately; see
+[Capturing a Tag, Rescuing a tag](../../docs/bench/capturing-a-tag.md#rescuing-a-tag).
+
 ## tag-sramcall
 
 Calls one function of an SRAM-resident image on a halted tag and prints the

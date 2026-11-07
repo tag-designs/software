@@ -27,8 +27,9 @@ These tools, in `host/commandline-rs`, are built on it:
 Their usage is in the
 [command-line tools README](../../../commandline-rs/README.md), and the
 bench procedure is [Capturing a Tag](../../../../docs/bench/capturing-a-tag.md).
-Three pieces are not built: the Python binding, identification of images
-without an identity record, and rescue erase. They are proposed in
+`tag-xflash rescue-erase` is step 1 of a rescue (below). Two pieces are not
+built: the Python binding and identification of images without an identity
+record. They are proposed in
 [Identification, Rescue and Python](../../tagcore/design/proposals/recovery-identification-rescue-python.md).
 Open work is in [the tagcore-rs TODO](../TODO.md).
 
@@ -330,7 +331,29 @@ ST-style entry point with the traced convention:
 Any `.stldr` still works through it, ST's own included (`tag-xflash dump --st`),
 and so does an SRAM probe such as `RV3028_PresTagv3` (`tag-sramcall`).
 
-## Library architecture
+## Rescue erase
+
+A rescue blanks both flashes of a tag whose firmware cannot erase its own log,
+in three separate sessions: the external flash (`rescue.rs`, behind
+`tag-xflash rescue-erase`), then an internal erase and reflash (`tag-flash`),
+then `tag-reset`. External first, because the reverse leaves a tag that
+programs new pages over old data without error; why is in
+[Loader Runtime Design, Rescue erase](../../../../embedded/loaders/design/loader-runtime.md#rescue-erase).
+The steps stay separate so that each can be watched; the procedure is in
+[Capturing a Tag](../../../../docs/bench/capturing-a-tag.md#rescuing-a-tag).
+
+`rescue_erase()` reads each sector, erases it through `Serve()` only if it
+holds data, and reads it back blank, so the whole part is proved blank from
+the host's side for one full read plus the used sectors twice. It refuses:
+- a capture directory of another tag, matched by the 96-bit chip UID read at
+  attach, unless `--no-capture` is given, so no tag is erased before its
+  evidence is kept;
+- a read-only loader;
+- a paged part: the NAND loader has no erase code, and a NAND rescue must also
+  leave factory-marked bad blocks alone;
+- a part whose JEDEC ID differs from the one the image's identity record
+  names, when the internal flash still holds a record.
+
 
 Everything but the rebuild is Rust, in tagcore-rs's `recovery` module. The
 layers, lowest first:
@@ -344,6 +367,7 @@ layers, lowest first:
 | `ExternalFlash` | `recovery/xflash.rs` | A loader session through `Serve()`: probe, read, read page; the `LoaderServiceBlock` layout is checked against `include/loader_service.h` by a test |
 | `IdentityRecord` | `recovery/identity.rs` | Find and parse the identity record in internal flash; shared with Tag Programmer and `tag-flash` |
 | Capture | `recovery/capture.rs`, `recovery/external.rs`, `recovery/build.rs` | The capture procedure: ordering, output directory, manifest, and the optional build files (`--with-build`) |
+| Rescue | `recovery/rescue.rs` | Rescue step 1: erase the external flash sector by sector and prove it blank, with the refusals above |
 | `CaptureSource` | C++, `host/libraries/tagcore/recovery/capturesource.*` | Rebuild the monitor replies from a capture, through a per-family decoder chosen by the record's `decoder` name; reached from Rust through `rbd_rebuild()` in `tagcore_c` |
 
 Halting goes through `DHCSR` writes over `LinkAdapt`'s debug-register access,
