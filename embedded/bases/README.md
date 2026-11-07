@@ -218,9 +218,9 @@ found.
 port, so a logging base runs normally unattended; lines written then are lost.
 Revert `project.mk` and reflash a clean image afterwards.
 
-`tag-breakout-base-l432-u375-1v8` always logs: its own scaffold,
-`make-l432.mk`, defines `USEEPRINTF` and `USE_CDC_EPRINTF` in `UDEFS` and
-does not read `PROJECT_UDEFS`.
+`tag-breakout-base-l432-u375-1v8` has its own scaffold, `make-l432.mk`, which
+reads `PROJECT_UDEFS` the same way, so the same line in its `project.mk` turns
+its log on.
 
 ## Labels on Bases vs Boards:
 

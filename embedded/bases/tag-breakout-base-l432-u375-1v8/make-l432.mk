@@ -119,11 +119,14 @@ CPPWARN = -Wall -Wextra -Wundef
 #############################################################################
 
 UDEFS = -DUSE_FULL_LL_DRIVER=1 -DPB_NO_PACKED_STRUCTS=1 -DPB_BUFFER_ONLY=1 \
-        -DUSEEPRINTF=1 -DUSE_CDC_EPRINTF=1 \
         -DSWD_DELAY_COUNT=$(SWD_DELAY_COUNT) -DSWD_SPI_BR='$(SWD_SPI_BR)'
 # The base target's name (CMake passes PROJECT=<target>), reported by the
 # identify command in stlink.c.
 UDEFS += -DBASE_TARGET=\"$(PROJECT)\"
+# Per-base extra defines from project.mk. The error log is off unless the base
+# sets PROJECT_UDEFS = -DUSEEPRINTF=1 -DUSE_CDC_EPRINTF=1 (see "The Base Error
+# Log" in embedded/bases/README.md), as in common/make.mk.
+UDEFS += $(PROJECT_UDEFS)
 UADEFS =
 # $(BUILDDIR)/.. holds the version.h CMake generates for the target.
 UINCDIR = ../common/inc $(BUILDDIR)/..
