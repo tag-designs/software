@@ -117,7 +117,8 @@ Tag Breakout Base JLCPCB32 v1 on an STM32F042. Its board still uses the static
 An STM32F042x6 SWD bridge, already at the F042's 48 MHz maximum
 SYSCLK/HCLK (PLL from HSI/2, USB from HSI48). Its `project.mk` adds
 `-DUSEEPRINTF` to `CXXFLAGS`, which no rule in the ChibiOS make scaffold reads,
-so it has no effect on these C sources. Its local `src/ll_swd.c` is the
+so it has no effect on these C sources; logging is turned on with
+`PROJECT_UDEFS` instead (see [The Base Error Log](#the-base-error-log)). Its local `src/ll_swd.c` is the
 optimized bitbang: lower-level GPIO helpers in place of PAL line calls, cached
 direction changes, and fixed-width unrolled shift helpers. Keep that file at the
 target's normal optimization level; `-O3` was slower and larger
@@ -184,6 +185,43 @@ firmware) or not at all (the 2022 firmware), so a host reads the full length
 with a short timeout and treats anything else as "unidentified". tagcore's
 `LinkAdapt::BaseIdentity()` does this, and `tag-info` prints the result as
 its first line. The command touches no target state.
+
+## The Base Error Log
+
+`bittag-base-v7` and `tag-breakout-base-l432-v1` can log SWD faults (WAIT
+runs, CTRL/STAT sticky bits, parity errors, failed transfers) on a USB virtual
+serial port beside the ST-LINK interface. Logging is off in every released
+image; when a base misbehaves, build it with logging, flash it, and read the
+port. That is how the 0x81 cause
+([investigation](design/investigations/2026-10-0x81-dbg-sleep.md)) and the
+parity-bit fault
+([investigation](design/investigations/2026-11-breakout-parity-bit.md)) were
+found.
+
+1. Add to the base's `project.mk`:
+
+   ```make
+   PROJECT_UDEFS = -DUSEEPRINTF=1 -DUSE_CDC_EPRINTF=1
+   ```
+
+   `common/make.mk` appends `PROJECT_UDEFS` to `UDEFS`, so `EPRINTF()` in
+   `ll_swd.c` and `stlink.c` becomes `debug_printf()` in the base's
+   `src/usbcfg.c`. Each line starts with the base's uptime in ms.
+2. Build and flash it: `base-flash program` with the base in DFU mode. The
+   image identifies as `dirty=1` while `project.mk` is edited.
+3. Read the port, which ends on every base reset:
+
+   ```sh
+   stty -f /dev/cu.usbmodem<N> raw 115200; cat /dev/cu.usbmodem<N>
+   ```
+
+`debug_printf()` drops a line rather than block while no program reads the
+port, so a logging base runs normally unattended; lines written then are lost.
+Revert `project.mk` and reflash a clean image afterwards.
+
+`tag-breakout-base-l432-u375-1v8` always logs: its own scaffold,
+`make-l432.mk`, defines `USEEPRINTF` and `USE_CDC_EPRINTF` in `UDEFS` and
+does not read `PROJECT_UDEFS`.
 
 ## Labels on Bases vs Boards:
 

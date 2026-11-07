@@ -155,26 +155,15 @@ not been reproduced on a tag.
   counter, and a PresTag download was identical to the previous image's on
   hardware (2026-11-01, [results](families/PresTag/design/power-results.md)).
   Port it to the other three.
-- **The state-marker log stops silently when full.** `recordState()`
-  (`common/core/src/persistent.c`) stops writing once `sEpoch[]` is full: 24
-  entries on L4, 20 on U3. The only notice is a scratchpad `ESLF` record, and
-  field builds have no scratchpad. So a tag that filled its marker log and then
-  failed looks the same as one that simply stopped transitioning (Field Data
-  Extraction, Gap 2). Fix: reserve the final slot for an overflow marker, or
-  keep a dropped-transition count that a later write folds in. Verify: drive
-  more than `sEPOCH_SIZE` transitions on the bench and confirm the log shows
-  the overflow. *Found by reading code.*
-- **Resets and faults leave no marker.** A hard fault, a watchdog reset or a
-  brown-out leaves nothing in the flash record, and the tag simply reappears
-  in an earlier state. Fix: latch the reset cause from `RCC_CSR` at boot, and
-  record a marker only when it is not an ordinary power-on or a monitor attach,
-  so attach storms do not burn the log. Weigh the flash write against
-  endurance on a 12 mAh cell first; this is an open question in Field Data
-  Extraction.
-- **BitTagNG writes stray RAM into flash.** Its 28-byte `t_storedconfig` is an
-  odd number of words, and on STM32L4 `FLASH_Program_Array()` programs one word
-  past the struct for an odd word count. The extra word lands in alignment
-  padding. *Found by reading code.*
+- **The state-marker log can fill, silently.** `recordState()` stops
+  writing once `sEpoch[]` is full (24 slots on L4, 20 on U3), with no record
+  outside a scratchpad, and reset recovery then restores a stale state after a
+  power loss. Brown-out restarts and repeated erase requests write markers
+  with no limit. Faults and power loss while running already end the run with
+  an ABORTED marker; a fault during hibernation leaves none. Proposal (closing
+  markers always fit, the schedule is reserved, unscheduled markers use the
+  spare, the first refusal writes an overflow marker):
+  [A budget for the state-marker log](common/core/design/proposals/state-marker-budget.md).
 - **BitPresTag's reattach path is unchecked.** An L432 reattach that lands
   while the tag is awake boots as a power init, `deviceInit()` turns the
   ticker, alarms and sensors off, and recovery resumes with
@@ -184,7 +173,8 @@ not been reproduced on a tag.
   largely abandoned in favour of UIUCTag and was not checked. None of the
   fixes reproduced the fault on the bench for CompassTag or BitTag, which sleep
   at once after a start; see their power results.
-- **The `debug_log` module prevents low-power entry on STM32U375** (1.71 mA).
+- **The `debug_log` module prevents low-power entry on STM32U375** (1.71 mA;
+  low priority).
   This is a fault in the module itself, separate from the flash-flag and layout
   faults; see the warning in `IMUTagNandBmp581/project.mk`.
 - **IMUTagNandBmp581 RTC sync.** `tag-start --set-rtc` intermittently failed

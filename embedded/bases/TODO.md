@@ -16,13 +16,6 @@ Delete an item when it is done.
   read (`errorClear()`, the abort, the dummy `RDBUFF` read) does not always
   return the AP to a usable state. Find out why with the serial log, by
   injecting a fault; any real link error would cascade the same way.
-- **SWD fault diagnostics on field bases.** `bittag-base-v7` and
-  `tag-breakout-base-l432-v1` log SWD faults on a USB serial port (branch
-  `base-0x81`), which found the 0x81 cause
-  (`design/investigations/2026-10-0x81-dbg-sleep.md`). Field bases cannot be
-  reflashed with that; a vendor command beside `STLINK_TAGBASE_IDENTIFY`
-  (F6 99) could return a ring buffer of the last faults (acknowledgement,
-  register or address, retries) for any host tool to dump after a run.
 - **`tag-breakout-base-l432-v1/src/ll_swd_spi.c` is not built.** The target
   compiles `ll_swd.c`. A note in that directory recorded that `ll_swd_spi.c`
   did not work properly on macOS with ChibiOS 21.11. Fix it or remove it, and
@@ -35,7 +28,13 @@ Delete an item when it is done.
   shift-out width is a multiple of 8 bits (8, 16, 24, 32) and the odd widths
   are all shift-in (5, 9, 24), so SPI can carry every shift-out phase. That is
   the split `tag-base-c071` and `tag-breakout-base-l432-u375-1v8` already use.
-  It was considered for a future base rather than a retrofit.
+  **Not pursued (2026-11-07):** only `tag-breakout-base-l432-v1` has its SWD
+  lines on SPI1 pins (SWCLK PA5 = SCK, SWDIO PA7 = MOSI, SWDIO_IN PA6 =
+  MISO). `bittag-base-v7` and `bittag-base-jlcpcb-v3` use PA1 and PB7, which
+  have no SPI function; `tag-breakout-base-jlcpcb32-v1` has SWCLK on PA5 but
+  SWDIO on PA4 (SPI1_NSS). The gain on one bench base is not worth it, and
+  future bases will be derived from `tag-breakout-base-l432-u375-1v8`, which
+  already uses SPI.
 - **Hot SWD helpers in RAM.** On a future base with a faster MCU and SRAM
   headroom, consider placing only the hottest bitbang helpers in RAM. The F042
   base is not a candidate: its build uses essentially all of its SRAM.

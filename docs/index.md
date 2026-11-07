@@ -218,6 +218,7 @@ design document.
 
 ### Tags / Common Firmware / core / Proposals
 
+- [A budget for the state-marker log](../embedded/tags/common/core/design/proposals/state-marker-budget.md) *(proposal, proposed)* — Give the internal-flash state-marker log a budget instead of letting it fill -- the run's closing markers (FINISHED/ABORTED, then sRESET) always fit, the rest of the configured schedule is reserved, brown-out restarts and other unscheduled markers use only the spare, and the first refusal writes one overflow marker so a full log is never silent.
 - [A more robust monitor for the STM32L4 tags](../embedded/tags/common/core/design/proposals/l4-monitor-robustness.md) *(proposal, proposed)* — Make the STM32L4 tags' monitor as robust as the STM32U3 path - first by adding the U3's fast status answer and BUSY reply to the L4 DebugMonitor handler, then optionally by moving L4 tags onto the U3 shared-memory mailbox, chosen per image by a monitor info call behind a version bump - with what each step needs, what it would and would not fix, and how to check it on the bench.
 
 ### Tags / Common Firmware / modules
