@@ -1,10 +1,29 @@
 ---
 type: proposal
-status: proposed
-summary: A tag-base vendor command (F6 9A plus a key) that answers, then restarts the base into its MCU's ROM DFU bootloader, so base-flash can update a base without its button - analysed for the STM32F042 bases in use and an STM32L432 base, with a reset-then-jump design that works the same on both.
+status: historical
+summary: "Abandoned 2026-11-07 -- a tag-base vendor command (F6 9A plus a key) to restart a base into its ROM DFU bootloader without the button. Built and tried on the STM32F042 breakout base, it cannot work there: the F04x bootloader's empty check sends any software entry straight back to the firmware. Kept for the analysis and the reason."
 ---
 
 # Entering DFU from the running base
+
+> **Abandoned, 2026-11-07.** A base is still put in DFU mode with its button.
+> The design below was built (firmware, `tagcore` link call and a
+> `base-flash enter-dfu` command) and tried on `tag-breakout-base-l432-v1`
+> (STM32F042). The base answered `OK`, restarted, and came back running its
+> own firmware, never in DFU. That is the first risk listed below, and it is
+> documented: AN2606 says that on the STM32F04xxx the bootloader's *empty
+> check* makes a jump from user code to the bootloader impossible; the
+> bootloader sees that main flash is not empty, maps it back and jumps to
+> it. A reset before the jump does not help, since the bootloader makes the
+> check itself.
+>
+> The ways round it were judged not worth their cost: erasing flash page 0
+> and reloading the option bytes (`OBL_LAUNCH`), so that the hardware boots
+> the bootloader, leaves a base with no firmware whenever DFU is abandoned;
+> forcing the boot source with the `nBOOT_SEL` and `nBOOT0` option bits
+> means writing option bytes and restoring them after every update. The code
+> was not committed. An STM32L432 base may not have the restriction, but no
+> L432 base is in use. The rest of this document is the proposal as written.
 
 Today a base is put in DFU mode by plugging it in with its button held, and
 then `base-flash program` writes it. A base in a field kit, or one wired into
@@ -121,6 +140,22 @@ knowledge of what the firmware had running.
    nothing. If both flag words match: clear them, enable the `SYSCFG` clock,
    map system memory at address 0, set MSP from the first word of system
    memory, and branch to the second. Otherwise return.
+
+   The reset has cleaned every peripheral, but not the core state `crt0` sets
+   before it calls `__cpu_init()`, so the jump puts that back first:
+   - `crt0` has selected the process stack (`CONTROL` = `CONTROL_USE_PSP`).
+     Write `CONTROL` = 0 and `isb` before loading MSP; otherwise MSP is not
+     the stack in use, and the bootloader runs on ChibiOS's process stack;
+   - `crt0` has masked interrupts (`cpsid i`). The ROM bootloader expects
+     PRIMASK clear, as after reset, and its USB DFU is interrupt driven:
+     `cpsie i` immediately before the branch, which is safe because the reset
+     left no interrupt enabled in the NVIC;
+   - on the STM32L432 (`crt0_v7m.S`), `crt0` has also enabled the FPU
+     (`CPACR`) and written `FPCCR`. Return `CPACR` to 0; `FPCCR` is written
+     with its reset value (`ASPEN | LSPEN`), and `CONTROL` = 0 clears `FPCA`.
+
+   The sequence is a few instructions of inline assembly, the same on both
+   cores apart from the `CPACR` write.
 
 Clearing the flag before the jump means that leaving DFU, or a reset or power
 cycle while in it, boots the firmware again. The button and the BOOT0 pin are

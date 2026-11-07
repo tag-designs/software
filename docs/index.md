@@ -138,7 +138,7 @@ design document.
 
 ### Bases / Proposals
 
-- [Entering DFU from the running base](../embedded/bases/design/proposals/enter-dfu-command.md) *(proposal, proposed)* — A tag-base vendor command (F6 9A plus a key) that answers, then restarts the base into its MCU's ROM DFU bootloader, so base-flash can update a base without its button - analysed for the STM32F042 bases in use and an STM32L432 base, with a reset-then-jump design that works the same on both.
+- [Entering DFU from the running base](../embedded/bases/design/proposals/enter-dfu-command.md) *(proposal, historical)* — Abandoned 2026-11-07 -- a tag-base vendor command (F6 9A plus a key) to restart a base into its ROM DFU bootloader without the button. Built and tried on the STM32F042 breakout base, it cannot work there: the F04x bootloader's empty check sends any software entry straight back to the firmware. Kept for the analysis and the reason.
 
 ### Boards
 
