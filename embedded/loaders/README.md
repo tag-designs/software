@@ -195,6 +195,13 @@ MSIS = MSIRC1/4 (6 MHz) but the captured registers read MSIRC1/2 (12 MHz), so
 
 ## Testing a loader on the bench
 
+`embedded/tools/xflash_write_check.py --ro <loader> --rw <loader>-RW` runs
+steps 2 to 7 below through the `tagcore` Python package
+([`host/python/tagcore-py`](../../host/python/tagcore-py/README.md)) and the
+loader's `Serve()`, with no CubeProgrammer, in a test window at the end of
+the part, and checks the whole part and the backup registers are as found
+afterwards. It passed on the bench PresTag on 2026-11-06.
+
 The steps that validated `AT25XE_PresTagv3`, in order. Each proves something
 the one before cannot.
 

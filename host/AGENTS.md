@@ -37,6 +37,8 @@ Rust (one workspace, `host/Cargo.toml`):
   its three interfaces. All `unsafe` lives in the wrappers.
 - `commandline-rs/` (`tag-tools`): the Rust CLI tools; same names, options,
   messages and exit status as the C++ ones.
+- `python/tagcore-py/` (`tagcore-py`): the `tagcore` Python package, a PyO3
+  binding of `tagcore::recovery`; built with maturin, not CMake.
 - `applications/*-rs/`: `core/` holds every rule and all state; `ui/` draws
   only; `app/` is the Tauri shell. Each names the C++ code it ports.
 - `ui-kit/`: the shared web front-end kit (CSS, Preact components, engine

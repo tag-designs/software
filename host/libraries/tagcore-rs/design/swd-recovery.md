@@ -27,9 +27,11 @@ These tools, in `host/commandline-rs`, are built on it:
 Their usage is in the
 [command-line tools README](../../../commandline-rs/README.md), and the
 bench procedure is [Capturing a Tag](../../../../docs/bench/capturing-a-tag.md).
-`tag-xflash rescue-erase` is step 1 of a rescue (below). Two pieces are not
-built: the Python binding and identification of images without an identity
-record. They are proposed in
+`tag-xflash rescue-erase` is step 1 of a rescue (below). The same library is
+usable from Python as the `tagcore` package, a PyO3 binding
+([`host/python/tagcore-py`](../../../python/tagcore-py/README.md)). One piece
+is not built: identification of images without an identity record. It is
+proposed in
 [Identification, Rescue and Python](../../tagcore/design/proposals/recovery-identification-rescue-python.md).
 Open work is in [the tagcore-rs TODO](../TODO.md).
 

@@ -593,6 +593,10 @@ design document.
 
 - [tagclient Examples](../host/python/tagclient/examples/README.md) — Python counterparts of tag-info, tag-start, tag-stop, tag-reset, tag-dwnld and tag-peek, plus a live status monitor, written against tag-server with tagclient.
 
+### python / tagcore-py
+
+- [tagcore (Python)](../host/python/tagcore-py/README.md) — The tagcore Python package - SWD recovery sessions, loader sessions on external flash, captures and the rescue erase from Python, through a PyO3 binding of tagcore-rs's recovery module; building it with maturin and its checks.
+
 ### python / tagsim
 
 - [tagsim](../host/python/tagsim/README.md) — tagsim, the Python tool that replays a recorded ArduPilot flight into a genuine IMUTag SQLite log plus a ground-truth file, prototypes the post-processing attitude and altitude filter, scores estimates against that truth and exports both for UAV Log Viewer - installing, running, testing, and what it does not model yet.

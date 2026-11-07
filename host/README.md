@@ -46,7 +46,7 @@ regenerate the test oracles
 | `ui-kit/` | The web front ends' shared look and plumbing: CSS, Preact components, the engine connection, menus and dialogs. See [ui-kit/README.md](ui-kit/README.md). |
 | `common/` | Small Qt helper headers shared by the Qt applications (`host_common`). |
 | `tagserver/` | `tag-server`, the C++ tag interface over gRPC for test programs; `BUILD_TAG_SERVER=ON` only. |
-| `python/` | `tagclient`, the Python client for `tag-server`; `tagsim`, the IMUTag log simulator (testing infrastructure). |
+| `python/` | `tagcore-py`, the `tagcore` Python package (SWD capture and recovery, a PyO3 binding of `tagcore-rs`); `tagclient`, the Python client for `tag-server`; `tagsim`, the IMUTag log simulator (testing infrastructure). |
 | `spikes/` | Experiments kept for their results, not built with the host (`probe-rs-spike`). |
 | `design/` | Host-wide design documents: the [guide](design/guide/README.md), [Linux packaging](design/linux-package.md), proposals. |
 | `docs/` | The MkDocs user manual and the fixtures its screenshots come from; built by the `docs` target, installed with `BUILD_HOST_DOCS=ON`. See [docs/README.md](docs/README.md). |
@@ -73,6 +73,7 @@ keep open:
 | `libraries/taglogwriter-rs` | `taglogwriter` | library | Writes tag SQLite logs through the C++ writer (`tlw_*`). |
 | `libraries/calibsession-rs` | `calibsession` | library | The magnetometer and accelerometer calibration session and compass angles, through the C++ core (`tcs_*`). |
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | library | Opens and views tag logs through sensorViz's C++ core (`svz_*`). |
+| `python/tagcore-py` | `tagcore-py` | Python module `tagcore._native` | The `tagcore` Python package: SWD sessions, loader sessions, captures and the rescue erase, built with maturin (not CMake). |
 | `commandline-rs` | `tag-tools` | 16 binaries | `tag-info`, `tag-start`, `tag-stop`, `tag-reset`, `tag-test`, `tag-dwnld`, `tag-flash`, `base-flash` and the bench tools; `src/lib.rs` is what they share. |
 | `applications/tagprogram-rs/core` | `tagprogram-core` | library | Tag Programmer's model and engine. |
 | `applications/tagprogram-rs/app` | `tagprogram` | **tagprogram** | Tag Programmer's Tauri shell: the program. |

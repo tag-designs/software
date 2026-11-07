@@ -59,6 +59,7 @@ host/
 ├── common/                     Qt helper headers (host_common)
 ├── tagserver/, python/tagclient/   the C++ tag interface over gRPC, and its Python client (tests only)
 ├── python/tagsim/              the IMUTag log simulator (test data)
+├── python/tagcore-py/          the tagcore Python package: SWD capture and recovery, a PyO3 binding (maturin)
 ├── spikes/probe-rs-spike/      the experiment behind tagprobe; not built with the host
 ├── design/                     host-wide design docs: this guide, Linux packaging, proposals
 ├── docs/                       the user manual (MkDocs) and its screenshot fixtures

@@ -20,6 +20,8 @@ members = [
   "libraries/sensorviz-session-rs",
   # The command-line tools (crate tag-tools: one binary per tool).
   "commandline-rs",
+  # The Python binding of tagcore's recovery module (built with maturin).
+  "python/tagcore-py",
   # The applications: a toolkit-free core crate and a Tauri shell crate each.
   "applications/tagprogram-rs/core",
   "applications/tagprogram-rs/app",

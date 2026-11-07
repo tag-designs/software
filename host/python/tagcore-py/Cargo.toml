@@ -1,0 +1,29 @@
+# Python binding of tagcore's SWD capture and recovery module
+# (host/libraries/tagcore-rs/src/recovery), built with maturin into the
+# Python package `tagcore` (its native part is `tagcore._native`). Not part
+# of the CMake build; see README.md.
+[package]
+name = "tagcore-py"
+version = "0.1.0"
+edition = "2024"
+description = "Python binding of the tagcore SWD capture and recovery library"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py39"] }
+tagcore = { version = "0.1.0", path = "../../libraries/tagcore-rs" }
+
+[build-dependencies]
+pyo3-build-config = "0.30"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

@@ -228,7 +228,7 @@ reported. Note the INPUT paths cover `include/`, `host/libraries/*`,
 `embedded/boards`, `embedded/loaders`, and `embedded/tags/{common,families}` — **individual tag
 directories are not scanned**, so point Doxygen at one explicitly to check it.
 
-Rust crates (`host/libraries/*-rs`, `host/commandline-rs`,
+Rust crates (`host/libraries/*-rs`, `host/commandline-rs`, `host/python/tagcore-py`,
 `host/applications/tagprogram-rs`, `host/applications/tagmonitor-rs`) are
 documented with rustdoc, not Doxygen:
 `//!` for crate and module docs, `///` on every item including private ones,

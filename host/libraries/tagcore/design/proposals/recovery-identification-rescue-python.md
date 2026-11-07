@@ -6,7 +6,7 @@ summary: The unbuilt parts of the SWD recovery library - identifying older image
 
 # Recovery Library: Identification, Rescue and Python
 
-Of this, the rescue is built (for NOR parts); the rest is not. The capture and loader parts of the library are built and
+Of this, the rescue (for NOR parts) and the Python binding are built; identification without a record is not. The capture and loader parts of the library are built and
 described in [SWD Capture and Recovery Library](../../../tagcore-rs/design/swd-recovery.md). What remains
 is three pieces, each ended by a check on a bench tag, in whatever order they are
 needed:
@@ -19,6 +19,14 @@ How the built parts were checked is in
 [SWD Capture Library Bring-up](../investigations/2026-09-swd-capture-library-bring-up.md).
 
 ## Python binding
+
+*Built 2026-11-06*, as PyO3 over tagcore-rs's `recovery` module rather than
+pybind11 over the C++ classes, which were deleted when the library moved to
+Rust: the `tagcore` package in
+[`host/python/tagcore-py`](../../../../python/tagcore-py/README.md), built with
+maturin. The check below passed on a bench PresTag with
+`embedded/tools/xflash_write_check.py`, leaving the part as found rather than
+blank, since the tag held a log. What follows is the plan as written.
 
 pybind11 over `SwdSession`, `ExternalFlash` and the capture procedures,
 following [Python Interface Design](python-interface.md). That means:

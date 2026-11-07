@@ -17,15 +17,6 @@ The capture additions still to build are D3 in
 - the RV3028 EEOffset for tags already deployed;
 - internal-flash ECC faults.
 
-## Checks never run
-
-- **Program through `Serve()`, and the read-only image's own refusal.** Erase
-  through `Serve()` has run (the rescue erase, 2026-11-06), but no tool has
-  programmed through it, and `rescue-erase` refuses a read-only image on the
-  host before the loader is asked. The loaders README bench sequence (pattern,
-  overwrite, refuse, restore) must pass through `ExternalFlash` with the `-RW`
-  and read-only images; it is the Python binding's check.
-
 ## Open work
 
 - **A NAND rescue.** `rescue-erase` is NOR only. The IMUTag's GD5F has no
