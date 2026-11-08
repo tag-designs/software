@@ -57,16 +57,16 @@ runtime (chapter 5); `taglogwriter` is the C++ SQLite writer reached through
 
 | Path | Lines | Holds |
 | --- | --- | --- |
-| `src/lib.rs` | 14 | `pub mod engine; pub mod model;` |
+| `src/lib.rs` | 15 | `pub mod engine; pub mod model;` |
 | `src/engine/mod.rs` | 301 | `Engine`, `EngineConfig`, `Event`, `Msg`, `spawn`, the loop, the logger |
 | `src/engine/tagthread.rs` | 357 | `TagCmd`, `Report`, the tag thread |
 | `src/engine/monitor.rs` | 955 | `Monitor`: the engine's state, commands, prompts, reports, queries |
-| `src/engine/view.rs` | 336 | `Monitor::view_state` and the `menus` query |
+| `src/engine/view.rs` | 338 | `Monitor::view_state` and the `menus` query |
 | `src/engine/download.rs` | 258 | Download Data, through `taglogwriter` |
 | `src/model/commands.rs` | 284 | `Command`, the availability rule |
 | `src/model/startchecks.rs` | 107 | The checks Start makes |
 | `src/model/tagrules.rs` | 158 | Downloadable states, erase size, clock offset, version floor |
-| `src/model/monitormodel.rs` | 341 | `MonitorModel`: what each status settles |
+| `src/model/monitormodel.rs` | 345 | `MonitorModel`: what each status settles |
 | `src/model/configdocument.rs` | 222 | The document, its file format, approval |
 | `src/model/configform.rs` | 1598 | The form's panels, with Qt's widgets modelled |
 | `src/model/configeditor.rs` | 312 | Document and form together |
@@ -748,8 +748,7 @@ Its fields, grouped:
 ### Settings: QSettings as a JSON file
 
 The only persistent setting is the recent-files list.
-[monitor.rs:484-499](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L484)
-and [:886-892](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L886):
+[monitor.rs:484-499](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L484):
 
 ```rust
     fn add_recent(&mut self, path: &str) {
@@ -769,6 +768,8 @@ and [:886-892](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L886)
         }
     }
 ```
+
+and [monitor.rs:886-892](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L886):
 
 ```rust
 fn read_settings(path: &Path) -> Value {
@@ -1103,7 +1104,7 @@ writes the file and then quits.
 Open and save dialogs are native windows, drawn by the dialog plugin at the
 page's request; Rust never opens one. But *which* dialog, its title, filters
 and starting folder are decisions, so the engine makes them and puts them
-in the prompt. [view.rs:247-264](../../applications/tagmonitor-rs/core/src/engine/view.rs#L247),
+in the prompt. [view.rs:249-266](../../applications/tagmonitor-rs/core/src/engine/view.rs#L249),
 inside `prompt_json`:
 
 ```rust
@@ -1128,7 +1129,7 @@ inside `prompt_json`:
 ```
 
 and at the end of `prompt_json` the id is added to whichever object was
-built ([view.rs:272](../../applications/tagmonitor-rs/core/src/engine/view.rs#L272)):
+built ([view.rs:274](../../applications/tagmonitor-rs/core/src/engine/view.rs#L274)):
 `v["id"] = json!(p.id);`. The page's side,
 [ui/app.js:417-424](../../applications/tagmonitor-rs/ui/app.js#L417), calls
 the plugin through the kit and answers with the path:
@@ -1228,7 +1229,7 @@ A `Status` report goes to the model,
 `MonitorModel::apply_status` (a port of `qtmon/core/monitormodel.h`) is where
 each status settles the outstanding work: the self-test result, the end of
 an erase, and whether a Start succeeded,
-[monitormodel.rs:259-274](../../applications/tagmonitor-rs/core/src/model/monitormodel.rs#L259):
+[monitormodel.rs:263-278](../../applications/tagmonitor-rs/core/src/model/monitormodel.rs#L263):
 
 ```rust
         if let Some((sent, message)) = &self.start_sent {
@@ -1262,7 +1263,7 @@ engine lets the tests drive it with hand-made statuses.
 `Monitor` into the JSON the page draws, applying qtmonitor's display rules
 (`render`, `populateTagInfo`, `updateTitle`, `updateActions`,
 `TagStatusStrip`) so the page only draws.
-[view.rs:276-320](../../applications/tagmonitor-rs/core/src/engine/view.rs#L276):
+[view.rs:278-322](../../applications/tagmonitor-rs/core/src/engine/view.rs#L278):
 
 ```rust
     /// The whole view state.
@@ -1333,11 +1334,11 @@ every command, every download page. Its cost is building a few kilobytes of
 JSON and one deep comparison, which is small beside a USB round trip, and it
 buys a page with no incremental update logic at all.
 
-The module comment ([view.rs:6-8](../../applications/tagmonitor-rs/core/src/engine/view.rs#L6))
-says `view_state` "reads no clock and does no I/O". One part does read the
-clock: `modified` (and `config.modified`) comes from `Monitor::is_modified`,
-which collects the form at `now_s()`, and the schedule panel sends a start
-time already in the past as "start now"
+The module comment ([view.rs:6-10](../../applications/tagmonitor-rs/core/src/engine/view.rs#L6))
+says `view_state` does no I/O and reads the clock once: `modified` (and
+`config.modified`) comes from `Monitor::is_modified`, which collects the
+form at `now_s()`, and the schedule panel sends a start time already in the
+past as "start now"
 ([configform.rs:609-617](../../applications/tagmonitor-rs/core/src/model/configform.rs#L609)).
 So a document whose scheduled start passes while it is open can become
 modified without a message; the change is published at the next pass of

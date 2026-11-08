@@ -106,7 +106,7 @@ pub struct CaptureOptions<'a> {
 also `pub struct FieldSafeMemory<'a>` at
 [fieldsafe.rs:625](../../libraries/tagprobe-rs/src/fieldsafe.rs#L625) and
 `pub fn name(self) -> &'static str` at
-[monitor/mod.rs:238](../../libraries/tagcore-rs/src/monitor/mod.rs#L238).
+[monitor/mod.rs:240](../../libraries/tagcore-rs/src/monitor/mod.rs#L240).
 Explained in: [6, capture.rs: the order, and the options](06-recovery.md#capturers-the-order-and-the-options);
 [6, The type, and its destructor](06-recovery.md#the-type-and-its-destructor);
 [7, The memory interface borrows the ARM interface](07-programming-tags-and-bases.md#the-memory-interface-borrows-the-arm-interface);
@@ -131,7 +131,7 @@ where
 ```
 
 [proto.rs:49](../../libraries/tagcore-rs/src/proto.rs#L49),
-[commandline-rs lib.rs:233](../../commandline-rs/src/lib.rs#L233).
+[commandline-rs lib.rs:236](../../commandline-rs/src/lib.rs#L236).
 Explained in: [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
 [9, Choosing a base](09-command-line-tools.md#choosing-a-base);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
@@ -146,7 +146,7 @@ the type, e.g. which managed state to fetch or what to parse into.
 window.state::<Engine>().command("quit", json!({}));
 ```
 
-[tagmonitor main.rs:149](../../applications/tagmonitor-rs/app/src/main.rs#L149);
+[tagmonitor main.rs:201](../../applications/tagmonitor-rs/app/src/main.rs#L201);
 also `select_base::<Cli>(&tag, &cli.base)` at
 [tag-dwnld.rs:385](../../commandline-rs/src/bin/tag-dwnld.rs#L385) and
 `xyz.as_chunks::<3>()` at
@@ -195,8 +195,8 @@ const RPCBUF_BYTES: usize = 64 * 1024;
 pub fn from_bytes(bytes: &[u8; Self::SIZE]) -> Self {
 ```
 
-[monitor/mod.rs:343](../../libraries/tagcore-rs/src/monitor/mod.rs#L343),
-[abi.rs:182](../../libraries/tagcore-rs/src/monitor/abi.rs#L182).
+[monitor/mod.rs:345](../../libraries/tagcore-rs/src/monitor/mod.rs#L345),
+[abi.rs:185](../../libraries/tagcore-rs/src/monitor/abi.rs#L185).
 Explained in: [4, The struct](04-monitor-and-rpc.md#the-struct);
 [4, The ABI, mirrored by hand](04-monitor-and-rpc.md#the-abi-mirrored-by-hand);
 [4, The DebugMonitor call](04-monitor-and-rpc.md#the-debugmonitor-call-call_l4);
@@ -268,7 +268,7 @@ an `Arc` or a channel `Sender` copies a handle, not the data behind it.
 let engine = engine.inner().clone();
 ```
 
-[tagmonitor main.rs:44](../../applications/tagmonitor-rs/app/src/main.rs#L44)
+[tagmonitor main.rs:50](../../applications/tagmonitor-rs/app/src/main.rs#L50)
 (`Engine` holds only a `Sender`, so this is cheap).
 Explained in: [7, Choosing the driver](07-programming-tags-and-bases.md#choosing-the-driver-from-the-bases-identity);
 [10, The two commands](10-tauri-shell.md#the-two-commands);
@@ -311,7 +311,7 @@ let read_ok = len == 0
         .read_mem32(self.call_buf, &mut self.rpcbuf[..round4(len)]);
 ```
 
-[rpc.rs:162](../../libraries/tagcore-rs/src/monitor/rpc.rs#L162).
+[rpc.rs:166](../../libraries/tagcore-rs/src/monitor/rpc.rs#L166).
 Explained in: [4, The RPC](04-monitor-and-rpc.md#the-rpc).
 
 ### Copy a field out before a closure borrows the struct
@@ -341,7 +341,7 @@ if !std::mem::take(&mut self.l4_dma_clock_set) {
 if !std::mem::replace(&mut self.started, true) && self.config.auto_attach {
 ```
 
-[l4.rs:653](../../libraries/tagcore-rs/src/monitor/l4.rs#L653),
+[l4.rs:661](../../libraries/tagcore-rs/src/monitor/l4.rs#L661),
 [tagmonitor monitor.rs:204](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L204).
 Explained in: [4, The L4 attach](04-monitor-and-rpc.md#the-l4-attach);
 [11, The engine loop](11-engine-and-model.md#the-engine-loop).
@@ -420,9 +420,9 @@ drop(core);
 drop(session);
 ```
 
-[tagprobe lib.rs:644](../../libraries/tagprobe-rs/src/lib.rs#L644);
+[tagprobe lib.rs:647](../../libraries/tagprobe-rs/src/lib.rs#L647);
 `std::mem::forget(token);` at
-[tagmonitor main.rs:98](../../applications/tagmonitor-rs/app/src/main.rs#L98).
+[tagmonitor main.rs:104](../../applications/tagmonitor-rs/app/src/main.rs#L104).
 Explained in: [7, The other session users](07-programming-tags-and-bases.md#the-other-session-users);
 [10, The user guide and App Nap](10-tauri-shell.md#the-user-guide-and-app-nap).
 
@@ -430,7 +430,10 @@ Explained in: [7, The other session users](07-programming-tags-and-bases.md#the-
 
 A second `let` with the same name makes a new variable, often of a new
 type, and hides the old one. The code uses it for successive conversions of
-one value, and with let-else to rebind an `Option` as its content.
+one value, with let-else to rebind an `Option` as its content, and with
+`#[cfg]` to extend a builder on one platform only (`let builder =
+builder.menu(...)` under `#[cfg(target_os = "macos")]` in the Tauri shells,
+[chapter 10](10-tauri-shell.md#main-building-the-application)).
 
 ```rust
 let path = path
@@ -459,7 +462,7 @@ let counter = written.clone();
 ```
 
 [dfu.rs:278](../../libraries/tagprobe-rs/src/dfu.rs#L278);
-`RefCell` at [link/mod.rs:597](../../libraries/tagcore-rs/src/link/mod.rs#L597).
+`RefCell` at [link/mod.rs:602](../../libraries/tagcore-rs/src/link/mod.rs#L602).
 Explained in: [7, Writing](07-programming-tags-and-bases.md#writing-and-treating-the-departure-as-success);
 [3, Failure runs](03-usb-and-stlink.md#failure-runs-one-error-per-burst).
 
@@ -480,7 +483,7 @@ character. On the way out it converts the error with `From::from`, so a
 let m = s.mcu().ok_or("no recovery session")?;
 ```
 
-[rescue.rs:95](../../libraries/tagcore-rs/src/recovery/rescue.rs#L95).
+[rescue.rs:96](../../libraries/tagcore-rs/src/recovery/rescue.rs#L96).
 Explained in: [6, Errors are strings](06-recovery.md#errors-are-strings);
 [7, The session](07-programming-tags-and-bases.md#the-session-target-debug-sequence-attach-under-reset);
 [7, Opening, and the two async steps](07-programming-tags-and-bases.md#opening-and-the-two-async-steps);
@@ -577,7 +580,7 @@ if let Some(stopped) = self.stop().map_err(StopFailure::Refused)?
 ```
 
 [tag.rs:647](../../libraries/tagcore-rs/src/tag.rs#L647);
-a three-part chain at [l4.rs:463](../../libraries/tagcore-rs/src/monitor/l4.rs#L463).
+a three-part chain at [l4.rs:471](../../libraries/tagcore-rs/src/monitor/l4.rs#L471).
 Explained in: [4, Attach](04-monitor-and-rpc.md#attach);
 [5, stop_confirmed](05-protobuf-and-the-tag-api.md#stop_confirmed);
 [8, The rpath](08-bridges-to-cpp-and-python.md#the-rpath-only-the-final-binary-can-set-it);
@@ -593,29 +596,29 @@ the end. Read `opt.map(f)` as `opt ? f(*opt) : nullopt`.
 
 | Method | Does | Example |
 | --- | --- | --- |
-| `map(f)` | Applies `f` to the `Some`/`Ok` value | `.map(str::to_string)`, [rescue.rs:121](../../libraries/tagcore-rs/src/recovery/rescue.rs#L121) |
-| `and_then(f)` | Chains a step that itself returns `Option`/`Result` | `.and_then(\|t\| t.get("uid"))`, [rescue.rs:118](../../libraries/tagcore-rs/src/recovery/rescue.rs#L118) |
+| `map(f)` | Applies `f` to the `Some`/`Ok` value | `.map(str::to_string)`, [rescue.rs:122](../../libraries/tagcore-rs/src/recovery/rescue.rs#L122) |
+| `and_then(f)` | Chains a step that itself returns `Option`/`Result` | `.and_then(\|t\| t.get("uid"))`, [rescue.rs:119](../../libraries/tagcore-rs/src/recovery/rescue.rs#L119) |
 | `or_else(f)`, `or(b)` | The first if present, otherwise try `f()` or `b` | `.or_else(\|\| ty.get_field_by_json_name(key))`, [configshape.rs:102](../../libraries/tagcore-rs/src/configshape.rs#L102) |
-| `filter(p)` | `Some` becomes `None` if `p` fails | `.filter(\|u\| !u.is_empty())`, [rescue.rs:120](../../libraries/tagcore-rs/src/recovery/rescue.rs#L120) |
+| `filter(p)` | `Some` becomes `None` if `p` fails | `.filter(\|u\| !u.is_empty())`, [rescue.rs:121](../../libraries/tagcore-rs/src/recovery/rescue.rs#L121) |
 | `ok()` | `Result` to `Option`, dropping the error | `.ok()?`, [stlink.rs:435](../../libraries/tagcore-rs/src/link/stlink.rs#L435) |
-| `ok_or(e)`, `ok_or_else(f)` | `Option` to `Result`, `None` becoming `Err(e)` | [rescue.rs:122](../../libraries/tagcore-rs/src/recovery/rescue.rs#L122) |
-| `map_err(f)` | Converts or logs the error | `ack.map_err(\|e\| error!("Reply did not decode: {e}")).ok()`, [rpc.rs:183](../../libraries/tagcore-rs/src/monitor/rpc.rs#L183) |
+| `ok_or(e)`, `ok_or_else(f)` | `Option` to `Result`, `None` becoming `Err(e)` | [rescue.rs:123](../../libraries/tagcore-rs/src/recovery/rescue.rs#L123) |
+| `map_err(f)` | Converts or logs the error | `ack.map_err(\|e\| error!("Reply did not decode: {e}")).ok()`, [rpc.rs:187](../../libraries/tagcore-rs/src/monitor/rpc.rs#L187) |
 | `unwrap_or(v)`, `unwrap_or_default()`, `unwrap_or_else(f)` | The value, or a fallback | `.unwrap_or(Duration::from_secs(3600))`, [engine/mod.rs:273](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L273) |
 | `map_or(d, f)` | `f(value)`, or `d` | `.map_or(0, \|f\| f.value & 0xFFFF)`, [capture.rs:574](../../libraries/tagcore-rs/src/recovery/capture.rs#L574) |
-| `is_some_and(p)`, `is_ok_and(p)`, `is_none_or(p)` | Test presence and content in one call | `.is_some_and(\|id\| id & L4_DBGMCU_DEV_ID_MASK == L4_DEV_ID_L43X)`, [l4.rs:466](../../libraries/tagcore-rs/src/monitor/l4.rs#L466) |
+| `is_some_and(p)`, `is_ok_and(p)`, `is_none_or(p)` | Test presence and content in one call | `.is_some_and(\|id\| id & L4_DBGMCU_DEV_ID_MASK == L4_DEV_ID_L43X)`, [l4.rs:474](../../libraries/tagcore-rs/src/monitor/l4.rs#L474) |
 | `transpose()` | `Option<Result<T, E>>` to `Result<Option<T>, E>` | [tag-dwnld.rs:379](../../commandline-rs/src/bin/tag-dwnld.rs#L379) |
-| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:440](../../applications/tagprogram-rs/core/src/engine/station.rs#L440) |
+| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:451](../../applications/tagprogram-rs/core/src/engine/station.rs#L451) |
 | `bool::then(f)` | `Some(f())` if true, else `None` | `self.cmd_read(&cmd, &mut result).then(\|\| unpack16(&result))`, [stlink.rs:353](../../libraries/tagcore-rs/src/link/stlink.rs#L353) |
 
-A longer chain, from [rescue.rs:117](../../libraries/tagcore-rs/src/recovery/rescue.rs#L117):
+A longer chain, from [rescue.rs:118](../../libraries/tagcore-rs/src/recovery/rescue.rs#L118):
 
 ```rust
-v.get("target")
-    .and_then(|t| t.get("uid"))
-    .and_then(|u| u.as_str())
-    .filter(|u| !u.is_empty())
-    .map(str::to_string)
-    .ok_or_else(|| format!("{} records no target.uid", path.display()))
+    v.get("target")
+        .and_then(|t| t.get("uid"))
+        .and_then(|u| u.as_str())
+        .filter(|u| !u.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| format!("{} records no target.uid", path.display()))
 ```
 
 Explained in: [3, The struct](03-usb-and-stlink.md#the-struct);
@@ -696,7 +699,7 @@ match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
     Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
 ```
 
-[station.rs:434](../../applications/tagprogram-rs/core/src/engine/station.rs#L434).
+[station.rs:445](../../applications/tagprogram-rs/core/src/engine/station.rs#L445).
 Explained in: [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ## Enums and matching
@@ -720,7 +723,7 @@ pub(crate) enum TagCmd {
 
 [tagthread.rs:44](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L44);
 a variant with named fields, `Range { start: u64, end: u64 }`, at
-[tagprobe lib.rs:405](../../libraries/tagprobe-rs/src/lib.rs#L405).
+[tagprobe lib.rs:408](../../libraries/tagprobe-rs/src/lib.rs#L408).
 Explained in: [7, The program sequence](07-programming-tags-and-bases.md#the-program-sequence);
 [9, The flashing tools](09-command-line-tools.md#the-flashing-tools-tag-flash-and-base-flash);
 [11, The messages](11-engine-and-model.md#the-messages).
@@ -877,7 +880,7 @@ may have or-patterns and a guard: a one-line `match` returning a `bool`.
 if !matches!(stop, Some(s) if s != 0) {
 ```
 
-[monitor/mod.rs:704](../../libraries/tagcore-rs/src/monitor/mod.rs#L704).
+[monitor/mod.rs:706](../../libraries/tagcore-rs/src/monitor/mod.rs#L706).
 Explained in: [3, Discovery](03-usb-and-stlink.md#discovery-usbdev-and-available);
 [4, Detach](04-monitor-and-rpc.md#detach);
 [7, The settle pause](07-programming-tags-and-bases.md#the-settle-pause);
@@ -895,7 +898,7 @@ let status = self.status().map_err(StopFailure::Status)?;
 
 [tag.rs:640](../../libraries/tagcore-rs/src/tag.rs#L640);
 `self.error.map_or(Ok(()), Err)` at
-[tagcore-py lib.rs:164](../../python/tagcore-py/src/lib.rs#L164).
+[tagcore-py lib.rs:171](../../python/tagcore-py/src/lib.rs#L171).
 Explained in: [5, stop_confirmed](05-protobuf-and-the-tag-api.md#stop_confirmed);
 [8, Calling back into Python](08-bridges-to-cpp-and-python.md#calling-back-into-python-from-detached-code);
 [9, Stop](09-command-line-tools.md#stop-stop_confirmed).
@@ -914,7 +917,7 @@ pub enum TargetFamily {
     Unknown,
 ```
 
-[monitor/mod.rs:178](../../libraries/tagcore-rs/src/monitor/mod.rs#L178).
+[monitor/mod.rs:180](../../libraries/tagcore-rs/src/monitor/mod.rs#L180).
 Explained in: [4, The struct](04-monitor-and-rpc.md#the-struct).
 
 ### Wire values: integer constants, `as i32` and `try_from`
@@ -996,7 +999,7 @@ Explained in: [3, Memory, and the last-R/W status](03-usb-and-stlink.md#memory-a
 u8::from(f.is_some()),
 ```
 
-[l4.rs:263](../../libraries/tagcore-rs/src/monitor/l4.rs#L263).
+[l4.rs:271](../../libraries/tagcore-rs/src/monitor/l4.rs#L271).
 Explained in: [3, nRST](03-usb-and-stlink.md#nrst-assert_resettrue-releases-reset);
 [6, open](06-recovery.md#open);
 [8, Creating it](08-bridges-to-cpp-and-python.md#creating-it).
@@ -1013,7 +1016,7 @@ case.
 self.failure_run = self.failure_run.saturating_add(1);
 ```
 
-[link/mod.rs:521](../../libraries/tagcore-rs/src/link/mod.rs#L521);
+[link/mod.rs:526](../../libraries/tagcore-rs/src/link/mod.rs#L526);
 `self.seq.wrapping_add(1)` at
 [xflash.rs:296](../../libraries/tagcore-rs/src/recovery/xflash.rs#L296).
 Explained in: [3, Failure runs](03-usb-and-stlink.md#failure-runs-one-error-per-burst);
@@ -1033,7 +1036,7 @@ let start = addr & !3;
 if !(DEBUGVERSION..=DEBUGVERSION_MAILBOX).contains(&self.version)
 ```
 
-[tagcore-py lib.rs:189](../../python/tagcore-py/src/lib.rs#L189),
+[tagcore-py lib.rs:196](../../python/tagcore-py/src/lib.rs#L196),
 [u3.rs:458](../../libraries/tagcore-rs/src/monitor/u3.rs#L458).
 Explained in: [4, The L4 attach](04-monitor-and-rpc.md#the-l4-attach);
 [4, The U3 attach](04-monitor-and-rpc.md#the-u3-attach);
@@ -1077,7 +1080,7 @@ result (`Cow<str>`) into a `String`.
 String::from_utf8_lossy(&self.sha_str[..end]).into_owned()
 ```
 
-[monitor/mod.rs:414](../../libraries/tagcore-rs/src/monitor/mod.rs#L414);
+[monitor/mod.rs:416](../../libraries/tagcore-rs/src/monitor/mod.rs#L416);
 `return Err("Cannot open the base".into());` at
 [tagprobe lib.rs:271](../../libraries/tagprobe-rs/src/lib.rs#L271).
 Explained in: [3, Base identify](03-usb-and-stlink.md#base-identify-f6-99);
@@ -1195,7 +1198,7 @@ let mut xo = ExternalCaptureOptions {
     ..Default::default()
 ```
 
-[monitor/mod.rs:157](../../libraries/tagcore-rs/src/monitor/mod.rs#L157),
+[monitor/mod.rs:159](../../libraries/tagcore-rs/src/monitor/mod.rs#L159),
 [capture.rs:631](../../libraries/tagcore-rs/src/recovery/capture.rs#L631).
 Explained in: [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
 [6, capture.rs](06-recovery.md#capturers-the-order-and-the-options).
@@ -1238,7 +1241,7 @@ use tauri::{Emitter, Manager, State, WindowEvent};
 
 [discovery.rs:16](../../libraries/tagcore-rs/src/link/discovery.rs#L16)
 (for `ctx.devices()`),
-[tagmonitor main.rs:26](../../applications/tagmonitor-rs/app/src/main.rs#L26)
+[tagmonitor main.rs:32](../../applications/tagmonitor-rs/app/src/main.rs#L32)
 (for `handle.emit` and `app.manage`); `use prost::Message;` at
 [rpc.rs:16](../../libraries/tagcore-rs/src/monitor/rpc.rs#L16);
 `use std::fmt::Write as _;` at
@@ -1260,7 +1263,7 @@ impl fmt::Display for TargetFamily {
             TargetFamily::Stm32L4 => "STM32L4",
 ```
 
-[monitor/mod.rs:206](../../libraries/tagcore-rs/src/monitor/mod.rs#L206).
+[monitor/mod.rs:208](../../libraries/tagcore-rs/src/monitor/mod.rs#L208).
 Explained in: [4, The struct](04-monitor-and-rpc.md#the-struct);
 [5, TagError](05-protobuf-and-the-tag-api.md#tagerror-an-error-written-by-hand).
 
@@ -1279,7 +1282,7 @@ impl Drop for LinkAdapt {
 }
 ```
 
-[link/mod.rs:580](../../libraries/tagcore-rs/src/link/mod.rs#L580).
+[link/mod.rs:585](../../libraries/tagcore-rs/src/link/mod.rs#L585).
 Explained in: [3, NO_DEVICE closes the probe](03-usb-and-stlink.md#no_device-closes-the-probe);
 [3, Detach and Drop](03-usb-and-stlink.md#detach-and-drop);
 [6, The type, and its destructor](06-recovery.md#the-type-and-its-destructor);
@@ -1319,7 +1322,7 @@ stored callback, a probe handed to probe-rs, an optional progress closure.
 
 [fieldsafe.rs:275](../../libraries/tagprobe-rs/src/fieldsafe.rs#L275);
 `Option<&mut dyn FnMut(&RescueProgress)>` at
-[rescue.rs:149](../../libraries/tagcore-rs/src/recovery/rescue.rs#L149).
+[rescue.rs:150](../../libraries/tagcore-rs/src/recovery/rescue.rs#L150).
 Explained in: [6, Core control and reads](06-recovery.md#core-control-and-reads);
 [7, The probe](07-programming-tags-and-bases.md#the-probe);
 [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn).
@@ -1372,7 +1375,7 @@ table.defaults.entry(key).or_insert(config); // keeps the first
 
 [configshape.rs:165](../../libraries/tagcore-rs/src/configshape.rs#L165);
 `rpcbuf: vec![0; Self::RPCBUF_BYTES]` at
-[monitor/mod.rs:351](../../libraries/tagcore-rs/src/monitor/mod.rs#L351).
+[monitor/mod.rs:353](../../libraries/tagcore-rs/src/monitor/mod.rs#L353).
 Explained in: [4, The struct](04-monitor-and-rpc.md#the-struct);
 [5, configshape.rs](05-protobuf-and-the-tag-api.md#configshapers-which-fields-a-tag-supports);
 [7, Progress, and the flash loop](07-programming-tags-and-bases.md#progress-and-the-flash-loop).
@@ -1388,7 +1391,7 @@ line), `as_chunks::<N>()` views a slice as `[T; N]` arrays.
 for (i, chunk) in buf.chunks_mut(Self::MEM_CHUNK_BYTES).enumerate() {
 ```
 
-[monitor/mod.rs:477](../../libraries/tagcore-rs/src/monitor/mod.rs#L477);
+[monitor/mod.rs:479](../../libraries/tagcore-rs/src/monitor/mod.rs#L479);
 `image.windows(5).position(|w| w == b"base=")?` at
 [base-flash.rs:156](../../commandline-rs/src/bin/base-flash.rs#L156);
 `xyz.as_chunks::<3>().0` at
@@ -1420,7 +1423,7 @@ index loops.
 .min()
 ```
 
-[station.rs:497](../../applications/tagprogram-rs/core/src/engine/station.rs#L497)
+[station.rs:508](../../applications/tagprogram-rs/core/src/engine/station.rs#L508)
 (the earliest armed timer, or `None`).
 Explained in: [6, mcu.rs](06-recovery.md#mcurs-one-table-per-part);
 [7, The connect check](07-programming-tags-and-bases.md#the-connect-check-without-probe-rs);
@@ -1440,7 +1443,7 @@ apart, and a closure given a `&&T` by `find` uses `**c` to reach the value.
 if let Some(&command) = ALL_COMMANDS.iter().find(|c| command_name(**c) == cmd) {
 ```
 
-[monitor/mod.rs:412](../../libraries/tagcore-rs/src/monitor/mod.rs#L412),
+[monitor/mod.rs:414](../../libraries/tagcore-rs/src/monitor/mod.rs#L414),
 [monitor.rs:505](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L505).
 Explained in: [3, Base identify](03-usb-and-stlink.md#base-identify-f6-99);
 [5, textformat.rs](05-protobuf-and-the-tag-api.md#textformatrs-debugstring-byte-for-byte);
@@ -1493,7 +1496,7 @@ for (addr, family) in [
 ] {
 ```
 
-[monitor/mod.rs:552](../../libraries/tagcore-rs/src/monitor/mod.rs#L552).
+[monitor/mod.rs:554](../../libraries/tagcore-rs/src/monitor/mod.rs#L554).
 Explained in: [4, Attach](04-monitor-and-rpc.md#attach).
 
 ## Closures
@@ -1554,8 +1557,8 @@ mut on_progress: impl FnMut(Progress),
 apply: impl FnOnce(&mut Station, T) + Send + 'static,
 ```
 
-[tagprobe lib.rs:481](../../libraries/tagprobe-rs/src/lib.rs#L481),
-[station.rs:429](../../applications/tagprogram-rs/core/src/engine/station.rs#L429).
+[tagprobe lib.rs:484](../../libraries/tagprobe-rs/src/lib.rs#L484),
+[station.rs:440](../../applications/tagprogram-rs/core/src/engine/station.rs#L440).
 Explained in: [7, The program sequence](07-programming-tags-and-bases.md#the-program-sequence);
 [11, Download](11-engine-and-model.md#download-two-functions-one-chosen-at-compile-time);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
@@ -1574,7 +1577,7 @@ Done(Box<dyn FnOnce(&mut Station) + Send>),
 .map(Probe::from_specific_probe)
 ```
 
-[tagprogram engine/mod.rs:146](../../applications/tagprogram-rs/core/src/engine/mod.rs#L146),
+[tagprogram engine/mod.rs:148](../../applications/tagprogram-rs/core/src/engine/mod.rs#L148),
 [tagprobe lib.rs:357](../../libraries/tagprobe-rs/src/lib.rs#L357).
 Explained in: [7, Opening the probe](07-programming-tags-and-bases.md#opening-the-probe);
 [9, The state log and a method as a function pointer](09-command-line-tools.md#the-state-log-and-a-method-as-a-function-pointer);
@@ -1596,7 +1599,7 @@ loop, for one, ends when its channel reports `Disconnected`.
 std::thread::spawn(move || {
 ```
 
-[station.rs:432](../../applications/tagprogram-rs/core/src/engine/station.rs#L432).
+[station.rs:443](../../applications/tagprogram-rs/core/src/engine/station.rs#L443).
 Explained in: [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1628,7 +1631,7 @@ let exiting = Arc::new(AtomicBool::new(false));
 let exiting_close = exiting.clone();
 ```
 
-[tagmonitor main.rs:114](../../applications/tagmonitor-rs/app/src/main.rs#L114).
+[tagmonitor main.rs:159](../../applications/tagmonitor-rs/app/src/main.rs#L159).
 Explained in: [10, main: building the application](10-tauri-shell.md#main-building-the-application);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1682,7 +1685,7 @@ thread_local! {
 }
 ```
 
-[link/mod.rs:595](../../libraries/tagcore-rs/src/link/mod.rs#L595).
+[link/mod.rs:600](../../libraries/tagcore-rs/src/link/mod.rs#L600).
 Explained in: [3, Failure runs](03-usb-and-stlink.md#failure-runs-one-error-per-burst).
 
 ## Modules and visibility
@@ -1700,7 +1703,7 @@ pub mod cortex_m;
 pub mod l4;
 ```
 
-[monitor/mod.rs:78](../../libraries/tagcore-rs/src/monitor/mod.rs#L78).
+[monitor/mod.rs:80](../../libraries/tagcore-rs/src/monitor/mod.rs#L80).
 Explained in: [1, Where the files of a crate go](01-workspace-and-build.md#where-the-files-of-a-crate-go);
 [3, Where the link sits](03-usb-and-stlink.md#where-the-link-sits);
 [6, xflash.rs](06-recovery.md#xflashrs-the-serve-loader-protocol).
@@ -1739,7 +1742,7 @@ pub use monitor::{BitTagFlashLog, MemAccess, TagMonitor, TagMonitorStats, Target
 pub use tag::{StopFailure, Tag, TagError};
 ```
 
-[tagcore lib.rs:54](../../libraries/tagcore-rs/src/lib.rs#L54);
+[tagcore lib.rs:58](../../libraries/tagcore-rs/src/lib.rs#L58);
 `use layout as l;` at
 [xflash.rs:96](../../libraries/tagcore-rs/src/recovery/xflash.rs#L96).
 Explained in: [3, Where the link sits](03-usb-and-stlink.md#where-the-link-sits);
@@ -1760,7 +1763,7 @@ impl TagMonitor {
 
 [l4.rs:43](../../libraries/tagcore-rs/src/monitor/l4.rs#L43),
 also [rescue.rs:119](../../libraries/tagcore-rs/src/monitor/rescue.rs#L119)
-and [monitor/mod.rs:331](../../libraries/tagcore-rs/src/monitor/mod.rs#L331).
+and [monitor/mod.rs:333](../../libraries/tagcore-rs/src/monitor/mod.rs#L333).
 Explained in: [3, Where the link sits](03-usb-and-stlink.md#where-the-link-sits);
 [11, Monitor: the engine's state](11-engine-and-model.md#monitor-the-engines-state);
 [14, The Station](14-the-three-applications.md#the-station).
@@ -1787,9 +1790,9 @@ mod tests {
     use super::*;
 ```
 
-[monitor/mod.rs:741](../../libraries/tagcore-rs/src/monitor/mod.rs#L741);
+[monitor/mod.rs:743](../../libraries/tagcore-rs/src/monitor/mod.rs#L743);
 `#[ignore = ...]` at
-[image.rs:432](../../applications/tagprogram-rs/core/src/model/image.rs#L432).
+[image.rs:433](../../applications/tagprogram-rs/core/src/model/image.rs#L433).
 Explained in: [1, Tests](01-workspace-and-build.md#tests);
 [11, Testing without Tauri or a tag](11-engine-and-model.md#testing-without-tauri-or-a-tag).
 
@@ -1802,26 +1805,26 @@ occur here:
 | --- | --- | --- |
 | `format!`, `println!`, `eprintln!` | Format to a `String` or stdout/stderr | [tag-dwnld.rs:152](../../commandline-rs/src/bin/tag-dwnld.rs#L152) |
 | `write!`, `writeln!` | Format into a `String` (with `fmt::Write`) or a stream; returns a `Result` | [capture.rs:405](../../libraries/tagcore-rs/src/recovery/capture.rs#L405) |
-| `format_args!` | A pre-parsed message (`fmt::Arguments`) that allocates nothing until formatted | [link/mod.rs:488](../../libraries/tagcore-rs/src/link/mod.rs#L488) |
+| `format_args!` | A pre-parsed message (`fmt::Arguments`) that allocates nothing until formatted | [link/mod.rs:493](../../libraries/tagcore-rs/src/link/mod.rs#L493) |
 | `error!`, `warn!`, `info!`, `debug!` | Log at a fixed level through the `log` facade; they evaluate to `()`, so `return debug!(...)` is "log and return" | [monitor.rs:633](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L633) |
-| `log!(level, ...)` | Log at a level chosen at run time | [l4.rs:123](../../libraries/tagcore-rs/src/monitor/l4.rs#L123) |
-| `vec![x; n]` | A `Vec` of `n` copies | [monitor/mod.rs:351](../../libraries/tagcore-rs/src/monitor/mod.rs#L351) |
-| `json!({...})` | A `serde_json::Value` written in JSON syntax, with Rust expressions as values (`None` becomes `null`) | [view.rs:98](../../applications/tagmonitor-rs/core/src/engine/view.rs#L98) |
-| `matches!` | Pattern test as a `bool`; see [`matches!`](#matches) | [monitor/mod.rs:704](../../libraries/tagcore-rs/src/monitor/mod.rs#L704) |
-| `cfg!(...)` | A compile-time `true`/`false`; the code it guards is still compiled and type-checked (`if constexpr`) | [link/mod.rs:75](../../libraries/tagcore-rs/src/link/mod.rs#L75) |
+| `log!(level, ...)` | Log at a level chosen at run time | [l4.rs:131](../../libraries/tagcore-rs/src/monitor/l4.rs#L131) |
+| `vec![x; n]` | A `Vec` of `n` copies | [monitor/mod.rs:353](../../libraries/tagcore-rs/src/monitor/mod.rs#L353) |
+| `json!({...})` | A `serde_json::Value` written in JSON syntax, with Rust expressions as values (`None` becomes `null`) | [view.rs:100](../../applications/tagmonitor-rs/core/src/engine/view.rs#L100) |
+| `matches!` | Pattern test as a `bool`; see [`matches!`](#matches) | [monitor/mod.rs:706](../../libraries/tagcore-rs/src/monitor/mod.rs#L706) |
+| `cfg!(...)` | A compile-time `true`/`false`; the code it guards is still compiled and type-checked (`if constexpr`) | [link/mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80) |
 | `include!`, `include_bytes!`, `include_str!` | Paste a file's Rust tokens, or embed its bytes or text, at compile time | [proto.rs:25](../../libraries/tagcore-rs/src/proto.rs#L25) |
 | `env!`, `option_env!`, `concat!` | Read an environment variable at compile time (`option_env!` gives `None` if unset); join literals | [session.rs:83](../../applications/tagprogram-rs/core/src/engine/session.rs#L83) |
 | `panic!`, `debug_assert!` | Abort the thread; a check that only debug builds run | [configshape.rs:253](../../libraries/tagcore-rs/src/configshape.rs#L253) |
-| `thread_local!` | A per-thread static; see [`thread_local!`](#thread_local) | [link/mod.rs:595](../../libraries/tagcore-rs/src/link/mod.rs#L595) |
-| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagmonitor main.rs:152](../../applications/tagmonitor-rs/app/src/main.rs#L152) |
+| `thread_local!` | A per-thread static; see [`thread_local!`](#thread_local) | [link/mod.rs:600](../../libraries/tagcore-rs/src/link/mod.rs#L600) |
+| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagmonitor main.rs:204](../../applications/tagmonitor-rs/app/src/main.rs#L204) |
 
-The `cfg!` constant, as the code writes it:
+The `cfg!` constant, as the code writes it,
+[link/mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80):
 
 ```rust
 const INSTRUMENTED: bool = cfg!(feature = "instrumentation");
 ```
 
-[link/mod.rs:75](../../libraries/tagcore-rs/src/link/mod.rs#L75).
 Explained in: [3, Attach](03-usb-and-stlink.md#attach-claim-reset-enter-swd) (format arguments);
 [3, Debug registers](03-usb-and-stlink.md#debug-registers) (`log!`);
 [3, Failure runs](03-usb-and-stlink.md#failure-runs-one-error-per-burst) (`format_args!`);
@@ -1839,15 +1842,15 @@ module or crate.
 | --- | --- | --- |
 | `#[derive(...)]` | Generate trait impls; see [`derive`](#derive) | [tagprobe lib.rs:123](../../libraries/tagprobe-rs/src/lib.rs#L123) |
 | `#[cfg(...)]` | Compile the item only if the condition holds, `#ifdef`: `test`, `unix`, `target_os = "macos"`, `feature = "sqlitelog"` | [download.rs:78](../../applications/tagmonitor-rs/core/src/engine/download.rs#L78) |
-| `#![cfg_attr(cond, attr)]` | Apply `attr` only when `cond` holds; here the Windows GUI subsystem in release builds | [tagmonitor main.rs:18](../../applications/tagmonitor-rs/app/src/main.rs#L18) |
+| `#![cfg_attr(cond, attr)]` | Apply `attr` only when `cond` holds; here the Windows GUI subsystem in release builds | [tagmonitor main.rs:24](../../applications/tagmonitor-rs/app/src/main.rs#L24) |
 | `#![allow(...)]` | Silence lints for the module, e.g. generated code without docs | [proto.rs:17](../../libraries/tagcore-rs/src/proto.rs#L17) |
 | `#![no_std]` | The crate uses only `core`, no OS services | [tagcore-c-sys lib.rs:21](../../libraries/tagcore-c-sys/src/lib.rs#L21) |
 | `#[repr(C)]` | C layout for a struct that crosses to C | [tlw.rs:10](../../libraries/tagcore-c-sys/src/tlw.rs#L10) |
-| `#[default]` | The default enum variant; see [`#[default]`](#default-on-a-variant) | [monitor/mod.rs:182](../../libraries/tagcore-rs/src/monitor/mod.rs#L182) |
-| `#[test]`, `#[ignore = "..."]` | A unit test; one skipped unless asked for | [image.rs:432](../../applications/tagprogram-rs/core/src/model/image.rs#L432) |
+| `#[default]` | The default enum variant; see [`#[default]`](#default-on-a-variant) | [monitor/mod.rs:184](../../libraries/tagcore-rs/src/monitor/mod.rs#L184) |
+| `#[test]`, `#[ignore = "..."]` | A unit test; one skipped unless asked for | [image.rs:433](../../applications/tagprogram-rs/core/src/model/image.rs#L433) |
 | `#[arg(...)]`, `#[command(...)]` (clap) | Per-option and per-command settings for the derived parser | [tag-flash.rs:106](../../commandline-rs/src/bin/tag-flash.rs#L106) |
-| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagmonitor main.rs:30](../../applications/tagmonitor-rs/app/src/main.rs#L30) |
-| `#[pyclass]`, `#[pymethods]`, `#[pyfunction]` | Expose a struct, its methods or a function to Python | [tagcore-py lib.rs:173](../../python/tagcore-py/src/lib.rs#L173) |
+| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagmonitor main.rs:36](../../applications/tagmonitor-rs/app/src/main.rs#L36) |
+| `#[pyclass]`, `#[pymethods]`, `#[pyfunction]` | Expose a struct, its methods or a function to Python | [tagcore-py lib.rs:180](../../python/tagcore-py/src/lib.rs#L180) |
 
 Doc comments are attributes too: `///` documents the next item and `//!`
 the enclosing file or crate. clap turns a field's `///` comment into its
@@ -1859,6 +1862,7 @@ Explained in: [5, proto.rs](05-protobuf-and-the-tag-api.md#protors-pulling-the-g
 [10, The crate attribute and the imports](10-tauri-shell.md#the-crate-attribute-and-the-imports) (`cfg_attr`);
 [10, The two commands](10-tauri-shell.md#the-two-commands) (`#[tauri::command]`);
 [10, The user guide and App Nap](10-tauri-shell.md#the-user-guide-and-app-nap) (`#[cfg(target_os)]`);
+[10, The macOS application menu](10-tauri-shell.md#the-macos-application-menu) (`#[cfg(target_os)]` on items);
 [11, Download](11-engine-and-model.md#download-two-functions-one-chosen-at-compile-time) (`#[cfg(feature)]`).
 
 ## Build time: build scripts and features
@@ -1927,7 +1931,7 @@ dependency for one platform only; `[build-dependencies]` are for
 sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]
 ```
 
-[commandline-rs Cargo.toml:31](../../commandline-rs/Cargo.toml#L31);
+[commandline-rs Cargo.toml:36](../../commandline-rs/Cargo.toml#L36);
 `[target.'cfg(target_os = "macos")'.dependencies]` at
 [tagmonitor app Cargo.toml:19](../../applications/tagmonitor-rs/app/Cargo.toml#L19).
 Explained in: [1, Reading a package manifest](01-workspace-and-build.md#reading-a-package-manifest);
@@ -2087,7 +2091,7 @@ reference that can be stored in a struct and turned into a `Bound` with
 fn identity_dict<'py>(py: Python<'py>, r: &IdentityRecord) -> PyResult<Bound<'py, PyDict>> {
 ```
 
-[tagcore-py lib.rs:110](../../python/tagcore-py/src/lib.rs#L110).
+[tagcore-py lib.rs:117](../../python/tagcore-py/src/lib.rs#L117).
 Explained in: [8, A function with defaults](08-bridges-to-cpp-and-python.md#a-function-with-defaults);
 [8, A class that holds another](08-bridges-to-cpp-and-python.md#a-class-that-holds-another).
 
@@ -2101,7 +2105,7 @@ which is how PyO3 proves it holds nothing tied to the GIL.
 if py.detach(|| s.write(addr, &data)) {
 ```
 
-[tagcore-py lib.rs:259](../../python/tagcore-py/src/lib.rs#L259).
+[tagcore-py lib.rs:266](../../python/tagcore-py/src/lib.rs#L266).
 Explained in: [8, Releasing the GIL](08-bridges-to-cpp-and-python.md#releasing-the-gil).
 
 ### Higher-ranked bounds: `for<'py>`
@@ -2113,7 +2117,7 @@ token it will be used with is created later, inside the function.
 A: for<'py> pyo3::call::PyCallArgs<'py>,
 ```
 
-[tagcore-py lib.rs:148](../../python/tagcore-py/src/lib.rs#L148).
+[tagcore-py lib.rs:155](../../python/tagcore-py/src/lib.rs#L155).
 Explained in: [8, Calling back into Python](08-bridges-to-cpp-and-python.md#calling-back-into-python-from-detached-code).
 
 ## `async`, in the two places it appears
@@ -2148,7 +2152,7 @@ tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
     .map_err(|e| e.to_string())
 ```
 
-[tagmonitor main.rs:45](../../applications/tagmonitor-rs/app/src/main.rs#L45).
+[tagmonitor main.rs:51](../../applications/tagmonitor-rs/app/src/main.rs#L51).
 Explained in: [10, The two commands](10-tauri-shell.md#the-two-commands).
 
 ## JavaScript
@@ -2407,7 +2411,7 @@ try {
 }
 ```
 
-[tagprogram app.js:351](../../applications/tagprogram-rs/ui/app.js#L351).
+[tagprogram app.js:356](../../applications/tagprogram-rs/ui/app.js#L356).
 Not discussed in a chapter.
 
 ### `Map` and `Set`
@@ -2437,7 +2441,7 @@ const [notes, setNotes] = useState("");
 const seq = useRef(0);
 ```
 
-[tagprogram app.js:310](../../applications/tagprogram-rs/ui/app.js#L310).
+[tagprogram app.js:315](../../applications/tagprogram-rs/ui/app.js#L315).
 Explained in: [12, Hooks: four of them, used sparingly](12-ui-kit-and-pages.md#hooks-four-of-them-used-sparingly);
 [14, The page](14-the-three-applications.md#the-page).
 

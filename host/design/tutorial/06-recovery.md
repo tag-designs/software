@@ -761,8 +761,10 @@ Two consequences follow, both stated in the code:
 The Python binding mirrors this. `PyExternalFlash` holds a Python reference
 to its `PySession` and borrows the Rust session mutably for the length of
 each method
-([tagcore-py/src/lib.rs:400](../../python/tagcore-py/src/lib.rs#L400)); see
-[chapter 8](08-bridges-to-cpp-and-python.md).
+([tagcore-py/src/lib.rs:407](../../python/tagcore-py/src/lib.rs#L407)), and
+a second Python thread that reaches the session meanwhile gets a
+`RecoveryError`; see
+[chapter 8](08-bridges-to-cpp-and-python.md#a-class-that-holds-another).
 
 ## xflash.rs: the `Serve()` loader protocol
 
@@ -1268,9 +1270,8 @@ JSON the deleted C++ capture wrote: same key order, same spacing, the same
 `"0x%08X"` strings. The C++ rebuild (`CaptureSource`) reads captures from
 either, and the two implementations were compared byte for byte before the
 C++ was deleted ([capture.rs:19](../../libraries/tagcore-rs/src/recovery/capture.rs#L19)).
-The string escaper and the start of the writer,
-[capture.rs:170](../../libraries/tagcore-rs/src/recovery/capture.rs#L170)
-and [capture.rs:403](../../libraries/tagcore-rs/src/recovery/capture.rs#L403):
+The string escaper,
+[capture.rs:170](../../libraries/tagcore-rs/src/recovery/capture.rs#L170):
 
 ```rust
 /// A JSON string literal, escaped as the C++ capture escapes it.
@@ -1292,6 +1293,9 @@ fn json_string(s: &str) -> String {
     out
 }
 ```
+
+and the start of the writer,
+[capture.rs:403](../../libraries/tagcore-rs/src/recovery/capture.rs#L403):
 
 ```rust
     let mut j = String::from("{\n");
@@ -1379,7 +1383,7 @@ over old ones without error
 The first refusal is that no tag is erased before its evidence is kept. The
 caller must say which capture vouches for it, or say explicitly that there
 is none; there is no default,
-[rescue.rs:43](../../libraries/tagcore-rs/src/recovery/rescue.rs#L43):
+[rescue.rs:44](../../libraries/tagcore-rs/src/recovery/rescue.rs#L44):
 
 ```rust
 /// Which capture, if any, vouches that the tag's evidence was kept.
@@ -1393,7 +1397,7 @@ pub enum CaptureCheck<'a> {
 }
 ```
 
-The procedure, [rescue.rs:145](../../libraries/tagcore-rs/src/recovery/rescue.rs#L145):
+The procedure, [rescue.rs:146](../../libraries/tagcore-rs/src/recovery/rescue.rs#L146):
 
 ```rust
 pub fn rescue_erase(
@@ -1464,10 +1468,10 @@ pub fn rescue_erase(
 The UID is read from the chip over SWD (`read_uid`, words 2, 1, 0 printed
 as `{:08X}{:08X}{:08X}`, the form of the monitor's `info.uuid`) and compared
 with `target.uid` in the capture's manifest. `capture_uid`
-([rescue.rs:111](../../libraries/tagcore-rs/src/recovery/rescue.rs#L111))
+([rescue.rs:112](../../libraries/tagcore-rs/src/recovery/rescue.rs#L112))
 reads that with `serde_json::Value`, a parsed JSON tree:
 `v.get("target").and_then(|t| t.get("uid")).and_then(|u| u.as_str())`.
-`erase_all` ([rescue.rs:210](../../libraries/tagcore-rs/src/recovery/rescue.rs#L210))
+`erase_all` ([rescue.rs:211](../../libraries/tagcore-rs/src/recovery/rescue.rs#L211))
 then refuses a read-only loader, a paged part, and a JEDEC ID that does not
 match the record's (`jedec_matches` compares the manufacturer byte and the
 first device byte, the two the firmware knows), and walks the part: read

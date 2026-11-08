@@ -175,6 +175,11 @@ tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
 # tag-flash programs through probe-rs, and plans its erase as Tag Programmer does.
 tagprobe = { version = "0.1.0", path = "../libraries/tagprobe-rs" }
 tagprogram-core = { version = "0.1.0", path = "../applications/tagprogram-rs/core" }
+# Named only for its `log` feature: with no tracing subscriber installed,
+# probe-rs's and tagprobe's tracing events then become `log` records, so -d
+# shows them. Here rather than in tagprobe so Tag Programmer's log pane is
+# unchanged when it is built on its own.
+tracing = { version = "0.1.44", features = ["log"] }
 taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optional = true }
 # Named directly only so build.rs receives DEP_TAGCORE_C_LIB_DIR for the rpath.
 tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }
@@ -214,6 +219,11 @@ Line by line, what a CMake user would not guess:
   `sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]` is that feature;
   the `dep:` prefix says "enable this optional dependency" without also
   creating a feature named after it.
+- `tracing` is a dependency the package's own code never calls. Naming it
+  here turns on its `log` feature, and cargo enables a crate's features
+  once per build for every user of that crate, so probe-rs's `tracing`
+  events reach the tools' `log` logger
+  ([chapter 7](07-programming-tags-and-bases.md#the-libraries-in-this-chapter)).
 - `[target.'cfg(unix)'.dependencies]` is a dependency only when compiling
   for a Unix target. Windows builds never see `libc` here.
 - `[[bin]]` (double brackets: an array of tables, one per binary) is needed
@@ -642,10 +652,10 @@ application's install rules, read in chapter [10](10-tauri-shell.md).
 
 The tools are one package with many binaries, so they get their own
 function,
-[`host_rust_tools()`, line 230](../../../cmake/HostRust.cmake#L230),
+[`host_rust_tools()`, line 231](../../../cmake/HostRust.cmake#L231),
 called from
 [`commandline-rs/CMakeLists.txt:34`](../../commandline-rs/CMakeLists.txt#L34).
-Its target, [line 243](../../../cmake/HostRust.cmake#L243):
+Its target, [line 244](../../../cmake/HostRust.cmake#L244):
 
 ```cmake
   add_custom_target(
@@ -665,7 +675,7 @@ Its target, [line 243](../../../cmake/HostRust.cmake#L243):
 
 One cargo run builds every binary (`--bins`) with `sqlitelog` on, so
 `tag-dwnld`, `tag-log-import` and `tag-rebuild` are included and link the
-C++ writer. The rpath passed in (line 233) is
+C++ writer. The rpath passed in (line 234) is
 `$ORIGIN/../lib:$ORIGIN/../../lib`, one entry for `bin/` and one for
 `bin/internal/`. Which binaries go where is two lists,
 [line 189](../../../cmake/HostRust.cmake#L189):
@@ -691,9 +701,9 @@ by cargo either way, but CMake copies only what these lists name.
 
 The embedded `-download`, `-erase` and `-dfu` targets need `tag-flash` and
 `base-flash` even in a tree that does not build the host.
-[`rust_flash_tools()`](../../../cmake/RustFlashTools.cmake#L51) decides once
+[`rust_flash_tools()`](../../../cmake/RustFlashTools.cmake#L53) decides once
 per configure (a global property guards it) between three cases. With the
-host tools in the tree, [line 57](../../../cmake/RustFlashTools.cmake#L57):
+host tools in the tree, [line 59](../../../cmake/RustFlashTools.cmake#L59):
 
 ```cmake
     if(TARGET rust_tools)
@@ -742,7 +752,7 @@ crates, not the hundreds of dependencies.
 ## Documentation lints and rustdoc
 
 Every manifest ends with the same table, for example
-[`commandline-rs/Cargo.toml:45`](../../commandline-rs/Cargo.toml#L45):
+[`commandline-rs/Cargo.toml:50`](../../commandline-rs/Cargo.toml#L50):
 
 ```toml
 # Every item is documented, private ones included (AGENTS.md,
@@ -782,7 +792,7 @@ with cargo. Three places hold them:
 
 - **Unit tests in the file they test**, in a module compiled only for
   testing, for example
-  [`commandline-rs/src/lib.rs:243`](../../commandline-rs/src/lib.rs#L243):
+  [`commandline-rs/src/lib.rs:246`](../../commandline-rs/src/lib.rs#L246):
 
   ```rust
   #[cfg(test)]

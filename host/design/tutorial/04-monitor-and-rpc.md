@@ -45,7 +45,7 @@ chapter 3):
 
 ## The struct
 
-[mod.rs:296](../../libraries/tagcore-rs/src/monitor/mod.rs#L296):
+[mod.rs:298](../../libraries/tagcore-rs/src/monitor/mod.rs#L298):
 
 ```rust
 pub struct TagMonitor {
@@ -80,13 +80,13 @@ pub struct TagMonitor {
 The link is a field, not a base class (chapter 3 explains why). The session
 fields (`call_buf`, `maxpacket`, `sha_str`, `version`, `transport`) are
 valid only while attached; `clear_session` and `clear_all`
-([mod.rs:419-434](../../libraries/tagcore-rs/src/monitor/mod.rs#L419)) zero
+([mod.rs:421-436](../../libraries/tagcore-rs/src/monitor/mod.rs#L421)) zero
 them on detach or a failed attach. Two fields are new relative to the C++
 layout: `transport`, which is the subject of a [section below](#the-l4-mailbox-and-why-calls-dispatch-on-the-transport),
 and `l4_dma_clock_set`.
 
 `rpcbuf` is allocated once in `new()` as `vec![0; Self::RPCBUF_BYTES]`, 64
-KiB ([mod.rs:343](../../libraries/tagcore-rs/src/monitor/mod.rs#L343)).
+KiB ([mod.rs:345](../../libraries/tagcore-rs/src/monitor/mod.rs#L345)).
 Both attach sequences reject a firmware that advertises a bigger call
 buffer. The doc comment on the constant notes an edge: one ST-LINK memory
 transfer carries at most 65535 bytes and the RPC does not chunk, so a
@@ -98,8 +98,7 @@ full reply.
 > `impl TagMonitor` is an *associated constant*, the `static constexpr`
 > class member of C++, and is written `Self::RPCBUF_BYTES`.
 
-Two small enums go with it, [mod.rs:178](../../libraries/tagcore-rs/src/monitor/mod.rs#L178)
-and [mod.rs:195](../../libraries/tagcore-rs/src/monitor/mod.rs#L195):
+Two small enums go with it, [mod.rs:180](../../libraries/tagcore-rs/src/monitor/mod.rs#L180):
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -114,6 +113,8 @@ pub enum TargetFamily {
     Stm32U3,
 }
 ```
+
+and [mod.rs:197](../../libraries/tagcore-rs/src/monitor/mod.rs#L197):
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -131,7 +132,7 @@ pub enum Transport {
 > code, never read off the wire, so a Rust `enum` is safe. `#[default]`
 > marks the variant `Default::default()` returns. `Copy` makes assignment
 > a bitwise copy (as for a C enum). `impl fmt::Display for TargetFamily`
-> ([mod.rs:206](../../libraries/tagcore-rs/src/monitor/mod.rs#L206)) is
+> ([mod.rs:208](../../libraries/tagcore-rs/src/monitor/mod.rs#L208)) is
 > what prints `STM32L4` when a log line uses `{}`; `{:?}` would use the
 > derived `Debug` and print `Stm32L4`.
 
@@ -196,10 +197,10 @@ pub fn command_word(operation: u8, operand: i32) -> u32 {
 > promotion, so each conversion is spelled out. (A shift is the exception:
 > its amount may be any integer type.)
 
-The shared block, [abi.rs:133](../../libraries/tagcore-rs/src/monitor/abi.rs#L133),
+The shared block, [abi.rs:134](../../libraries/tagcore-rs/src/monitor/abi.rs#L134),
 is a plain struct of thirteen `u32` fields in the order of
 `monitor_shared_t`, decoded from bytes explicitly
-([abi.rs:166](../../libraries/tagcore-rs/src/monitor/abi.rs#L166), field
+([abi.rs:169](../../libraries/tagcore-rs/src/monitor/abi.rs#L169), field
 offsets' doc comments dropped):
 
 ```rust
@@ -251,7 +252,7 @@ bytes fit the reserved `MONITOR_SHARED_SIZE` of 0x40.
 
 ## Attach
 
-[mod.rs:614](../../libraries/tagcore-rs/src/monitor/mod.rs#L614):
+[mod.rs:616](../../libraries/tagcore-rs/src/monitor/mod.rs#L616):
 
 ```rust
     pub fn attach(&mut self, usbdev: &UsbDev) -> bool {
@@ -292,7 +293,7 @@ ms the family is read from `DBGMCU_IDCODE`; an unidentified part takes the
 L4 path, as in the C++. On failure the link is closed, then
 `self.detach()` finds nothing attached and only clears the session fields.
 
-Family detection, [mod.rs:549](../../libraries/tagcore-rs/src/monitor/mod.rs#L549):
+Family detection, [mod.rs:551](../../libraries/tagcore-rs/src/monitor/mod.rs#L551):
 
 ```rust
     fn detect_target_family(&mut self) -> bool {
@@ -315,7 +316,7 @@ Family detection, [mod.rs:549](../../libraries/tagcore-rs/src/monitor/mod.rs#L54
 ```
 
 The L4 address `0xE004_2000` is tried first, then the U3's `0xE004_4000`.
-`plausible_stm32_idcode` ([mod.rs:261](../../libraries/tagcore-rs/src/monitor/mod.rs#L261))
+`plausible_stm32_idcode` ([mod.rs:263](../../libraries/tagcore-rs/src/monitor/mod.rs#L263))
 rejects a device ID of 0 or 0xfff, the floating or unpowered bus. On a U375
 the L4 read can fail, so a healthy U3 attach may log one link ERROR here.
 
@@ -329,7 +330,7 @@ the L4 read can fail, so a healthy U3 attach may log one link ERROR here.
 ## The L4 attach
 
 The L4 attach is two functions. First, arm and release,
-[l4.rs:393](../../libraries/tagcore-rs/src/monitor/l4.rs#L393):
+[l4.rs:401](../../libraries/tagcore-rs/src/monitor/l4.rs#L401):
 
 ```rust
     fn reset_into_monitor(&mut self, phase: &str) -> bool {
@@ -377,11 +378,11 @@ flag the L4 firmware reads.
 > `pub const u32`s in [cortex_m.rs](../../libraries/tagcore-rs/src/monitor/cortex_m.rs#L37).
 
 Then the sequence proper, `attach_l4_steps`
-([l4.rs:452](../../libraries/tagcore-rs/src/monitor/l4.rs#L452)). After
+([l4.rs:460](../../libraries/tagcore-rs/src/monitor/l4.rs#L460)). After
 `reset_into_monitor("initial")` and a check that reports
 `FLASH_SR.PEMPTY` (which would send every reset to the ROM bootloader), it
 reads the monitor version, with a retry the C++ also has.
-[l4.rs:480](../../libraries/tagcore-rs/src/monitor/l4.rs#L480):
+[l4.rs:488](../../libraries/tagcore-rs/src/monitor/l4.rs#L488):
 
 ```rust
         self.link.expect_failures(true);
@@ -418,7 +419,7 @@ The first call's failures are logged at DEBUG (`expect_failures`, chapter
 > `version`, which becomes `self.version`. The early `return false`s
 > inside it leave the function.
 
-Then, from [l4.rs:509](../../libraries/tagcore-rs/src/monitor/l4.rs#L509):
+Then, from [l4.rs:517](../../libraries/tagcore-rs/src/monitor/l4.rs#L517):
 
 ```rust
         if self.version >= DEBUGVERSION_MAILBOX {
@@ -454,13 +455,13 @@ A DebugMonitor image then continues with, in this order:
    (recording that in `l4_dma_clock_set`). Without them, a debug access
    while the tag idles in WFI either waits (0x81 bursts) or, beyond the
    core's private bus, reads zero with an OK status and drops writes. The
-   doc comments at [l4.rs:590-643](../../libraries/tagcore-rs/src/monitor/l4.rs#L590)
+   doc comments at [l4.rs:598-651](../../libraries/tagcore-rs/src/monitor/l4.rs#L598)
    record how each was found (UIUCTag, 2026-11-02, for the DMA clock).
 
 So the order differs from the guide's summary ("version, buffer address,
 buffer size, SHA address"): the SHA comes before the size.
 
-`release_l4_dma_clock` ([l4.rs:652](../../libraries/tagcore-rs/src/monitor/l4.rs#L652))
+`release_l4_dma_clock` ([l4.rs:661](../../libraries/tagcore-rs/src/monitor/l4.rs#L661))
 undoes step 5's clock at detach, only if this session set it:
 
 ```rust
@@ -597,7 +598,7 @@ checked.
 
 L4 images built with `TAG_L4_MONITOR_MAILBOX` report version 0x21 and
 protocol `MAILBOX`. `attach_l4_steps` then returns
-`self.attach_l4_mailbox()`, [l4.rs:581](../../libraries/tagcore-rs/src/monitor/l4.rs#L581):
+`self.attach_l4_mailbox()`, [l4.rs:589](../../libraries/tagcore-rs/src/monitor/l4.rs#L589):
 
 ```rust
     fn attach_l4_mailbox(&mut self) -> bool {
@@ -617,7 +618,7 @@ writes `MONITOR_REQUEST_MAGIC` and pends the kick IRQ
 and waits with `rekick` set, reposting the request every 200 polls because
 an L4 can drop a write that lands while it sleeps.
 
-Now the dispatcher, [mod.rs:592](../../libraries/tagcore-rs/src/monitor/mod.rs#L592):
+Now the dispatcher, [mod.rs:594](../../libraries/tagcore-rs/src/monitor/mod.rs#L594):
 
 ```rust
     fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
@@ -653,7 +654,7 @@ The consequence for timeouts: an L4 mailbox image's protobuf calls get the
 mailbox's 2500-poll limit, not the DebugMonitor's 65000. Several doc
 comments (`lib.rs`, the `monitor/mod.rs` "Timeouts" section, `rpc`'s doc)
 and the guide's two-transport table describe the split by family; the
-`Transport` doc ([mod.rs:190-194](../../libraries/tagcore-rs/src/monitor/mod.rs#L190))
+`Transport` doc ([mod.rs:192-196](../../libraries/tagcore-rs/src/monitor/mod.rs#L192))
 and the code describe it by transport. Read the code.
 
 ## The DebugMonitor call (`call_l4`)
@@ -748,7 +749,7 @@ and the code describe it by transport. Read the code.
         // ...
 ```
 
-The rest ([l4.rs:195-213](../../libraries/tagcore-rs/src/monitor/l4.rs#L195))
+The rest ([l4.rs:203-221](../../libraries/tagcore-rs/src/monitor/l4.rs#L203))
 reads DCRDR for the result, retrying up to 500 times.
 
 This is your `TagMonitor::Call` for the L4: refuse if a request is still
@@ -768,7 +769,7 @@ chapter 3), in which case the call returns at once.
 > match arm with a guard; the next arm, `None => {}`, catches the other
 > `None`s and does nothing.
 
-> **Rust:** `failure_log_level()` ([mod.rs:649](../../libraries/tagcore-rs/src/monitor/mod.rs#L649))
+> **Rust:** `failure_log_level()` ([mod.rs:651](../../libraries/tagcore-rs/src/monitor/mod.rs#L651))
 > returns DEBUG while the link has been told failures are expected and
 > ERROR otherwise, so monitor-level lines follow the same rule as the link's.
 > `call_u3`'s "monitor not attached" uses a plain `error!` instead.
@@ -897,7 +898,7 @@ and generates a Rust struct per message (`crate::proto::Req`,
 are generated, and what a oneof looks like in Rust, is
 [chapter 5](05-protobuf-and-the-tag-api.md).
 
-[rpc.rs:94](../../libraries/tagcore-rs/src/monitor/rpc.rs#L94) (statistics
+[rpc.rs:98](../../libraries/tagcore-rs/src/monitor/rpc.rs#L98) (statistics
 lines kept, as they show the phases):
 
 ```rust
@@ -1023,7 +1024,7 @@ what it means is `Tag`'s job ([chapter 5](05-protobuf-and-the-tag-api.md)).
 > `prost::DecodeError` and turns the `Result<Ack, DecodeError>` into the
 > `Option<Ack>` this layer returns.
 
-`write_request` ([rpc.rs:45](../../libraries/tagcore-rs/src/monitor/rpc.rs#L45))
+`write_request` ([rpc.rs:47](../../libraries/tagcore-rs/src/monitor/rpc.rs#L47))
 writes the words with `write_mem32` and, on an STM32L4, reads them back and
 on a mismatch writes them again, up to three attempts in all, 100 ms apart, because an L4 whose bus matrix
 has stopped in Sleep drops writes with an OK status. The U3 is not
@@ -1074,7 +1075,7 @@ sequenceDiagram
 
 ## Keep-alive
 
-[mod.rs:528](../../libraries/tagcore-rs/src/monitor/mod.rs#L528):
+[mod.rs:530](../../libraries/tagcore-rs/src/monitor/mod.rs#L530):
 
 ```rust
     pub fn keep_alive(&mut self) -> bool {
@@ -1105,8 +1106,8 @@ request re-arms it, so keep-alive is a `GetStatus` RPC.
 
 ## Live memory access
 
-`read_mem` and `write_mem` ([mod.rs:470](../../libraries/tagcore-rs/src/monitor/mod.rs#L470),
-[mod.rs:497](../../libraries/tagcore-rs/src/monitor/mod.rs#L497)) are the
+`read_mem` and `write_mem` ([mod.rs:472](../../libraries/tagcore-rs/src/monitor/mod.rs#L472),
+[mod.rs:499](../../libraries/tagcore-rs/src/monitor/mod.rs#L499)) are the
 checked wrappers over the link calls that tools use while a session is
 open. They return a `MemAccess` (`Ok`, `NotAttached`, `InvalidRange`,
 `Protected`, `LinkError`) so that a caller such as `tag-monitor-test` can
@@ -1115,7 +1116,7 @@ alignment and wrap-around (`valid_mem_range`), split into 1 KiB chunks, and
 on the mailbox transport refuse a write overlapping the shared block unless
 `force` is set (`overlaps_monitor_shared`). The test
 `detached_monitor_refuses_everything_without_touching_usb`
-([mod.rs:783](../../libraries/tagcore-rs/src/monitor/mod.rs#L783)) shows
+([mod.rs:785](../../libraries/tagcore-rs/src/monitor/mod.rs#L785)) shows
 the contract when detached.
 
 > **Rust:** `buf.chunks_mut(Self::MEM_CHUNK_BYTES).enumerate()` iterates
@@ -1124,7 +1125,7 @@ the contract when detached.
 
 ## Detach
 
-[mod.rs:673](../../libraries/tagcore-rs/src/monitor/mod.rs#L673) (the
+[mod.rs:675](../../libraries/tagcore-rs/src/monitor/mod.rs#L675) (the
 mailbox DEBUG snapshot after MONITORSTOP elided):
 
 ```rust
@@ -1181,7 +1182,7 @@ failures expected (the tag may already be asleep). On an identified family
 the host leaves the debug registers alone so as not to race the firmware's
 own cleanup; only an unknown family gets the host-side DEMCR clear. Detach
 never fails and is safe to call twice, and `impl Drop for TagMonitor`
-([mod.rs:735](../../libraries/tagcore-rs/src/monitor/mod.rs#L735)) calls
+([mod.rs:737](../../libraries/tagcore-rs/src/monitor/mod.rs#L737)) calls
 it, so dropping a `Tag` ends the session and closes the probe.
 
 > **Rust:** `matches!(stop, Some(s) if s != 0)` is "the call returned a
@@ -1248,7 +1249,7 @@ leaves the core halted.
 > It does not capture `probe` (a local), so the assignments to `probe`'s
 > fields are fine, and its borrow of `self` ends at its last use, `reg(20)`.
 
-`report_l4_timeout` ([l4.rs:231](../../libraries/tagcore-rs/src/monitor/l4.rs#L231))
+`report_l4_timeout` ([l4.rs:239](../../libraries/tagcore-rs/src/monitor/l4.rs#L239))
 reads DHCSR, DCRDR, RCC_CSR and the SCB registers, halts, reads both
 stacked exception frames (`read_frame`), and logs one long line in the C++
 format. Then it recovers. If DHCSR showed `S_HALT` and `S_RESET_ST` with no
@@ -1256,7 +1257,7 @@ active exception and no fault, the tag reset during the session and is
 sitting at the reset vector because `VC_CORERESET` is still set. The host
 clears vector catch, resumes the core, checks whether the PC was in the ROM
 bootloader (0x1FFFxxxx, usually `FLASH_SR.PEMPTY`), and **drops the
-session**, [l4.rs:359](../../libraries/tagcore-rs/src/monitor/l4.rs#L359):
+session**, [l4.rs:367](../../libraries/tagcore-rs/src/monitor/l4.rs#L367):
 
 ```rust
             self.clear_all();

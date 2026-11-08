@@ -8,7 +8,7 @@ summary: "A line-by-line reading of Tag Monitor's Tauri shell -- main.rs, tauri.
 
 Each of the three desktop applications is a toolkit-free Rust engine (the
 `core` crate, chapter 11), a web page (chapter 12), and between them a shell
-of about 150 lines that opens a window, loads the page into it and passes
+of about 200 lines that opens a window, loads the page into it and passes
 messages both ways. This chapter reads Tag Monitor's shell in full:
 `host/applications/tagmonitor-rs/app/` (`src/main.rs`, `build.rs`,
 `tauri.conf.json`, `capabilities/default.json`, `Cargo.toml`) and the CMake
@@ -78,26 +78,29 @@ applications use only a small slice of it:
 - two commands, `command` and `query`, and two events, `state` and `log`;
 - the `dialog` and `opener` plugins, which only the page calls;
 - one window, configured in `tauri.conf.json`, and one capability file;
-- `tauri-build` in `build.rs`, and `generate_context!` to embed the page.
+- `tauri-build` in `build.rs`, and `generate_context!` to embed the page;
+- on macOS only, Tauri's default application menu with one item replaced.
 
 They do not use the Tauri CLI (`cargo tauri ...`; a plain `cargo build`
 does everything), Tauri's bundler, installer or updater (CMake packages the
-applications), native menus of their own (the page draws its menu bar from
-the `menus` query), trays, several windows, IPC channels, or Tauri state
-wrapped in a `Mutex`. One native menu does exist on macOS: the builder never
-calls `enable_macos_default_menu(false)`, so Tauri installs its default
-application menu (About, Hide, Quit, a File menu with Close Window, and Edit,
-View, Window and Help menus) above the page's own menu bar.
+applications), native menus of their own design (the page draws its menu bar
+from the `menus` query), trays, several windows, IPC channels, or Tauri
+state wrapped in a `Mutex`. The one native menu is the macOS menu bar's:
+Tauri's default application menu (About, Services, Hide, Quit, a File menu
+with Close Window, and Edit, View, Window and Help menus), which sits above
+the page's own menu bar and supplies the Edit shortcuts the page's text
+fields need. The shell installs it itself so that it can swap the Quit item
+for one of its own ([below](#the-macos-application-menu)).
 
 ## The files
 
 | File | Lines | What it is |
 | --- | --- | --- |
 | [app/Cargo.toml](../../applications/tagmonitor-rs/app/Cargo.toml) | 37 | The binary crate `tagmonitor`: Tauri, two plugins, the core |
-| [app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 155 | The shell: two commands, the event sink, the close hook |
+| [app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 207 | The shell: two commands, the macOS Quit item, the event sink, the close hook |
 | [app/tauri.conf.json](../../applications/tagmonitor-rs/app/tauri.conf.json) | 30 | Product name, identifier, the window, security |
 | [app/capabilities/default.json](../../applications/tagmonitor-rs/app/capabilities/default.json) | 16 | What the page may call |
-| [app/build.rs](../../applications/tagmonitor-rs/app/build.rs) | 146 | Stages the page, sets `TAURI_CONFIG`, runs `tauri_build` |
+| [app/build.rs](../../applications/tagmonitor-rs/app/build.rs) | 147 | Stages the page, sets `TAURI_CONFIG`, runs `tauri_build` |
 | `app/icons/` | -- | `icon.png`, `icon.icns`, `icon.ico` |
 | [CMakeLists.txt](../../applications/tagmonitor-rs/CMakeLists.txt) | 82 | Runs cargo; installs the program per platform |
 | [cmake/Info.plist.in](../../applications/tagmonitor-rs/cmake/Info.plist.in) | 36 | The macOS bundle's `Info.plist` |
@@ -151,7 +154,7 @@ command's empty arguments (chapter 11 introduces it properly).
 
 ### The crate attribute and the imports
 
-[main.rs:18-26](../../applications/tagmonitor-rs/app/src/main.rs#L18):
+[main.rs:24-32](../../applications/tagmonitor-rs/app/src/main.rs#L24):
 
 ```rust
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -180,7 +183,7 @@ use tauri::{Emitter, Manager, State, WindowEvent};
 
 ### The two commands
 
-[main.rs:28-48](../../applications/tagmonitor-rs/app/src/main.rs#L28):
+[main.rs:34-54](../../applications/tagmonitor-rs/app/src/main.rs#L34):
 
 ```rust
 /// The contract's `invoke("command", {cmd, args})`: queued for the engine
@@ -257,13 +260,13 @@ so the signature could not drop it anyway.
 
 ### The user guide and App Nap
 
-`user_guide_url` ([main.rs:58-79](../../applications/tagmonitor-rs/app/src/main.rs#L58))
+`user_guide_url` ([main.rs:64-85](../../applications/tagmonitor-rs/app/src/main.rs#L64))
 looks for a built copy of the manual page `apps/tagmonitor.html` beside the
 executable and up to five directories above it, then in the source tree,
 and returns a `file://` URL, or the published manual's URL. It is plain path
 searching; the page opens the result with the opener plugin.
 
-[main.rs:89-100](../../applications/tagmonitor-rs/app/src/main.rs#L89):
+[main.rs:95-106](../../applications/tagmonitor-rs/app/src/main.rs#L95):
 
 ```rust
 fn stay_awake() {
@@ -301,18 +304,107 @@ used.
 > keeps the process out of App Nap until it exits. In Objective-C you would
 > keep a strong reference to the token for the life of the process.
 
+### The macOS application menu
+
+[main.rs:108-144](../../applications/tagmonitor-rs/app/src/main.rs#L108):
+
+```rust
+/// The id of the Quit item [`app_menu`] puts in the application menu.
+#[cfg(target_os = "macos")]
+const QUIT_MENU_ID: &str = "quit";
+
+/// Tauri's default macOS menu with its Quit item replaced by one that sends
+/// the engine `quit`, so Cmd-Q asks about unsaved changes and detaches as
+/// closing the window does.
+///
+/// The default Quit is a predefined item that sends Cocoa's `terminate:`;
+/// tao answers that from `applicationWillTerminate` by ending the event
+/// loop, with no `CloseRequested` and no exit request that could be
+/// prevented. The rest of the menu (Edit's copy and paste, which the page's
+/// text fields need, Window, Hide) is Tauri's own.
+///
+/// # Errors
+///
+/// When Tauri cannot build or change the menu.
+#[cfg(target_os = "macos")]
+fn app_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    use tauri::menu::{Menu, MenuItem, MenuItemKind};
+    let menu = Menu::default(app)?;
+    if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
+        let items = app_submenu.items()?;
+        if let Some(MenuItemKind::Predefined(_)) = items.last() {
+            app_submenu.remove_at(items.len() - 1)?;
+        }
+        let quit = format!("Quit {}", app.package_info().name);
+        app_submenu.append(&MenuItem::with_id(
+            app,
+            QUIT_MENU_ID,
+            quit,
+            true,
+            Some("CmdOrCtrl+Q"),
+        )?)?;
+    }
+    Ok(menu)
+}
+```
+
+Closing the window is the engine's decision (the close hook, below), and
+Cmd-Q has to take the same road. Tauri's own Quit cannot: it is a
+*predefined* item, one whose action is a fixed Cocoa selector
+(`terminate:`) rather than an event the application receives. Tauri's
+windowing layer, tao, sees it only as `applicationWillTerminate` and ends
+the event loop, so there is no `CloseRequested` to veto and no exit request
+to prevent. The shell therefore keeps Tauri's menu and replaces that one
+item with an ordinary item whose click comes back to Rust as an event. In
+Qt terms: removing the `QAction` with `QAction::QuitRole` and adding one
+connected to your own slot.
+
+The Tauri menu API (module `tauri::menu`, a wrapper over the `muda` crate)
+used here:
+
+| Call | What it does |
+| --- | --- |
+| `Menu::default(app)` | Builds the menu Tauri would install by default. On macOS its first entry is the application submenu: About, Services, Hide, Hide Others, then the predefined Quit, last. |
+| `menu.items()`, `submenu.items()` | The entries, as a `Vec<MenuItemKind>` |
+| `MenuItemKind` | An enum over the entry types: `MenuItem`, `Submenu`, `Predefined`, `Check`, `Icon` |
+| `submenu.remove_at(i)` | Removes the entry at position `i` |
+| `MenuItem::with_id(app, id, text, enabled, accelerator)` | A plain item with a chosen id; the accelerator string `CmdOrCtrl+Q` is Cmd-Q on macOS |
+| `submenu.append(&item)` | Adds it at the end |
+
+The code checks rather than assumes: it touches the first submenu only if
+it is one, and removes the last entry only if it is a predefined item (the
+Quit). The new item's label is "Quit " and the product name from
+`tauri.conf.json`, as Cocoa's own would be. Every call returns a
+`tauri::Result`, and `?` passes a failure up to the builder, which then
+fails to start.
+
+> **Rust:** `if let Some(MenuItemKind::Submenu(app_submenu)) = ... .next()`
+> tests two things in one pattern: that the iterator yielded an entry, and
+> that the entry is the `Submenu` variant, binding its contents. C++ would
+> need a null check and a `std::get_if`. `#[cfg(target_os = "macos")]` on
+> the constant and the function removes them from other platforms'
+> builds entirely, so Windows and Linux never compile a reference to the
+> macOS menu.
+
 ### main: building the application
 
-[main.rs:110-143](../../applications/tagmonitor-rs/app/src/main.rs#L110):
+[main.rs:155-195](../../applications/tagmonitor-rs/app/src/main.rs#L155):
 
 ```rust
 fn main() {
     stay_awake();
-    // Set once the engine allows the exit, so the close it causes is let
-    // through.
+    // Set once the engine allows the exit, so a close request that arrives
+    // after it is let through rather than turned into another `quit`.
     let exiting = Arc::new(AtomicBool::new(false));
     let exiting_close = exiting.clone();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "macos")]
+    let builder = builder.menu(app_menu).on_menu_event(|app, event| {
+        if event.id() == QUIT_MENU_ID {
+            app.state::<Engine>().command("quit", json!({}));
+        }
+    });
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
@@ -346,6 +438,28 @@ fn main() {
 returns it, and the chain ends in `.run(...)`, which enters the event loop.
 It is the same idea as constructing a `QApplication`, setting it up, then
 calling `exec()`.
+
+On macOS two more calls go into the chain before the rest.
+`.menu(app_menu)` gives Tauri a function to build the application's menu
+from the `AppHandle` once the application exists; with a menu supplied,
+Tauri does not install its default one. `.on_menu_event(closure)` registers
+a handler that Tauri calls, on the main thread, for a click on any
+non-predefined menu item, with the `AppHandle` and a `MenuEvent`. The
+handler sends `quit` for the replaced Quit item and ignores everything else
+(there is nothing else that is not predefined). It reaches the engine the
+way the close hook does, through the managed state; the state exists by
+then, since `setup` runs before the first event.
+
+> **Rust:** `let builder = ...; #[cfg(target_os = "macos")] let builder =
+> builder.menu(...)...;` is *shadowing*: the second `let` declares a new
+> variable with the same name, initialised from the old one, which is moved
+> into it. With the attribute, the second statement exists only in a macOS
+> build, so on other platforms `builder` is the plain `Builder::default()`.
+> C++ cannot redeclare a name in one scope; the equivalent is an `#ifdef`
+> around `builder = std::move(builder).menu(...)`. Rust needs the new
+> binding because each builder method takes `self` by value and returns a
+> new builder, and a conditional attribute can be put on a statement but
+> not on one link of a method chain.
 
 `.plugin(...)` registers the two plugins. **Library: tauri-plugin-dialog**
 (2.8.3) gives the page native open and save dialogs
@@ -404,7 +518,7 @@ discards it deliberately.
 
 ### main: the close hook, the command table and run
 
-[main.rs:144-155](../../applications/tagmonitor-rs/app/src/main.rs#L144):
+[main.rs:196-207](../../applications/tagmonitor-rs/app/src/main.rs#L196):
 
 ```rust
         .on_window_event(move |window, event| {
@@ -425,7 +539,7 @@ discards it deliberately.
 unsaved changes, and an attached tag should be detached before the process
 ends. So a close request (the red button, File > Close Window) is vetoed and
 turned into the engine command `quit`, which is what the page's File > Quit
-also sends. The engine may ask about unsaved changes, then detaches, then
+and, on macOS, the menu bar's Quit item (Cmd-Q) also send. The engine may ask about unsaved changes, then detaches, then
 emits `Event::Exit`; the sink sets `exiting` and calls `handle.exit(0)`,
 which asks the event loop to end (Tauri raises `RunEvent::ExitRequested`,
 which nothing here prevents, and the loop exits without sending the window
@@ -433,7 +547,9 @@ another `CloseRequested`). The flag is a guard: any close request that does
 arrive after the exit was allowed is let through instead of becoming a
 second `quit`. If the tag
 never acknowledges the detach, the engine exits anyway after 5 s
-(chapter 11).
+(chapter 11). Two routes still end the process without asking the engine:
+Quit in the Dock's menu and logging out send Cocoa's `terminate:` directly,
+not through the menu item.
 
 ```mermaid
 sequenceDiagram
@@ -749,14 +865,14 @@ nothing; the canonical `\\?\D:\...` form does not parse as a URL.
 > `serde_json::to_string` quotes and escapes the path for JSON (backslashes on
 > Windows); that is the only reason `serde_json` is a build dependency.
 
-[build.rs:121-142](../../applications/tagmonitor-rs/app/build.rs#L121) adds
+[build.rs:121-143](../../applications/tagmonitor-rs/app/build.rs#L121) adds
 one thing Tag Programmer's build script does not have: with the `sqlitelog`
 feature, off Windows, when `libtagcore_c` is linked as a shared library
 (the default everywhere but macOS), it prints
 `cargo:rustc-link-arg-bins=-Wl,-rpath,<dir>`, taking the directory from
 `TAGCORE_C_RPATH` (the package's `$ORIGIN/../lib`) or else
 `TAGCORE_C_LIB_DIR` (the build tree). That is the rpath the Linux package
-relies on. Finally, [build.rs:144-145](../../applications/tagmonitor-rs/app/build.rs#L144):
+relies on. Finally, [build.rs:145-146](../../applications/tagmonitor-rs/app/build.rs#L145):
 
 ```rust
     std::env::set_current_dir(&stage).expect("enter staging directory");
@@ -950,9 +1066,12 @@ and chapter 11 builds them.
 vetoed and becomes `command("quit")`; `Event::Exit` from the engine calls
 `handle.exit(0)`.
 
+**Menu events** (macOS): the application menu's Quit item, id `quit`,
+becomes `command("quit")`.
+
 ## Try it
 
-- Read [kit.js:51-62](../../ui-kit/kit.js#L51) next to `main.rs:28-48`: the
+- Read [kit.js:51-62](../../ui-kit/kit.js#L51) next to `main.rs:34-54`: the
   three lines of JavaScript and the two Rust functions are the whole bridge.
 - Open `host/applications/tagmonitor-rs/ui/index.html` directly in a browser.
   With no `window.__TAURI__`, the kit uses `ui/mock-engine.js`, and the same

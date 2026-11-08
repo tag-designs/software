@@ -294,18 +294,18 @@ All three return promises.
 > `{ cmd }` is shorthand for `{ cmd: cmd }`, and `args || {}` means "`args`,
 > or an empty object if `args` is missing".
 
-> **Reading note: `command` returns nothing from Rust.** The doc comment
-> above `createEngine` ([kit.js:40](../../ui-kit/kit.js#L40)) and the kit's
-> README say `command` "resolves with null or rejects with the engine's error
-> string". In all three shells `fn command(...)` has no return value
-> ([tagmonitor-rs/app/src/main.rs:31](../../applications/tagmonitor-rs/app/src/main.rs#L31)),
-> so the promise always resolves with `null`, and an unknown or refused
-> command is reported by the engine as a log line or an `alert` prompt in the
-> next state. The page's `send()` (below) alerts on a non-null answer or a
-> rejected `invoke`; in practice only the second can happen, and only when
-> Tauri itself fails the call (for example, arguments that do not
-> deserialise). Read the alert in `send()` as a guard for transport
-> failures, not as the path by which the engine reports errors.
+**`command` returns nothing from Rust.** As the doc comment above
+`createEngine` says ([kit.js:40](../../ui-kit/kit.js#L40)), `command`
+"resolves with null (the Rust command returns nothing) and rejects only if
+the IPC call itself fails". In all three shells `fn command(...)` has no
+return value
+([tagmonitor-rs/app/src/main.rs:37](../../applications/tagmonitor-rs/app/src/main.rs#L37)),
+so an unknown or refused command is reported by the engine as a log line or
+an `alert` prompt in the next state. The page's `send()` (below) alerts on a
+non-null answer or a rejected `invoke`; in practice only the second can
+happen, and only when Tauri itself fails the call (for example, arguments
+that do not deserialise). Read the alert in `send()` as a guard for
+transport failures, not as the path by which the engine reports errors.
 
 `Object.assign({ kind: "mock" }, mock)` copies the mock's own properties onto
 a new object, so a mock can carry extras (Tag Programmer's has
@@ -1372,7 +1372,7 @@ The URL parameters the three pages accept:
 | `?theme=dark` or `light` | force a theme | `Kit.setupPage` |
 | `?page=config`, `tag` or `log` | Tag Monitor's tab | `app.js:42` |
 | `?page=calibrate`, `orientation` or `log` | Tag Calibrator's tab | its `app.js:37` |
-| `?dialog=program&label=...`, `?dialog=conflict&label=...`, `?log` | Tag Programmer: open the Program dialog, the label-conflict question, the log drawer | its `app.js:37` and `446-447` |
+| `?dialog=program&label=...`, `?dialog=conflict&label=...`, `?log` | Tag Programmer: open the Program dialog, the label-conflict question, the log drawer | its `app.js:37` and `451-452` |
 | `?percent=N`, `?sample=N`, `?pose=h,p,r` | Tag Calibrator's replay position, or a fixed pose | its `mock-engine.js` |
 
 The mock is a design tool, not a test oracle: it holds no rules and its

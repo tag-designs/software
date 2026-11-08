@@ -68,7 +68,7 @@ flowchart LR
 ```
 
 The message type says it.
-[tagprogram-rs/core/src/engine/mod.rs:134](../../applications/tagprogram-rs/core/src/engine/mod.rs#L134):
+[tagprogram-rs/core/src/engine/mod.rs:136](../../applications/tagprogram-rs/core/src/engine/mod.rs#L136):
 
 ```rust
 /// Messages to the engine thread, applied in the order they arrive.
@@ -98,7 +98,7 @@ pub(crate) enum Msg {
 > cannot be printed.
 
 The loop is Tag Monitor's without the republish and exit steps.
-[mod.rs:295](../../applications/tagprogram-rs/core/src/engine/mod.rs#L295):
+[mod.rs:297](../../applications/tagprogram-rs/core/src/engine/mod.rs#L297):
 
 ```rust
 fn run(config: EngineConfig, sink: Sink, tx: Sender<Msg>, rx: Receiver<Msg>) {
@@ -130,7 +130,7 @@ fn run(config: EngineConfig, sink: Sink, tx: Sender<Msg>, rx: Receiver<Msg>) {
 
 `Station::new` runs on the engine thread itself, and the station is given a
 clone of the channel's sender (`tx`), which is how it starts workers that can
-reply. The worker launcher, [station.rs:426](../../applications/tagprogram-rs/core/src/engine/station.rs#L426)
+reply. The worker launcher, [station.rs:437](../../applications/tagprogram-rs/core/src/engine/station.rs#L437)
 (doc comment dropped; it warns that `apply` "sees the station as it is when
 the message is handled, not as it was when the work began"):
 
@@ -180,7 +180,7 @@ that `T` into a `Done` closure and runs later on the engine thread.
 The one exception to "nothing needs a lock" is the firmware catalog. The
 station holds `catalog: Arc<Catalog>`, shared with the workers that refresh it
 from GitHub and download into it, and the catalog guards its own fields.
-[model/catalog.rs:291](../../applications/tagprogram-rs/core/src/model/catalog.rs#L291):
+[model/catalog.rs:292](../../applications/tagprogram-rs/core/src/model/catalog.rs#L292):
 
 ```rust
 pub struct Catalog {
@@ -195,7 +195,7 @@ pub struct Catalog {
 ```
 
 and its refresh hands a clone of the `Arc` to a worker,
-[station.rs:1308](../../applications/tagprogram-rs/core/src/engine/station.rs#L1308):
+[station.rs:1340](../../applications/tagprogram-rs/core/src/engine/station.rs#L1340):
 
 ```rust
         let catalog = self.catalog.clone();
@@ -222,7 +222,7 @@ the next pass of the loop, after the current view has been published. At
 start-up it opens the record CSV this way, because on macOS the first `open()`
 under Documents blocks until the user answers the system's folder-access
 prompt; deferring it lets the window draw first, with the Record row saying
-what is happening. [station.rs:730](../../applications/tagprogram-rs/core/src/engine/station.rs#L730):
+what is happening. [station.rs:762](../../applications/tagprogram-rs/core/src/engine/station.rs#L762):
 
 ```rust
         let _ = self.tx.send(Msg::Done(Box::new(move |s: &mut Station| {
@@ -240,7 +240,7 @@ what is happening. [station.rs:730](../../applications/tagprogram-rs/core/src/en
 
 ### The Station
 
-`Station` ([station.rs:188](../../applications/tagprogram-rs/core/src/engine/station.rs#L188))
+`Station` ([station.rs:199](../../applications/tagprogram-rs/core/src/engine/station.rs#L199))
 is qtprogram's `Station` plus the parts of its `MainWindow` that held state.
 Its `impl` is spread over three files: `station.rs` (checks, base, attach,
 polling, firmware choice, record, prompts), `session.rs` (the programming
@@ -262,9 +262,9 @@ The parts worth knowing:
 | `prompt: Option<Prompt>` | at most one outstanding question |
 | `catalog: Arc<Catalog>` | the release list, shared with workers |
 
-`command` ([station.rs:568](../../applications/tagprogram-rs/core/src/engine/station.rs#L568))
+`command` ([station.rs:596](../../applications/tagprogram-rs/core/src/engine/station.rs#L596))
 is one `match` on the command name, with two small closures to read
-arguments ([station.rs:569](../../applications/tagprogram-rs/core/src/engine/station.rs#L569)):
+arguments ([station.rs:601](../../applications/tagprogram-rs/core/src/engine/station.rs#L601)):
 
 ```rust
         let s = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
@@ -276,7 +276,7 @@ command is logged as a warning: nothing is returned to the page, which matches
 the shell's `command` returning `()` ([chapter 12](12-ui-kit-and-pages.md#kitcreateengine-tauri-or-the-mock)).
 
 `start` versus `ready`: the page's first command is `start`, not `ready`.
-[station.rs:673](../../applications/tagprogram-rs/core/src/engine/station.rs#L673):
+[station.rs:705](../../applications/tagprogram-rs/core/src/engine/station.rs#L705):
 
 ```rust
     fn begin(&mut self) {
@@ -345,7 +345,7 @@ link and probe-rs must never hold the base at once (the hazard list in
 [design/engine.md](../../applications/tagprogram-rs/design/engine.md#hazards)).
 `tagprobe::program` calls its `on_progress` callback synchronously, on the
 worker, from inside probe-rs's flash loop, with a `tagprobe::Progress`
-([tagprobe-rs/src/lib.rs:423](../../libraries/tagprobe-rs/src/lib.rs#L423)):
+([tagprobe-rs/src/lib.rs:426](../../libraries/tagprobe-rs/src/lib.rs#L426)):
 `Step(&'static str)` ("Erasing", "Programming", "Verifying", "Reading back")
 or `Bytes { done, total }`. Each event becomes its own `Done` closure, so the
 station is updated on its own thread. [session.rs:762](../../applications/tagprogram-rs/core/src/engine/session.rs#L762):
@@ -427,7 +427,7 @@ pub(crate) enum Step {
 
 The waiting steps are driven by a 1 s tick, a deadline kept in the session
 (`tick_at`) and fired by `Station::fire_timers`, which re-arms it before
-running the step ([station.rs:529](../../applications/tagprogram-rs/core/src/engine/station.rs#L529)):
+running the step ([station.rs:540](../../applications/tagprogram-rs/core/src/engine/station.rs#L540)):
 
 ```rust
         if self
@@ -466,7 +466,7 @@ counts ticks against a limit (`STOP_TICKS = 30`, `CONNECT_TICKS = 6`,
 `TEST_TICKS = 120`, [session.rs:60](../../applications/tagprogram-rs/core/src/engine/session.rs#L60)).
 `Station::finish` ends every session and writes the record row. The engine's
 `next_deadline` is the minimum of the four timers,
-[station.rs:496](../../applications/tagprogram-rs/core/src/engine/station.rs#L496):
+[station.rs:507](../../applications/tagprogram-rs/core/src/engine/station.rs#L507):
 
 ```rust
     pub(crate) fn next_deadline(&self) -> Option<Instant> {
@@ -491,12 +491,12 @@ Compared with Tag Monitor, where timers live in both the engine (`Monitor`)
 and the tag thread (status polls), all of Tag Programmer's timers live in the
 station, because the station is also the code that talks to the tag.
 
-### Prompts: one at a time, answered by per-kind commands
+### Prompts: one at a time, answered by per-kind commands with the id
 
 Tag Monitor keeps a queue of typed prompts and answers every kind with one
 `answer {id, button, ...}` command. Tag Programmer keeps **one** prompt,
 whose body is free-form JSON, and a new one replaces the old.
-[station.rs:480](../../applications/tagprogram-rs/core/src/engine/station.rs#L480):
+[station.rs:491](../../applications/tagprogram-rs/core/src/engine/station.rs#L491):
 
 ```rust
     /// Raises a prompt, replacing any outstanding one, with a fresh id.
@@ -516,10 +516,65 @@ whose body is free-form JSON, and a new one replaces the old.
 
 The view adds the id to the body ([view.rs:279](../../applications/tagprogram-rs/core/src/engine/view.rs#L279)),
 and the page shows each id once, as Tag Monitor's does. But the answers are
-**distinct commands** that carry no id: `answer_auto_attach {on}`,
-`choose_base {index}`, `record_use_default`, `record_open {path}`,
-`record_create {path}` and `prompt_cancel`, each of which clears whatever
-prompt is outstanding. [station.rs:594](../../applications/tagprogram-rs/core/src/engine/station.rs#L594):
+**distinct commands**, listed in one table,
+[station.rs:182](../../applications/tagprogram-rs/core/src/engine/station.rs#L182):
+
+```rust
+/// The commands that answer a prompt, each checked against the outstanding
+/// prompt's `id` before it runs.
+const PROMPT_ANSWERS: [&str; 6] = [
+    "answer_auto_attach",
+    "choose_base",
+    "record_use_default",
+    "record_open",
+    "record_create",
+    "prompt_cancel",
+];
+```
+
+Each carries its own arguments (`answer_auto_attach {on}`,
+`choose_base {index}`, `record_open {path}`, `record_create {path}`) plus
+the `id` of the prompt it answers. Before the `match`, `command` drops an
+answer whose prompt is no longer the outstanding one,
+[station.rs:596](../../applications/tagprogram-rs/core/src/engine/station.rs#L596):
+
+```rust
+    pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
+        if PROMPT_ANSWERS.contains(&cmd) && !self.answers_current(args) {
+            info!("Ignored {cmd}: it answers a prompt that has been replaced");
+            return;
+        }
+```
+
+with the test in `answers_current`,
+[station.rs:571](../../applications/tagprogram-rs/core/src/engine/station.rs#L571):
+
+```rust
+    /// True when a prompt answer's `id` names the outstanding prompt, or the
+    /// answer carries no `id`.
+    ///
+    /// The page answers a prompt with the `id` it showed. If the engine has
+    /// raised another prompt meanwhile (an alert while the base list was
+    /// open), the late answer would otherwise clear the new prompt unseen and
+    /// act on the old one; Tag Monitor and Tag Calibrator drop such answers
+    /// the same way. An answer without an `id` is taken as answering the
+    /// current prompt, as before ids were checked.
+    fn answers_current(&self, args: &Value) -> bool {
+        match args.get("id").and_then(Value::as_u64) {
+            None => true,
+            Some(id) => self.prompt.as_ref().is_some_and(|p| p.id == id),
+        }
+    }
+```
+
+> **Rust:** `[&str; 6]` is a fixed-size array of six string slices, a
+> `const char *const[6]` in C; `.contains(&cmd)` is a linear search
+> (`std::find`), and takes `&cmd` because it compares by reference.
+> `self.prompt.as_ref().is_some_and(...)` borrows the `Option<Prompt>`
+> rather than moving it out of `self`, then tests the prompt inside.
+
+An answer that passes the check clears the outstanding prompt and acts,
+[station.rs:626](../../applications/tagprogram-rs/core/src/engine/station.rs#L626):
 
 ```rust
             "answer_auto_attach" => {
@@ -535,14 +590,21 @@ prompt is outstanding. [station.rs:594](../../applications/tagprogram-rs/core/sr
             }
 ```
 
-So in Tag Programmer an answer always applies to the current prompt, whatever
-its id; Tag Monitor's id check is what later made late answers harmless.
+So a late answer (the page still showing a base list when the engine has
+raised an alert) is logged and ignored instead of clearing the alert unseen.
+The test `stale_prompt_answers_are_dropped`
+([station.rs:2003](../../applications/tagprogram-rs/core/src/engine/station.rs#L2003))
+raises two alerts, answers the first, and checks that the second survives,
+then that an answer with the right id, or with none, clears the prompt. An
+answer with no `id` still applies to whatever prompt is outstanding; the
+page always sends one.
 
 ### The shell
 
 `tagprogram-rs/app/src/main.rs` is the shell Tag Monitor's was copied from,
-less two things. It does not intercept the window's close (the window simply
-closes, and `Event` has no `Exit` variant), and its capability file does not
+less two things. It does not intercept the window's close or Cmd-Q (the
+window simply closes, it keeps Tauri's default macOS menu with its own Quit,
+and `Event` has no `Exit` variant), and its capability file does not
 grant `core:window:allow-set-title`, so the page's `Kit.setTitle` call to the
 native window is refused silently (harmless: the title it sets does not
 change). The sink, [main.rs:145](../../applications/tagprogram-rs/app/src/main.rs#L145):
@@ -567,7 +629,7 @@ same skeleton as Tag Monitor's (`send`, `draw`, `Window`, `showPrompt`,
 wiring), with four differences.
 
 **The menus are written in the page**, not fetched with a `menus` query.
-[app.js:419](../../applications/tagprogram-rs/ui/app.js#L419):
+[app.js:424](../../applications/tagprogram-rs/ui/app.js#L424):
 
 ```js
   Kit.menuBar(document.getElementById("menubar"), [
@@ -588,24 +650,38 @@ wiring), with four differences.
 The Station menu's `items` is a function, so its check mark follows
 `state.autoAttach` each time it opens.
 
-**Prompts answer with their own commands.** [app.js:207](../../applications/tagprogram-rs/ui/app.js#L207):
+**Prompts answer with their own commands, and the prompt's id.** [app.js:207](../../applications/tagprogram-rs/ui/app.js#L207):
 
 ```js
   function showPrompt(p) {
     if (!p || p.id === shownPrompt) return;
     shownPrompt = p.id;
-    if (p.kind === "autoAttach") return promptAutoAttach();
+    if (p.kind === "autoAttach") return promptAutoAttach(p);
     if (p.kind === "recordFile") return promptRecordFile(p);
     if (p.kind === "chooseBase") return promptChooseBase(p);
     if (p.kind === "alert") {
-      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel"));
+      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel", { id: p.id }));
     }
-    send("prompt_cancel");
+    send("prompt_cancel", { id: p.id });
   }
 ```
 
+Each `prompt*` function passes `p.id` on with whatever it sends, for
+example `promptChooseBase`
+([app.js:270](../../applications/tagprogram-rs/ui/app.js#L270)):
+
+```js
+  async function promptChooseBase(p) {
+    const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
+    send(index === null ? "prompt_cancel" : "choose_base", index === null ? { id: p.id } : { index, id: p.id });
+  }
+```
+
+> **JavaScript:** `{ index, id: p.id }` is an object literal with a
+> shorthand property: `index` alone means `index: index`.
+
 **Start-up sends `start`**, then opens a preview dialog if the URL asks for
-one ([app.js:435](../../applications/tagprogram-rs/ui/app.js#L435)):
+one ([app.js:440](../../applications/tagprogram-rs/ui/app.js#L440)):
 
 ```js
   Promise.all([
@@ -629,7 +705,7 @@ the engine has acted on it.
 
 **Some dialogs are started by the page and ask queries first.** The
 Program dialog is the richest piece of front-end code in the three apps.
-`programDialog` ([app.js:348](../../applications/tagprogram-rs/ui/app.js#L348)):
+`programDialog` ([app.js:353](../../applications/tagprogram-rs/ui/app.js#L353)):
 
 ```js
   async function programDialog(initialLabel) {
@@ -676,7 +752,7 @@ Program dialog is the richest piece of front-end code in the three apps.
   the label for another tag; only then is `program {label}` sent.
 
 The body is a component with its own state, the only component in the
-three apps that calls `useState`. [app.js:309](../../applications/tagprogram-rs/ui/app.js#L309):
+three apps that calls `useState`. [app.js:314](../../applications/tagprogram-rs/ui/app.js#L314):
 
 ```js
   function ProgramBody({ pv, initialLabel, onLabel }) {
@@ -695,7 +771,7 @@ three apps that calls `useState`. [app.js:309](../../applications/tagprogram-rs/
     }, [label]);
 ```
 
-and its field, [app.js:327](../../applications/tagprogram-rs/ui/app.js#L327):
+and its field, [app.js:332](../../applications/tagprogram-rs/ui/app.js#L332):
 
 ```js
         <div class="kit-form-value"><input ref=${input} class="kit-field" type="text" value=${label}
@@ -725,7 +801,7 @@ renders without causing one.
 Two smaller page details. Choosing "Other ELF file..." in the firmware popup
 opens a file picker; if the user cancels, the page calls `draw()`, and the
 kit's `Select` snaps the popup back to the engine's selection
-([app.js:390](../../applications/tagprogram-rs/ui/app.js#L390)). And
+([app.js:395](../../applications/tagprogram-rs/ui/app.js#L395)). And
 `keepSpaces` ([app.js:61](../../applications/tagprogram-rs/ui/app.js#L61))
 replaces each double space in a firmware entry with a no-break space and a
 space, because a closed `<select>` collapses runs of spaces and qtprogram's
@@ -1019,9 +1095,11 @@ and starts it over. Either way the reloaded page is not sent the state it
 missed, and waits for the next change to get one. In the app the page sends
 `ready` once.
 
-Quit works as in Tag Monitor (the shell turns a window close into `quit` and
-exits on `Event::Exit`; the engine detaches first and exits once the tag
-thread reports `Detached`, or after `QUIT_WAIT`, 5 s), less the
+Quit works as in Tag Monitor (the shell turns a window close, and on macOS
+the menu bar's Quit item, into `quit` and exits on `Event::Exit`, see
+[chapter 10](10-tauri-shell.md#the-macos-application-menu); the engine
+detaches first and exits once the tag thread reports `Detached`, or after
+`QUIT_WAIT`, 5 s), less the
 unsaved-changes question, since there is no document. The reason given here
 is the tag's own: "exiting at once left the tag calibrating, and a
 calibrating tag refuses everything but Stop" ([calibrator.rs:237](../../applications/tagcalibrate-rs/core/src/engine/calibrator.rs#L237)).
@@ -1261,15 +1339,15 @@ embedded in the binary unused.
 | C++ | none | `tagcore_c` SQLite writer (feature `sqlitelog`) | `tagcore_c` calibration session, always |
 | First page command | `start` (once; no republish) | `ready` (attaches the first time; republishes every time) | `ready` (attaches unless already attached, or restarts the replay; no republish) |
 | Prompts | one `Option<Prompt>`, JSON body, replaced by the next | typed `PromptKind`s in a queue | typed `PromptKind`, one `Option<Prompt>`, replaced by the next |
-| Prompt answers | per-kind commands, no id | `answer {id, button, ...}` | `answer {id, button, ...}` |
+| Prompt answers | per-kind commands, each with the prompt's `id`; stale ones dropped | `answer {id, button, ...}` | `answer {id, button, ...}` |
 | Menus | written in the page | `menus` query (table in `model/menus.rs`) | `menus` query (table in `view.rs`) |
-| Window close | not intercepted; no `Event::Exit` | intercepted, `quit`, `Event::Exit` after the detach (at most 5 s) | as Tag Monitor, with no unsaved-changes question |
+| Window close and Cmd-Q | not intercepted (Tauri's default Quit); no `Event::Exit` | intercepted, `quit`, `Event::Exit` after the detach (at most 5 s) | as Tag Monitor, with no unsaved-changes question |
 | `allow-set-title` capability | no | yes | yes |
 | Page-initiated queries | `program_preview`, `label_notes`, `label_conflict`, `retest_default_label` | none beyond `menus`, `about`, `user_guide_url` | none beyond `menus`, `about`, `user_guide_url` |
 | Progress display | inline `Session` row | `Kit.dialog` sheets following `erase`/`download` | quality figures and the sphere |
 | Kit pieces only it uses | `StatusGrid`, `Disclosure`, log drawer, `useState` | generated config form | `HeadingDial`, three.js views |
 | Mock data | hand-written, scenario chosen at `create` | hand-written plus the real BITTAG form, scenario at `ready` | a real capture replayed at 10 Hz, scenario at `ready` |
-| Headless tests | 28 unit tests in `model/` and `view.rs`; `examples/smoke.rs` lists the base | Qt oracle files and model tests ([chapter 11](11-engine-and-model.md)) | replay of the reference capture through the real engine and C++ maths |
+| Headless tests | 29 unit tests in `model/`, `view.rs` and `station.rs`; `examples/smoke.rs` lists the base | Qt oracle files and model tests ([chapter 11](11-engine-and-model.md)) | replay of the reference capture through the real engine and C++ maths |
 | Window | 900 x 700 | 1100 x 640 | 1040 x 800 |
 
 Read as a history, the table shows the pattern settling: Tag Programmer
@@ -1294,8 +1372,9 @@ graphics.
 - `cargo doc -p tagprogram-core --document-private-items --open` (from
   `host/`, with `CARGO_TARGET_DIR` on the build disk) renders `Station`,
   `SessionState` and `Step` with their documentation.
-- `cargo test -p tagprogram-core` runs its model and view tests; none needs
-  hardware. Do not run its examples on the bench without reading their
+- `cargo test -p tagprogram-core` runs its model, view and station tests;
+  none needs hardware (`stale_prompt_answers_are_dropped` opens a libusb
+  context but sends nothing on USB). Do not run its examples on the bench without reading their
   headers: `smoke` talks to a base on USB, and `bench` programs a real tag.
 - With a CMake build of `tagcore_c`,
   `TAGCORE_C_LIB_DIR=<build-dir>/Release/lib cargo test -p tagcalibrate-core`

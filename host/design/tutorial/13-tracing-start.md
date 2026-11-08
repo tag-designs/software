@@ -143,7 +143,7 @@ outcome of the Start reaches the page later, as a `state` event.
 ## Hop 2: the shell
 
 The shell's half is four lines,
-[main.rs:28](../../applications/tagmonitor-rs/app/src/main.rs#L28):
+[main.rs:34](../../applications/tagmonitor-rs/app/src/main.rs#L34):
 
 ```rust
 /// The contract's `invoke("command", {cmd, args})`: queued for the engine
@@ -158,7 +158,7 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 into an IPC handler: Tauri deserialises the JSON payload's `cmd` and `args`
 keys into the parameters of the same names, and `State<'_, Engine>` is
 injected from the value the shell registered with `app.manage(engine)` at
-startup ([main.rs:141](../../applications/tagmonitor-rs/app/src/main.rs#L141)).
+startup ([main.rs:193](../../applications/tagmonitor-rs/app/src/main.rs#L193)).
 A command without `async` runs on the main thread, which is why this one
 does nothing but post a message. `Value` is **serde_json**'s untyped JSON
 tree, the C++ equivalent of a `QJsonValue`.
@@ -318,7 +318,7 @@ When a check fails, `ask` queues a prompt with a fresh id
 ([monitor.rs:221](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L221))
 and the command handler returns. Nothing has gone to the tag. The engine
 cannot open a dialog; it describes one in the view state instead,
-[view.rs:230](../../applications/tagmonitor-rs/core/src/engine/view.rs#L230):
+[view.rs:232](../../applications/tagmonitor-rs/core/src/engine/view.rs#L232):
 
 ```rust
             PromptKind::StartAnyway(failures) => json!({
@@ -330,7 +330,7 @@ cannot open a dialog; it describes one in the view state instead,
 ```
 
 with `v["id"] = json!(p.id);` added at
-[view.rs:272](../../applications/tagmonitor-rs/core/src/engine/view.rs#L272).
+[view.rs:274](../../applications/tagmonitor-rs/core/src/engine/view.rs#L274).
 The view state now differs from the last one sent, so the loop emits it
 (hop 7), and the page's `showPrompt` draws the dialog once per id,
 [app.js:391](../../applications/tagmonitor-rs/ui/app.js#L391):
@@ -572,7 +572,7 @@ calls this path uses. It is the Rust counterpart of the C++
 `SerializeToArray` and `ParseFromArray`. [Chapter 5](05-protobuf-and-the-tag-api.md)
 explains the generation.
 
-[rpc.rs:102](../../libraries/tagcore-rs/src/monitor/rpc.rs#L102) encodes the
+[rpc.rs:106](../../libraries/tagcore-rs/src/monitor/rpc.rs#L106) encodes the
 request into a 64 KB host staging buffer:
 
 ```rust
@@ -604,7 +604,7 @@ any earlier request to clear (`MON_PEND` and `MON_REQ` both zero) before
 the buffer is overwritten.
 
 `write_request(round4(size))`
-([rpc.rs:45](../../libraries/tagcore-rs/src/monitor/rpc.rs#L45)) writes the
+([rpc.rs:47](../../libraries/tagcore-rs/src/monitor/rpc.rs#L47)) writes the
 request, rounded up to whole words, to `call_buf`, the firmware's call
 buffer address read at attach, with `write_mem32`. On an STM32L4 it reads
 the words back and rewrites up to three times, 100 ms apart, because an L4
@@ -613,7 +613,7 @@ check depends on the target family, not the transport, so an L4 image on
 the mailbox is checked too.
 
 Then the call and the reply,
-[rpc.rs:142](../../libraries/tagcore-rs/src/monitor/rpc.rs#L142), with the
+[rpc.rs:146](../../libraries/tagcore-rs/src/monitor/rpc.rs#L146), with the
 statistics lines elided:
 
 ```rust
@@ -658,7 +658,7 @@ same call buffer. We come back to the decode in hop 6.
 ### call: one operation over either transport
 
 `call` picks the transport chosen at attach,
-[monitor/mod.rs:592](../../libraries/tagcore-rs/src/monitor/mod.rs#L592):
+[monitor/mod.rs:594](../../libraries/tagcore-rs/src/monitor/mod.rs#L594):
 
 ```rust
     fn call(&mut self, operation: u8, operand: i32) -> Option<u32> {
@@ -678,7 +678,7 @@ gives the word `0x0000_5A03`.
 
 **The DebugMonitor (STM32L4).** `call_l4` reads DEMCR, refuses if a request
 is still pending, then posts the command,
-[l4.rs:145](../../libraries/tagcore-rs/src/monitor/l4.rs#L145):
+[l4.rs:153](../../libraries/tagcore-rs/src/monitor/l4.rs#L153):
 
 ```rust
         if !self
@@ -694,7 +694,7 @@ is still pending, then posts the command,
 ```
 
 and waits for the firmware's DebugMon handler to clear `MON_REQ`,
-[l4.rs:164](../../libraries/tagcore-rs/src/monitor/l4.rs#L164), with the
+[l4.rs:172](../../libraries/tagcore-rs/src/monitor/l4.rs#L172), with the
 probe-lost arm elided:
 
 ```rust
@@ -765,7 +765,7 @@ A `BUSY`, `BAD_COMMAND` or `NOT_ATTACHED` status fails the call at once.
 The 2500-poll limit applies to PROTOBUF too, unlike the L4's 65000. Every
 access here, the NVIC writes included, goes through the memory path
 (`read_word` and `write_word` are one-word `read_mem32` and `write_mem32`,
-[monitor/mod.rs:438](../../libraries/tagcore-rs/src/monitor/mod.rs#L438));
+[monitor/mod.rs:440](../../libraries/tagcore-rs/src/monitor/mod.rs#L440));
 the L4 transport uses the debug-register path for DEMCR and DCRDR. The two
 transports are compared in [chapter 4](04-monitor-and-rpc.md).
 
@@ -992,7 +992,7 @@ The engine applies the two reports in turn,
 
 `start_sent` records `Some((now_ms, message))`. Every status after it goes
 through `MonitorModel::apply_status`, which settles the start,
-[monitormodel.rs:259](../../applications/tagmonitor-rs/core/src/model/monitormodel.rs#L259):
+[monitormodel.rs:263](../../applications/tagmonitor-rs/core/src/model/monitormodel.rs#L263):
 
 ```rust
         if let Some((sent, message)) = &self.start_sent {
@@ -1048,10 +1048,14 @@ The reason is in the constant's own documentation,
 [monitormodel.rs:33](../../applications/tagmonitor-rs/core/src/model/monitormodel.rs#L33):
 
 ```rust
-/// Start is reported as failed when the tag has not reached RUNNING or
-/// CONFIGURED this long after it was sent, ms. An acknowledgement is not a
-/// completion, and a lost one is not a failure, so Start is judged by the
-/// state the tag reaches.
+/// Start is reported as failed when a status read finds the tag not yet in
+/// RUNNING or CONFIGURED this long after [`MonitorModel::start_sent`], ms.
+/// The clock starts when the engine handles the tag thread's report that
+/// the Start request returned (which can be up to the monitor's protobuf
+/// timeout after it was sent), not when it was sent. An acknowledgement is
+/// not a completion, and a lost one is not a failure, so Start is judged by
+/// the state the tag reaches; with no status getting through, nothing is
+/// judged.
 pub const START_WAIT_MS: i64 = 7000;
 ```
 
@@ -1094,11 +1098,11 @@ compares it with the last one sent,
         }
 ```
 
-`view_state` ([view.rs:277](../../applications/tagmonitor-rs/core/src/engine/view.rs#L277))
+`view_state` ([view.rs:279](../../applications/tagmonitor-rs/core/src/engine/view.rs#L279))
 builds a `serde_json::Value` with the strip, the tag page, the form, the
 prompt and `actions`, which is the availability rule of hop 3 evaluated
 for every command,
-[view.rs:283](../../applications/tagmonitor-rs/core/src/engine/view.rs#L283):
+[view.rs:285](../../applications/tagmonitor-rs/core/src/engine/view.rs#L285):
 
 ```rust
         let actions: Map<String, Value> = ALL_COMMANDS
@@ -1128,7 +1132,7 @@ status poll sends nothing to the page. A StartFailed adds the alert to
 > writing a JSON literal in Rust syntax.
 
 The sink is the closure the shell gave `engine::spawn`,
-[main.rs:129](../../applications/tagmonitor-rs/app/src/main.rs#L129):
+[main.rs:181](../../applications/tagmonitor-rs/app/src/main.rs#L181):
 
 ```rust
             let engine = engine::spawn(config, move |event| match event {

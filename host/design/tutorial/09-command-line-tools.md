@@ -157,6 +157,9 @@ pub fn init_logging_at(level: LevelFilter) {
         // nusb logs every USB device's missing properties at DEBUG on each
         // enumeration, which buries the tools' own lines.
         .filter_module("nusb", level.min(LevelFilter::Warn))
+        // probe-rs (through tracing's `log` feature) narrates every probe
+        // and flash step at DEBUG; its INFO and above are what -d needs.
+        .filter_module("probe_rs", level.min(LevelFilter::Info))
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -181,9 +184,11 @@ is already installed.
 The level comes only from `-d`. `env_logger::Builder::new()` starts from
 nothing and does not read the `RUST_LOG` environment variable (that is
 `Builder::from_env`, which tagcore's `tag_info` example uses), so
-`RUST_LOG=debug tag-info` changes nothing; use `tag-info -d`. Even at DEBUG,
-nothing from probe-rs appears: it logs through `tracing`, which no tool
-forwards to this logger ([chapter 7](07-programming-tags-and-bases.md#the-libraries-in-this-chapter)).
+`RUST_LOG=debug tag-info` changes nothing; use `tag-info -d`. probe-rs logs
+through `tracing`, which the package's `tracing` dependency, named only for
+its `log` feature, forwards to this logger; the `probe_rs` target is capped
+at INFO even with `-d`, as `nusb` is capped at WARN
+([chapter 7](07-programming-tags-and-bases.md#the-libraries-in-this-chapter)).
 
 > **Rust:** the builder calls chain because each returns the builder
 > (`&mut Self`), like a fluent C++ API. `.format(|buf, record| ...)` passes a
@@ -193,14 +198,15 @@ forwards to this logger ([chapter 7](07-programming-tags-and-bases.md#the-librar
 
 ### Ctrl-C and SIGPIPE
 
-[`lib.rs:118`](../../commandline-rs/src/lib.rs#L118) and
-[`lib.rs:132`](../../commandline-rs/src/lib.rs#L132):
+[`lib.rs:121`](../../commandline-rs/src/lib.rs#L121):
 
 ```rust
 pub fn exit_on_interrupt() {
     let _ = ctrlc::set_handler(|| std::process::exit(1));
 }
 ```
+
+and [`lib.rs:135`](../../commandline-rs/src/lib.rs#L135):
 
 ```rust
 pub fn restore_sigpipe() {
@@ -236,7 +242,7 @@ the C++ tools' `exit()` did not.
 
 ### Choosing a base
 
-[`lib.rs:159`](../../commandline-rs/src/lib.rs#L159):
+[`lib.rs:162`](../../commandline-rs/src/lib.rs#L162):
 
 ```rust
 pub fn select_base_from<C: CommandFactory>(devs: Vec<UsbDev>, args: &BaseArgs) -> UsbDev {
@@ -264,7 +270,7 @@ pub fn select_base_from<C: CommandFactory>(devs: Vec<UsbDev>, args: &BaseArgs) -
 }
 ```
 
-`select_base(&tag, &args)` (line 150) is this applied to `tag.available()`,
+`select_base(&tag, &args)` (line 153) is this applied to `tag.available()`,
 the list of ST-LINKs on USB; the SWD recovery tools, which have no `Tag`,
 call `select_base_from` with their own list. With one base and no `--base`
 it is used; with several, `--base` must parse and match; a malformed value
@@ -278,7 +284,7 @@ reset here.
 > generic argument that cannot be inferred from the call's arguments.
 > `C::command()` is a static method that clap's derive generated for `Cli`.
 
-`parse_bus_device` (line 188) reproduces `sscanf("%u:%u")`'s leniency
+`parse_bus_device` (line 191) reproduces `sscanf("%u:%u")`'s leniency
 (`"20:3x"` parses as `(20, 3)`); its unit test is the one quoted in
 [chapter 1](01-workspace-and-build.md#tests).
 
@@ -533,7 +539,7 @@ prost stores an enum field in a message as a plain `i32` (an unknown value
 from newer firmware must survive decoding), so turning it into a name means
 converting the number to the generated enum and asking for its name. prost
 generates `as_str_name` as an ordinary method of each enum, not through a
-trait, so `enum_name` in `lib.rs` (line 233) takes the method itself as a
+trait, so `enum_name` in `lib.rs` (line 236) takes the method itself as a
 function pointer, `fn(&E) -> &'static str`, and falls back to the number
 when the conversion fails.
 
@@ -816,8 +822,10 @@ fn main() -> ExitCode {
 
 - `taglogwriter::set_debug` sets the C++ library's own `log.c` level. The
   library has its own logger, separate from `env_logger`, and logs at DEBUG
-  until told otherwise, so `tag-dwnld` and `tag-rebuild` pass `-d` on
-  (`tag-log-import` does not call it).
+  until told otherwise, so `tag-dwnld`, `tag-rebuild` and `tag-log-import`
+  pass `-d` on. `tag-log-import` has no `BaseArgs` and no `env_logger`; its
+  own `-d` exists only for this call, and without it the writer logs only
+  errors (the C++ tool left its writer at DEBUG).
 - `check_format` (line 162) accepts the SQLite spellings and refuses
   `text`, which is retired, naming `tag-txt-import`.
 - The `--elf` line reads the BitTag record region from an ELF, if one was
@@ -1207,7 +1215,7 @@ image's identity string.
 | [`tag-monitor-test`](../../commandline-rs/src/bin/tag-monitor-test.rs) | internal | Drives the STM32L4 DebugMonitor handshake directly over `LinkAdapt`; refuses an STM32U3 | resets |
 | [`tag-side-channel-check`](../../commandline-rs/src/bin/tag-side-channel-check.rs) | internal | PASS/FAIL checks of tagcore's memory access, keep-alive and threading; opt-in writes | only with its opt-in options |
 | [`qtmonitor-fixture-capture`](../../commandline-rs/src/bin/qtmonitor-fixture-capture.rs) | internal | Saves a tag's info, configuration and status as a qtmonitor test fixture. Does not use `BaseArgs` | no |
-| [`tag-log-import`](../../commandline-rs/src/bin/tag-log-import.rs) | internal | Writes a JSONL download (from `tagclient` or tagsim) as a SQLite log through the same writer as `tag-dwnld`; needs `sqlitelog` | no tag |
+| [`tag-log-import`](../../commandline-rs/src/bin/tag-log-import.rs) | internal | Writes a JSONL download (from `tagclient` or tagsim) as a SQLite log through the same writer as `tag-dwnld`; `-d` logs the writer at DEBUG; needs `sqlitelog` | no tag |
 | [`tag-xflash`](../../commandline-rs/src/bin/tag-xflash.rs) | internal | Reads (or, `rescue-erase`, erases) external flash through an SRAM loader with the core halted | `rescue-erase` erases external flash |
 | [`tag-sramcall`](../../commandline-rs/src/bin/tag-sramcall.rs) | internal | Calls one function of an SRAM image on a halted tag and dumps the buffer | resets afterwards |
 | [`tag-rebuild`](../../commandline-rs/src/bin/tag-rebuild.rs) | internal | Rebuilds a SQLite download from a `tag-capture` directory; needs `sqlitelog` | no tag |

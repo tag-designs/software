@@ -449,6 +449,12 @@ pub struct Config {
 and `TagInfo` the one proto3 `optional` scalar in the schema
 ([proto/tagdata.proto:33](../../../proto/tagdata.proto#L33)):
 
+```protobuf
+  optional float ppm_clock_error = 15; // RV3028 EEOffset-derived clock correction
+```
+
+which prost generates as:
+
 ```rust
     /// RV3028 EEOffset-derived clock correction
     #[prost(float, optional, tag = "15")]
@@ -781,11 +787,11 @@ It clones the oneof out of the stored `Ack`, because the `Ack` stays in
 what came back.
 
 **4. `TagMonitor::rpc`**,
-[monitor/rpc.rs:94](../../libraries/tagcore-rs/src/monitor/rpc.rs#L94). This
+[monitor/rpc.rs:98](../../libraries/tagcore-rs/src/monitor/rpc.rs#L98). This
 is the port of `TagMonitor::Rpc`. Only the protobuf ends are shown here;
 [chapter 4](04-monitor-and-rpc.md) covers the transport between them. The
 request is encoded straight into the 64 KiB staging buffer,
-[monitor/rpc.rs:102](../../libraries/tagcore-rs/src/monitor/rpc.rs#L102):
+[monitor/rpc.rs:106](../../libraries/tagcore-rs/src/monitor/rpc.rs#L106):
 
 ```rust
         let size = req.encoded_len();
@@ -808,9 +814,9 @@ request is encoded straight into the 64 KiB staging buffer,
 > `rpcbuf`. The bytes land at the start of `rpcbuf`.
 
 The request is written to the firmware's call buffer and the PROTOBUF call
-made (lines 117-150, chapter 4). The reply length comes back as the call's
+made (lines 121-154, chapter 4). The reply length comes back as the call's
 result, the reply is read into the same buffer, and decoded,
-[monitor/rpc.rs:174](../../libraries/tagcore-rs/src/monitor/rpc.rs#L174):
+[monitor/rpc.rs:178](../../libraries/tagcore-rs/src/monitor/rpc.rs#L178):
 
 ```rust
         let step = Instant::now();
@@ -1034,7 +1040,7 @@ and 4, and the output puts it after `bittag_log = 4`).
 > matched to `v`, a named catch-all.
 
 Each value is spelled by `scalar`,
-[textformat.rs:97](../../libraries/tagcore-rs/src/textformat.rs#L97); the
+[textformat.rs:104](../../libraries/tagcore-rs/src/textformat.rs#L104); the
 float lines are the interesting ones:
 
 ```rust

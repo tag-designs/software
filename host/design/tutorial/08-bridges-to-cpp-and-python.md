@@ -100,20 +100,20 @@ can be short.
 
 [`taglogwriter_c.h`](../../libraries/tagcore-c/taglogwriter_c.h) is an
 ordinary C header with three things a Rust caller relies on. The handle is
-opaque, [taglogwriter_c.h:82](../../libraries/tagcore-c/taglogwriter_c.h#L82):
+opaque, [taglogwriter_c.h:85](../../libraries/tagcore-c/taglogwriter_c.h#L85):
 
 ```c
 typedef struct tlw_writer tlw_writer;
 ```
 
-The interface carries a version, [taglogwriter_c.h:76](../../libraries/tagcore-c/taglogwriter_c.h#L76):
+The interface carries a version, [taglogwriter_c.h:79](../../libraries/tagcore-c/taglogwriter_c.h#L79):
 
 ```c
 #define TLW_ABI_VERSION 1u
 ```
 
 and every message argument is a byte buffer and a length,
-[taglogwriter_c.h:136](../../libraries/tagcore-c/taglogwriter_c.h#L136):
+[taglogwriter_c.h:139](../../libraries/tagcore-c/taglogwriter_c.h#L139):
 
 ```c
 TLW_API tlw_writer *tlw_open(const char *path, const uint8_t *config,
@@ -1012,7 +1012,7 @@ CMake build.
 
 ### The module and its exception
 
-[lib.rs:727](../../python/tagcore-py/src/lib.rs#L727):
+[lib.rs:738](../../python/tagcore-py/src/lib.rs#L738):
 
 ```rust
 #[pymodule]
@@ -1050,7 +1050,7 @@ deriving from `Exception`. Errors cross the boundary as values: every
 function returns `PyResult<T>` (that is, `Result<T, PyErr>`), and returning
 `Err` raises in Python. `tagcore::recovery` reports failures as
 `Result<_, String>`, so most calls end in `.map_err(err)`. Bad arguments
-raise `ValueError` instead, [lib.rs:47](../../python/tagcore-py/src/lib.rs#L47):
+raise `ValueError` instead, [lib.rs:54](../../python/tagcore-py/src/lib.rs#L54):
 
 ```rust
 fn parse_exit(exit: &str) -> PyResult<SwdExit> {
@@ -1069,7 +1069,7 @@ Python reports it as `tagcore.RecoveryError`.
 
 ### A function with defaults
 
-[lib.rs:548](../../python/tagcore-py/src/lib.rs#L548):
+[lib.rs:559](../../python/tagcore-py/src/lib.rs#L559):
 
 ```rust
 #[pyfunction]
@@ -1102,7 +1102,7 @@ through it would freeze every other Python thread, so it runs inside
 thread, and takes the GIL back. (`detach` is PyO3 0.30's name for what
 older PyO3 called `allow_threads`.) Every long operation in the module is
 wrapped this way, for example the read helper,
-[lib.rs:188](../../python/tagcore-py/src/lib.rs#L188):
+[lib.rs:195](../../python/tagcore-py/src/lib.rs#L195):
 
 ```rust
     fn read_bytes(&mut self, py: Python<'_>, addr: u32, length: usize) -> PyResult<Vec<u8>> {
@@ -1126,7 +1126,7 @@ wrapped this way, for example the read helper,
 
 ### Classes
 
-[lib.rs:173](../../python/tagcore-py/src/lib.rs#L173):
+[lib.rs:180](../../python/tagcore-py/src/lib.rs#L180):
 
 ```rust
 #[pyclass(name = "Session", module = "tagcore._native")]
@@ -1143,7 +1143,7 @@ visible to Python live in a `#[pymethods] impl PySession` block; helpers
 like `read_bytes` live in a plain `impl PySession` block and are not
 exported. Getters are marked `#[getter]` (`mcu_name`, `uid`, `attach`).
 Context-manager support is two ordinary methods,
-[lib.rs:354](../../python/tagcore-py/src/lib.rs#L354):
+[lib.rs:361](../../python/tagcore-py/src/lib.rs#L361):
 
 ```rust
     /// Context-manager entry: the session itself.
@@ -1174,7 +1174,7 @@ run-time borrow flag, described next.
 A loader session (`ExternalFlash`) runs inside a recovery session and must
 use it for every command. In Rust that would be a borrow; across Python it
 cannot be, because Python decides lifetimes. So the Python object holds a
-counted reference to the session object, [lib.rs:372](../../python/tagcore-py/src/lib.rs#L372):
+counted reference to the session object, [lib.rs:379](../../python/tagcore-py/src/lib.rs#L379):
 
 ```rust
 #[pyclass(name = "ExternalFlash", module = "tagcore._native")]
@@ -1188,7 +1188,7 @@ struct PyExternalFlash {
 }
 ```
 
-and borrows it for each call, [lib.rs:391](../../python/tagcore-py/src/lib.rs#L391):
+and borrows it for each call, [lib.rs:398](../../python/tagcore-py/src/lib.rs#L398):
 
 ```rust
     fn with<T: Send>(
@@ -1200,10 +1200,22 @@ and borrows it for each call, [lib.rs:391](../../python/tagcore-py/src/lib.rs#L3
             .xf
             .as_mut()
             .ok_or_else(|| err("the loader session is closed"))?;
-        let mut sess = self.session.bind(py).borrow_mut();
+        let mut sess = self.session.bind(py).try_borrow_mut().map_err(busy)?;
         let s = &mut sess.inner;
         py.detach(|| f(xf, s)).map_err(err)
     }
+```
+
+A borrow that fails becomes a `RecoveryError`, through `busy`,
+[lib.rs:45](../../python/tagcore-py/src/lib.rs#L45):
+
+```rust
+/// The error for a session another Python thread is using: the GIL is
+/// released during long operations, so a second thread can reach a session
+/// that is busy, and a plain `borrow_mut` would panic there.
+fn busy(_: pyo3::pycell::PyBorrowMutError) -> PyErr {
+    err("the session is in use by another thread")
+}
 ```
 
 > **Rust:** PyO3 has two kinds of reference to a Python object. `Py<T>` is
@@ -1213,25 +1225,50 @@ and borrows it for each call, [lib.rs:391](../../python/tagcore-py/src/lib.rs#L3
 > lifetime of a `Python<'py>` token), and only it can be used.
 > `self.session.bind(py)` turns one into the other.
 
-> **Rust:** `.borrow_mut()` on a bound pyclass applies Rust's aliasing rule
-> at run time (the same check `RefCell` makes): it succeeds if no other
-> borrow of that `PySession` is live, and otherwise panics rather than
-> allowing two mutable references; PyO3 turns the panic into a
-> `PanicException` in Python. (A `&mut self` receiver on a `#[pymethods]`
-> method makes the same check through `try_borrow_mut` and raises
-> `RuntimeError` instead.) That is how "the session cannot be used for
-> anything else while a loader command runs" is enforced against Python
-> code.
+> **Rust:** `.try_borrow_mut()` on a bound pyclass applies Rust's aliasing
+> rule at run time (the same check `RefCell` makes): it returns `Ok` with a
+> mutable borrow if no other borrow of that `PySession` is live, and
+> `Err(PyBorrowMutError)` otherwise. Its sibling `.borrow_mut()` panics in
+> the second case, which PyO3 would surface as a `PanicException`; the
+> `try_` form lets `.map_err(busy)?` raise an ordinary `RecoveryError`
+> instead. (A `&mut self` receiver on a `#[pymethods]` method makes the
+> same check itself and raises `RuntimeError`.) The case is reachable
+> because `py.detach` releases the GIL, so a second Python thread can call
+> into a session while a loader command runs; this check is how "the
+> session cannot be used for anything else meanwhile" is enforced. The same
+> `try_borrow_mut().map_err(busy)?` guards `Session.external_flash`, which
+> borrows the session to start the loader, and `close`.
 
-`xf: Option<ExternalFlash>` makes closing idempotent: `close` does
-`self.xf.take()`, which moves the value out and leaves `None`, so a second
-close finds nothing to do.
+`xf: Option<ExternalFlash>` makes closing idempotent,
+[lib.rs:509](../../python/tagcore-py/src/lib.rs#L509):
+
+```rust
+    fn close(&mut self, py: Python<'_>) -> PyResult<()> {
+        if self.xf.is_none() {
+            return Ok(());
+        }
+        // Borrow before taking the loader, so a busy session leaves it open.
+        let mut sess = self.session.bind(py).try_borrow_mut().map_err(busy)?;
+        let Some(mut xf) = self.xf.take() else {
+            return Ok(());
+        };
+        let s = &mut sess.inner;
+        py.detach(|| xf.close(s))
+            .map_err(|e| err(format!("Serve() did not exit cleanly: {e}")))
+    }
+```
+
+`self.xf.take()` moves the value out and leaves `None`, so a second close
+finds nothing to do. The order matters: the session is borrowed first, so
+if another thread holds it, `close` raises with the loader still in
+`self.xf` and can be called again later; taking it first would drop the
+`ExternalFlash` unclosed.
 
 ### Calling back into Python from detached code
 
 A progress callback is a Python callable, and calling it needs the GIL,
 which the long operation released. The `Progress` helper retakes it for
-each call, [lib.rs:129](../../python/tagcore-py/src/lib.rs#L129):
+each call, [lib.rs:136](../../python/tagcore-py/src/lib.rs#L136):
 
 ```rust
 struct Progress {
@@ -1279,7 +1316,7 @@ with a token, and releases it. If the callback raises, the exception is
 not thrown through the Rust operation underneath (Rust has no exceptions to
 throw it as); it is stored, later calls are skipped, and `finish()` returns
 it once the operation is over. A read with progress shows the whole cycle,
-[lib.rs:453](../../python/tagcore-py/src/lib.rs#L453):
+[lib.rs:460](../../python/tagcore-py/src/lib.rs#L460):
 
 ```rust
     fn read<'py>(

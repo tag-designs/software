@@ -30,7 +30,7 @@ not repeat them.
 
 The crate root, [`lib.rs`](../../libraries/tagcore-rs/src/lib.rs), is a
 44-line `//!` doc comment (the crate's front page in `cargo doc`) followed
-by the module list. [lib.rs:46](../../libraries/tagcore-rs/src/lib.rs#L46):
+by the module list. [lib.rs:50](../../libraries/tagcore-rs/src/lib.rs#L50):
 
 ```rust
 pub mod configshape;
@@ -131,18 +131,18 @@ printed. Each record carries a *target* that defaults to the module path,
 such as `tagcore::link::stlink`, so under the example
 `RUST_LOG=tagcore::link=debug` turns on exactly this layer. The message
 texts deliberately repeat the C++ wording, and `libusb_name`
-([mod.rs:181](../../libraries/tagcore-rs/src/link/mod.rs#L181)) maps
+([mod.rs:186](../../libraries/tagcore-rs/src/link/mod.rs#L186)) maps
 `rusb::Error` back to libusb's own names (`LIBUSB_ERROR_TIMEOUT`), so a log
 reads the same as one from the C++ tools.
 
 There is no error type in this layer. As in the C++, functions return
 `bool` or `Option<T>` and log the reason where it happens
-([lib.rs:36-41](../../libraries/tagcore-rs/src/lib.rs#L36)). The first
+([lib.rs:40-45](../../libraries/tagcore-rs/src/lib.rs#L40)). The first
 real error type, `TagError`, is two layers up in `tag.rs`.
 
 ## The struct
 
-[link/mod.rs:218](../../libraries/tagcore-rs/src/link/mod.rs#L218) (field
+[link/mod.rs:223](../../libraries/tagcore-rs/src/link/mod.rs#L223) (field
 doc comments shortened to their first line):
 
 ```rust
@@ -185,7 +185,7 @@ pub struct LinkAdapt {
 The last three fields have no counterpart in `linkadapt.cc`; they drive the
 failure-run logging described [below](#failure-runs-one-error-per-burst).
 
-The constructor, [mod.rs:272](../../libraries/tagcore-rs/src/link/mod.rs#L272):
+The constructor, [mod.rs:277](../../libraries/tagcore-rs/src/link/mod.rs#L277):
 
 ```rust
     pub fn new() -> Self {
@@ -401,7 +401,7 @@ the `_ => 2` arm: IN endpoint `0x81`, OUT endpoint `0x02`.
 
 ## Attach: claim, reset, enter SWD
 
-[mod.rs:315](../../libraries/tagcore-rs/src/link/mod.rs#L315):
+[mod.rs:320](../../libraries/tagcore-rs/src/link/mod.rs#L320):
 
 ```rust
     pub fn attach_with_reset(&mut self, assert_reset: bool, usbdev: &UsbDev) -> bool {
@@ -416,7 +416,7 @@ the `_ => 2` arm: IN endpoint `0x81`, OUT endpoint `0x02`.
 
 `attach(usbdev)` is `attach_with_reset(true, usbdev)`. Note the first line:
 an already-open probe is dropped (closed by rusb) without the exit-debug
-command. `configure`, [mod.rs:451](../../libraries/tagcore-rs/src/link/mod.rs#L451):
+command. `configure`, [mod.rs:456](../../libraries/tagcore-rs/src/link/mod.rs#L456):
 
 ```rust
     fn configure(&mut self, assert_reset: bool) -> bool {
@@ -455,14 +455,14 @@ entering SWD, as the C++ does; and `assert_reset(false)` is the call that
 > `mode` printed in lower-case hex. Format strings are checked at compile
 > time, so a missing argument is a build error, not a crash.
 
-`claim` ([mod.rs:414](../../libraries/tagcore-rs/src/link/mod.rs#L414))
+`claim` ([mod.rs:419](../../libraries/tagcore-rs/src/link/mod.rs#L419))
 selects configuration 1, asks libusb to detach a kernel driver (ignored
 where unsupported, with `let _ = ...`), claims interface 0, and logs the
 target voltage at DEBUG as a sign of life.
 
 ### Entering SWD, with a retry the C++ did not have
 
-[mod.rs:368](../../libraries/tagcore-rs/src/link/mod.rs#L368):
+[mod.rs:373](../../libraries/tagcore-rs/src/link/mod.rs#L373):
 
 ```rust
     pub fn enter_swd(&mut self) -> bool {
@@ -509,7 +509,7 @@ target voltage at DEBUG as a sign of life.
 A tag in Shutdown has an unpowered debug port until nRST wakes it, and the
 enter sent about a millisecond after nRST occasionally arrives first; the
 base then fails every debug access of the session with 0x81. The fix (up to
-four sends, 10 ms apart, [mod.rs:80-85](../../libraries/tagcore-rs/src/link/mod.rs#L80))
+four sends, 10 ms apart, [mod.rs:85-90](../../libraries/tagcore-rs/src/link/mod.rs#L85))
 is in both libraries now; the investigation is
 `host/libraries/tagcore/design/investigations/2026-10-l4-attach-swd-enter.md`.
 
@@ -1008,7 +1008,7 @@ released. Logged one line per failure, one reconnect wrote hundreds of
 identical errors and an unplug during an L4 call about 2,500
 ([architecture.md, Logging](../../libraries/tagcore-rs/design/architecture.md#logging)).
 
-[mod.rs:520](../../libraries/tagcore-rs/src/link/mod.rs#L520) (doc
+[mod.rs:525](../../libraries/tagcore-rs/src/link/mod.rs#L525) (doc
 comments dropped):
 
 ```rust
@@ -1061,7 +1061,7 @@ The rules:
    long. `detach` calls it too, so a run cut short by a detach or an unplug
    is still summarised.
 4. While the monitor has said failures are expected,
-   `expect_failures(true)` ([mod.rs:500](../../libraries/tagcore-rs/src/link/mod.rs#L500)),
+   `expect_failures(true)` ([mod.rs:505](../../libraries/tagcore-rs/src/link/mod.rs#L505)),
    the whole run including the summary is DEBUG. The monitor does that from
    MONITORSTOP to the end of a detach, and around the first L4 call after
    attach, which it retries ([chapter 4](04-monitor-and-rpc.md)).
@@ -1078,7 +1078,7 @@ The rules:
 > Arithmetic overflow in Rust panics in debug builds, so code that might
 > overflow says what it wants.
 
-The tests at the end of `mod.rs` ([mod.rs:586](../../libraries/tagcore-rs/src/link/mod.rs#L586))
+The tests at the end of `mod.rs` ([mod.rs:591](../../libraries/tagcore-rs/src/link/mod.rs#L591))
 check these rules without hardware: they drive a `LinkAdapt` with no probe
 open, which is exactly the state an unplug leaves.
 `polling_a_lost_probe_logs_a_bounded_handful` polls `read_debug32` and
@@ -1101,7 +1101,7 @@ and one WARN. They install a capturing logger:
 
 ## Instrumentation
 
-[mod.rs:75](../../libraries/tagcore-rs/src/link/mod.rs#L75):
+[mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80):
 
 ```rust
 const INSTRUMENTED: bool = cfg!(feature = "instrumentation");
@@ -1119,21 +1119,20 @@ The `instrumentation` Cargo feature (on by default,
 > `if constexpr` on a macro, and it means the counting code cannot rot in
 > builds that turn the feature off.
 
-The counters are in `LinkAdaptStats` ([mod.rs:99](../../libraries/tagcore-rs/src/link/mod.rs#L99)):
+The counters are in `LinkAdaptStats` ([mod.rs:104](../../libraries/tagcore-rs/src/link/mod.rs#L104)):
 USB IN/OUT calls, bytes and nanoseconds; ST-LINK commands; memory reads and
 writes; debug-register reads and writes; last-R/W-status queries. Only
 successful operations are counted, and the categories nest (one memory read
 is a command, two or more transfers and a status query), so they must not
 be summed. `Default` is written by hand
-([mod.rs:151](../../libraries/tagcore-rs/src/link/mod.rs#L151)) because
+([mod.rs:156](../../libraries/tagcore-rs/src/link/mod.rs#L156)) because
 `enabled` must be `INSTRUMENTED`, not `false`. `link_stats()` returns a
 `.clone()`: the struct derives `Clone` but not `Copy`, so a copy is always
 written out.
 
 ## Detach and `Drop`
 
-[mod.rs:483](../../libraries/tagcore-rs/src/link/mod.rs#L483) and
-[mod.rs:580](../../libraries/tagcore-rs/src/link/mod.rs#L580):
+[mod.rs:488](../../libraries/tagcore-rs/src/link/mod.rs#L488):
 
 ```rust
     pub fn detach(&mut self) {
@@ -1145,6 +1144,8 @@ written out.
         self.failures_expected = false;
     }
 ```
+
+and [mod.rs:584](../../libraries/tagcore-rs/src/link/mod.rs#L584):
 
 ```rust
 /// Detaches, so a dropped link never leaves the probe in SWD mode.
@@ -1221,11 +1222,11 @@ applications keep the tag on an engine thread.
 
 | Method | File | What it does |
 | --- | --- | --- |
-| `open(usbdev)` | [mod.rs:331](../../libraries/tagcore-rs/src/link/mod.rs#L331) | open, claim and leave DFU, without touching nRST or entering SWD; for tagprobe's probe-rs driver, which orders those steps itself |
-| `enter_swd()` | [mod.rs:368](../../libraries/tagcore-rs/src/link/mod.rs#L368) | the retrying SWD entry, public for the same caller |
-| `is_attached()` | [mod.rs:564](../../libraries/tagcore-rs/src/link/mod.rs#L564) | `handle.is_some()` |
-| `link_stats()`, `reset_link_stats()` | [mod.rs:569-576](../../libraries/tagcore-rs/src/link/mod.rs#L569) | the instrumentation counters |
-| `expect_failures()`, `failures_expected()` | [mod.rs:500-507](../../libraries/tagcore-rs/src/link/mod.rs#L500) | `pub(crate)`: for the monitor only |
+| `open(usbdev)` | [mod.rs:336](../../libraries/tagcore-rs/src/link/mod.rs#L336) | open, claim and leave DFU, without touching nRST or entering SWD; for tagprobe's probe-rs driver, which orders those steps itself |
+| `enter_swd()` | [mod.rs:373](../../libraries/tagcore-rs/src/link/mod.rs#L373) | the retrying SWD entry, public for the same caller |
+| `is_attached()` | [mod.rs:569](../../libraries/tagcore-rs/src/link/mod.rs#L569) | `handle.is_some()` |
+| `link_stats()`, `reset_link_stats()` | [mod.rs:574-581](../../libraries/tagcore-rs/src/link/mod.rs#L574) | the instrumentation counters |
+| `expect_failures()`, `failures_expected()` | [mod.rs:505-512](../../libraries/tagcore-rs/src/link/mod.rs#L505) | `pub(crate)`: for the monitor only |
 | `decode_serial`, `is_stlink` | [discovery.rs](../../libraries/tagcore-rs/src/link/discovery.rs) | re-exported from `link` for tools and tests |
 
 ## Try it
@@ -1236,7 +1237,7 @@ None of these touch USB.
   `cargo test -p tagcore --lib -- link:: monitor::` from `host/` (set
   `CARGO_TARGET_DIR` to your build disk). Then read
   `polling_a_lost_probe_logs_a_bounded_handful` in
-  [mod.rs](../../libraries/tagcore-rs/src/link/mod.rs#L658) and change the
+  [mod.rs](../../libraries/tagcore-rs/src/link/mod.rs#L663) and change the
   2500 to see that the ERROR count does not move.
 - Open the API docs, private items included:
   `cargo doc -p tagcore --no-deps --document-private-items --open`, and

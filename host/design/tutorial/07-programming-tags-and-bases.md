@@ -54,9 +54,9 @@ and the DFU side, use **nusb**, a pure-Rust USB library introduced with
 
 | File | Lines | What it holds |
 | --- | --- | --- |
-| [`tagprobe-rs/src/lib.rs`](../../libraries/tagprobe-rs/src/lib.rs) | 672 | The public API: `Driver`, `list`, `identify`, `connect_check`, `chip_for`, `open_probe`, `program`, `flash_bytes`, `erase_all`, `read_memory`; `TagSequence` |
+| [`tagprobe-rs/src/lib.rs`](../../libraries/tagprobe-rs/src/lib.rs) | 675 | The public API: `Driver`, `list`, `identify`, `connect_check`, `chip_for`, `open_probe`, `program`, `flash_bytes`, `erase_all`, `read_memory`; `TagSequence` |
 | [`tagprobe-rs/src/fieldsafe.rs`](../../libraries/tagprobe-rs/src/fieldsafe.rs) | 753 | `FieldSafeProbe`, `FieldSafeArm`, `FieldSafeMemory`: probe-rs's probe traits over `LinkAdapt` |
-| [`tagprobe-rs/src/dfu.rs`](../../libraries/tagprobe-rs/src/dfu.rs) | 335 | Programming a base through its ROM bootloader: `list`, `parse_region`, `flatten_elf`, `program` |
+| [`tagprobe-rs/src/dfu.rs`](../../libraries/tagprobe-rs/src/dfu.rs) | 336 | Programming a base through its ROM bootloader: `list`, `parse_region`, `flatten_elf`, `program` |
 | [`commandline-rs/src/bin/tag-flash.rs`](../../commandline-rs/src/bin/tag-flash.rs) | 496 | `list`, `info`, `program`, `erase`, `read` |
 | [`commandline-rs/src/bin/base-flash.rs`](../../commandline-rs/src/bin/base-flash.rs) | 289 | `list`, `program`, and the identity confirmation |
 
@@ -90,16 +90,19 @@ commits it, and the code here never touches `FlashLoader` directly.
 **Library: tracing** (0.1.44). A structured-logging facade, the one
 probe-rs logs through (the Rust ecosystem has two: `log`, which every other
 crate in this tree uses, and `tracing`). tagprobe has one `tracing::debug!`
-call of its own, in the field-safe driver. Know this before you look for
-that line or for probe-rs's diagnostics: **nothing in the workspace ever
-prints a `tracing` event.** A `tracing` event is delivered only to an
-installed subscriber, or forwarded to `log` when `tracing`'s `log` feature
-is on. Neither holds here: no crate installs a subscriber (there is no
-`tracing-subscriber` in `host/Cargo.lock`), and
-`cargo tree -e features -i tracing` shows only the `std`, `attributes`
-and `default` features. So `tag-flash -d` shows tag-flash's own `log`
-lines and tagcore's, but nothing from probe-rs or from
-`fieldsafe.rs:331`.
+call of its own, in the field-safe driver. A `tracing` event is delivered
+only to an installed subscriber, or forwarded to `log` when `tracing`'s
+`log` feature is on. No crate installs a subscriber (there is no
+`tracing-subscriber` in `host/Cargo.lock`), so the command-line tools'
+package, `tag-tools`, names `tracing` as a dependency for one reason, to
+turn its `log` feature on
+([Cargo.toml](../../commandline-rs/Cargo.toml)). Cargo enables a feature
+for every user of a crate within one build, so in the tools probe-rs's
+and tagprobe's events become ordinary `log` records: `tag-flash -d` shows
+`fieldsafe.rs:331`'s line and probe-rs's INFO and above (the tools' logger
+caps the `probe_rs` target at INFO, since its DEBUG narrates every step).
+Tag Programmer, built on its own, does not get the feature, so its log
+pane shows nothing from probe-rs.
 
 The other libraries (nusb, dfu-core, dfu-nusb, tokio and object) appear only
 in `dfu.rs` and are introduced there.
@@ -626,8 +629,8 @@ every base handles, [fieldsafe.rs:319](../../libraries/tagprobe-rs/src/fieldsafe
     }
 ```
 
-(The `tracing::debug!` line is the one that never prints; see the
-libraries section above.)
+(The `tracing::debug!` line prints only in the command-line tools, with
+`-d`; see the libraries section above.)
 
 > **Rust:** `if let Some(t) = self.table` is a one-arm `match`: it runs the
 > block only when the `Option` holds a value, binding it to `t`. It can copy
@@ -825,19 +828,18 @@ back as an unattached `Probe`, [fieldsafe.rs:583](../../libraries/tagprobe-rs/sr
 
 ```rust
     fn close(self: Box<Self>) -> Probe {
-        // from_attached_probe() is crate-private; the spike never reuses a
+        // from_attached_probe() is crate-private; nothing here reuses a
         // closed probe, so an unattached Probe is enough.
         Probe::from_specific_probe(self.probe)
     }
 ```
 
-The comment's "spike" is the probe-rs evaluation spike this file grew
-from; the argument still holds for the production code, since tagprobe
-drops every probe after one session.
+Nothing reuses a closed probe because tagprobe drops every probe after one
+session.
 
 ## The program sequence
 
-[lib.rs:475](../../libraries/tagprobe-rs/src/lib.rs#L475) is the
+[lib.rs:478](../../libraries/tagprobe-rs/src/lib.rs#L478) is the
 function every programming path ends in, Tag Programmer's included:
 
 ```rust
@@ -880,7 +882,7 @@ pub enum Erase {
 
 ### Progress, and the flash loop
 
-The first half of the body, [lib.rs:483](../../libraries/tagprobe-rs/src/lib.rs#L483):
+The first half of the body, [lib.rs:486](../../libraries/tagprobe-rs/src/lib.rs#L486):
 
 ```rust
     let mut session = session(usbdev, driver, chip)?;
@@ -962,7 +964,7 @@ load addresses, which is what `flatten_elf` does by hand for DFU below.
 One detail to read correctly: probe-rs erases whole sectors. With
 `DownloadOptions::default()` its `keep_unwritten_bytes` option is off, so
 the bytes of a sector the image only partly covers are left erased, not
-restored. `operation_name` maps probe-rs's `Fill` operation ("Reading
+restored, as the doc comment on `ImagePages` states. `operation_name` maps probe-rs's `Fill` operation ("Reading
 back") for completeness, but with this setting probe-rs never starts it.
 On the L432 that is harmless because what must survive (the calibration
 page, and the persistent region that begins on the page after the code)
@@ -970,7 +972,7 @@ sits on pages of its own.
 
 ### PEMPTY and the start
 
-The second half, [lib.rs:523](../../libraries/tagprobe-rs/src/lib.rs#L523):
+The second half, [lib.rs:526](../../libraries/tagprobe-rs/src/lib.rs#L526):
 
 ```rust
     let mut core = session.core(0).map_err(|e| e.to_string())?;
@@ -1000,7 +1002,7 @@ boot; the tag's next reset is. When `program` returns, `core` and then
 `session` are dropped, and the drop detaches through `TagSequence`.
 
 Before the start comes the STM32L4 detail,
-[lib.rs:551](../../libraries/tagprobe-rs/src/lib.rs#L551):
+[lib.rs:554](../../libraries/tagprobe-rs/src/lib.rs#L554):
 
 ```rust
 fn clear_l4_pempty(core: &mut probe_rs::Core<'_>) -> Result<(), String> {
@@ -1040,7 +1042,7 @@ missing), so this is tagprobe's.
 ### The other session users
 
 `flash_bytes` opens one more session, on the smaller L432KB target, to
-read the L4 flash size register, [lib.rs:584](../../libraries/tagprobe-rs/src/lib.rs#L584):
+read the L4 flash size register, [lib.rs:587](../../libraries/tagprobe-rs/src/lib.rs#L587):
 
 ```rust
 pub fn flash_bytes(usbdev: &UsbDev, driver: Driver, device_id: u16) -> Result<Option<u32>, String> {
@@ -1061,7 +1063,7 @@ held in reset, so it cannot be part of `connect_check`; it costs one more
 attach under reset. `erase_all` is a session and
 `flashing::erase_all(&mut session, &mut FlashProgress::empty(), false)`.
 `read_memory` ends with an explicit detach and a pause,
-[lib.rs:639](../../libraries/tagprobe-rs/src/lib.rs#L639):
+[lib.rs:642](../../libraries/tagprobe-rs/src/lib.rs#L642):
 
 ```rust
     let mut session = session(usbdev, driver, chip)?;
@@ -1725,7 +1727,9 @@ None of these touches a base or a tag.
   `FieldSafeArm` and compare its trait list with the table above.
 - Check the `tracing` claim yourself:
   `cargo tree -p tag-tools -e features -i tracing` lists the features
-  `tracing` is built with, and `log` is not among them.
+  `tracing` is built with in the tools, `log` among them;
+  `cargo tree -p tagprogram-core -e features -i tracing` shows it absent
+  for Tag Programmer.
 - Read probe-rs's side of the trait boundary: in
   `~/.cargo/registry/src/*/probe-rs-0.32.0/src/architecture/arm/sequences.rs`,
   find `fn debug_core_stop` (the default `TagSequence` inherits), and in
