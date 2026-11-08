@@ -1,12 +1,12 @@
 ---
 type: proposal
-status: proposed
+status: accepted
 summary: "Give the Tauri applications one shell and one engine toolkit instead of four copies -- what the copies already differ in, which side of each difference wins, what stays app-specific (Tag Programmer's threading), the crates, the phases with the bench test each app needs, and the open decisions."
 ---
 
 # One shell and one engine toolkit for the Tauri applications
 
-**Proposed 2026-11-08.** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
+**Proposed 2026-11-08; decisions taken the same day (see the end).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
 View each carry their own copy of the same two layers: a Tauri shell
 (`app/src/main.rs`, `app/build.rs`, `capabilities/`) and the plumbing of an
 engine (the `Engine` handle, the engine loop, the logger, prompts, `ready`).
@@ -18,7 +18,7 @@ and missing from another. This proposes:
    commands and two events, the close and Quit handling, App Nap, the user
    guide search, and the page staging in `build.rs`.
 2. **One engine toolkit** (no Tauri, so the `core` crates stay toolkit-free)
-   used by the three tag applications: the `Engine` handle, the loop that
+   used by the three tag applications, and by Tag View for all but prompts: the `Engine` handle, the loop that
    emits the view state when it changes, `ready` with a resend, prompts with
    ids in a queue, and the `log` forwarding.
 3. **One page contract** for those pieces: `ready`, `answer {id, ...}`, and
@@ -187,8 +187,8 @@ Each phase leaves every application working; each ends with its bench check.
 
 | Phase | Work | Check |
 | --- | --- | --- |
-| 1. Shell | `tagapp-shell` and `tagapp-shell-build`; move all four applications onto them; Tag Programmer and Tag View gain the close hook and Quit item (see open question 1) | Each app: launch, title, Help > User Guide, Cmd-W and Cmd-Q with and without unsaved work, page reload; Tag Monitor and Tag Calibrator attach and detach a tag |
-| 2. Toolkit, Tag Calibrator | `tagapp-engine`; Tag Calibrator moves onto `Engine`, `run_loop`, `Prompts`, `Ready`, `UiLogger` | Its replay tests unchanged; on the bench: attach, stream, collect, write calibration, reload mid-stream |
+| 1. Shell | `tagapp-shell` and `tagapp-shell-build`; move all four applications onto them; Tag Programmer gains the close hook and Quit item, and asks before closing while programming (decision 1) | Each app: launch, title, Help > User Guide, Cmd-W and Cmd-Q with and without unsaved work, page reload; Tag Monitor and Tag Calibrator attach and detach a tag |
+| 2. Toolkit, Tag Calibrator and Tag View | `tagapp-engine`; Tag Calibrator moves onto `Engine`, `run_loop`, `Prompts`, `Ready`, `UiLogger`; Tag View onto all of them but `Prompts` (decision 2) | Tag Calibrator's replay tests unchanged; on the bench: attach, stream, collect, write calibration, reload mid-stream. Tag View: open a log, the compass, print, reload |
 | 3. Toolkit, Tag Monitor | Tag Monitor moves onto the toolkit; no behaviour change intended | Its oracle and golden tests unchanged; on the bench: attach, configure, Start, Stop, download, erase |
 | 4. Toolkit, Tag Programmer | Tag Programmer moves onto the toolkit: `ready`, the prompt queue and `answer`, menus from the engine | Its tests; on the bench: the full program-and-record sequence on one L4 and one U375 tag, with an image and a record file |
 
@@ -204,18 +204,20 @@ difference.
   and architecture document.
 - A decision record when phase 1 is done.
 
-## Open questions
+## Decisions (2026-11-08)
 
-1. **Closing Tag Programmer while it programs a tag.** Today the window
-   closes at once and the worker dies with the process, possibly mid-write.
-   Proposed: the close hook asks "Programming is in progress; quit anyway?"
-   while `worker_busy` is set, and quits at once otherwise.
-2. **Tag View.** It shares the shell (phase 1) but not the toolkit: its
-   engine has no tag and no prompts of this kind. Proposed: shell only.
-3. **Crate names and places.** `tagapp-shell-rs`, `tagapp-shell-build-rs`
-   and `tagapp-engine-rs` under `host/libraries/`, beside the other shared
-   crates.
-4. **Order.** Phase 1 alone removes the class of bug that prompted this; the
-   toolkit phases could wait for the next change to each application.
-   Proposed: phase 1 now, phases 2 to 4 one at a time when each application
+1. **Tag Programmer asks before closing while it programs a tag.** While a
+   programming job runs (`worker_busy`), a window close or Cmd-Q asks
+   "Programming is in progress. Quitting now can leave the tag with a partial
+   image. Quit anyway?", defaulting to No; otherwise closing works as usual.
+   The choice stays with the user: a stuck job must not trap the program.
+2. **Tag View takes the shell and the toolkit without prompts.** Its engine
+   already repeats the `Engine` handle (with a 30 s query timeout), the
+   emit-on-change loop, `ready` and the `UiLogger`, so it moves onto those in
+   phase 2. It has no prompts of this kind, so it does not use `Prompts`; in
+   the shell it keeps a plain close (no unsaved work, no tag to detach) and no
+   App Nap opt-out.
+3. **Crates:** `tagapp-shell-rs`, `tagapp-shell-build-rs` and
+   `tagapp-engine-rs` under `host/libraries/`.
+4. **Order:** phase 1 now; phases 2 to 4 one application at a time, when each
    is next changed.
