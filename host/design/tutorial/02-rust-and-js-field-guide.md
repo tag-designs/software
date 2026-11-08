@@ -146,7 +146,7 @@ the type, e.g. which managed state to fetch or what to parse into.
 window.state::<Engine>().command("quit", json!({}));
 ```
 
-[tagmonitor main.rs:201](../../applications/tagmonitor-rs/app/src/main.rs#L201);
+[tagapp-shell lib.rs:311](../../libraries/tagapp-shell-rs/src/lib.rs#L311);
 also `select_base::<Cli>(&tag, &cli.base)` at
 [tag-dwnld.rs:385](../../commandline-rs/src/bin/tag-dwnld.rs#L385) and
 `xyz.as_chunks::<3>()` at
@@ -154,7 +154,7 @@ also `select_base::<Cli>(&tag, &cli.base)` at
 Explained in: [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
 [6, image.rs](06-recovery.md#imagers-reading-an-elf-with-object);
 [9, Choosing a base](09-command-line-tools.md#choosing-a-base);
-[10, main: the close hook](10-tauri-shell.md#main-the-close-hook-the-command-table-and-run).
+[10, run: the close hook](10-tauri-shell.md#run-the-close-hook-the-command-table-and-run).
 
 ### `impl Trait` in argument and return position
 
@@ -234,8 +234,11 @@ type Sink = Arc<dyn Fn(Event) + Send + Sync>;
 ```
 
 [session.rs:120](../../libraries/tagcore-rs/src/recovery/session.rs#L120),
-[tagmonitor engine/mod.rs:164](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L164).
-Explained in: [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn).
+[tagmonitor engine/mod.rs:164](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L164);
+`type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;` at
+[tagapp-shell lib.rs:69](../../libraries/tagapp-shell-rs/src/lib.rs#L69).
+Explained in: [10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it);
+[11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn).
 
 ### `?Sized`
 
@@ -265,11 +268,11 @@ enum. Anything else is duplicated only by an explicit `.clone()`. Cloning
 an `Arc` or a channel `Sender` copies a handle, not the data behind it.
 
 ```rust
-let engine = engine.inner().clone();
+let query = engine.query.clone();
 ```
 
-[tagmonitor main.rs:50](../../applications/tagmonitor-rs/app/src/main.rs#L50)
-(`Engine` holds only a `Sender`, so this is cheap).
+[tagapp-shell lib.rs:166](../../libraries/tagapp-shell-rs/src/lib.rs#L166)
+(`query` is an `Arc` around a closure, so this copies a pointer).
 Explained in: [7, Choosing the driver](07-programming-tags-and-bases.md#choosing-the-driver-from-the-bases-identity);
 [10, The two commands](10-tauri-shell.md#the-two-commands);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
@@ -422,7 +425,7 @@ drop(session);
 
 [tagprobe lib.rs:647](../../libraries/tagprobe-rs/src/lib.rs#L647);
 `std::mem::forget(token);` at
-[tagmonitor main.rs:104](../../applications/tagmonitor-rs/app/src/main.rs#L104).
+[tagapp-shell lib.rs:220](../../libraries/tagapp-shell-rs/src/lib.rs#L220).
 Explained in: [7, The other session users](07-programming-tags-and-bases.md#the-other-session-users);
 [10, The user guide and App Nap](10-tauri-shell.md#the-user-guide-and-app-nap).
 
@@ -432,8 +435,8 @@ A second `let` with the same name makes a new variable, often of a new
 type, and hides the old one. The code uses it for successive conversions of
 one value, with let-else to rebind an `Option` as its content, and with
 `#[cfg]` to extend a builder on one platform only (`let builder =
-builder.menu(...)` under `#[cfg(target_os = "macos")]` in the Tauri shells,
-[chapter 10](10-tauri-shell.md#main-building-the-application)).
+builder.menu(...)` under `#[cfg(target_os = "macos")]` in the Tauri shell,
+[chapter 10](10-tauri-shell.md#run-building-the-application)).
 
 ```rust
 let path = path
@@ -518,7 +521,7 @@ self.segments.iter().find_map(|s| {
 
 [image.rs:144](../../libraries/tagcore-rs/src/recovery/image.rs#L144).
 Explained in: [6, image.rs](06-recovery.md#imagers-reading-an-elf-with-object);
-[10, main: building the application](10-tauri-shell.md#main-building-the-application);
+[10, main](10-tauri-shell.md#main);
 [11, The logger](11-engine-and-model.md#the-logger);
 [14, 100 ms samples](14-the-three-applications.md#100-ms-samples-200-ms-quality).
 
@@ -584,7 +587,7 @@ a three-part chain at [l4.rs:471](../../libraries/tagcore-rs/src/monitor/l4.rs#L
 Explained in: [4, Attach](04-monitor-and-rpc.md#attach);
 [5, stop_confirmed](05-protobuf-and-the-tag-api.md#stop_confirmed);
 [8, The rpath](08-bridges-to-cpp-and-python.md#the-rpath-only-the-final-binary-can-set-it);
-[10, main: the close hook](10-tauri-shell.md#main-the-close-hook-the-command-table-and-run);
+[10, run: the close hook](10-tauri-shell.md#run-the-close-hook-the-command-table-and-run);
 [11, Prompts](11-engine-and-model.md#prompts-dialogs-as-data);
 [14, 100 ms samples](14-the-three-applications.md#100-ms-samples-200-ms-quality).
 
@@ -607,7 +610,7 @@ the end. Read `opt.map(f)` as `opt ? f(*opt) : nullopt`.
 | `map_or(d, f)` | `f(value)`, or `d` | `.map_or(0, \|f\| f.value & 0xFFFF)`, [capture.rs:574](../../libraries/tagcore-rs/src/recovery/capture.rs#L574) |
 | `is_some_and(p)`, `is_ok_and(p)`, `is_none_or(p)` | Test presence and content in one call | `.is_some_and(\|id\| id & L4_DBGMCU_DEV_ID_MASK == L4_DEV_ID_L43X)`, [l4.rs:474](../../libraries/tagcore-rs/src/monitor/l4.rs#L474) |
 | `transpose()` | `Option<Result<T, E>>` to `Result<Option<T>, E>` | [tag-dwnld.rs:379](../../commandline-rs/src/bin/tag-dwnld.rs#L379) |
-| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:451](../../applications/tagprogram-rs/core/src/engine/station.rs#L451) |
+| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:456](../../applications/tagprogram-rs/core/src/engine/station.rs#L456) |
 | `bool::then(f)` | `Some(f())` if true, else `None` | `self.cmd_read(&cmd, &mut result).then(\|\| unpack16(&result))`, [stlink.rs:353](../../libraries/tagcore-rs/src/link/stlink.rs#L353) |
 
 A longer chain, from [rescue.rs:118](../../libraries/tagcore-rs/src/recovery/rescue.rs#L118):
@@ -699,7 +702,7 @@ match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
     Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
 ```
 
-[station.rs:445](../../applications/tagprogram-rs/core/src/engine/station.rs#L445).
+[station.rs:450](../../applications/tagprogram-rs/core/src/engine/station.rs#L450).
 Explained in: [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ## Enums and matching
@@ -1119,7 +1122,7 @@ r#"{{"build":{{"frontendDist":{}}}}}"#,
 let at = image.windows(5).position(|w| w == b"base=")?;
 ```
 
-[tagmonitor build.rs:116](../../applications/tagmonitor-rs/app/build.rs#L116),
+[tagapp-shell-build lib.rs:154](../../libraries/tagapp-shell-build-rs/src/lib.rs#L154),
 [base-flash.rs:156](../../commandline-rs/src/bin/base-flash.rs#L156).
 Explained in: [1, The Tauri applications](01-workspace-and-build.md#the-tauri-applications-staging-the-page);
 [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
@@ -1236,20 +1239,21 @@ binding its name.
 use rusb::{Context, Device, DeviceDescriptor, UsbContext};
 ```
 ```rust
-use tauri::{Emitter, Manager, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 ```
 
 [discovery.rs:16](../../libraries/tagcore-rs/src/link/discovery.rs#L16)
 (for `ctx.devices()`),
-[tagmonitor main.rs:32](../../applications/tagmonitor-rs/app/src/main.rs#L32)
-(for `handle.emit` and `app.manage`); `use prost::Message;` at
+[tagapp-shell lib.rs:41](../../libraries/tagapp-shell-rs/src/lib.rs#L41)
+(for `handle.emit` and `tauri_app.manage`; Tag Monitor's `main.rs` instead
+writes `tauri::Manager::path(setup.app)`, naming the trait at the call); `use prost::Message;` at
 [rpc.rs:16](../../libraries/tagcore-rs/src/monitor/rpc.rs#L16);
 `use std::fmt::Write as _;` at
 [build.rs:14](../../libraries/tagcore-rs/build.rs#L14).
 Explained in: [3, Discovery](03-usb-and-stlink.md#discovery-usbdev-and-available);
 [4, The RPC](04-monitor-and-rpc.md#the-rpc);
 [5, The embedded default configs](05-protobuf-and-the-tag-api.md#the-embedded-default-configs);
-[10, The crate attribute and the imports](10-tauri-shell.md#the-crate-attribute-and-the-imports).
+[10, main](10-tauri-shell.md#main).
 
 ### `Display` and `Debug`
 
@@ -1304,8 +1308,15 @@ impl log::Log for UiLogger {
 [tagmonitor engine/mod.rs:183](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L183);
 `impl serde_json::ser::Formatter for CppFloats` overriding two methods at
 [proto.rs:79](../../libraries/tagcore-rs/src/proto.rs#L79).
+
+One limit, the *orphan rule*: `impl Trait for Type` may be written only in
+the crate that defines the trait or the crate that defines the type. A
+crate that owns neither cannot connect them, which is why the Tauri shell
+takes the engine's two methods as function pointers rather than a trait
+the applications would implement.
 Explained in: [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
 [7, The session](07-programming-tags-and-bases.md#the-session-target-debug-sequence-attach-under-reset);
+[10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it) (the orphan rule);
 [11, The logger](11-engine-and-model.md#the-logger).
 
 ### Trait objects: `dyn Trait` versus generics
@@ -1423,7 +1434,7 @@ index loops.
 .min()
 ```
 
-[station.rs:508](../../applications/tagprogram-rs/core/src/engine/station.rs#L508)
+[station.rs:513](../../applications/tagprogram-rs/core/src/engine/station.rs#L513)
 (the earliest armed timer, or `None`).
 Explained in: [6, mcu.rs](06-recovery.md#mcurs-one-table-per-part);
 [7, The connect check](07-programming-tags-and-bases.md#the-connect-check-without-probe-rs);
@@ -1538,7 +1549,7 @@ it in a block under the same name first.
 
 [tagmonitor engine/mod.rs:246](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L246).
 Explained in: [7, Writing](07-programming-tags-and-bases.md#writing-and-treating-the-departure-as-success);
-[10, main: building the application](10-tauri-shell.md#main-building-the-application);
+[10, main](10-tauri-shell.md#main);
 [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, The core](14-the-three-applications.md#the-core-tag-monitors-two-threads-over-a-c-session).
 
@@ -1558,8 +1569,12 @@ apply: impl FnOnce(&mut Station, T) + Send + 'static,
 ```
 
 [tagprobe lib.rs:484](../../libraries/tagprobe-rs/src/lib.rs#L484),
-[station.rs:440](../../applications/tagprogram-rs/core/src/engine/station.rs#L440).
+[station.rs:445](../../applications/tagprogram-rs/core/src/engine/station.rs#L445);
+`F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static`,
+the application's setup closure, at
+[tagapp-shell lib.rs:271](../../libraries/tagapp-shell-rs/src/lib.rs#L271).
 Explained in: [7, The program sequence](07-programming-tags-and-bases.md#the-program-sequence);
+[10, run: building the application](10-tauri-shell.md#run-building-the-application);
 [11, Download](11-engine-and-model.md#download-two-functions-one-chosen-at-compile-time);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1577,10 +1592,14 @@ Done(Box<dyn FnOnce(&mut Station) + Send>),
 .map(Probe::from_specific_probe)
 ```
 
-[tagprogram engine/mod.rs:148](../../applications/tagprogram-rs/core/src/engine/mod.rs#L148),
-[tagprobe lib.rs:357](../../libraries/tagprobe-rs/src/lib.rs#L357).
+[tagprogram engine/mod.rs:151](../../applications/tagprogram-rs/core/src/engine/mod.rs#L151),
+[tagprobe lib.rs:357](../../libraries/tagprobe-rs/src/lib.rs#L357);
+`Engine::new(engine, engine::Engine::command, engine::Engine::query)`, two
+methods passed as `fn(&E, &str, Value)` pointers, at
+[tagmonitor main.rs:52](../../applications/tagmonitor-rs/app/src/main.rs#L52).
 Explained in: [7, Opening the probe](07-programming-tags-and-bases.md#opening-the-probe);
 [9, The state log and a method as a function pointer](09-command-line-tools.md#the-state-log-and-a-method-as-a-function-pointer);
+[10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ## Threads and shared state
@@ -1599,7 +1618,7 @@ loop, for one, ends when its channel reports `Disconnected`.
 std::thread::spawn(move || {
 ```
 
-[station.rs:443](../../applications/tagprogram-rs/core/src/engine/station.rs#L443).
+[station.rs:448](../../applications/tagprogram-rs/core/src/engine/station.rs#L448).
 Explained in: [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1631,8 +1650,8 @@ let exiting = Arc::new(AtomicBool::new(false));
 let exiting_close = exiting.clone();
 ```
 
-[tagmonitor main.rs:159](../../applications/tagmonitor-rs/app/src/main.rs#L159).
-Explained in: [10, main: building the application](10-tauri-shell.md#main-building-the-application);
+[tagapp-shell lib.rs:276](../../libraries/tagapp-shell-rs/src/lib.rs#L276).
+Explained in: [10, run: building the application](10-tauri-shell.md#run-building-the-application);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ### `Mutex`, guards and poisoning
@@ -1816,7 +1835,7 @@ occur here:
 | `env!`, `option_env!`, `concat!` | Read an environment variable at compile time (`option_env!` gives `None` if unset); join literals | [session.rs:83](../../applications/tagprogram-rs/core/src/engine/session.rs#L83) |
 | `panic!`, `debug_assert!` | Abort the thread; a check that only debug builds run | [configshape.rs:253](../../libraries/tagcore-rs/src/configshape.rs#L253) |
 | `thread_local!` | A per-thread static; see [`thread_local!`](#thread_local) | [link/mod.rs:600](../../libraries/tagcore-rs/src/link/mod.rs#L600) |
-| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagmonitor main.rs:204](../../applications/tagmonitor-rs/app/src/main.rs#L204) |
+| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagapp-shell lib.rs:314](../../libraries/tagapp-shell-rs/src/lib.rs#L314), [tagmonitor main.rs:37](../../applications/tagmonitor-rs/app/src/main.rs#L37) |
 
 The `cfg!` constant, as the code writes it,
 [link/mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80):
@@ -1842,14 +1861,14 @@ module or crate.
 | --- | --- | --- |
 | `#[derive(...)]` | Generate trait impls; see [`derive`](#derive) | [tagprobe lib.rs:123](../../libraries/tagprobe-rs/src/lib.rs#L123) |
 | `#[cfg(...)]` | Compile the item only if the condition holds, `#ifdef`: `test`, `unix`, `target_os = "macos"`, `feature = "sqlitelog"` | [download.rs:78](../../applications/tagmonitor-rs/core/src/engine/download.rs#L78) |
-| `#![cfg_attr(cond, attr)]` | Apply `attr` only when `cond` holds; here the Windows GUI subsystem in release builds | [tagmonitor main.rs:24](../../applications/tagmonitor-rs/app/src/main.rs#L24) |
+| `#![cfg_attr(cond, attr)]` | Apply `attr` only when `cond` holds; here the Windows GUI subsystem in release builds | [tagmonitor main.rs:17](../../applications/tagmonitor-rs/app/src/main.rs#L17) |
 | `#![allow(...)]` | Silence lints for the module, e.g. generated code without docs | [proto.rs:17](../../libraries/tagcore-rs/src/proto.rs#L17) |
 | `#![no_std]` | The crate uses only `core`, no OS services | [tagcore-c-sys lib.rs:21](../../libraries/tagcore-c-sys/src/lib.rs#L21) |
 | `#[repr(C)]` | C layout for a struct that crosses to C | [tlw.rs:10](../../libraries/tagcore-c-sys/src/tlw.rs#L10) |
 | `#[default]` | The default enum variant; see [`#[default]`](#default-on-a-variant) | [monitor/mod.rs:184](../../libraries/tagcore-rs/src/monitor/mod.rs#L184) |
 | `#[test]`, `#[ignore = "..."]` | A unit test; one skipped unless asked for | [image.rs:433](../../applications/tagprogram-rs/core/src/model/image.rs#L433) |
 | `#[arg(...)]`, `#[command(...)]` (clap) | Per-option and per-command settings for the derived parser | [tag-flash.rs:106](../../commandline-rs/src/bin/tag-flash.rs#L106) |
-| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagmonitor main.rs:36](../../applications/tagmonitor-rs/app/src/main.rs#L36) |
+| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagapp-shell lib.rs:152](../../libraries/tagapp-shell-rs/src/lib.rs#L152) |
 | `#[pyclass]`, `#[pymethods]`, `#[pyfunction]` | Expose a struct, its methods or a function to Python | [tagcore-py lib.rs:180](../../python/tagcore-py/src/lib.rs#L180) |
 
 Doc comments are attributes too: `///` documents the next item and `//!`
@@ -1933,10 +1952,11 @@ sqlitelog = ["dep:taglogwriter", "dep:tagcore-c-sys"]
 
 [commandline-rs Cargo.toml:36](../../commandline-rs/Cargo.toml#L36);
 `[target.'cfg(target_os = "macos")'.dependencies]` at
-[tagmonitor app Cargo.toml:19](../../applications/tagmonitor-rs/app/Cargo.toml#L19).
+[tagapp-shell Cargo.toml:18](../../libraries/tagapp-shell-rs/Cargo.toml#L18).
 Explained in: [1, Reading a package manifest](01-workspace-and-build.md#reading-a-package-manifest);
 [9, Building it](09-command-line-tools.md#building-it);
 [10, The crate manifest](10-tauri-shell.md#the-crate-manifest);
+[10, tagapp-shell](10-tauri-shell.md#tagapp-shell-the-shared-shell);
 [11, The crate](11-engine-and-model.md#the-crate).
 
 ### `links` and `DEP_*` variables
@@ -2147,12 +2167,12 @@ query that waits on the engine does not block the window's thread
 (roughly `QtConcurrent::run` plus a continuation).
 
 ```rust
-tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
+tauri::async_runtime::spawn_blocking(move || query(&name, args))
     .await
     .map_err(|e| e.to_string())
 ```
 
-[tagmonitor main.rs:51](../../applications/tagmonitor-rs/app/src/main.rs#L51).
+[tagapp-shell lib.rs:167](../../libraries/tagapp-shell-rs/src/lib.rs#L167).
 Explained in: [10, The two commands](10-tauri-shell.md#the-two-commands).
 
 ## JavaScript
@@ -2411,7 +2431,7 @@ try {
 }
 ```
 
-[tagprogram app.js:356](../../applications/tagprogram-rs/ui/app.js#L356).
+[tagprogram app.js:370](../../applications/tagprogram-rs/ui/app.js#L370).
 Not discussed in a chapter.
 
 ### `Map` and `Set`
@@ -2441,7 +2461,7 @@ const [notes, setNotes] = useState("");
 const seq = useRef(0);
 ```
 
-[tagprogram app.js:315](../../applications/tagprogram-rs/ui/app.js#L315).
+[tagprogram app.js:329](../../applications/tagprogram-rs/ui/app.js#L329).
 Explained in: [12, Hooks: four of them, used sparingly](12-ui-kit-and-pages.md#hooks-four-of-them-used-sparingly);
 [14, The page](14-the-three-applications.md#the-page).
 

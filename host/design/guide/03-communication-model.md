@@ -233,7 +233,7 @@ SWD access succeeds until the next reset. The applications poll `Status`
 every 400 ms partly for display and partly for this. A quiet host can call
 `Tag::keep_alive()` instead: on the shared block it is a single memory write
 that runs no code on the tag; on the DebugMonitor it sends a status
-request. The Rust applications also opt out of macOS App Nap,
+request. The Rust applications that attach to a tag also opt out of macOS App Nap,
 which once stretched the poll past a UIUCTag's 5 s limit while the window was
 in the background.
 

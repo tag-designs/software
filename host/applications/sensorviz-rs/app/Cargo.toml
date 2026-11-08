@@ -9,15 +9,17 @@ publish = false
 
 [dependencies]
 sensorviz-core = { path = "../core" }
+tagapp-shell = { path = "../../../libraries/tagapp-shell-rs" }
+# generate_context! expands here and names tauri.
 tauri = { version = "2", features = [] }
+# Registered by tagapp-shell; named here so the build script can resolve the
+# plugins' permissions (cargo passes them only to direct dependents).
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-serde_json = "1"
 log = "0.4"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
-serde_json = "1"
+tagapp-shell-build = { path = "../../../libraries/tagapp-shell-build-rs" }
 
 # Every item is documented, private ones included (AGENTS.md,
 # "Checking documentation coverage"); keep it that way.

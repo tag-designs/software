@@ -1,0 +1,21 @@
+# The build-script half of tagapp-shell: stages the page, the kit and the
+# shared capabilities for Tauri, and runs tauri-build. Used as a
+# [build-dependencies] entry by each application's app crate.
+[package]
+name = "tagapp-shell-build"
+version = "0.1.0"
+edition = "2024"
+description = "Build-script helper for the Tauri applications: page staging, capabilities, rpath, tauri-build"
+publish = false
+
+[dependencies]
+tauri-build = { version = "2", features = [] }
+serde_json = "1"
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

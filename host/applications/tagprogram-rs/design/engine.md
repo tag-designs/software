@@ -32,7 +32,7 @@ document describes what is behind them.
 | `core/src/engine/session.rs` | The program and retest step machine, as more `impl Station` |
 | `core/src/engine/view.rs` | The view-state JSON built from `Station` |
 | `core/src/model/` | Toolkit-free model: ELF reading, flash plan, identity record, image, release catalog, record CSV, settings |
-| `app/src/main.rs` | The Tauri shell: creates the engine, forwards `command`/`query`, emits `state` and `log` events |
+| `app/src/main.rs` | The Tauri shell: describes the app to the shared [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md), which forwards `command`/`query`, emits `state` and `log` events, and turns a window close or Cmd-Q into `quit`; creates the engine and forwards its `State`, `Log` and `Exit` |
 
 `session.rs` is a second `impl Station` block, not a separate object. A
 session needs the tag, the base, the record and the checks, all of which the
@@ -48,6 +48,7 @@ message loop. The session's own fields live in `SessionState`
  query   ──► Msg::Query(reply) ─────────►  Station::query ──► reply
                                            fire_timers(now)
                                            view_state() != last? ──► Event::State
+                                           station.exit (once)   ──► Event::Exit
                                      ◄──── Msg::Done(closure) ◄──────── spawn_work result,
                                                                         progress
 ```
@@ -57,6 +58,8 @@ message loop. The session's own fields live in `SessionState`
 fires every due timer and rebuilds the view state. It emits the state only
 when it differs from the last one sent. The UI therefore receives a whole,
 consistent state, never a partial update, and an idle station emits nothing.
+Once the station sets `exit`, the loop emits `Event::Exit`, once, and the
+shell closes the window ([quitting](#quitting)).
 
 There are four timers, each an `Option<Instant>` deadline rather than a
 thread:
@@ -86,6 +89,18 @@ about 120 s; on an STM32U3 tag every call gives up after 2.5 s. The engine is st
 long, and so is every query (each returns `null` after 10 s). The PresTag
 SetRtc hang (`TODO.md`, Embedded > Tags > Common) showed this. Moving monitor calls onto a
 worker would need a second owner for `Tag`; it has not been done.
+
+### Quitting
+
+A window close or Cmd-Q reaches the engine as the `quit` command (the shell
+sets `close_through_engine`). `Station::quit` sets `exit` at once, unless a
+session is running its `Programming` step, the one step a quit would
+interrupt mid-write: probe-rs erasing, programming and verifying the tag.
+Then it raises a `confirmQuit` prompt ("Programming is in progress. Quitting
+now can leave the tag with a partial image. Quit anyway?"); `quit_anyway`
+sets `exit`, `prompt_cancel` keeps programming. The user decides, so a stuck
+programming job cannot trap the program. Quitting during any other step,
+including a test or the read-back, exits at once.
 
 ### What runs on workers
 
@@ -276,8 +291,9 @@ Changes that have already gone wrong once, or that the bench rules forbid:
   shuts down 5 s after the last request ([monitor interface](../../../../docs/shared/monitor-interface.md#sleep-and-reset-interaction)),
   and a sleeping tag answers nothing until it is reset. The 400 ms status
   poll is what keeps it awake. The app opts out of macOS App Nap for this
-  reason (`stay_awake` in `app/src/main.rs`): App Nap stretched the poll past
-  the limit while the window was in the background. A poll that fails after
+  reason (`keep_awake` in `app/src/main.rs`, acted on by `tagapp-shell`):
+  App Nap stretched the poll past the limit while the window was in the
+  background. A poll that fails after
   a gap of 4 s or more forgets the tag at once and says it went to sleep, and
   `wake_tag` attaches again at the start of a session rather than failing.
 - **Do not start the tag** at the end of a session, and do not send SetRtc

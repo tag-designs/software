@@ -21,6 +21,7 @@ source tree.
 | `tagprogram-core` | `core/` | Model and engine; no UI toolkit, unit-testable |
 | `tagprobe` | `../../libraries/tagprobe-rs` | probe-rs programming (path dependency) |
 | `tagcore` | `../../libraries/tagcore-rs` | The monitor protocol over ST-LINK (path dependency) |
+| `tagapp-shell`, `tagapp-shell-build` | `../../libraries/tagapp-shell-rs`, `../../libraries/tagapp-shell-build-rs` | The Tauri shell and build-script helper every application shares (path dependencies) |
 
 The crates belong to the host Rust workspace, `host/Cargo.toml`, whose
 `Cargo.lock` is committed ([decision 0041](../../../../docs/decisions/0041-host-one-cargo-workspace.md)).
@@ -39,19 +40,25 @@ versions.
 
 ## `app/build.rs`: staging the page
 
+`app/build.rs` is one call, `tagapp_shell_build::build(Rpath::Never)`: the
+staging below is done for every Tauri application by the shared
+[`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md)
+crate, and `Never` says Tag Programmer links no C++ library, so it needs no
+run-time path to `libtagcore_c`.
+
 Tauri embeds the web page into the binary at compile time
 (`generate_context!`), from the directory its configuration names as
 `frontendDist`. The page is not one directory in the tree. It is `ui/` plus
 the shared kit in `host/ui-kit/`, which `ui/index.html` loads by a relative
 path (`../../../ui-kit/`), so the page also opens as a plain file in a
-browser. `build.rs` therefore assembles a staging directory under cargo's
+browser. The helper therefore assembles a staging directory under cargo's
 `OUT_DIR`:
 
 ```text
 $OUT_DIR/tauri/
   dist/            ui/* with the kit path rewritten to ui-kit/, and
   dist/ui-kit/     host/ui-kit/*
-  capabilities/    app/capabilities/*
+  capabilities/    default.json: tagapp-shell-build's capabilities.json, shared by every app
   icons/           app/icons/*
   tauri.conf.json  Cargo.toml
 ```
@@ -61,7 +68,7 @@ It passes the staged `dist/` to `generate_context!` as an absolute path in
 its working directory. Two facts force this layout:
 
 - tauri-build writes `gen/schemas/` relative to its working directory. Run in
-  `app/`, it wrote into the source tree. The CI Linux check builds with the
+  `app/`, it would write into the source tree. The CI Linux check builds with the
   source tree read-only, and failed.
 - tauri-build reads `Cargo.toml` from its working directory, to check the
   `tauri` crate's features against the configuration. So the manifest is
@@ -120,13 +127,14 @@ before the fallback was added.
 
 ## The user guide
 
-Help > User Guide opens the manual page `apps/tagprogram.html`. `main.rs`
+Help > User Guide opens the manual page `apps/tagprogram.html`. The shared
+shell (`tagapp_shell::user_guide_url`, given the page name by `main.rs`)
 looks for the built manual next to the executable: `docs/`, `host/docs/site/`
 and `share/UltralightTags/docs/`, in up to six parent directories, which
-covers the installed layouts and a build tree. A debug build also tries the
-source tree's `host/docs/site`. Otherwise it opens the published manual on
-the web. The capability file grants the opener `file://**` URLs for the local
-manual.
+covers the installed layouts and a build tree. It then tries the source
+tree's `host/docs/site`, whose path is compiled in. Otherwise it opens the
+published manual on the web. The shared capability file grants the opener
+`file://**` URLs for the local manual.
 
 ## CI
 

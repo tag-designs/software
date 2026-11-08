@@ -1,20 +1,27 @@
 ---
 type: design
 status: current
-summary: "A line-by-line reading of Tag Monitor's Tauri shell -- main.rs, tauri.conf.json, the capabilities, build.rs and the CMake that ships it -- ending with the exact Rust-to-JavaScript boundary."
+summary: "A line-by-line reading of the Tauri shell -- Tag Monitor's main.rs, the shared tagapp-shell crate it calls, tauri.conf.json, the shared capabilities, the tagapp-shell-build staging and the CMake that ships it -- ending with the exact Rust-to-JavaScript boundary."
 ---
 
 # 10. The Tauri shell: how a Rust program gets a window
 
-Each of the three desktop applications is a toolkit-free Rust engine (the
-`core` crate, chapter 11), a web page (chapter 12), and between them a shell
-of about 200 lines that opens a window, loads the page into it and passes
-messages both ways. This chapter reads Tag Monitor's shell in full:
-`host/applications/tagmonitor-rs/app/` (`src/main.rs`, `build.rs`,
-`tauri.conf.json`, `capabilities/default.json`, `Cargo.toml`) and the CMake
-that builds and packages it. Afterwards you will be able to say, for any
-click in the window, which Rust function receives it and on which thread,
-and how the page's files end up inside the executable.
+Each desktop application is a toolkit-free Rust engine (the `core` crate,
+chapter 11), a web page (chapter 12), and between them a shell that opens a
+window, loads the page into it and passes messages both ways. The shell is
+written once, in two library crates every application shares:
+`host/libraries/tagapp-shell-rs` (crate `tagapp-shell`, the run-time half)
+and `host/libraries/tagapp-shell-build-rs` (crate `tagapp-shell-build`, the
+build-script half). What is left in each application is about fifty lines
+of `main.rs` that describe it and start its engine, and a one-line
+`build.rs`.
+
+This chapter reads Tag Monitor's `host/applications/tagmonitor-rs/app/`
+(`src/main.rs`, `build.rs`, `tauri.conf.json`, `Cargo.toml`), then the two
+shared crates in full, and the CMake that builds and packages the result.
+Afterwards you will be able to say, for any click in the window, which Rust
+function receives it and on which thread, and how the page's files end up
+inside the executable.
 
 The architecture is in [chapter 10 of the guide](../guide/10-application-pattern.md)
 ("The Tauri shell") and Tag Monitor's own
@@ -77,9 +84,12 @@ applications use only a small slice of it:
 
 - two commands, `command` and `query`, and two events, `state` and `log`;
 - the `dialog` and `opener` plugins, which only the page calls;
-- one window, configured in `tauri.conf.json`, and one capability file;
-- `tauri-build` in `build.rs`, and `generate_context!` to embed the page;
-- on macOS only, Tauri's default application menu with one item replaced.
+- one window, configured in `tauri.conf.json`, and one capability file
+  shared by every application;
+- `tauri-build` in the build script, and `generate_context!` to embed the
+  page;
+- on macOS only, and only where closing goes through the engine, Tauri's
+  default application menu with one item replaced.
 
 They do not use the Tauri CLI (`cargo tauri ...`; a plain `cargo build`
 does everything), Tauri's bundler, installer or updater (CMake packages the
@@ -96,35 +106,35 @@ for one of its own ([below](#the-macos-application-menu)).
 
 | File | Lines | What it is |
 | --- | --- | --- |
-| [app/Cargo.toml](../../applications/tagmonitor-rs/app/Cargo.toml) | 37 | The binary crate `tagmonitor`: Tauri, two plugins, the core |
-| [app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 207 | The shell: two commands, the macOS Quit item, the event sink, the close hook |
-| [app/tauri.conf.json](../../applications/tagmonitor-rs/app/tauri.conf.json) | 30 | Product name, identifier, the window, security |
-| [app/capabilities/default.json](../../applications/tagmonitor-rs/app/capabilities/default.json) | 16 | What the page may call |
-| [app/build.rs](../../applications/tagmonitor-rs/app/build.rs) | 147 | Stages the page, sets `TAURI_CONFIG`, runs `tauri_build` |
-| `app/icons/` | -- | `icon.png`, `icon.icns`, `icon.ico` |
-| [CMakeLists.txt](../../applications/tagmonitor-rs/CMakeLists.txt) | 82 | Runs cargo; installs the program per platform |
-| [cmake/Info.plist.in](../../applications/tagmonitor-rs/cmake/Info.plist.in) | 36 | The macOS bundle's `Info.plist` |
+| [tagmonitor-rs/app/Cargo.toml](../../applications/tagmonitor-rs/app/Cargo.toml) | 35 | The binary crate `tagmonitor`: the core, the shell, Tauri and the two plugins |
+| [tagmonitor-rs/app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 54 | Describes Tag Monitor to the shell and starts its engine |
+| [tagmonitor-rs/app/build.rs](../../applications/tagmonitor-rs/app/build.rs) | 10 | One call to `tagapp_shell_build::build` |
+| [tagmonitor-rs/app/tauri.conf.json](../../applications/tagmonitor-rs/app/tauri.conf.json) | 30 | Product name, identifier, the window, security |
+| `tagmonitor-rs/app/icons/` | -- | `icon.png`, `icon.icns`, `icon.ico` |
+| [tagapp-shell-rs/src/lib.rs](../../libraries/tagapp-shell-rs/src/lib.rs) | 317 | The shell: two commands, two events, the close hook, the macOS Quit item, App Nap, the user guide |
+| [tagapp-shell-build-rs/src/lib.rs](../../libraries/tagapp-shell-build-rs/src/lib.rs) | 163 | Stages the page, writes the capabilities, sets `TAURI_CONFIG`, the rpath, runs `tauri_build` |
+| [tagapp-shell-build-rs/capabilities.json](../../libraries/tagapp-shell-build-rs/capabilities.json) | 16 | What the page may call, for every application |
+| [tagmonitor-rs/CMakeLists.txt](../../applications/tagmonitor-rs/CMakeLists.txt) | 82 | Runs cargo; installs the program per platform |
+| [tagmonitor-rs/cmake/Info.plist.in](../../applications/tagmonitor-rs/cmake/Info.plist.in) | 36 | The macOS bundle's `Info.plist` |
 
 ## The crate manifest
 
-[app/Cargo.toml:10-29](../../applications/tagmonitor-rs/app/Cargo.toml#L10):
+[app/Cargo.toml:10-27](../../applications/tagmonitor-rs/app/Cargo.toml#L10):
 
 ```toml
 [dependencies]
 tagmonitor-core = { path = "../core" }
+tagapp-shell = { path = "../../../libraries/tagapp-shell-rs" }
+# generate_context! expands here and names tauri.
 tauri = { version = "2", features = [] }
+# Registered by tagapp-shell; named here so the build script can resolve the
+# plugins' permissions (cargo passes them only to direct dependents).
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-serde_json = "1"
 log = "0.4"
 
-# Already in the graph through Tauri; named here to opt out of App Nap.
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSProcessInfo", "NSString"] }
-
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
-serde_json = "1"
+tagapp-shell-build = { path = "../../../libraries/tagapp-shell-build-rs" }
 
 [features]
 # Download Data... through the C++ SQLite writer; needs libtagcore_c and
@@ -132,16 +142,29 @@ serde_json = "1"
 sqlitelog = ["tagmonitor-core/sqlitelog"]
 ```
 
-The shell depends on the core crate by path; every rule is there. The two
-plugin crates are registered in `main` and never called from Rust.
-`serde_json` is here only to build the `log` event's payload and the `quit`
-command's empty arguments (chapter 11 introduces it properly).
+The application depends on its core crate and the shell crate by path;
+every rule is in the core, every piece of Tauri plumbing in the shell. Three
+of the dependencies look redundant and are not:
 
-> **Rust:** `[target.'cfg(target_os = "macos")'.dependencies]` is a
-> dependency that exists only when compiling for macOS -- the manifest-level
-> twin of `#if defined(__APPLE__)` around an `#include` plus its link line.
-> `[build-dependencies]` are crates used by `build.rs`, which is compiled and
-> run on the build machine before the crate itself.
+- **`tauri`** is used by the shell, but `main.rs` calls
+  `tauri::generate_context!()`, and a macro's expansion names the crates it
+  uses (`tauri::...`) as paths in the crate where it expands. The crate must
+  therefore be a direct dependency of the application, not only of the
+  shell.
+- **`tauri-plugin-dialog` and `tauri-plugin-opener`** are registered by the
+  shell and never mentioned in the application's code. A plugin crate
+  publishes its permission definitions to build scripts through Cargo's
+  `links` metadata (`DEP_*` environment variables), and Cargo passes those
+  only to the build scripts of the plugin's *direct* dependents. Without
+  these two lines `tauri-build`, running in the application's build script,
+  could not resolve `dialog:default` and `opener:default` in the capability
+  file and would fail the build.
+
+> **Rust:** `[build-dependencies]` are crates used by `build.rs`, which is
+> compiled and run on the build machine before the crate itself. A path
+> dependency (`{ path = "..." }`) is a crate in this repository, built as part
+> of the same workspace -- the counterpart of `add_subdirectory` plus
+> `target_link_libraries` on a sibling library.
 
 > **Rust:** a Cargo *feature* is a named compile-time switch that can also
 > pull in dependencies, roughly a `-D` option that the build system
@@ -154,18 +177,13 @@ command's empty arguments (chapter 11 introduces it properly).
 
 ### The crate attribute and the imports
 
-[main.rs:24-32](../../applications/tagmonitor-rs/app/src/main.rs#L24):
+[main.rs:17-20](../../applications/tagmonitor-rs/app/src/main.rs#L17):
 
 ```rust
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use serde_json::{Value, json};
-use tagmonitor_core::engine::{self, Engine, EngineConfig, Event};
-use tauri::{Emitter, Manager, State, WindowEvent};
+use tagapp_shell::{App, Engine};
+use tagmonitor_core::engine::{self, EngineConfig, Event};
 ```
 
 > **Rust:** `#![...]` (with `!`) is an attribute on the whole crate.
@@ -173,28 +191,336 @@ use tauri::{Emitter, Manager, State, WindowEvent};
 > condition holds. Here: in release builds (`debug_assertions` off), link the
 > Windows executable for the GUI subsystem, so no console window opens -- the
 > MSVC `/SUBSYSTEM:WINDOWS` that `WIN32_EXECUTABLE` gives a CMake target.
-> Debug builds keep the console for the log. Other platforms ignore it.
+> Debug builds keep the console for the log. Other platforms ignore it. It
+> has to be in the application's `main.rs`, since it describes the
+> executable; a library crate cannot set it.
 
-> **Rust:** `Emitter` and `Manager` are traits, and a trait's methods can be
-> called only when the trait is in scope. `handle.emit(...)` resolves because
-> of `Emitter`; `app.path()`, `app.manage(...)` and `window.state()` because of
-> `Manager`. Nothing in the file names either trait again, which surprises a
-> C++ reader looking for where `emit` comes from.
+There are two types called `Engine` in play: the shell's
+`tagapp_shell::Engine`, imported by name, and the core's handle,
+`engine::Engine`, always written with its module prefix. The shell's is a
+wrapper around the core's, [below](#the-engine-as-the-shell-sees-it).
+
+### main
+
+[main.rs:30-54](../../applications/tagmonitor-rs/app/src/main.rs#L30):
+
+```rust
+fn main() {
+    let app = App {
+        name: "Tag Monitor",
+        guide_page: "tagmonitor",
+        keep_awake: true,
+        close_through_engine: true,
+    };
+    tagapp_shell::run(app, tauri::generate_context!(), |setup| {
+        let paths = tauri::Manager::path(setup.app);
+        let config = EngineConfig {
+            settings_path: paths.app_config_dir()?.join("settings.json"),
+            home_dir: paths.home_dir()?,
+            user_guide_url: Some(setup.user_guide_url),
+            auto_attach: std::env::var_os("TAGMONITOR_NO_ATTACH").is_none(),
+        };
+        let _ = log::set_logger(&engine::LOGGER);
+        let events = setup.events;
+        let engine = engine::spawn(config, move |event| match event {
+            Event::State(state) => events.state(state),
+            Event::Log { level, text } => events.log(level, &text),
+            Event::Exit => events.exit(),
+        });
+        Ok(Engine::new(engine, engine::Engine::command, engine::Engine::query))
+    });
+}
+```
+
+That is the whole application-specific part of the shell. `main` hands
+`tagapp_shell::run` three things:
+
+1. **An `App`**, a plain struct describing the application: its name (for
+   the panic message), the manual page to look for, and two switches the
+   shell acts on. Tag Monitor sets both: keep the process out of App Nap,
+   and send a window close to the engine. Their meaning is under
+   [`App`](#what-an-application-tells-the-shell) below.
+2. **`tauri::generate_context!()`**, the compiled-in configuration, page and
+   icons. It is a macro that reads files at compile time, relative to the
+   crate it is written in, so it must be written here and not in the shell
+   ([below](#run-the-close-hook-the-command-table-and-run)).
+3. **A closure that builds the engine**, which the shell calls once, during
+   Tauri's setup, with a `Setup` value.
+
+The closure does what a Qt `main` does between constructing `QApplication`
+and `exec()`:
+
+1. **Builds the engine's configuration.** `tauri::Manager::path(setup.app)`
+   is Tauri's path resolver. `app_config_dir()` is the per-application
+   configuration folder derived from the `identifier` in `tauri.conf.json`
+   (`com.tagdesigns.tagmonitor`; on macOS
+   `~/Library/Application Support/com.tagdesigns.tagmonitor`), and
+   `settings.json` there replaces qtmonitor's `QSettings`.
+   `TAGMONITOR_NO_ATTACH` in the environment stops the automatic attach. The
+   user guide's URL comes from the shell, which searched for it.
+2. **Installs the logger** (`engine::LOGGER`, chapter 11). `log::set_logger`
+   can succeed only once per process; the result is ignored on purpose.
+3. **Starts the engine** with `engine::spawn`, passing a *sink*: the closure
+   the engine calls for every `Event`. Each variant maps to one method of
+   the shell's `Events`. It returns the core's `engine::Engine` handle.
+4. **Returns the handle wrapped for the shell**, `Engine::new(handle,
+   command method, query method)`.
+
+> **Rust:** `tauri::Manager::path(setup.app)` calls the `path` method of the
+> trait `Manager` in its fully qualified form. A trait's methods can be
+> called with method syntax (`setup.app.path()`) only when the trait is in
+> scope through a `use`; this file has no other use for `Manager`, so it
+> names the trait at the call instead. It is the same function either way.
+
+> **Rust:** `?` after `app_config_dir()` returns early from the closure with
+> the error, like a `return` of an error code after a failed call. The
+> closure must return `Result<Engine, Box<dyn Error>>` (the shell's
+> signature), and `?` converts Tauri's error type into the boxed
+> `dyn Error` on the way out, through the standard `From` conversion every
+> error type gets. The shell passes the error up to Tauri, which fails to
+> start, and the shell's `run` then panics with "error while running Tag
+> Monitor". The closure's final `Ok(...)` is its success value.
+
+> **Rust:** `move |event| match event { ... }` is a closure that takes
+> ownership of what it captures (`events`), like a C++ lambda capturing by
+> value with `[events = std::move(events)]`. The engine thread calls it long
+> after the setup closure returns, so it must own its captures; borrowing
+> them from the setup closure's stack would not compile. The `match` must
+> handle every variant of `Event`; adding a variant in the core makes this
+> file fail to compile until it is handled. Tag View's core has no `Exit`
+> variant, so its `match` has two arms.
+
+> **Rust:** `engine::Engine::command` with no parentheses is not a call: it
+> names the method as a function value, here of type
+> `fn(&engine::Engine, &str, Value)`. A method with `&self` is an ordinary
+> function whose first parameter is the receiver, so it can be passed like
+> a C function pointer -- the counterpart of passing `&Engine::command`, a
+> pointer to member function, in C++.
+
+## tagapp-shell: the shared shell
+
+Everything else is in
+[tagapp-shell-rs/src/lib.rs](../../libraries/tagapp-shell-rs/src/lib.rs),
+one file, the same for every application. Its manifest names Tauri, the two
+plugins, `serde_json` (for the `log` event's payload and the `quit`
+command's empty arguments; chapter 11 introduces it properly) and, on
+macOS only, `objc2-foundation`:
+
+```toml
+# Already in the graph through Tauri; named here to opt out of App Nap.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSProcessInfo", "NSString"] }
+```
+
+> **Rust:** `[target.'cfg(target_os = "macos")'.dependencies]` is a
+> dependency that exists only when compiling for macOS -- the manifest-level
+> twin of `#if defined(__APPLE__)` around an `#include` plus its link line.
+
+### What an application tells the shell
+
+[lib.rs:43-62](../../libraries/tagapp-shell-rs/src/lib.rs#L43):
+
+```rust
+/// What an application tells the shell about itself.
+#[derive(Debug, Clone, Copy)]
+pub struct App {
+    pub name: &'static str,
+    pub guide_page: &'static str,
+    pub keep_awake: bool,
+    pub close_through_engine: bool,
+}
+```
+
+(field comments dropped). The two switches:
+
+- **`keep_awake`**: opt the process out of macOS App Nap for its lifetime,
+  so an attached tag's status poll keeps running while the window is in the
+  background ([below](#the-user-guide-and-app-nap)). Set by every
+  application that attaches to a tag.
+- **`close_through_engine`**: a window close, and on macOS the menu bar's
+  Quit (Cmd-Q), become the engine's `quit` command, and the window closes
+  only when the engine says so. Set by every application whose engine has
+  something to ask or finish first. When clear, a close closes at once and
+  Tauri's default macOS menu is kept.
+
+> **Rust:** `&'static str` is a pointer to string data that lives for the
+> whole program -- in practice a string literal, a `const char*` into the
+> executable's read-only data. `#[derive(Clone, Copy)]` makes `App` a plain
+> value type that is copied bit for bit wherever it is passed, like a C
+> struct of a pointer and two `bool`s. That matters in `run`, where three
+> different closures each take their own copy.
+
+### The engine as the shell sees it
+
+[lib.rs:64-101](../../libraries/tagapp-shell-rs/src/lib.rs#L64) (doc
+comments shortened):
+
+```rust
+/// Queues a command: the engine handle's `command` with the handle bound.
+type CommandFn = Box<dyn Fn(&str, Value) + Send + Sync>;
+
+/// Asks a query and waits: the engine handle's `query` with the handle bound.
+/// An `Arc`, so a blocking task can hold its own reference.
+type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;
+
+pub struct Engine {
+    command: CommandFn,
+    query: QueryFn,
+}
+
+impl Engine {
+    pub fn new<E>(engine: E, command: fn(&E, &str, Value), query: fn(&E, &str, Value) -> Value) -> Self
+    where
+        E: Clone + Send + Sync + 'static,
+    {
+        let for_query = engine.clone();
+        Self {
+            command: Box::new(move |cmd, args| command(&engine, cmd, args)),
+            query: Arc::new(move |name, args| query(&for_query, name, args)),
+        }
+    }
+
+    pub fn command(&self, cmd: &str, args: Value) {
+        (self.command)(cmd, args);
+    }
+}
+```
+
+Each application's core has its own handle type --
+`tagmonitor_core::engine::Engine`, `tagprogram_core::engine::Engine` and so
+on -- and each has the same two methods, `command(&self, &str, Value)` and
+`query(&self, &str, Value) -> Value`. The shell must call them without
+knowing which type it has. In C++ you would write an abstract base class
+with two pure virtual functions and derive each handle from it; in Rust the
+equivalent is a *trait*, and the obvious design is a trait `EngineHandle` in
+the shell, implemented for each core's handle. That does not work here, for
+a reason peculiar to Rust:
+
+> **Rust: the orphan rule.** An `impl Trait for Type` may be written only in
+> the crate that defines the trait or the crate that defines the type. The
+> application crate defines neither `tagapp_shell::EngineHandle` nor
+> `tagmonitor_core::engine::Engine`, so it may not connect them. The shell
+> crate cannot do it either, since it would have to depend on all four core
+> crates. That leaves the core crate, which would then have to depend on
+> `tagapp-shell` and through it on Tauri -- and the cores are toolkit-free
+> on purpose, so they can be tested without a window. The rule exists so
+> that two unrelated crates can never both supply the same `impl` and
+> conflict; C++ has no such rule, because a class lists its bases where it
+> is defined.
+
+So the shell takes no trait at all. `Engine::new` accepts the handle and
+the two methods as plain function pointers, `fn(&E, &str, Value)` and
+`fn(&E, &str, Value) -> Value`, for whatever type `E` the handle is. The
+application passes `engine::Engine::command` and `engine::Engine::query`,
+and the compiler checks their signatures against those types. `new` then
+*binds* the handle to each method in a closure, the way `std::bind` or a
+capturing lambda turns a member-function pointer and an object into one
+callable, and stores the closures. After `new`, the type `E` is gone from
+view: `Engine` is one concrete type whatever the application, so Tauri can
+store it as managed state.
+
+> **Rust:** `Box<dyn Fn(&str, Value) + Send + Sync>` is a heap-allocated
+> closure called through a vtable -- a `std::function<void(std::string_view,
+> Value)>`. `dyn Fn(...)` is "some type that can be called like this",
+> whose concrete type (each closure has its own, unnamed) is hidden behind
+> the pointer. `+ Send + Sync` adds that it may be moved to and called from
+> other threads, which Tauri requires of managed state. `Arc<dyn Fn ...>`
+> is the same closure behind a thread-safe reference count -- a
+> `std::shared_ptr<std::function<...>>` -- because the query closure must
+> be handed to a separate blocking task ([below](#the-two-commands)). The
+> `type CommandFn = ...;` lines are aliases, as `using` declares one in
+> C++.
+
+> **Rust:** the `where E: Clone + Send + Sync + 'static` clause is the
+> template's requirements, spelled out and checked when `new` is compiled
+> rather than when it is instantiated (as a C++20 `requires` clause would
+> be). `Clone` because the handle is copied into two closures (`engine` and
+> `for_query`; cloning a core's handle copies a channel sender, as cheap as
+> copying a `std::shared_ptr`). `Send + Sync` because the closures are
+> called from other threads. `'static` because the closures outlive `new`,
+> so the handle may not borrow anything shorter-lived. `(self.command)(cmd,
+> args)` needs the parentheses: `self.command(...)` would look for a method
+> named `command`, which is the very method being defined.
+
+### Events and Setup
+
+[lib.rs:103-148](../../libraries/tagapp-shell-rs/src/lib.rs#L103) (doc
+comments shortened):
+
+```rust
+#[derive(Clone)]
+pub struct Events {
+    handle: AppHandle<Wry>,
+    exiting: Arc<AtomicBool>,
+}
+
+impl Events {
+    pub fn state(&self, state: Value) {
+        let _ = self.handle.emit("state", state);
+    }
+
+    pub fn log(&self, level: &str, text: &str) {
+        let _ = self.handle.emit("log", json!({ "level": level, "text": text }));
+    }
+
+    pub fn exit(&self) {
+        self.exiting.store(true, Ordering::Relaxed);
+        self.handle.exit(0);
+    }
+}
+
+pub struct Setup<'a> {
+    pub app: &'a tauri::App<Wry>,
+    pub user_guide_url: String,
+    pub events: Events,
+}
+```
+
+`Events` is where the engine's sink sends its events. It is called on the
+engine thread for `State` and `Exit`, and on whichever thread logged for
+`Log` (often the tag thread). That is safe because `AppHandle` is a cheap,
+cloneable handle that may be used from any thread; `emit` serialises the
+payload to JSON and posts it to the web view, much as emitting a signal from
+a worker thread to an object in the GUI thread queues a call there. `emit`
+returns a `Result` (the web view may be gone during shutdown), and `let _ =`
+discards it deliberately.
+
+`exit` is the end of a close that went through the engine: it sets the
+`exiting` flag and calls `handle.exit(0)`, which asks the event loop to end
+([below](#run-the-close-hook-the-command-table-and-run)).
+
+`Setup` is what the application's closure receives: the running
+`tauri::App` (for its path resolver), the user guide's URL, and the
+`Events`. The application moves `setup.events` into its sink, which then
+owns it for the life of the engine.
+
+> **Rust:** `Setup<'a>` has a *lifetime parameter*: `app: &'a tauri::App`
+> is a borrow that is valid only while Tauri's setup runs, and the `'a`
+> records that a `Setup` cannot outlive it. The compiler therefore rejects
+> an application closure that tries to keep `setup.app` (in the sink, say)
+> past its return. In C++ this would be a raw `App*` with a comment saying
+> "do not store".
+
+> **Rust:** `Arc<AtomicBool>` is a reference-counted shared boolean
+> (`std::shared_ptr<std::atomic<bool>>`). The flag is shared between the
+> `Events` (which sets it) and the window-event hook in `run` (which reads
+> it). `Ordering::Relaxed` is `std::memory_order_relaxed`; only the flag
+> itself is shared.
 
 ### The two commands
 
-[main.rs:34-54](../../applications/tagmonitor-rs/app/src/main.rs#L34):
+[lib.rs:150-170](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
 
 ```rust
-/// The contract's `invoke("command", {cmd, args})`: queued for the engine
+/// The `invoke("command", {cmd, args})` command: queued for the engine
 /// thread; the page learns the outcome from the next `state` event.
 #[tauri::command]
 fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
     engine.command(&cmd, args);
 }
 
-/// The contract's `invoke("query", {name, args})`. The engine answers on its
-/// own thread, so the wait is kept off the main thread.
+/// The `invoke("query", {name, args})` command. The engine answers on its own
+/// thread, so the wait is kept off Tauri's main thread.
 ///
 /// # Errors
 ///
@@ -202,8 +528,8 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 /// join error's text is returned to the page as the rejected promise.
 #[tauri::command]
 async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<Value, String> {
-    let engine = engine.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
+    let query = engine.query.clone();
+    tauri::async_runtime::spawn_blocking(move || query(&name, args))
         .await
         .map_err(|e| e.to_string())
 }
@@ -222,12 +548,14 @@ engine, which validates them.
 > `String` and `Value`, calls the function, and converts the return value to
 > JSON. It is code generation, as `moc` generates the glue behind
 > `Q_INVOKABLE`. A parameter of type `State<'_, T>` is not taken from the
-> page: Tauri fills it from the managed state (below).
+> page: Tauri fills it from the managed state (below). The two functions are
+> private to the shell crate; Tauri reaches them through the dispatch table
+> `run` registers.
 
 `command` is synchronous, and Tauri 2 runs a synchronous command on the main
-(event-loop) thread. That is acceptable because `Engine::command` only puts a
-message on a channel and returns; the promise in the page resolves with
-`null` at once, and the effect shows up in a later `state` event.
+(event-loop) thread. That is acceptable because the core's `command` only
+puts a message on a channel and returns; the promise in the page resolves
+with `null` at once, and the effect shows up in a later `state` event.
 
 `query` has to wait for the engine's answer (up to 10 s, chapter 11), and
 must not do that on the main thread, which would freeze the window exactly
@@ -244,11 +572,13 @@ suspends the command until that finishes.
 > ordinary blocking closure on a separate thread and gives back a future of
 > its result.
 
-> **Rust:** `engine.inner().clone()` -- `State<'_, Engine>` is a borrow of the
+> **Rust:** `engine.query.clone()` -- `State<'_, Engine>` is a borrow of the
 > value Tauri stores, and a borrow cannot be moved into a closure that runs on
-> another thread and may outlive the call. Cloning `Engine` copies only its
-> channel sender (cheap, like copying a `std::shared_ptr`), and the clone is
-> moved into the closure with `move`.
+> another thread and may outlive the call. So the query closure is held in an
+> `Arc`, and cloning the `Arc` copies only the pointer and bumps the count,
+> like copying a `std::shared_ptr`; the clone is moved into the blocking
+> task with `move`. This is why `QueryFn` is an `Arc` while `CommandFn`,
+> only ever called in place, is a `Box`.
 
 `query` returns `Result<Value, String>`: `Ok(value)` resolves the page's
 promise with the JSON, `Err(text)` rejects it. The only `Err` is a failed
@@ -260,13 +590,16 @@ so the signature could not drop it anyway.
 
 ### The user guide and App Nap
 
-`user_guide_url` ([main.rs:64-85](../../applications/tagmonitor-rs/app/src/main.rs#L64))
-looks for a built copy of the manual page `apps/tagmonitor.html` beside the
-executable and up to five directories above it, then in the source tree,
-and returns a `file://` URL, or the published manual's URL. It is plain path
-searching; the page opens the result with the opener plugin.
+`user_guide_url` ([lib.rs:232-254](../../libraries/tagapp-shell-rs/src/lib.rs#L232))
+looks for a built copy of the manual page `apps/<page>.html` (or
+`apps/<page>/index.html`) beside the executable and up to five directories
+above it, then in the source tree, and returns a `file://` URL, or the
+published manual's URL. `<page>` is the `App`'s `guide_page`. It is plain
+path searching; `run` passes the result to the application in `Setup`, the
+engine answers the `user_guide_url` query with it, and the page opens it
+with the opener plugin.
 
-[main.rs:95-106](../../applications/tagmonitor-rs/app/src/main.rs#L95):
+[lib.rs:211-222](../../libraries/tagapp-shell-rs/src/lib.rs#L211):
 
 ```rust
 fn stay_awake() {
@@ -288,7 +621,8 @@ request, and the tag thread's 400 ms status poll is what keeps an attached
 tag awake. macOS App Nap throttles the timers of an application whose window
 is in the background, which stretched that poll past the tag's limit (Tag
 Programmer found this first). `beginActivityWithOptions:reason:` opts the
-process out, for as long as the returned token lives.
+process out, for as long as the returned token lives. `run` calls it when
+the `App` sets `keep_awake`.
 
 **Library: objc2-foundation** (0.3.2, macOS only). Rust bindings to Apple's
 Foundation framework, generated from the SDK headers; Tauri already depends
@@ -306,7 +640,7 @@ used.
 
 ### The macOS application menu
 
-[main.rs:108-144](../../applications/tagmonitor-rs/app/src/main.rs#L108):
+[lib.rs:172-201](../../libraries/tagapp-shell-rs/src/lib.rs#L172):
 
 ```rust
 /// The id of the Quit item [`app_menu`] puts in the application menu.
@@ -314,20 +648,13 @@ used.
 const QUIT_MENU_ID: &str = "quit";
 
 /// Tauri's default macOS menu with its Quit item replaced by one that sends
-/// the engine `quit`, so Cmd-Q asks about unsaved changes and detaches as
-/// closing the window does.
-///
-/// The default Quit is a predefined item that sends Cocoa's `terminate:`;
-/// tao answers that from `applicationWillTerminate` by ending the event
-/// loop, with no `CloseRequested` and no exit request that could be
-/// prevented. The rest of the menu (Edit's copy and paste, which the page's
-/// text fields need, Window, Hide) is Tauri's own.
+/// the engine `quit` (see the crate documentation for why).
 ///
 /// # Errors
 ///
 /// When Tauri cannot build or change the menu.
 #[cfg(target_os = "macos")]
-fn app_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+fn app_menu(app: &AppHandle<Wry>) -> tauri::Result<tauri::menu::Menu<Wry>> {
     use tauri::menu::{Menu, MenuItem, MenuItemKind};
     let menu = Menu::default(app)?;
     if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
@@ -348,16 +675,17 @@ fn app_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wr
 }
 ```
 
-Closing the window is the engine's decision (the close hook, below), and
-Cmd-Q has to take the same road. Tauri's own Quit cannot: it is a
-*predefined* item, one whose action is a fixed Cocoa selector
-(`terminate:`) rather than an event the application receives. Tauri's
-windowing layer, tao, sees it only as `applicationWillTerminate` and ends
-the event loop, so there is no `CloseRequested` to veto and no exit request
-to prevent. The shell therefore keeps Tauri's menu and replaces that one
-item with an ordinary item whose click comes back to Rust as an event. In
-Qt terms: removing the `QAction` with `QAction::QuitRole` and adding one
-connected to your own slot.
+When closing goes through the engine (the close hook, below), Cmd-Q has to
+take the same road. Tauri's own Quit cannot: it is a *predefined* item, one
+whose action is a fixed Cocoa selector (`terminate:`) rather than an event
+the application receives. Tauri's windowing layer, tao, sees it only as
+`applicationWillTerminate` and ends the event loop, so there is no
+`CloseRequested` to veto and no exit request to prevent. The shell therefore
+keeps Tauri's menu and replaces that one item with an ordinary item whose
+click comes back to Rust as an event. In Qt terms: removing the `QAction`
+with `QAction::QuitRole` and adding one connected to your own slot. The rest
+of the menu (Edit's copy and paste, which the page's text fields need,
+Window, Hide) is Tauri's own.
 
 The Tauri menu API (module `tauri::menu`, a wrapper over the `muda` crate)
 used here:
@@ -386,80 +714,101 @@ fails to start.
 > builds entirely, so Windows and Linux never compile a reference to the
 > macOS menu.
 
-### main: building the application
+> **Rust:** `AppHandle<Wry>` -- Tauri's types are generic over the
+> *runtime* (the windowing back end), and `Wry` is the only one there is.
+> An application's own code usually never writes it, because Tauri's
+> defaults fill it in; a library that names `AppHandle`, `tauri::App` or
+> `Context` in its public functions spells it out.
 
-[main.rs:155-195](../../applications/tagmonitor-rs/app/src/main.rs#L155):
+### run: building the application
+
+[lib.rs:269-304](../../libraries/tagapp-shell-rs/src/lib.rs#L269):
 
 ```rust
-fn main() {
-    stay_awake();
-    // Set once the engine allows the exit, so a close request that arrives
-    // after it is let through rather than turned into another `quit`.
+pub fn run<F>(app: App, context: tauri::Context<Wry>, start: F)
+where
+    F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static,
+{
+    if app.keep_awake {
+        stay_awake();
+    }
     let exiting = Arc::new(AtomicBool::new(false));
     let exiting_close = exiting.clone();
     let builder = tauri::Builder::default();
     #[cfg(target_os = "macos")]
-    let builder = builder.menu(app_menu).on_menu_event(|app, event| {
-        if event.id() == QUIT_MENU_ID {
-            app.state::<Engine>().command("quit", json!({}));
-        }
-    });
+    let builder = if app.close_through_engine {
+        builder.menu(app_menu).on_menu_event(|handle, event| {
+            if event.id() == QUIT_MENU_ID {
+                handle.state::<Engine>().command("quit", json!({}));
+            }
+        })
+    } else {
+        builder
+    };
     builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .setup(move |app| {
-            let paths = app.path();
-            let config = EngineConfig {
-                settings_path: paths.app_config_dir()?.join("settings.json"),
-                home_dir: paths.home_dir()?,
-                user_guide_url: Some(user_guide_url()),
-                auto_attach: std::env::var_os("TAGMONITOR_NO_ATTACH").is_none(),
+        .setup(move |tauri_app| {
+            let events = Events {
+                handle: tauri_app.handle().clone(),
+                exiting,
             };
-            let _ = log::set_logger(&engine::LOGGER);
-            let handle = app.handle().clone();
-            let engine = engine::spawn(config, move |event| match event {
-                Event::State(state) => {
-                    let _ = handle.emit("state", state);
-                }
-                Event::Log { level, text } => {
-                    let _ = handle.emit("log", json!({ "level": level, "text": text }));
-                }
-                Event::Exit => {
-                    exiting.store(true, Ordering::Relaxed);
-                    handle.exit(0);
-                }
-            });
-            app.manage(engine);
+            let engine = start(Setup {
+                app: tauri_app,
+                user_guide_url: user_guide_url(app.guide_page),
+                events,
+            })?;
+            tauri_app.manage(engine);
             Ok(())
         })
 ```
+
+> **Rust:** the bound `F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn
+> Error>> + Send + 'static` describes the application's closure. `FnOnce`
+> means it may be called only once -- which lets it *move* what it captured
+> out of itself, as Tag View's closure moves the files named on its command
+> line into the engine's configuration; an `Fn` closure, callable many
+> times, could only lend them. `Send + 'static` because Tauri's own
+> `setup` demands both of the closure it stores, and the shell's setup
+> closure owns `start`; `'static` also means it may not borrow from
+> `main`'s stack, since Tauri keeps it until the application is built.
+> `Box<dyn Error>` is "any error type, on the heap", the type-erased error
+> that `?` in the closure converts into (`std::unique_ptr<std::exception>`,
+> roughly). In C++ this would be a template parameter `F` with a comment;
+> here the compiler checks the closure against the bound in the
+> application's crate, with the error pointing at the closure.
 
 `tauri::Builder::default()` starts a builder: each method configures it and
 returns it, and the chain ends in `.run(...)`, which enters the event loop.
 It is the same idea as constructing a `QApplication`, setting it up, then
 calling `exec()`.
 
-On macOS two more calls go into the chain before the rest.
-`.menu(app_menu)` gives Tauri a function to build the application's menu
-from the `AppHandle` once the application exists; with a menu supplied,
-Tauri does not install its default one. `.on_menu_event(closure)` registers
-a handler that Tauri calls, on the main thread, for a click on any
-non-predefined menu item, with the `AppHandle` and a `MenuEvent`. The
-handler sends `quit` for the replaced Quit item and ignores everything else
-(there is nothing else that is not predefined). It reaches the engine the
-way the close hook does, through the managed state; the state exists by
-then, since `setup` runs before the first event.
+On macOS, when the `App` closes through the engine, two more calls go into
+the chain before the rest. `.menu(app_menu)` gives Tauri a function to build
+the application's menu from the `AppHandle` once the application exists;
+with a menu supplied, Tauri does not install its default one.
+`.on_menu_event(closure)` registers a handler that Tauri calls, on the main
+thread, for a click on any non-predefined menu item, with the `AppHandle`
+and a `MenuEvent`. The handler sends `quit` for the replaced Quit item and
+ignores everything else (there is nothing else that is not predefined). It
+reaches the engine the way the close hook does, through the managed state;
+the state exists by then, since `setup` runs before the first event. When
+`close_through_engine` is clear (Tag View), the builder is left alone and
+Tauri installs its default menu, whose Quit ends the process directly.
 
 > **Rust:** `let builder = ...; #[cfg(target_os = "macos")] let builder =
-> builder.menu(...)...;` is *shadowing*: the second `let` declares a new
-> variable with the same name, initialised from the old one, which is moved
-> into it. With the attribute, the second statement exists only in a macOS
-> build, so on other platforms `builder` is the plain `Builder::default()`.
-> C++ cannot redeclare a name in one scope; the equivalent is an `#ifdef`
-> around `builder = std::move(builder).menu(...)`. Rust needs the new
-> binding because each builder method takes `self` by value and returns a
-> new builder, and a conditional attribute can be put on a statement but
-> not on one link of a method chain.
+> if ... { builder.menu(...)... } else { builder };` is *shadowing*: the
+> second `let` declares a new variable with the same name, initialised from
+> the old one, which is moved into it. With the attribute, the second
+> statement exists only in a macOS build, so on other platforms `builder`
+> is the plain `Builder::default()`. C++ cannot redeclare a name in one
+> scope; the equivalent is an `#ifdef` around an `if` that reassigns
+> `builder = std::move(builder).menu(...)`. Rust needs the new binding
+> because each builder method takes `self` by value and returns a new
+> builder, and a conditional attribute can be put on a statement but not on
+> one link of a method chain. `if ... { } else { }` is an expression whose
+> value is the chosen branch's last expression, like `?:`, so both branches
+> must produce a builder.
 
 `.plugin(...)` registers the two plugins. **Library: tauri-plugin-dialog**
 (2.8.3) gives the page native open and save dialogs
@@ -469,60 +818,29 @@ the Finder or Explorer. Rust registers them and nothing more; chapter 12
 shows the calls.
 
 `.setup(closure)` runs once, on the main thread, after Tauri has built the
-application and before the first event is processed: the place for what a
-Qt `main` does between constructing `QApplication` and `exec()`. Here it:
+application and before the first event is processed. The shell's closure
+builds the `Events` (the `AppHandle` and the `exiting` flag), finds the user
+guide, calls the application's `start` with them, and stores what it
+returns with `tauri_app.manage(engine)`, so Tauri can hand it to every
+command as `State<'_, Engine>`. If `start` fails, `?` returns its error from
+setup and Tauri fails to start.
 
-1. **Builds the engine's configuration.** `app.path()` is Tauri's path
-   resolver. `app_config_dir()` is the per-application configuration folder
-   derived from the `identifier` in `tauri.conf.json`
-   (`com.tagdesigns.tagmonitor`; on macOS
-   `~/Library/Application Support/com.tagdesigns.tagmonitor`), and
-   `settings.json` there replaces qtmonitor's `QSettings`.
-   `TAGMONITOR_NO_ATTACH` in the environment stops the automatic attach.
-2. **Installs the logger** (`engine::LOGGER`, chapter 11). `log::set_logger`
-   can succeed only once per process; the result is ignored on purpose.
-3. **Starts the engine** with `engine::spawn`, passing a *sink*: the closure
-   the engine calls for every `Event`. It returns an `Engine` handle.
-4. **Stores the handle** with `app.manage(engine)`, so Tauri can hand it to
-   every command as `State<'_, Engine>`.
+> **Rust:** two clones of the `exiting` flag exist, `exiting` and
+> `exiting_close`, because two different `move` closures need it: the setup
+> closure (which gives it to `Events`) and the window-event hook (which
+> reads it). Each closure takes ownership of its own clone. `app` needs no
+> clone: it is `Copy`, so each closure that names it (the setup closure, for
+> `guide_page`; the window hook, for `close_through_engine`) captures its
+> own copy, and `run` still has one for the final panic message.
 
-> **Rust:** `?` after `app_config_dir()` returns early from the closure with
-> the error if there is one, like a `return` of an error code after a failed
-> call. Because `setup` returns a `Result`, an error makes `.run()` fail and
-> the `.expect(...)` at the end of `main` panics with "error while running
-> Tag Monitor". The closure's final `Ok(())` is its success value.
+### run: the close hook, the command table and run
 
-The sink is where the engine's events become Tauri events. It is called on
-the engine thread for `State` and `Exit`, and on whichever thread logged for
-`Log` (often the tag thread). That is safe because `AppHandle` is a cheap,
-cloneable handle that may be used from any thread; `emit` serialises the
-payload to JSON and posts it to the web view, much as emitting a signal from
-a worker thread to an object in the GUI thread queues a call there. `emit`
-returns a `Result` (the web view may be gone during shutdown), and `let _ =`
-discards it deliberately.
-
-> **Rust:** `move |event| match event { ... }` is a closure that takes
-> ownership of what it captures (`handle` and `exiting`), like a C++ lambda
-> capturing by value with `[handle = std::move(handle)]`. The engine thread
-> calls it long after `setup` returns, so it must own its captures; borrowing
-> them from `setup`'s stack would not compile. The `match` must handle every
-> variant of `Event`; adding a variant in the core makes this file fail to
-> compile until it is handled.
-
-> **Rust:** `Arc<AtomicBool>` is a reference-counted shared boolean
-> (`std::shared_ptr<std::atomic<bool>>`). Two clones exist, `exiting` and
-> `exiting_close`, because two different `move` closures need it: the sink
-> (which sets it) and the window-event hook (which reads it). Each closure
-> takes ownership of its own clone. `Ordering::Relaxed` is
-> `std::memory_order_relaxed`; only the flag itself is shared.
-
-### main: the close hook, the command table and run
-
-[main.rs:196-207](../../applications/tagmonitor-rs/app/src/main.rs#L196):
+[lib.rs:305-316](../../libraries/tagapp-shell-rs/src/lib.rs#L305):
 
 ```rust
         .on_window_event(move |window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event
+                && app.close_through_engine
                 && !exiting_close.load(Ordering::Relaxed)
             {
                 api.prevent_close();
@@ -530,26 +848,28 @@ discards it deliberately.
             }
         })
         .invoke_handler(tauri::generate_handler![command, query])
-        .run(tauri::generate_context!())
-        .expect("error while running Tag Monitor");
+        .run(context)
+        .unwrap_or_else(|e| panic!("error while running {}: {e}", app.name));
 }
 ```
 
-**Closing the window is the engine's decision.** The configuration may have
-unsaved changes, and an attached tag should be detached before the process
-ends. So a close request (the red button, File > Close Window) is vetoed and
-turned into the engine command `quit`, which is what the page's File > Quit
-and, on macOS, the menu bar's Quit item (Cmd-Q) also send. The engine may ask about unsaved changes, then detaches, then
-emits `Event::Exit`; the sink sets `exiting` and calls `handle.exit(0)`,
-which asks the event loop to end (Tauri raises `RunEvent::ExitRequested`,
-which nothing here prevents, and the loop exits without sending the window
-another `CloseRequested`). The flag is a guard: any close request that does
-arrive after the exit was allowed is let through instead of becoming a
-second `quit`. If the tag
-never acknowledges the detach, the engine exits anyway after 5 s
-(chapter 11). Two routes still end the process without asking the engine:
-Quit in the Dock's menu and logging out send Cocoa's `terminate:` directly,
-not through the menu item.
+**With `close_through_engine`, closing the window is the engine's
+decision.** Tag Monitor's configuration may have unsaved changes, and an
+attached tag should be detached before the process ends. So a close request
+(the red button, File > Close Window) is vetoed and turned into the engine
+command `quit`, which is what the page's File > Quit and, on macOS, the menu
+bar's Quit item (Cmd-Q) also send. The engine may ask about unsaved changes,
+then detaches, then emits `Event::Exit`; the sink calls `Events::exit`,
+which sets `exiting` and calls `handle.exit(0)`, which asks the event loop
+to end (Tauri raises `RunEvent::ExitRequested`, which nothing here
+prevents, and the loop exits without sending the window another
+`CloseRequested`). The flag is a guard: any close request that does arrive
+after the exit was allowed is let through instead of becoming a second
+`quit`. If the tag never acknowledges the detach, Tag Monitor's engine exits
+anyway after 5 s (chapter 11). Two routes still end the process without
+asking the engine: Quit in the Dock's menu and logging out send Cocoa's
+`terminate:` directly, not through the menu item. Without
+`close_through_engine` the hook does nothing and the window closes at once.
 
 ```mermaid
 sequenceDiagram
@@ -563,19 +883,19 @@ sequenceDiagram
     E->>E: unsaved? ask with a prompt, else continue
     E->>T: TagCmd::Detach
     T-->>E: Report::Detached (or the 5 s deadline passes)
-    E->>W: sink(Event::Exit) sets exiting, calls handle.exit(0)
+    E->>W: sink(Event::Exit), Events::exit sets exiting, calls handle.exit(0)
     W->>W: event loop ends, process exits
 ```
 
 This is the Qt pattern of overriding `closeEvent`, calling
 `event->ignore()`, and later calling `qApp->quit()` yourself.
 
-> **Rust:** `if let Pattern = value && condition { ... }` is a *let chain*
-> (stable from Rust 1.88, edition 2024): the body runs only if `event`
-> matches `WindowEvent::CloseRequested` -- binding its `api` field, with `..`
-> ignoring the rest -- and the flag is false. The whole match-and-test is one
-> expression, where C++ would need a `dynamic_cast` or a `switch` followed by
-> an `if`.
+> **Rust:** `if let Pattern = value && condition && condition { ... }` is a
+> *let chain* (stable from Rust 1.88, edition 2024): the body runs only if
+> `event` matches `WindowEvent::CloseRequested` -- binding its `api` field,
+> with `..` ignoring the rest -- and both conditions hold. The whole
+> match-and-test is one expression, where C++ would need a `dynamic_cast` or
+> a `switch` followed by an `if`.
 
 `window.state::<Engine>()` is the same managed-state lookup that fills a
 command's `State<'_, Engine>`, made explicitly from a window handle.
@@ -590,33 +910,60 @@ function mapping the strings `"command"` and `"query"` to the two functions'
 generated wrappers. A name not in the list is rejected in the page with an
 error.
 
-`.run(tauri::generate_context!())` builds the *context*, then runs the event
-loop until the application exits. `generate_context!` runs at compile time:
-it reads `tauri.conf.json` (merged with the `TAURI_CONFIG` that `build.rs`
-sets), the capabilities that `tauri-build` processed, and the icons, and it
-**embeds every file of the `frontendDist` directory into the executable**,
+`.run(context)` runs the event loop until the application exits, with the
+*context* the application built with `tauri::generate_context!()`.
+`generate_context!` runs at compile time: it reads `tauri.conf.json`
+(merged with the `TAURI_CONFIG` that the build script sets), the
+capabilities that `tauri-build` processed, and the icons, and it **embeds
+every file of the `frontendDist` directory into the executable**,
 compressed. The page is served to the web view from those bytes through a
 custom URL scheme (`tauri://localhost` on macOS and Linux,
 `http://tauri.localhost` on Windows), as a Qt application serves `qrc:/`
 resources compiled in by `rcc`. There is no loose page on disk in the
 installed application.
 
-### Where the other two shells differ
+That compile-time reading is why `generate_context!` is in the
+application's `main.rs` and its result is passed in: the macro finds
+`tauri.conf.json` and the build script's output relative to the crate being
+compiled, and its expansion refers to `tauri::...` paths that must resolve
+in that crate. Written inside the shell, it would embed the shell's (absent)
+configuration, the same for every application. `.unwrap_or_else(...)`
+replaces the usual `.expect(...)` so that the panic message can carry the
+application's name and Tauri's error; the closure, and so the formatting,
+runs only on failure.
 
-Tag Monitor's shell is Tag Programmer's with two changes, and Tag
-Calibrator's is Tag Monitor's with different environment variables
-(chapter 14 compares them):
+### How the four applications differ
 
-- **Tag Programmer** has no `on_window_event` and no `exiting` flag; its
-  engine has no `Exit` event, so the window simply closes. Its sink handles
-  two variants. Its `EngineConfig` holds a firmware cache folder (under the
-  app data directory) and a documents folder in place of `home_dir` and
-  `auto_attach`.
-- **Tag Calibrator** intercepts the close exactly as Tag Monitor does, and
-  reads `TAGCALIBRATE_REPLAY` (replay a capture file instead of a tag) and
-  `TAGCALIBRATE_NO_ATTACH` in `setup`. It keeps no settings file, so its
-  `EngineConfig` has no `settings_path`; it has `replay` and
-  `replay_period` instead.
+The shells differ only in their `App` and in the closure that builds the
+engine:
+
+| Application | `keep_awake` | `close_through_engine` | What `quit` does | `build.rs` rpath |
+| --- | --- | --- | --- | --- |
+| Tag Programmer | yes | yes | quits at once, unless a tag is being programmed: then a `confirmQuit` prompt | `Never` |
+| Tag Monitor | yes | yes | asks about unsaved changes, detaches | `WithFeature("sqlitelog")` |
+| Tag Calibrator | yes | yes | stops the stream, detaches | `Always` |
+| Tag View | no | no | (no `quit`; the window closes at once) | `Always` |
+
+- **Tag Programmer**'s `quit` matters only during the one step a quit would
+  interrupt mid-write: while probe-rs is erasing, programming and verifying
+  a tag. Then the engine raises a `confirmQuit` prompt, "Programming is in
+  progress. Quitting now can leave the tag with a partial image. Quit
+  anyway?", with Keep Programming the default; Quit answers `quit_anyway`,
+  which exits, and Keep Programming answers `prompt_cancel`. At any other
+  time `quit` exits at once (its
+  [contract](../../applications/tagprogram-rs/design/ui-engine-contract.md)).
+  Its `EngineConfig` holds a firmware cache folder (under the app data
+  directory), a settings file and a documents folder, with `~/Documents` as
+  the fallback where the platform names none.
+- **Tag Calibrator** reads `TAGCALIBRATE_REPLAY` (replay a capture file
+  instead of a tag) and `TAGCALIBRATE_NO_ATTACH` in its closure. It keeps no
+  settings file, so its `EngineConfig` has no `settings_path`; it has
+  `replay` and `replay_period` instead.
+- **Tag View** attaches no tag and has no unsaved work, so it neither keeps
+  awake nor closes through the engine, and its core has no `Exit` event. Its
+  `main` reads the log and preference file named on the command line before
+  calling `run`, and its closure is a `move` closure that moves them into
+  the configuration -- the case `FnOnce` exists for.
 
 ## tauri.conf.json
 
@@ -659,7 +1006,7 @@ Calibrator's is Tag Monitor's with different environment variables
 | --- | --- |
 | `productName`, `version` | Tauri's package information. The window's title comes from the engine's view state (the page sets it), the bundle's version from CMake, so neither is user-visible. |
 | `identifier` | Names the app config directory (`settings.json`). CMake's `Info.plist.in` uses the same string as `CFBundleIdentifier`. |
-| `build.frontendDist` | The directory to embed. `"dist"` is not what is used: `build.rs` overrides it with the absolute path of a staged copy (next section). |
+| `build.frontendDist` | The directory to embed. `"dist"` is not what is used: the build script overrides it with the absolute path of a staged copy (next section). |
 | `app.withGlobalTauri` | Injects `window.__TAURI__` into the page, holding the core API (`core.invoke`, `event.listen`, `window`) and each plugin's API. The page is plain scripts with no bundler and no `import`, so this global is how it reaches Tauri ([kit.js:24](../../ui-kit/kit.js#L24)). |
 | `app.windows` | One window, label `main`, 1100 x 640, minimum 1000 x 480. The capability file grants permissions to the window by this label. The title here shows only until the first `state` event. |
 | `app.security.csp` | `null`: Tauri injects no Content-Security-Policy, so the page may run inline scripts and load anything. It loads only its own embedded files. |
@@ -667,7 +1014,7 @@ Calibrator's is Tag Monitor's with different environment variables
 
 ## The capabilities
 
-[app/capabilities/default.json](../../applications/tagmonitor-rs/app/capabilities/default.json), all of it:
+[tagapp-shell-build-rs/capabilities.json](../../libraries/tagapp-shell-build-rs/capabilities.json), all of it:
 
 ```json
 {
@@ -701,22 +1048,29 @@ grants, to the window labelled `main`:
 
 There is nothing like this in Qt, where QML can call anything it is given.
 It matters to Tauri because the web view could in principle show remote
-content; here it documents exactly what the page uses. Tag Calibrator's
-file is the same; Tag Programmer's lacks `core:window:allow-set-title`, since
-its title never changes (its page still calls `setTitle`, and the kit
-swallows the refusal, [kit.js:122-132](../../ui-kit/kit.js#L122)).
+content; here it documents exactly what the page uses. There is one file
+for all four applications, kept in the build-script crate and written into
+each application's staging directory as `capabilities/default.json`
+(next section), so no application's permissions can drift from the
+others'. An application that does not use a permission (Tag Programmer's
+title never changes) simply never calls it.
 
 The `$schema` path, `../gen/schemas/desktop-schema.json`, is an editor hint.
-`tauri-build` writes that schema into the staging directory described next,
-where the path resolves; in the source tree it points at nothing.
+`tauri-build` writes that schema into the staging directory, where the path
+resolves from `capabilities/default.json`; beside `capabilities.json` in the
+source tree it points at nothing.
 
 ## build.rs: staging the page
 
-**Library: tauri-build** (2.7.4). The build-script half of Tauri: it reads
-`tauri.conf.json` and the capability files, checks them, generates the
-permission schemas under `gen/schemas`, and prepares what
-`generate_context!` compiles in (on Windows also the executable's resources).
-It is called once, as `tauri_build::build()`.
+Tag Monitor's whole build script,
+[app/build.rs](../../applications/tagmonitor-rs/app/build.rs), less its
+comments:
+
+```rust
+fn main() {
+    tagapp_shell_build::build(tagapp_shell_build::Rpath::WithFeature("sqlitelog"));
+}
+```
 
 > **Rust:** `build.rs` is Cargo's build script: a small Rust program that
 > Cargo compiles and runs before compiling the crate, in the role of a CMake
@@ -726,20 +1080,35 @@ It is called once, as `tauri_build::build()`.
 > compilation, readable with `env!`), `cargo:rustc-link-arg-bins=...` (a
 > linker argument for the binaries). Cargo gives it `CARGO_MANIFEST_DIR`,
 > `OUT_DIR` (a private scratch directory under the target directory) and
-> `CARGO_FEATURE_*` / `CARGO_CFG_*` variables.
+> `CARGO_FEATURE_*` / `CARGO_CFG_*` variables. A build script may use
+> library crates, listed under `[build-dependencies]`; the library's code
+> then runs inside the build script's process, so it sees the
+> *application's* variables, not its own.
+
+That last point is what lets the whole build step live in a library:
+[tagapp-shell-build-rs/src/lib.rs](../../libraries/tagapp-shell-build-rs/src/lib.rs)
+reads `CARGO_MANIFEST_DIR` and finds the application's `ui/`, `icons/` and
+`tauri.conf.json`.
+
+**Library: tauri-build** (2.7.4). The build-script half of Tauri: it reads
+`tauri.conf.json` and the capability files, checks them, generates the
+permission schemas under `gen/schemas`, and prepares what
+`generate_context!` compiles in (on Windows also the executable's resources).
+It is called once, as `tauri_build::build()`, at the end of
+`tagapp_shell_build::build`.
 
 **Why stage at all.** The page in `tagmonitor-rs/ui/` loads the shared UI kit
 from `host/ui-kit/` by the relative path `../../../ui-kit/`
 ([index.html:14-32](../../applications/tagmonitor-rs/ui/index.html#L14)), so
 it also opens as a plain file in a browser against a mock engine. Tauri
 embeds exactly one directory, and the kit is outside the application. So
-`build.rs` assembles one directory under `OUT_DIR`, with the kit inside it
-and the path rewritten, and runs tauri-build there because tauri-build writes
-`gen/schemas` relative to its working directory and the release build runs
-with the source tree read-only.
+the build step assembles one directory under `OUT_DIR`, with the kit inside
+it and the path rewritten, and runs tauri-build there because tauri-build
+writes `gen/schemas` relative to its working directory and the release
+build runs with the source tree read-only.
 
-[build.rs:13-20](../../applications/tagmonitor-rs/app/build.rs#L13) (from the
-file's doc comment) shows the result:
+[lib.rs:18-28](../../libraries/tagapp-shell-build-rs/src/lib.rs#L18) (from the
+crate's doc comment) shows the result:
 
 ```rust
 //! Layout of `$OUT_DIR/tauri`, rebuilt from scratch on every run:
@@ -747,16 +1116,23 @@ file's doc comment) shows the result:
 //! ```text
 //! dist/            ../ui files, *.html with KIT_HREF rewritten to ui-kit/
 //! dist/ui-kit/     host/ui-kit files
-//! capabilities/    icons/    tauri.conf.json    Cargo.toml
+//! capabilities/    default.json: this crate's capabilities.json, one for all
+//! icons/           ../app/icons
+//! tauri.conf.json  Cargo.toml
 //! gen/schemas/     written by tauri-build
 //! ```
 ```
 
-[build.rs:36-62](../../applications/tagmonitor-rs/app/build.rs#L36) (doc
-comments on `copy_dir` dropped):
+### The constants and the copy
+
+[lib.rs:38-43](../../libraries/tagapp-shell-build-rs/src/lib.rs#L38) and
+[lib.rs:66-81](../../libraries/tagapp-shell-build-rs/src/lib.rs#L66) (doc
+comments dropped):
 
 ```rust
 const KIT_HREF: &str = "../../../ui-kit/";
+
+const CAPABILITIES: &str = include_str!("../capabilities.json");
 
 // ...
 fn copy_dir(from: &Path, to: &Path, rewrite: bool) {
@@ -777,6 +1153,17 @@ fn copy_dir(from: &Path, to: &Path, rewrite: bool) {
 }
 ```
 
+`KIT_HREF` works for every application because each page sits at the same
+depth, `host/applications/<app>-rs/ui/`.
+
+> **Rust:** `include_str!("../capabilities.json")` reads the file at
+> compile time, relative to the source file it is written in, and makes its
+> contents a `&'static str` constant -- what `xxd -i` or a CMake
+> `file(READ ...)` into a generated header would give you in C. The JSON is
+> compiled into `tagapp-shell-build` itself, so the application's build
+> script needs no path to find it, and Cargo rebuilds the helper (and so
+> reruns every application's build script) when the file changes.
+
 Only the top level of a directory is copied, and only `.html` files are
 rewritten (the scripts and stylesheets they load carry no kit path). Every
 failure is a panic, and a panicking build script fails the build with its
@@ -788,27 +1175,22 @@ message, which is the right behaviour for a build step.
 > these would be bugs waiting to happen; in a build script, aborting is the
 > error handling.
 
-[build.rs:72-94](../../applications/tagmonitor-rs/app/build.rs#L72) does the
+### build: staging, watching, TAURI_CONFIG
+
+[lib.rs:127-142](../../libraries/tagapp-shell-build-rs/src/lib.rs#L127) does the
 staging:
 
 ```rust
-fn main() {
+pub fn build(rpath: Rpath) {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let stage = PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR")).join("tauri");
     let _ = fs::remove_dir_all(&stage);
 
     let dist = stage.join("dist");
     copy_dir(&manifest.join("../ui"), &dist, true);
-    copy_dir(
-        &manifest.join("../../../ui-kit"),
-        &dist.join("ui-kit"),
-        false,
-    );
-    copy_dir(
-        &manifest.join("capabilities"),
-        &stage.join("capabilities"),
-        false,
-    );
+    copy_dir(&manifest.join("../../../ui-kit"), &dist.join("ui-kit"), false);
+    fs::create_dir_all(stage.join("capabilities")).expect("create capabilities");
+    fs::write(stage.join("capabilities/default.json"), CAPABILITIES).expect("write capabilities");
     copy_dir(&manifest.join("icons"), &stage.join("icons"), false);
     // tauri-build reads both from its working directory: the configuration,
     // and the manifest to check the tauri crate's features against it.
@@ -817,22 +1199,14 @@ fn main() {
     }
 ```
 
-Then [build.rs:96-119](../../applications/tagmonitor-rs/app/build.rs#L96)
+`manifest` is the application's `app/` directory, since the code runs in
+the application's build script. Then
+[lib.rs:144-157](../../libraries/tagapp-shell-build-rs/src/lib.rs#L144)
 tells Cargo what to watch and points `generate_context!` at the staged page:
 
 ```rust
-    for watched in [
-        "../ui",
-        "../../../ui-kit",
-        "capabilities",
-        "icons",
-        "tauri.conf.json",
-        "Cargo.toml",
-    ] {
-        println!(
-            "cargo:rerun-if-changed={}",
-            manifest.join(watched).display()
-        );
+    for watched in ["../ui", "../../../ui-kit", "icons", "tauri.conf.json", "Cargo.toml"] {
+        println!("cargo:rerun-if-changed={}", manifest.join(watched).display());
     }
     // The page generate_context! embeds: the staged copy, by absolute path.
     // Canonical, because Tauri reads frontendDist as a URL when it can: a
@@ -850,7 +1224,9 @@ tells Cargo what to watch and points `generate_context!` at the staged page:
 The `rerun-if-changed` lines matter: without them Cargo would not rerun the
 build script when only a page file changed, and the binary would keep the
 old page. With them, editing `ui/app.js` or `host/ui-kit/kit.css` and
-running `cargo build` again embeds the new file.
+running `cargo build` again embeds the new file. The capabilities need no
+line of their own: they are part of the helper crate, so a change to them
+rebuilds it.
 
 `TAURI_CONFIG` is how Tauri accepts a configuration patch from the
 environment: `generate_context!` merges the JSON over `tauri.conf.json`, so
@@ -863,16 +1239,44 @@ nothing; the canonical `\\?\D:\...` form does not parse as a URL.
 > backslashes. Inside `format!`, `{{` and `}}` are literal braces and `{}` is
 > the argument, so the result is `{"build":{"frontendDist":"/abs/path"}}`.
 > `serde_json::to_string` quotes and escapes the path for JSON (backslashes on
-> Windows); that is the only reason `serde_json` is a build dependency.
+> Windows); that is the only reason the helper depends on `serde_json`.
 
-[build.rs:121-143](../../applications/tagmonitor-rs/app/build.rs#L121) adds
-one thing Tag Programmer's build script does not have: with the `sqlitelog`
-feature, off Windows, when `libtagcore_c` is linked as a shared library
-(the default everywhere but macOS), it prints
+### The rpath, and tauri-build
+
+The argument to `build` says whether the executable needs a run-time search
+path to a shared `libtagcore_c`,
+[lib.rs:44-55](../../libraries/tagapp-shell-build-rs/src/lib.rs#L44):
+
+```rust
+pub enum Rpath {
+    /// The application links no C++ library (Tag Programmer).
+    Never,
+    /// Only when this cargo feature of the application is on (Tag Monitor's
+    /// `sqlitelog`).
+    WithFeature(&'static str),
+    /// Always (Tag Calibrator, Tag View, whose cores are in the library).
+    Always,
+}
+```
+
+`tagcore_c_rpath`
+([lib.rs:93-116](../../libraries/tagapp-shell-build-rs/src/lib.rs#L93))
+decides from it, and, off Windows, when `libtagcore_c` is linked as a
+shared library (the default everywhere but macOS), prints
 `cargo:rustc-link-arg-bins=-Wl,-rpath,<dir>`, taking the directory from
 `TAGCORE_C_RPATH` (the package's `$ORIGIN/../lib`) or else
 `TAGCORE_C_LIB_DIR` (the build tree). That is the rpath the Linux package
-relies on. Finally, [build.rs:145-146](../../applications/tagmonitor-rs/app/build.rs#L145):
+relies on. For `WithFeature("sqlitelog")` it tests the variable Cargo sets
+for an enabled feature, `CARGO_FEATURE_SQLITELOG` -- the application's,
+again, since the code runs in the application's build script.
+
+> **Rust:** `Rpath` is an enum whose variants may carry data:
+> `WithFeature(&'static str)` holds the feature's name, the others nothing.
+> It is a tagged union, `std::variant<Never, WithFeature, Always>` with the
+> tag managed for you, and `match rpath { Rpath::WithFeature(feature) => ...
+> }` both tests the tag and binds the payload.
+
+Finally, [lib.rs:161-162](../../libraries/tagapp-shell-build-rs/src/lib.rs#L161):
 
 ```rust
     std::env::set_current_dir(&stage).expect("enter staging directory");
@@ -883,10 +1287,11 @@ relies on. Finally, [build.rs:145-146](../../applications/tagmonitor-rs/app/buil
 flowchart LR
     ui["tagmonitor-rs/ui/<br/>index.html, app.js, app.css,<br/>mock-engine.js"] -->|copy, rewrite kit path| dist
     kit["host/ui-kit/"] -->|copy| distkit
+    caps["tagapp-shell-build-rs/<br/>capabilities.json"] -->|write| conf
     subgraph stage["OUT_DIR/tauri/"]
         dist["dist/"]
         distkit["dist/ui-kit/"]
-        conf["tauri.conf.json, Cargo.toml,<br/>capabilities/, icons/"]
+        conf["capabilities/default.json,<br/>tauri.conf.json, Cargo.toml, icons/"]
         gen["gen/schemas/ (tauri-build)"]
     end
     dist --> ctx["generate_context!<br/>(TAURI_CONFIG = staged dist)"]
@@ -992,7 +1397,8 @@ On Windows the program goes to `tag_tools/lib` beside `tagcore_c.dll` and the
 MSVC runtime, because Windows finds a program's DLLs only beside it, and the
 GUI launcher is installed as `tag_tools/tagmonitor.exe` to start it. On
 Linux it goes to `tag_tools/bin`, links the system WebKitGTK 4.1, and finds
-`libtagcore_c.so` in `tag_tools/lib` through the rpath `build.rs` added.
+`libtagcore_c.so` in `tag_tools/lib` through the rpath the build script
+added.
 
 Why not Tauri's bundler: it would be a second signing and notarising path
 and a second download
@@ -1011,8 +1417,8 @@ On the JavaScript side every call goes through the UI kit's engine object
 
 | JS call | Rust function | Payload | Reply |
 | --- | --- | --- | --- |
-| `invoke("command", {cmd, args})` | `command(engine, cmd: String, args: Value)`, main thread | `cmd`: a command name; `args`: an object, `{}` when none | resolves `null` at once; the outcome arrives as a later `state` |
-| `invoke("query", {name, args})` | `async query(engine, name: String, args: Value)`, blocking wait on Tauri's pool | `name`: a query name; `args`: `{}` (no query reads them) | resolves with the answer's JSON; `null` if the engine does not answer within 10 s; `{"error": "unknown query <name>"}` for an unknown name; rejects only if the blocking task fails |
+| `invoke("command", {cmd, args})` | `tagapp_shell`'s `command(engine, cmd: String, args: Value)`, main thread | `cmd`: a command name; `args`: an object, `{}` when none | resolves `null` at once; the outcome arrives as a later `state` |
+| `invoke("query", {name, args})` | `tagapp_shell`'s `async query(engine, name: String, args: Value)`, blocking wait on Tauri's pool | `name`: a query name; `args`: `{}` (no query reads them) | resolves with the answer's JSON; `null` if the engine does not answer within 10 s; `{"error": "unknown query <name>"}` for an unknown name; rejects only if the blocking task fails |
 
 **The commands** (`Monitor::command`, chapter 11):
 
@@ -1046,8 +1452,8 @@ An unknown `cmd` is logged as a warning.
 
 | Event | Emitted by | Payload | Thread |
 | --- | --- | --- | --- |
-| `state` | the sink, on `Event::State` | the whole view state object (`title`, `modified`, `attaching`, `strip`, `tag`, `config`, `actions`, `recent`, `erase`, `download`, `prompt`); sent only when it differs from the last one sent | engine |
-| `log` | the sink, on `Event::Log` | `{level, text}` | whichever thread logged |
+| `state` | the sink, on `Event::State`, through `Events::state` | the whole view state object (`title`, `modified`, `attaching`, `strip`, `tag`, `config`, `actions`, `recent`, `erase`, `download`, `prompt`); sent only when it differs from the last one sent | engine |
+| `log` | the sink, on `Event::Log`, through `Events::log` | `{level, text}` | whichever thread logged |
 
 The view state's fields are in the
 [contract](../../applications/tagmonitor-rs/design/ui-engine-contract.md#view-state-event-state)
@@ -1062,30 +1468,37 @@ and chapter 11 builds them.
 | `__TAURI__.opener.openUrl(url)` | `opener:default`, `opener:allow-open-url` (`file://**`) | Help > User Guide |
 | `__TAURI__.window.getCurrentWindow().setTitle(title)` | `core:window:allow-set-title` | `state.title` |
 
-**Window events**: a `CloseRequested` before the engine allowed the exit is
-vetoed and becomes `command("quit")`; `Event::Exit` from the engine calls
-`handle.exit(0)`.
+**Window events** (Tag Monitor sets `close_through_engine`): a
+`CloseRequested` before the engine allowed the exit is vetoed and becomes
+`command("quit")`; `Event::Exit` from the engine calls `Events::exit`, which
+calls `handle.exit(0)`.
 
 **Menu events** (macOS): the application menu's Quit item, id `quit`,
 becomes `command("quit")`.
 
 ## Try it
 
-- Read [kit.js:51-62](../../ui-kit/kit.js#L51) next to `main.rs:34-54`: the
-  three lines of JavaScript and the two Rust functions are the whole bridge.
+- Read [kit.js:51-62](../../ui-kit/kit.js#L51) next to
+  [tagapp-shell's lib.rs:150-170](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
+  the three lines of JavaScript and the two Rust functions are the whole
+  bridge, for every application.
 - Open `host/applications/tagmonitor-rs/ui/index.html` directly in a browser.
   With no `window.__TAURI__`, the kit uses `ui/mock-engine.js`, and the same
   page runs with no Rust at all.
 - Build the shell and look at the staged page (no hardware involved):
   `cd host && cargo build -p tagmonitor`, then
   `ls target/debug/build/tagmonitor-*/out/tauri/dist` -- note the rewritten
-  `ui-kit/` paths in `index.html`.
+  `ui-kit/` paths in `index.html`, and `capabilities/default.json` beside
+  `dist/`.
 - Run it without touching a tag: `TAGMONITOR_NO_ATTACH=1 cargo run -p tagmonitor`.
   Without the variable the first `ready` attaches, which **resets any tag on
   a connected base**; follow [docs/bench](../../../docs/bench/README.md)
   before letting it do that.
-- `rg -n "emit\(|generate_handler|on_window_event" host/applications/*/app/src/main.rs`
-  shows the three shells side by side.
+- `rg -n -A4 "App \{" host/applications/*/app/src/main.rs` shows the four
+  applications' descriptions side by side: everything that differs between
+  their shells, apart from the engine configuration.
+- `cargo doc -p tagapp-shell --open` (from `host/`) shows the shell's public
+  API: `App`, `Engine`, `Events`, `Setup`, `run` and `user_guide_url`.
 - `cargo doc -p tagmonitor-core --open` and read `engine::Engine` and
   `engine::Event`: the shell's whole view of the core.
 

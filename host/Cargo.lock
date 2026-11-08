@@ -4535,15 +4535,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagapp-shell"
+version = "0.1.0"
+dependencies = [
+ "objc2-foundation",
+ "serde_json",
+ "tauri",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+]
+
+[[package]]
+name = "tagapp-shell-build"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tauri-build",
+]
+
+[[package]]
 name = "tagcalibrate"
 version = "1.0.0"
 dependencies = [
  "log",
- "objc2-foundation",
- "serde_json",
+ "tagapp-shell",
+ "tagapp-shell-build",
  "tagcalibrate-core",
  "tauri",
- "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
 ]
@@ -4604,11 +4622,10 @@ name = "tagmonitor"
 version = "0.1.0"
 dependencies = [
  "log",
- "objc2-foundation",
- "serde_json",
+ "tagapp-shell",
+ "tagapp-shell-build",
  "tagmonitor-core",
  "tauri",
- "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
 ]
@@ -4645,11 +4662,10 @@ name = "tagprogram"
 version = "0.1.0"
 dependencies = [
  "log",
- "objc2-foundation",
- "serde_json",
+ "tagapp-shell",
+ "tagapp-shell-build",
  "tagprogram-core",
  "tauri",
- "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
 ]
@@ -4678,9 +4694,9 @@ version = "1.0.0"
 dependencies = [
  "log",
  "sensorviz-core",
- "serde_json",
+ "tagapp-shell",
+ "tagapp-shell-build",
  "tauri",
- "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
 ]

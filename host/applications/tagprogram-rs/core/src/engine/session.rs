@@ -181,7 +181,7 @@ pub(crate) struct SessionState {
 impl SessionState {
     /// A running session at [`Step::Stopping`] with nothing learned yet; the
     /// callers fill in the voltage, serial and UUID.
-    fn new(label: &str, image: Option<FirmwareImage>, retest: bool) -> Self {
+    pub(super) fn new(label: &str, image: Option<FirmwareImage>, retest: bool) -> Self {
         Self {
             running: true,
             step: Step::Stopping,

@@ -96,6 +96,9 @@ pub enum Event {
         /// The message, without the level.
         text: String,
     },
+    /// The engine has agreed to quit (after `quit`, or `quit_anyway` while
+    /// programming); the shell closes the window. Sent once.
+    Exit,
 }
 
 /// The UI's side of the engine: a cheap, cloneable sender of messages.
@@ -297,6 +300,7 @@ pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static)
 fn run(config: EngineConfig, sink: Sink, tx: Sender<Msg>, rx: Receiver<Msg>) {
     let mut station = Station::new(config, tx);
     let mut last_state = Value::Null;
+    let mut exited = false;
     loop {
         let wait = station
             .next_deadline()
@@ -316,6 +320,10 @@ fn run(config: EngineConfig, sink: Sink, tx: Sender<Msg>, rx: Receiver<Msg>) {
         if state != last_state {
             sink(Event::State(state.clone()));
             last_state = state;
+        }
+        if station.exit && !exited {
+            exited = true;
+            sink(Event::Exit);
         }
     }
 }

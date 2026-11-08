@@ -19,7 +19,7 @@ STM32CubeProgrammer, and its UI is a web page drawn by Tauri.
 | --- | --- |
 | `core/` | `tagprogram-core`: the model (`model/`: ELF, flash plan, identity record, image, release catalog, record CSV, settings) and the engine (`engine/`: station, session, view state). No UI toolkit; unit tests run without hardware. |
 | `ui/` | The page: `app.js` renders the view state with Preact and the [UI kit](../../ui-kit/README.md)'s components into `index.html`, laid out by `app.css`; `mock-engine.js` stands in for the engine in a plain browser; `screenshots.sh` captures the user manual's pictures from the two. |
-| `app/` | The Tauri shell: starts the engine, forwards commands and queries, emits its events, and finds the user guide. `build.rs` stages the page from `ui/` and [`host/ui-kit`](../../ui-kit/README.md) under cargo's `OUT_DIR`. |
+| `app/` | The Tauri shell: `main.rs` describes Tag Programmer to the shell every application shares, [`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md) (which forwards commands and queries, emits the events, finds the user guide, and turns a window close or Cmd-Q into the engine's `quit`), and starts the engine. `build.rs` is one call to [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md), which stages the page from `ui/` and [`host/ui-kit`](../../ui-kit/README.md) under cargo's `OUT_DIR`. |
 | `design/` | [The engine](design/engine.md) (threads, loop, station, session, hazards), [building and packaging](design/build-and-packaging.md), [the UI/engine contract](design/ui-engine-contract.md), and [qtprogram's specification](design/qtprogram-spec.md), the behaviour this port reproduces. Why it was built this way: [decision 0035](../../../docs/decisions/0035-host-tagprogram-rs.md). |
 
 The engine owns every rule and all state; the page holds none. That split is
@@ -36,8 +36,9 @@ where it needs the system's WebKitGTK 4.1. See `CMakeLists.txt`.
 
 Nothing else needs installing to build it: libusb is built from source and
 linked in, and protoc comes from the `protoc-bin-vendored` crate. The build
-writes nothing into the source tree; `app/build.rs` stages the page, the
-configuration and Tauri's generated files under cargo's `OUT_DIR`.
+writes nothing into the source tree; `app/build.rs`, through
+`tagapp-shell-build`, stages the page, the configuration, the shared
+capabilities and Tauri's generated files under cargo's `OUT_DIR`.
 
 The crates it ships are listed, with their licenses, in
 `LICENSES/host/tagprogram-THIRD-PARTY-NOTICES.txt`. Regenerate that file

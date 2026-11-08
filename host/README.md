@@ -73,6 +73,8 @@ keep open:
 | `libraries/taglogwriter-rs` | `taglogwriter` | library | Writes tag SQLite logs through the C++ writer (`tlw_*`). |
 | `libraries/calibsession-rs` | `calibsession` | library | The magnetometer and accelerometer calibration session and compass angles, through the C++ core (`tcs_*`). |
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | library | Opens and views tag logs through sensorViz's C++ core (`svz_*`). |
+| `libraries/tagapp-shell-rs` | `tagapp-shell` | library | The Tauri shell the four applications share: the `command` and `query` commands, the `state` and `log` events, closing through the engine, App Nap, the user guide. |
+| `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | library | The applications' build-script helper: stages the page and the UI kit, writes the shared capabilities, the `libtagcore_c` rpath, runs `tauri-build`. |
 | `python/tagcore-py` | `tagcore-py` | Python module `tagcore._native` | The `tagcore` Python package: SWD sessions, loader sessions, captures and the rescue erase, built with maturin (not CMake). |
 | `commandline-rs` | `tag-tools` | 16 binaries | `tag-info`, `tag-start`, `tag-stop`, `tag-reset`, `tag-test`, `tag-dwnld`, `tag-flash`, `base-flash` and the bench tools; `src/lib.rs` is what they share. |
 | `applications/tagprogram-rs/core` | `tagprogram-core` | library | Tag Programmer's model and engine. |

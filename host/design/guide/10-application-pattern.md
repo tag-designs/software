@@ -42,10 +42,11 @@ flowchart LR
   all of it. It turns clicks into named **commands** and asks **queries**
   for data it needs. It keeps only what is its own: which tab is open, the
   log text, a scroll position.
-- **The shell forwards.** `app/src/main.rs` starts the engine, exposes two
-  Tauri commands (`command`, `query`) and emits two events (`state`, `log`).
-  It is a page or two of Rust, of the same shape in every application;
-  the differences are listed under the Tauri shell below.
+- **The shell forwards.** One shared crate, `tagapp-shell`, exposes two
+  Tauri commands (`command`, `query`) and emits two events (`state`, `log`)
+  for every application. An application's `app/src/main.rs` is about fifty
+  lines: it describes the application to the shell and starts its engine.
+  The few differences are flags, listed under the Tauri shell below.
 
 The contract between engine and page is written down per application in
 `design/ui-engine-contract.md`: the view state's shape, the commands with
@@ -124,31 +125,57 @@ and what happens with the result.
 
 [Tauri](https://tauri.app) is a Rust framework that shows a web page in the
 operating system's own webview (WebKit on macOS, WebView2 on Windows,
-WebKitGTK on Linux) and lets the page call Rust functions. Here it is used
-minimally:
+WebKitGTK on Linux) and lets the page call Rust functions. Every
+application uses it the same way, through two shared crates in
+`host/libraries` ([the proposal that made them](../proposals/unified-app-shell.md)):
 
-- `tauri::Builder` with the `dialog` plugin (native file dialogs) and the
-  `opener` plugin (URLs and folders);
-- two `#[tauri::command]` functions, `command` and `query`, which the page
-  reaches through `invoke`;
-- `app.emit("state", json)` and `emit("log", json)`;
-- in Tag Monitor and Tag Calibrator, a window-close hook that sends the
-  engine `quit` and closes the window only when the engine answers `Exit`,
-  so unsaved work is asked about (Tag Programmer and Tag View close at
-  once);
-- on macOS, in the three applications that attach to a tag (not Tag View),
-  opting the process out of App Nap, which once throttled the 400 ms poll
-  past a tag's sleep limit while the window was in the background.
+- [`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md) is the run-time
+  half. `tagapp_shell::run` builds the `tauri::Builder` with the `dialog`
+  plugin (native file dialogs) and the `opener` plugin (URLs and folders),
+  registers the two `#[tauri::command]` functions, `command` and `query`,
+  which the page reaches through `invoke`, emits `state` and `log`, finds
+  the user manual's page for the application, and handles closing.
+- [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md) is
+  the build-script half: each application's `app/build.rs` is one call to
+  it.
 
-`app/build.rs` assembles the page into a staging directory under cargo's
-`OUT_DIR` (the page plus the kit, with the kit's relative path rewritten),
-because Tauri embeds one directory at compile time and the kit lives
-outside the application. `tauri.conf.json` names the window and the
-identifier; `capabilities/default.json` grants the page the few permissions
-it uses (Tag Programmer's lacks `core:window:allow-set-title`, so its page's
-window-title change is refused). Tauri's own bundler and updater are not used: CMake assembles the
-macOS bundle and the packages, so there is one signing path for every
-application (chapter 13).
+An application's `main.rs` passes an `App` description, its
+`tauri::generate_context!()` (which must expand in the application's own
+crate) and a closure that builds the engine's configuration from the
+platform directories and spawns the engine with a sink forwarding its
+events to the shell. The `App` flags are the only differences between the
+shells:
+
+| Application | `keep_awake` | `close_through_engine` |
+| --- | --- | --- |
+| Tag Programmer | yes | yes |
+| Tag Monitor | yes | yes |
+| Tag Calibrator | yes | yes |
+| Tag View | no | no |
+
+- **`close_through_engine`**: a window close is vetoed and sent to the
+  engine as `quit`, and on macOS the application menu's Quit item (Cmd-Q) is
+  replaced by one that does the same, since Tauri's own Quit ends the
+  process without a close request. The window closes when the engine emits
+  `Exit`, after it has asked about unsaved work (Tag Monitor), detached the
+  tag (Tag Monitor, Tag Calibrator) or confirmed quitting during
+  programming (Tag Programmer). Tag View, with no tag and no unsaved work,
+  closes at once.
+- **`keep_awake`**: on macOS, opt the process out of App Nap, which once
+  throttled the 400 ms poll past a tag's sleep limit while the window was in
+  the background. Tag View attaches no tag.
+
+`tagapp-shell-build` assembles the page into a staging directory under
+cargo's `OUT_DIR` (the page plus the kit, with the kit's relative path
+rewritten), because Tauri embeds one directory at compile time and the kit
+lives outside the application. It also writes the one capabilities file
+every application shares, which grants the page the few permissions it
+uses (events, file dialogs, the window title, opening URLs and the
+installed user guide), and adds the run-time path to a shared
+`libtagcore_c` for the applications that link it. Each application's
+`tauri.conf.json` names its window and identifier. Tauri's own bundler and
+updater are not used: CMake assembles the macOS bundle and the packages, so
+there is one signing path for every application (chapter 13).
 
 ## The page and the UI kit
 

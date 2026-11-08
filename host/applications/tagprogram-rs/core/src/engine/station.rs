@@ -47,7 +47,7 @@ use tagcore::proto::{Status, TagInfo, TagState, TestResult};
 use tagcore::{Tag, UsbDev};
 use tagprobe::{Connect, DEV_L432, DEV_U375, Driver};
 
-use super::session::SessionState;
+use super::session::{SessionState, Step};
 use super::{EngineConfig, Msg, query_error, set_log_level};
 use crate::model::catalog::Catalog;
 use crate::model::flashplan::Erase;
@@ -181,7 +181,8 @@ pub(crate) struct Prompt {
 
 /// The commands that answer a prompt, each checked against the outstanding
 /// prompt's `id` before it runs.
-const PROMPT_ANSWERS: [&str; 6] = [
+const PROMPT_ANSWERS: [&str; 7] = [
+    "quit_anyway",
     "answer_auto_attach",
     "choose_base",
     "record_use_default",
@@ -282,6 +283,9 @@ pub(crate) struct Station {
     pub(crate) session: Option<SessionState>,
     /// The outstanding question for the UI.
     pub(crate) prompt: Option<Prompt>,
+    /// The engine has agreed to quit: the loop sends [`super::Event::Exit`]
+    /// and the shell closes the window.
+    pub(crate) exit: bool,
     /// The last prompt id issued.
     prompt_seq: u64,
     /// `start` has been received; later ones are ignored.
@@ -396,6 +400,7 @@ impl Station {
             result: (String::new(), None),
             session: None,
             prompt: None,
+            exit: false,
             prompt_seq: 0,
             started: false,
             checks_begun: false,
@@ -568,6 +573,32 @@ impl Station {
 
     // ---- commands and queries ----------------------------------------
 
+    /// True while probe-rs is erasing, programming and verifying a tag: the
+    /// one step a quit would interrupt mid-write.
+    fn programming(&self) -> bool {
+        self.session
+            .as_ref()
+            .is_some_and(|s| s.running && s.step == Step::Programming)
+    }
+
+    /// The window's close or Cmd-Q (the shell's `quit`): quits at once,
+    /// except while a tag is being programmed, when it asks first
+    /// (`confirmQuit`, answered by `quit_anyway` or `prompt_cancel`). Quitting
+    /// then ends probe-rs mid-write and can leave the tag with a partial
+    /// image; the choice stays with the user, so a stuck job cannot trap the
+    /// program.
+    fn quit(&mut self) {
+        if self.programming() {
+            self.raise(json!({
+                "kind": "confirmQuit",
+                "title": "Programming in Progress",
+                "text": "Programming is in progress. Quitting now can leave the tag with a partial image. Quit anyway?",
+            }));
+        } else {
+            self.exit = true;
+        }
+    }
+
     /// True when a prompt answer's `id` names the outstanding prompt, or the
     /// answer carries no `id`.
     ///
@@ -602,6 +633,11 @@ impl Station {
         let b = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(false);
         match cmd {
             "start" => self.begin(),
+            "quit" => self.quit(),
+            "quit_anyway" => {
+                self.prompt = None;
+                self.exit = true;
+            }
             "choose_firmware" => {
                 let id = s("id");
                 if let Some(tag) = id.strip_prefix("release:") {
@@ -2012,6 +2048,30 @@ mod tests {
             user_guide_url: None,
         };
         Station::new(cfg, std::sync::mpsc::channel().0)
+    }
+
+    /// Quit exits at once with no session; while a tag is being programmed
+    /// it asks first, and only `quit_anyway` (for that prompt) exits.
+    #[test]
+    fn quit_asks_only_while_programming() {
+        let mut st = station("quit");
+        st.command("quit", &json!({}));
+        assert!(st.exit && st.prompt.is_none());
+
+        let mut st = station("quit-programming");
+        let mut session = SessionState::new("T1", None, false);
+        session.step = Step::Programming;
+        st.session = Some(session);
+        st.command("quit", &json!({}));
+        assert!(!st.exit, "quit while programming exited without asking");
+        let id = st.prompt.as_ref().map(|p| p.id);
+        assert_eq!(st.prompt.as_ref().map(|p| p.body["kind"].clone()), Some(json!("confirmQuit")));
+        st.command("prompt_cancel", &json!({ "id": id }));
+        assert!(!st.exit && st.prompt.is_none());
+        st.command("quit", &json!({}));
+        let id = st.prompt.as_ref().map(|p| p.id);
+        st.command("quit_anyway", &json!({ "id": id }));
+        assert!(st.exit);
     }
 
     /// An answer for a prompt that has been replaced is dropped; an answer

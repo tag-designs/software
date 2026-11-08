@@ -210,6 +210,7 @@
     if (p.kind === "autoAttach") return promptAutoAttach(p);
     if (p.kind === "recordFile") return promptRecordFile(p);
     if (p.kind === "chooseBase") return promptChooseBase(p);
+    if (p.kind === "confirmQuit") return promptConfirmQuit(p);
     if (p.kind === "alert") {
       return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel", { id: p.id }));
     }
@@ -270,6 +271,19 @@
   async function promptChooseBase(p) {
     const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
     send(index === null ? "prompt_cancel" : "choose_base", index === null ? { id: p.id } : { index, id: p.id });
+  }
+
+  /**
+   * Asks whether to quit while a tag is being programmed (the window's close
+   * or Cmd-Q); answers `quit_anyway` or `prompt_cancel`. Keeping on is the
+   * default.
+   * @param {Object} p The prompt, with `title` and `text`.
+   */
+  async function promptConfirmQuit(p) {
+    const quit = await Kit.confirm(p.title, p.text, null,
+      [{ label: "Keep Programming", value: false, default: true, enter: true, cancel: true },
+       { label: "Quit", value: true }]);
+    send(quit ? "quit_anyway" : "prompt_cancel", { id: p.id });
   }
 
   // ---- Dialogs started by the user --------------------------------------

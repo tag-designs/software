@@ -88,6 +88,7 @@ design document.
 - [0043. Monitor commands are synchronous](decisions/0043-synchronous-monitor-commands.md) *(decision)* — The monitor's state-changing commands run their transition inside proto_eval() and reply with the resulting Status, PERM or NXIO, instead of acknowledging the request and leaving the work to a later state-machine pass; the main loop runs the state machine before serving the monitor, and the host reads the Status, polling only for older firmware.
 - [0044. UIUCTag stores one 8-byte record per minute](decisions/0044-uiuctag-minute-records.md) *(decision)* — UIUCTag stores one 8-byte record a minute -- three 20-second activity counts for the minute before, then raw BMP585 pressure and temperature -- written whole in one program, 32 to a 256-byte page; the 12-byte five-minute format (layout 1) is dropped, not decoded.
 - [0045. Host: SWD capture and recovery move to Rust](decisions/0045-swd-recovery-in-rust.md) *(decision)* — The SWD capture and recovery library and its four tools (tag-capture, tag-xflash, tag-sramcall, tag-rebuild) are Rust, in tagcore-rs on its own LinkAdapt; the C++ library and tools and tag_capture_state.py are deleted, and only the offline rebuild (CaptureSource) stays C++, behind tagcore_c's rbd_* interface.
+- [0046. Host: one shell for the Tauri applications](decisions/0046-host-shared-app-shell.md) *(decision)* — The four Tauri applications share one shell (tagapp-shell) and one build helper (tagapp-shell-build) with one capabilities file; Tag Monitor, Tag Calibrator and Tag Programmer close through their engine's quit, Tag Programmer asking only while it programs a tag; Tag View keeps a plain close.
 
 ### Investigations
 
@@ -510,6 +511,14 @@ design document.
 
 - [sensorviz-session (Rust)](../host/libraries/sensorviz-session-rs/README.md) — sensorviz-session, a safe Rust wrapper over sensorViz's Qt-free core through tagcore_c's svz_* functions - so a Rust program opens and shows a tag log exactly as the Qt sensorViz does; building, the API, the JSON the interface carries, and the tests.
 
+### Libraries / tagapp-shell-build-rs
+
+- [tagapp-shell-build (Rust)](../host/libraries/tagapp-shell-build-rs/README.md) — tagapp-shell-build, the build-script half of the shared Tauri shell -- one call from each application's build.rs that stages the page and the UI kit, writes the one capabilities file, sets TAURI_CONFIG, adds the libtagcore_c rpath and runs tauri-build, writing nothing into the source tree.
+
+### Libraries / tagapp-shell-rs
+
+- [tagapp-shell (Rust)](../host/libraries/tagapp-shell-rs/README.md) — tagapp-shell, the Tauri shell the four Rust applications share -- the command and query Tauri commands, the state and log events, closing and Cmd-Q through the engine, the App Nap opt-out and the user guide search -- what an application passes it, and how to build and check it.
+
 ### Libraries / tagcore
 
 - [TagCore Library](../host/libraries/tagcore/README.md) — tagcore responsibilities - USB and monitor communication, log writers, configuration shapes, SWD capture and recovery code, offline checks - and links to its design documents.
@@ -621,7 +630,7 @@ design document.
 - [7. Programming tags and bases: tagprobe, probe-rs and DFU](../host/design/tutorial/07-programming-tags-and-bases.md) — A guided reading of tagprobe and the tag-flash and base-flash tools: how a base's identity picks the probe-rs driver, how the field-safe driver implements probe-rs's probe traits over LinkAdapt, the chip choice, the debug sequence, the erase plan, download with verify, PEMPTY and the start from the vector table, and programming a base over DFU with nusb, dfu-core and a small tokio runtime.
 - [8. The bridges: C++ through tagcore_c, and Python through PyO3](../host/design/tutorial/08-bridges-to-cpp-and-python.md) — A guided reading of the two language bridges: Rust calling the C++ log writer and calibration through the tagcore_c C ABI (the C shims, the hand-written tagcore-c-sys declarations and build script, the safe wrappers with their SAFETY arguments) and Python calling the Rust recovery library through PyO3 (the module, classes, GIL release and progress callbacks).
 - [9. The command-line tools](../host/design/tutorial/09-command-line-tools.md) — A reading of host/commandline-rs (crate tag-tools): clap, logging and exit codes shared by every tool, then tag-info, tag-reset and tag-dwnld line by line down to the C++ log writer, the recovery and flashing tools in brief, and a table of the rest.
-- [10. The Tauri shell: how a Rust program gets a window](../host/design/tutorial/10-tauri-shell.md) — A line-by-line reading of Tag Monitor's Tauri shell -- main.rs, tauri.conf.json, the capabilities, build.rs and the CMake that ships it -- ending with the exact Rust-to-JavaScript boundary.
+- [10. The Tauri shell: how a Rust program gets a window](../host/design/tutorial/10-tauri-shell.md) — A line-by-line reading of the Tauri shell -- Tag Monitor's main.rs, the shared tagapp-shell crate it calls, tauri.conf.json, the shared capabilities, the tagapp-shell-build staging and the CMake that ships it -- ending with the exact Rust-to-JavaScript boundary.
 - [11. The engine: threads, the model and the view state](../host/design/tutorial/11-engine-and-model.md) — A code reading of tagmonitor-core -- the engine and tag threads and their channels, the message enums, the engine loop that rebuilds and compares the whole view state, prompts as data, the configuration editor, the logger, and how it is all tested without Tauri or a tag.
 - [12. The page: the UI kit, Preact and htm](../host/design/tutorial/12-ui-kit-and-pages.md) — A guided reading of the web side of the Tauri applications - the UI kit (kit.css, Preact and htm, kit.js, the shared components), Tag Monitor's page from boot to prompts, its mock engine and the headless-Chrome screenshots - for a reader who knows Qt and little modern front-end.
 - [13. End to end: Tag Monitor's Start, from the button to the wire and back](../host/design/tutorial/13-tracing-start.md) — One click of Tag Monitor's Start button followed through every layer, page, shell, engine, tag thread, tagcore, ST-LINK, and back to the redraw, with the code that runs at each hop.

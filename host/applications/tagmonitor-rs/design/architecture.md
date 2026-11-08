@@ -14,7 +14,8 @@ Tag Monitor in Rust (`tagmonitor`) is qtmonitor's behaviour in three layers:
 - **`ui/`**: a web page that draws the state the engine publishes and sends
   commands. It holds no rules.
 - **`app/`**, the crate `tagmonitor`: the Tauri shell that runs the engine and
-  connects it to the page.
+  connects it to the page, through the shell every application shares,
+  [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md).
 
 The protocol between engine and page is the
 [UI/engine contract](ui-engine-contract.md); building and shipping is
@@ -109,9 +110,9 @@ qtmonitor's oracles.
 
 | File | Holds |
 | --- | --- |
-| `src/main.rs` | Starts the engine; the `command` and `query` Tauri commands; forwards `state` and `log` events; turns a window close into `quit` and exits on the engine's `Exit`; finds the user guide; opts out of App Nap |
-| `build.rs` | Stages `ui/` and `host/ui-kit/` for Tauri; the rpath to a shared `tagcore_c` |
-| `tauri.conf.json`, `capabilities/default.json` | The window, the identifier, the permissions (dialogs, opener, window title) |
+| `src/main.rs` | Describes Tag Monitor to `tagapp-shell` (App Nap opt-out on, closing through the engine on) and starts the engine with the settings path, home directory, user guide URL and `TAGMONITOR_NO_ATTACH`; the sink forwards `State`, `Log` and `Exit` to the shell. The shell holds the `command` and `query` Tauri commands, the `state` and `log` events, the close hook (a close or Cmd-Q becomes `quit`; the window closes on `Exit`), App Nap and the user guide search |
+| `build.rs` | One call to [`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md), with the `libtagcore_c` rpath when the `sqlitelog` feature is on: stages `ui/` and `host/ui-kit/` for Tauri and writes the shared capabilities (dialogs, opener, window title) |
+| `tauri.conf.json` | The window and the identifier |
 | `Cargo.toml` | The `sqlitelog` feature, passed to the core |
 
 ### `ui/`: the page

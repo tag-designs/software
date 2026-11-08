@@ -56,7 +56,7 @@ code changes; the function names in the text are the stable reference.
 | 7 | [Programming tags and bases](07-programming-tags-and-bases.md) | Follow `tag-flash` through probe-rs and `base-flash` through DFU |
 | 8 | [The bridges: C++ and Python](08-bridges-to-cpp-and-python.md) | Read the `unsafe` FFI code and the PyO3 module, and say why each call is sound |
 | 9 | [The command-line tools](09-command-line-tools.md) | Read any tool, and follow `tag-dwnld` from arguments to SQLite file |
-| 10 | [The Tauri shell](10-tauri-shell.md) | Say how a Rust program gets a window, and list every call between page and Rust |
+| 10 | [The Tauri shell](10-tauri-shell.md) | Say how a Rust program gets a window through the shell the four applications share (`tagapp-shell`), and list every call between page and Rust |
 | 11 | [The engine: threads, the model and the view state](11-engine-and-model.md) | Follow a message through the engine loop and a request through the tag thread |
 | 12 | [The page: the UI kit, Preact and htm](12-ui-kit-and-pages.md) | Read a page, change a panel, and preview it against the mock in a browser |
 | 13 | [End to end: Tag Monitor's Start](13-tracing-start.md) | Follow one button press from the page to the ST-LINK and back to the redraw |

@@ -21,7 +21,9 @@ on the pattern Tag Monitor set
   view state, including the sample sphere and the tag model (three.js) and
   the heading dial (SVG), and sends commands. It holds no rules and computes
   nothing about the tag; even the sphere's rotation is drawing, not a rule.
-- **`app/`**, the crate `tagcalibrate`: the Tauri shell.
+- **`app/`**, the crate `tagcalibrate`: the Tauri shell, through the shell
+  every application shares,
+  [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md).
 
 The protocol between engine and page is the
 [UI/engine contract](ui-engine-contract.md); why the calibration was moved
@@ -65,8 +67,8 @@ Paths are relative to `host/applications/tagcalibrate-rs`; qtcalibrate's to
 | `core/src/engine/capture.rs` | qtcalibrate's capture file: reading one for replay, writing one as `saveSampleCapture` does | `saveSampleCapture`, `--replay-capture` |
 | `core/tests/replay_log.rs` | Replays the CompassTag fixture and compares the engine's four quality log lines with qtcalibrate's, line for line | |
 | `core/tests/imutag_axes.rs` | The IMUTag fixture keeps the site's dip, so a firmware axis mapping regression is caught | |
-| `app/src/main.rs` | The Tauri shell: engine, `command` and `query`, `state` and `log` events, quit through the engine, the user guide, App Nap | Tag Monitor's shell |
-| `app/build.rs` | Stages `ui/` and `host/ui-kit/` for Tauri; the rpath to a shared `tagcore_c` | Tag Monitor's |
+| `app/src/main.rs` | Describes Tag Calibrator to `tagapp-shell` (App Nap opt-out on, closing through the engine on) and starts the engine with `TAGCALIBRATE_REPLAY` and `TAGCALIBRATE_NO_ATTACH`. The shell holds `command` and `query`, the `state` and `log` events, quit through the engine, the user guide and App Nap | Tag Monitor's |
+| `app/build.rs` | One call to [`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md) with `Rpath::Always`: stages `ui/` and `host/ui-kit/` for Tauri, writes the shared capabilities, and sets the rpath to a shared `tagcore_c` | Tag Monitor's |
 | `ui/index.html`, `app.js`, `app.css` | The window: Calibrate, Orientation and Log tabs and the Tag Connection bar, rendered with Preact from the state | |
 | `ui/views.js` | The three graphics: sphere and tag model (three.js), heading dial (the kit's `HeadingDial`) | `magplot.cpp`, `MyAttitude.qml`, `MyCompass.qml` |
 | `ui/mock-engine.js`, `ui/mock-capture.js` | The browser stand-in and its replay data; `tools/make_mock_capture.py` rebuilds the latter | |

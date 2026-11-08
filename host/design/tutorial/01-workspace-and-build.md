@@ -73,6 +73,9 @@ members = [
   "libraries/taglogwriter-rs",
   "libraries/calibsession-rs",
   "libraries/sensorviz-session-rs",
+  # The Tauri shell every application shares, and its build-script half.
+  "libraries/tagapp-shell-rs",
+  "libraries/tagapp-shell-build-rs",
   # The command-line tools (crate tag-tools: one binary per tool).
   "commandline-rs",
   # The Python binding of tagcore's recovery module (built with maturin).
@@ -121,7 +124,7 @@ notice:
 
 ### The members
 
-Sixteen packages. The directory keeps a `-rs` suffix where a C++ directory of
+Eighteen packages. The directory keeps a `-rs` suffix where a C++ directory of
 the same name exists; the package name does not.
 
 | Directory under `host/` | Package | Produces | What it is | Read in |
@@ -132,6 +135,8 @@ the same name exists; the package name does not.
 | `libraries/taglogwriter-rs` | `taglogwriter` | lib | Safe wrapper over the C++ SQLite log writer | chapter [8](08-bridges-to-cpp-and-python.md) (and its use in [9](09-command-line-tools.md)) |
 | `libraries/calibsession-rs` | `calibsession` | lib | Safe wrapper over the C++ calibration session | chapter [8](08-bridges-to-cpp-and-python.md) |
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | lib | Safe wrapper over sensorViz's C++ core | not covered (sensorViz is out of scope) |
+| `libraries/tagapp-shell-rs` | `tagapp-shell` | lib | The Tauri shell every application shares: the two commands, the two events, closing through the engine, App Nap, the user guide | chapter [10](10-tauri-shell.md) |
+| `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | lib | The applications' build-script helper: page staging, the shared capabilities, the rpath, `tauri-build` | chapters [1](#the-tauri-applications-staging-the-page), [10](10-tauri-shell.md) |
 | `commandline-rs` | `tag-tools` | lib + 21 binaries | The command-line tools | chapter [9](09-command-line-tools.md) |
 | `python/tagcore-py` | `tagcore-py` | `cdylib` named `_native` | The Python module `tagcore`, over `tagcore::recovery`, built with maturin | chapter [8](08-bridges-to-cpp-and-python.md) |
 | `applications/tagprogram-rs/core` | `tagprogram-core` | lib | Tag Programmer's engine and model (also the ELF reader and flash plan `tag-flash` uses) | chapters [11](11-engine-and-model.md), [14](14-the-three-applications.md) |
@@ -145,7 +150,8 @@ the same name exists; the package name does not.
 
 The dependency arrows all point down: the applications' `core` crates use
 `tagcore` (and `tagprobe`, `taglogwriter`, `calibsession` as needed); each
-`app` crate uses only its own `core` plus Tauri; `tag-tools` uses `tagcore`,
+`app` crate uses only its own `core`, `tagapp-shell` (and
+`tagapp-shell-build` in its build script) plus Tauri; `tag-tools` uses `tagcore`,
 `tagprobe`, `tagprogram-core` and, with a feature, `taglogwriter`. The one
 sideways edge is worth noticing: `tag-tools` depends on
 `tagprogram-core` to reuse Tag Programmer's ELF reader and erase plan.
@@ -490,45 +496,65 @@ from.
 
 ### The Tauri applications: staging the page
 
-Each Tauri `app` crate has a build script that copies the web page and the
-shared UI kit into `OUT_DIR` and then runs Tauri's own build step,
-[`applications/tagmonitor-rs/app/build.rs:72`](../../applications/tagmonitor-rs/app/build.rs#L72):
+Each Tauri `app` crate's build script is one call into a shared helper
+crate, `tagapp-shell-build`, listed under the app's `[build-dependencies]`,
+[`applications/tagmonitor-rs/app/build.rs:8`](../../applications/tagmonitor-rs/app/build.rs#L8):
 
 ```rust
 fn main() {
+    tagapp_shell_build::build(tagapp_shell_build::Rpath::WithFeature("sqlitelog"));
+}
+```
+
+The helper copies the web page and the shared UI kit into `OUT_DIR` and then
+runs Tauri's own build step,
+[`libraries/tagapp-shell-build-rs/src/lib.rs:127`](../../libraries/tagapp-shell-build-rs/src/lib.rs#L127):
+
+```rust
+pub fn build(rpath: Rpath) {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let stage = PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR")).join("tauri");
     let _ = fs::remove_dir_all(&stage);
 
     let dist = stage.join("dist");
     copy_dir(&manifest.join("../ui"), &dist, true);
-    copy_dir(
-        &manifest.join("../../../ui-kit"),
-        &dist.join("ui-kit"),
-        false,
-    );
+    copy_dir(&manifest.join("../../../ui-kit"), &dist.join("ui-kit"), false);
+    fs::create_dir_all(stage.join("capabilities")).expect("create capabilities");
+    fs::write(stage.join("capabilities/default.json"), CAPABILITIES).expect("write capabilities");
     // ...
     let config = format!(
         r#"{{"build":{{"frontendDist":{}}}}}"#,
         serde_json::to_string(&dist.to_string_lossy()).expect("path as JSON")
     );
     println!("cargo:rustc-env=TAURI_CONFIG={config}");
-    // ...
+
+    tagcore_c_rpath(rpath);
+
     std::env::set_current_dir(&stage).expect("enter staging directory");
     tauri_build::build()
 }
 ```
 
-The page lives in `../ui` and loads the kit by a relative path so it also
-opens as a plain file in a browser; Tauri serves one directory, so the
-script assembles that directory under `OUT_DIR` and points Tauri's
-`generate_context!` macro at it through `TAURI_CONFIG`. Nothing is written
-into the source tree, so a release build works from a read-only checkout.
-Tag Monitor's and Tag Calibrator's versions also set an rpath for a shared
-`libtagcore_c` (the elided part), reading `TAGCORE_C_RPATH`, else
-`TAGCORE_C_LIB_DIR`, themselves, because they are not direct dependents of
-`tagcore-c-sys` and so never see `DEP_TAGCORE_C_LIB_DIR`. Chapter
-[10](10-tauri-shell.md) reads the whole script.
+A library function can do this because it runs inside the application's
+build script: `CARGO_MANIFEST_DIR`, `OUT_DIR` and the `CARGO_FEATURE_*`
+variables it reads are the application's. The page lives in `../ui` and
+loads the kit by a relative path so it also opens as a plain file in a
+browser; Tauri serves one directory, so the helper assembles that directory
+under `OUT_DIR`, writes the one capabilities file every application shares
+(compiled into the helper from its `capabilities.json`), and points Tauri's
+`generate_context!` macro at the staged page through `TAURI_CONFIG`.
+Nothing is written into the source tree, so a release build works from a
+read-only checkout.
+
+The argument says when the executable needs an rpath for a shared
+`libtagcore_c`: `Rpath::Never` for Tag Programmer, which links no C++;
+`Rpath::WithFeature("sqlitelog")` for Tag Monitor, whose download is behind
+that feature; `Rpath::Always` for Tag Calibrator and Tag View, whose cores
+are in the library. `tagcore_c_rpath` reads `TAGCORE_C_RPATH`, else
+`TAGCORE_C_LIB_DIR`, itself, because the applications are not direct
+dependents of `tagcore-c-sys` and so never see `DEP_TAGCORE_C_LIB_DIR`.
+Chapter [10](10-tauri-shell.md#buildrs-staging-the-page) reads the whole
+helper.
 
 > **Rust:** `r#"..."#` is a raw string (no escapes), and `{{`/`}}` in a
 > `format!` string are literal braces. `.expect("...")` unwraps an `Option`

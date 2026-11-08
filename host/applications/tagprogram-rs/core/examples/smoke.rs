@@ -40,6 +40,7 @@ fn main() {
     let engine = engine::spawn(config, move |event| match event {
         Event::State(state) => *keep.lock().unwrap() = state,
         Event::Log { level, text } => eprintln!("{level} {text}"),
+        Event::Exit => {}
     });
     engine.command("start", json!({}));
     std::thread::sleep(Duration::from_millis(500));

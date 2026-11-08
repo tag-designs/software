@@ -107,6 +107,7 @@ fn main() {
             let t = start.elapsed().as_secs_f32();
             eprintln!("[{t:7.1}] {level} {text}");
         }
+        Event::Exit => {}
     });
     engine.command("set_log_level", json!({ "level": level }));
     engine.command("start", json!({}));

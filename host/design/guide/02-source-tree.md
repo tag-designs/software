@@ -43,6 +43,8 @@ host/
 │   ├── taglogwriter-rs/        Rust: the SQLite writer, through tlw_*                           (chapter 8)
 │   ├── calibsession-rs/        Rust: the calibration session, through tcs_*                     (chapter 8)
 │   ├── sensorviz-session-rs/   Rust: sensorViz's core, through svz_*                            (chapter 8)
+│   ├── tagapp-shell-rs/        Rust: the Tauri shell every application shares                  (chapter 10)
+│   ├── tagapp-shell-build-rs/  Rust: its build-script half: page staging, capabilities, rpath   (chapter 10)
 │   ├── sensoranalysis/         C++: compass calibration and orientation; its core/ is Qt-free
 │   ├── sensordata/             C++: decimating SQLite log reader (sqlite3 only)
 │   ├── sensorui/               C++/Qt: shared widgets for the Qt apps
@@ -93,6 +95,8 @@ familiar; the host README carries the same table.
 | `libraries/taglogwriter-rs` | `taglogwriter` | | | wraps `tagcore/sqlitelog` |
 | `libraries/calibsession-rs` | `calibsession` | | | wraps `sensoranalysis/core/calibration_session` |
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | | | wraps `applications/sensorviz/core` |
+| `libraries/tagapp-shell-rs` | `tagapp-shell` | | | nothing; the Tauri shell the four applications share |
+| `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | | | nothing; the applications' build-script helper |
 | `commandline-rs` | `tag-tools` | `tag-info`, `tag-start`, ..., `tag-flash`, `base-flash` | | `commandline/*.cc` |
 | `applications/tagprogram-rs` | `tagprogram-core`, `tagprogram` | `tagprogram` | Tag Programmer | `applications/qtprogram` (`qtprogram`) |
 | `applications/tagmonitor-rs` | `tagmonitor-core`, `tagmonitor` | `tagmonitor` | Tag Monitor | `applications/qtmon` (`qtmonitor`) |
@@ -150,10 +154,10 @@ applications/tagmonitor-rs/   no Cargo.toml here: core/ and app/ are members of 
 │   ├── src/engine/            the threads: engine loop, tag thread, the state, the view-state builder
 │   ├── tests/                 the oracles against the Qt application
 │   └── examples/              headless runs: a whole tag cycle on hardware, a form printer
-├── app/                       crate tagmonitor: the Tauri shell
-│   ├── src/main.rs            starts the engine; two Tauri commands in, two events out
-│   ├── build.rs               stages ui/ and the kit into Tauri's distribution directory
-│   ├── tauri.conf.json, capabilities/default.json, icons/
+├── app/                       crate tagmonitor: the Tauri shell, through libraries/tagapp-shell-rs
+│   ├── src/main.rs            describes the app to tagapp-shell and starts the engine
+│   ├── build.rs               one call to tagapp-shell-build: stages ui/ and the kit, the capabilities
+│   ├── tauri.conf.json, icons/
 ├── ui/                        the page: index.html, app.js (Preact), app.css, mock-engine.js, screenshots.sh
 ├── CMakeLists.txt             the CMake target (host_rust_app) and the per-platform install
 └── cmake/Info.plist.in        the macOS bundle's property list

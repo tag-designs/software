@@ -18,7 +18,7 @@ pixels it changes, follow a click to the `invoke` that carries it to Rust, and
 change the page against the mock in a browser with no app and no tag.
 
 The Rust side of the same boundary is [chapter 10](10-tauri-shell.md) (the
-shell, `invoke`, `emit`, `build.rs`) and [chapter 11](11-engine-and-model.md)
+shared shell, `invoke`, `emit`, the page staging) and [chapter 11](11-engine-and-model.md)
 (the engine and the view state). The pattern as a whole is
 [chapter 10 of the guide](../guide/10-application-pattern.md); why Preact was
 chosen is [decision 0038](../../../docs/decisions/0038-host-ui-kit-preact.md).
@@ -88,8 +88,9 @@ Start with the window's HTML. It is chrome and a list of scripts.
 - `mock-engine.js` is loaded in the shipped app too, but `app.js` constructs
   the mock only outside it (below).
 - The `../../../ui-kit/` paths are relative to the source tree. The app
-  crate's `build.rs` rewrites them to `ui-kit/` when it stages the page for
-  embedding ([chapter 10](10-tauri-shell.md)).
+  crate's build script (through `tagapp-shell-build`) rewrites them to
+  `ui-kit/` when it stages the page for embedding
+  ([chapter 10](10-tauri-shell.md#buildrs-staging-the-page)).
 
 **Why not ES modules?** A modern page would write `import { h } from
 "./preact.js"`. Browsers refuse module imports from a `file://` URL, and the
@@ -297,9 +298,9 @@ All three return promises.
 **`command` returns nothing from Rust.** As the doc comment above
 `createEngine` says ([kit.js:40](../../ui-kit/kit.js#L40)), `command`
 "resolves with null (the Rust command returns nothing) and rejects only if
-the IPC call itself fails". In all three shells `fn command(...)` has no
+the IPC call itself fails". The shared shell's `fn command(...)` has no
 return value
-([tagmonitor-rs/app/src/main.rs:37](../../applications/tagmonitor-rs/app/src/main.rs#L37)),
+([tagapp-shell-rs/src/lib.rs:153](../../libraries/tagapp-shell-rs/src/lib.rs#L153)),
 so an unknown or refused command is reported by the engine as a log line or
 an `alert` prompt in the next state. The page's `send()` (below) alerts on a
 non-null answer or a rejected `invoke`; in practice only the second can

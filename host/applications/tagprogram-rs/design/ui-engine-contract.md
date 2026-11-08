@@ -163,6 +163,7 @@ the prompt stays in the state.
 | `recordFile` | `defaultPath`, `exists` | "Record File" box: Use It/Create, Open Existing..., Create Elsewhere..., Cancel | `record_use_default`, `record_open {path}`, `record_create {path}`, `prompt_cancel` |
 | `chooseBase` | `label`, `items[]` (text), `current` (index) | "Choose a Base" list | `choose_base {index}`, `prompt_cancel` |
 | `alert` | `title`, `text`, `style` (`"warning"`/`"info"`) | message box | `prompt_cancel` |
+| `confirmQuit` | `title`, `text` | "Programming in Progress": Keep Programming (default) or Quit | `quit_anyway`, `prompt_cancel` |
 
 ## Commands (`invoke("command", {cmd, args})`)
 
@@ -182,7 +183,8 @@ the prompt stays in the state.
 | `set_auto_attach` | `{on}` | Station > Attach Automatically |
 | `list_bases` | -- | Station > Choose Base... (raises `chooseBase`, or an `alert`) |
 | `choose_record` | -- | Station > Choose Record File... (raises `recordFile`) |
-| `answer_auto_attach`, `record_use_default`, `record_open`, `record_create`, `choose_base`, `prompt_cancel` | see Prompts, each plus `id` | An answer whose `id` is not the outstanding prompt's is dropped; one without an `id` answers the outstanding prompt |
+| `quit` | -- | sent by the shell for a window close or Cmd-Q: quits at once (the engine's `Exit`), or raises `confirmQuit` while a tag is being programmed |
+| `quit_anyway`, `answer_auto_attach`, `record_use_default`, `record_open`, `record_create`, `choose_base`, `prompt_cancel` | see Prompts, each plus `id` | An answer whose `id` is not the outstanding prompt's is dropped; one without an `id` answers the outstanding prompt |
 | `set_log_level` | `{level}` | log pane combo |
 | `save_text` | `{path, text}` | Save Error Log (truncates; qtprogram's did not) |
 

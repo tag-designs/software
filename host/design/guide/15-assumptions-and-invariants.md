@@ -97,7 +97,7 @@ states for working with real tags, and are not repeated in full.
 | **Do not open user files inline during start-up** on macOS: a privacy prompt blocks the engine thread and blanks the window | Tag Programmer's engine design |
 | **The page opens from `file://` against its mock**; no build step, no ES modules, vendored libraries | `ui-kit/README.md` |
 | **The mock's samples are hand-written** and must be kept in step with the contract | each `mock-engine.js` header |
-| **Quit goes through the engine**, which asks about unsaved work and detaches before the window closes | each shell's close hook |
+| **Quit goes through the engine**, which asks about unsaved work and detaches before the window closes | `tagapp-shell` (`close_through_engine`); Tag View, with no tag and nothing unsaved, closes at once |
 
 ## The build
 

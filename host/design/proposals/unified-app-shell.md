@@ -6,7 +6,8 @@ summary: "Give the Tauri applications one shell and one engine toolkit instead o
 
 # One shell and one engine toolkit for the Tauri applications
 
-**Proposed 2026-11-08; decisions taken the same day (see the end).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
+**Proposed 2026-11-08; decisions taken the same day (see the end). Phase 1
+(the shell) done 2026-11-08; phases 2 to 4 open ([Phases](#phases)).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
 View each carry their own copy of the same two layers: a Tauri shell
 (`app/src/main.rs`, `app/build.rs`, `capabilities/`) and the plumbing of an
 engine (the `Engine` handle, the engine loop, the logger, prompts, `ready`).
@@ -192,6 +193,24 @@ Each phase leaves every application working; each ends with its bench check.
 | 3. Toolkit, Tag Monitor | Tag Monitor moves onto the toolkit; no behaviour change intended | Its oracle and golden tests unchanged; on the bench: attach, configure, Start, Stop, download, erase |
 | 4. Toolkit, Tag Programmer | Tag Programmer moves onto the toolkit: `ready`, the prompt queue and `answer`, menus from the engine | Its tests; on the bench: the full program-and-record sequence on one L4 and one U375 tag, with an image and a record file |
 
+**Phase 1 done, 2026-11-08.** `host/libraries/tagapp-shell-rs` and
+`host/libraries/tagapp-shell-build-rs` are in the workspace and all four
+applications run on them: each `main.rs` describes its application (`App`)
+and builds its engine, each `build.rs` is one `tagapp_shell_build::build`
+call, and the per-application `capabilities/default.json` files are gone in
+favour of the one in `tagapp-shell-build` (which gives Tag Programmer
+`core:window:allow-set-title`). Tag Programmer's engine gained `quit`,
+`quit_anyway`, the `confirmQuit` prompt and `Event::Exit`; it asks only while
+a session is in its `Programming` step (probe-rs erasing, programming and
+verifying), the one step a quit would interrupt mid-write. Bench-checked by the user: every application's
+launch, title, Help > User Guide, Cmd-W, Cmd-Q and page reload; Tag
+Programmer's Quit anyway during programming; Tag Monitor and Tag Calibrator
+attach and detach. The shell is described in the crates' READMEs
+([`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md),
+[`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md)),
+guide chapter 10 and tutorial chapter 10, and recorded in decision
+[0046](../../../docs/decisions/0046-host-shared-app-shell.md).
+
 The mock engines (`ui/mock-engine.js`) and the screenshots for the manual
 change with each page; `screenshots.sh` before and after shows any visual
 difference.
@@ -207,7 +226,8 @@ difference.
 ## Decisions (2026-11-08)
 
 1. **Tag Programmer asks before closing while it programs a tag.** While a
-   programming job runs (`worker_busy`), a window close or Cmd-Q asks
+   session is in its programming step (erase, program and verify; a test or
+   read-back is not interrupted mid-write), a window close or Cmd-Q asks
    "Programming is in progress. Quitting now can leave the tag with a partial
    image. Quit anyway?", defaulting to No; otherwise closing works as usual.
    The choice stays with the user: a stuck job must not trap the program.

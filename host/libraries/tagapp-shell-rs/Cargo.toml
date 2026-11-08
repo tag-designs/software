@@ -1,0 +1,27 @@
+# The Tauri shell every application shares: the two commands, the two events,
+# close and Quit through the engine, App Nap and the user guide. See
+# host/design/proposals/unified-app-shell.md.
+[package]
+name = "tagapp-shell"
+version = "0.1.0"
+edition = "2024"
+description = "The Tauri shell shared by Tag Programmer, Tag Monitor, Tag Calibrator and Tag View"
+publish = false
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde_json = "1"
+
+# Already in the graph through Tauri; named here to opt out of App Nap.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSProcessInfo", "NSString"] }
+
+# Every item is documented, private ones included (AGENTS.md,
+# "Checking documentation coverage"); keep it that way.
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+missing_docs_in_private_items = "warn"

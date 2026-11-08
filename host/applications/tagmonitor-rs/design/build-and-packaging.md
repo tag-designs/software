@@ -9,9 +9,12 @@ summary: How Tag Monitor in Rust is built and shipped - the cargo workspace, the
 Tag Monitor in Rust is built by cargo and shipped inside the host tools
 package as `tagmonitor`, exactly as
 [Tag Programmer](../../tagprogram-rs/design/build-and-packaging.md) is. This
-page covers what is particular to it. The page staging in `app/build.rs`, the
-user-guide search, the macOS bundle and signing, and the CI Rust steps are
-Tag Programmer's, and its page explains them.
+page covers what is particular to it. The page staging (done for every
+application by [`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md),
+which `app/build.rs` calls), the user-guide search (in
+[`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md)), the macOS
+bundle and signing, and the CI Rust steps are shared with Tag Programmer,
+and its page explains them.
 
 The one difference that shapes the packaging: **Download Data... writes
 SQLite through the C++ writer**, the same `SqliteTagLogWriter` qtmonitor and
@@ -27,6 +30,7 @@ carry it.
 | Crate | Path | Role |
 | --- | --- | --- |
 | `tagmonitor` | `app/` | The Tauri shell, the only binary |
+| `tagapp-shell`, `tagapp-shell-build` | `../../libraries/tagapp-shell-rs`, `../../libraries/tagapp-shell-build-rs` | The shell and build-script helper every application shares (path dependencies) |
 | `tagmonitor-core` | `core/` | Model and engine; no UI toolkit, unit-testable |
 | `tagcore` | `../../libraries/tagcore-rs` | The monitor protocol over ST-LINK (path dependency) |
 | `taglogwriter` | `../../libraries/taglogwriter-rs` | The C++ SQLite writer, through `tagcore_c` (optional path dependency) |
@@ -53,7 +57,8 @@ committed; release builds use `--locked`.
   in the build tree, and `TAGCORE_C_LIB_DIR` to `<build>/<Config>/lib`, where
   both library targets put their output;
 - on Linux, sets `TAGCORE_C_RPATH=$ORIGIN/../lib`, which `app/build.rs`
-  makes the program's run-time search path, so the installed program finds
+  (`tagapp_shell_build::build(Rpath::WithFeature("sqlitelog"))`) makes the
+  program's run-time search path, so the installed program finds
   the library the package installs beside the others;
 - on macOS, passes `MACOSX_DEPLOYMENT_TARGET`.
 

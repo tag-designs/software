@@ -55,10 +55,10 @@ crate with its licence.
 | `clap` | 4.6.7 | tag-tools | Command-line parsing with `derive`; `--help` from doc comments | Replaced cxxopts; option errors exit 2 rather than 1 |
 | `env_logger`, `log` | 0.11.11, 0.4.34 | all | The `log` facade every crate logs through, and the stderr logger the tools install in `log.c`'s format | The applications install their own `log::Log` that feeds the log pane |
 | `ctrlc` | 3.5.2 | tag-tools | Exit 1 on Ctrl-C, as the C++ tools' SIGINT handler did | |
-| `tauri`, `tauri-build` | 2.12.5, 2.7.4 | the four `app` crates | The native window with the platform's webview, `invoke` from the page, events to it | Underneath: `wry` 0.57 (the webview) and `tao` 0.37 (the window). Tauri's bundler and updater are not used |
-| `tauri-plugin-dialog` | 2.8.3 | the `app` crates | Native file open and save dialogs | |
-| `tauri-plugin-opener` | 2.7.2 | the `app` crates | Opening the user guide's URL or file, and showing a file in its folder | |
-| `objc2-foundation` | 0.3.2 | the `app` crates (macOS) | `NSProcessInfo` to opt out of App Nap, which throttled the status poll | Already in the graph through Tauri |
+| `tauri`, `tauri-build` | 2.12.5, 2.7.4 | `tauri`: `tagapp-shell` and the four `app` crates; `tauri-build`: `tagapp-shell-build` | The native window with the platform's webview, `invoke` from the page, events to it | Underneath: `wry` 0.57 (the webview) and `tao` 0.37 (the window). Tauri's bundler and updater are not used |
+| `tauri-plugin-dialog` | 2.8.3 | `tagapp-shell` (registers it) and the `app` crates (for its permissions) | Native file open and save dialogs | |
+| `tauri-plugin-opener` | 2.7.2 | `tagapp-shell` (registers it) and the `app` crates (for its permissions) | Opening the user guide's URL or file, and showing a file in its folder | |
+| `objc2-foundation` | 0.3.2 | `tagapp-shell` (macOS) | `NSProcessInfo` to opt out of App Nap, which throttled the status poll | Already in the graph through Tauri |
 | `tempfile` | 3 (dev) | tagprogram-core | Scratch directories in tests | |
 
 ### Platform webviews (not crates)

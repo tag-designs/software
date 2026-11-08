@@ -9,7 +9,7 @@ summary: "One click of Tag Monitor's Start button followed through every layer, 
 This chapter follows a single user action, a click on Tag Monitor's Start
 button, through every layer of the host software and back: the page
 (`tagmonitor-rs/ui/app.js` and `host/ui-kit/kit.js`), the Tauri shell
-(`tagmonitor-rs/app/src/main.rs`), the engine and its model
+(`tagmonitor-rs/app/src/main.rs` and the shared `tagapp-shell` it calls), the engine and its model
 (`tagmonitor-rs/core/src/engine/` and `model/`), the tag thread, and tagcore
 from `Tag::start` down to the 16-byte ST-LINK command blocks. It quotes the
 code at each hop and points to the chapter that explains that layer in
@@ -142,11 +142,11 @@ outcome of the Start reaches the page later, as a `state` event.
 
 ## Hop 2: the shell
 
-The shell's half is four lines,
-[main.rs:34](../../applications/tagmonitor-rs/app/src/main.rs#L34):
+The shell's half is four lines in the shell every application shares,
+[tagapp-shell lib.rs:150](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
 
 ```rust
-/// The contract's `invoke("command", {cmd, args})`: queued for the engine
+/// The `invoke("command", {cmd, args})` command: queued for the engine
 /// thread; the page learns the outcome from the next `state` event.
 #[tauri::command]
 fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
@@ -157,8 +157,11 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 **Library: Tauri (Rust side).** `#[tauri::command]` turns a plain function
 into an IPC handler: Tauri deserialises the JSON payload's `cmd` and `args`
 keys into the parameters of the same names, and `State<'_, Engine>` is
-injected from the value the shell registered with `app.manage(engine)` at
-startup ([main.rs:193](../../applications/tagmonitor-rs/app/src/main.rs#L193)).
+injected from the value the shell registered with `tauri_app.manage(engine)` at
+startup ([lib.rs:302](../../libraries/tagapp-shell-rs/src/lib.rs#L302)): the shell's `Engine`, which wraps Tag
+Monitor's handle and calls its `command` method (chapter 10,
+[The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
+and that puts a `Msg::Command` on the engine's channel.
 A command without `async` runs on the main thread, which is why this one
 does nothing but post a message. `Value` is **serde_json**'s untyped JSON
 tree, the C++ equivalent of a `QJsonValue`.
@@ -1131,18 +1134,25 @@ status poll sends nothing to the page. A StartFailed adds the alert to
 > container from the declared type. `json!` is serde_json's macro for
 > writing a JSON literal in Rust syntax.
 
-The sink is the closure the shell gave `engine::spawn`,
-[main.rs:181](../../applications/tagmonitor-rs/app/src/main.rs#L181):
+The sink is the closure Tag Monitor's `main` gave `engine::spawn`,
+[main.rs:47](../../applications/tagmonitor-rs/app/src/main.rs#L47):
 
 ```rust
-            let engine = engine::spawn(config, move |event| match event {
-                Event::State(state) => {
-                    let _ = handle.emit("state", state);
-                }
-                // ...
+        let engine = engine::spawn(config, move |event| match event {
+            Event::State(state) => events.state(state),
+            // ...
 ```
 
-It runs on the engine thread. `AppHandle::emit` serialises the value to
+and the shell's `Events::state`,
+[tagapp-shell lib.rs:120](../../libraries/tagapp-shell-rs/src/lib.rs#L120):
+
+```rust
+    pub fn state(&self, state: Value) {
+        let _ = self.handle.emit("state", state);
+    }
+```
+
+Both run on the engine thread. `AppHandle::emit` serialises the value to
 JSON and queues it for the webview; it does not wait for the page. On the
 page, the listener registered at startup,
 [app.js:526](../../applications/tagmonitor-rs/ui/app.js#L526):

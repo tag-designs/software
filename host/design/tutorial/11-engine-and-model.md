@@ -129,7 +129,7 @@ flowchart LR
     engine -- "TagCmd" --> tag["tag thread<br/>tagcore::Tag"]
     tag -- "Msg::Tag(Report)" --> engine
     engine -- "query answer, one-shot channel" --> shell
-    engine -- "sink: Event::State, Event::Exit" --> emit["AppHandle::emit"]
+    engine -- "sink: Event::State, Event::Exit" --> emit["tagapp-shell Events<br/>AppHandle::emit"]
     tag -. "log records: Event::Log" .-> emit
     emit -- "state, log events" --> page
     engine -. "cancel flag, Arc AtomicBool" .-> tag
@@ -285,11 +285,15 @@ pub enum Event {
 }
 ```
 
-Chapter 10 showed the shell's `match` over these three.
+Chapter 10 showed the application's sink, a `match` over these three that
+hands each to the shared shell's `Events` (`state`, `log`, `exit`).
 
 ## The Engine handle and spawn
 
-The shell holds an `Engine`, [mod.rs:115-161](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L115)
+The shell holds an `Engine`, wrapped in the shared shell's own `Engine`
+(`Engine::new` binds the handle to the two methods below; chapter 10,
+[The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
+[mod.rs:115-161](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L115)
 (doc comments on the two methods kept, the struct's dropped):
 
 ```rust

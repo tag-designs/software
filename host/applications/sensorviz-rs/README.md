@@ -18,7 +18,7 @@ toolkit-free engine, a thin Tauri shell, and a page on the shared
 | --- | --- |
 | `core/src/engine.rs` | The engine: one thread owning the open log's `Session` and the per-tag `Preferences`; commands in, the whole view state out after every change, and the `envelope`, `hover`, `range` and `about` queries. Its doc comment lists every command and query |
 | `core/tests/engine.rs` | The engine on the committed fixtures: descriptions, File Info and the status line, view commands, preference files, failures as messages, saving the PDF |
-| `app/` | The Tauri shell (`main.rs`), its build script (stages `ui/` and the kit), configuration, capabilities and icons |
+| `app/` | The Tauri shell (`main.rs`, which describes Tag View to the shared [`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md)), its build script (one call to [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md), which stages `ui/` and the kit and writes the shared capabilities), configuration and icons |
 | `ui/index.html`, `app.js`, `app.css` | The window: the Qt app's menus and plot context menu, Plot and File Info tabs, the dialogs, the status line |
 | `ui/plot.js` | The plot: draws the core's PlotSpec with uPlot from the engine's M4 envelopes, with sensorViz's interactions, and exports a PDF |
 | `ui/mock-engine.js` | The engine's part in a browser preview, on fixture data `tools/export_mock_data.py` writes into `ui/mock/` (generated, not committed, not shipped) |
