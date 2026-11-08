@@ -31,7 +31,7 @@ crate with its licence.
 | `dfu-core`, `dfu-nusb` | 0.11.1, 0.2.0 | tagprobe | The USB DFU protocol and ST's DfuSe dialect, for programming bases through their ROM bootloader | Replaced `dfu-util`. `dfu-nusb` wants a tokio runtime for its async path; the synchronous path is used |
 | `tokio` | 1.54.1 | tagprobe | An async runtime, only because `dfu-nusb` requires one to be named | Already in the graph through probe-rs; nothing in the host code is async |
 | `object` | 0.39.1 | tagprobe | Reading ELF files: the load segments `base-flash` flattens | Tag Programmer has its own minimal ELF reader (`model/elf.rs`) for symbols and segments, written before `object` came in with the DFU work |
-| `tracing` | 0.1.44 | tagprobe | probe-rs logs through `tracing`; the crate bridges it to `log` | |
+| `tracing` | 0.1.44 | tagprobe, tag-tools | probe-rs and tagprobe log through `tracing`. No subscriber is installed; `tag-tools` names `tracing` only to turn on its `log` feature, so in the command-line tools those events become `log` records (`-d` shows them, probe-rs capped at INFO). Tag Programmer does not get the feature and shows none of them | |
 
 ### Protocol and data
 
@@ -109,7 +109,7 @@ macOS, from the system on Linux, at the baseline in
 
 | Tool | Needed for | Version |
 | --- | --- | --- |
-| Rust toolchain (rustup: `cargo`, `rustc`, `clippy`, `rustdoc`) | Everything in the workspace | 1.85 or newer (edition 2024); CI uses current stable |
+| Rust toolchain (rustup: `cargo`, `rustc`, `clippy`, `rustdoc`) | Everything in the workspace | 1.88 or newer (edition 2024 with let chains); CI uses current stable |
 | CMake | The whole build, including running cargo | 3.20 or newer; `tag-server` needs 3.28 |
 | A C++20 compiler | The C++ libraries and `libtagcore_c` | MSVC on Windows, clang on macOS, gcc on Linux |
 | vcpkg | The C++ libraries on Windows and macOS | `VCPKG_ROOT`; the manifest is `vcpkg.json` |

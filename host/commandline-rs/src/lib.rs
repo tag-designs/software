@@ -87,6 +87,9 @@ pub fn init_logging_at(level: LevelFilter) {
         // nusb logs every USB device's missing properties at DEBUG on each
         // enumeration, which buries the tools' own lines.
         .filter_module("nusb", level.min(LevelFilter::Warn))
+        // probe-rs (through tracing's `log` feature) narrates every probe
+        // and flash step at DEBUG; its INFO and above are what -d needs.
+        .filter_module("probe_rs", level.min(LevelFilter::Info))
         .format(|buf, record| {
             writeln!(
                 buf,

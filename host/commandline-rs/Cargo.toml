@@ -16,6 +16,11 @@ tagcore = { version = "0.1.0", path = "../libraries/tagcore-rs" }
 # tag-flash programs through probe-rs, and plans its erase as Tag Programmer does.
 tagprobe = { version = "0.1.0", path = "../libraries/tagprobe-rs" }
 tagprogram-core = { version = "0.1.0", path = "../applications/tagprogram-rs/core" }
+# Named only for its `log` feature: with no tracing subscriber installed,
+# probe-rs's and tagprobe's tracing events then become `log` records, so -d
+# shows them. Here rather than in tagprobe so Tag Programmer's log pane is
+# unchanged when it is built on its own.
+tracing = { version = "0.1.44", features = ["log"] }
 taglogwriter = { version = "0.1.0", path = "../libraries/taglogwriter-rs", optional = true }
 # Named directly only so build.rs receives DEP_TAGCORE_C_LIB_DIR for the rpath.
 tagcore-c-sys = { version = "0.1.0", path = "../libraries/tagcore-c-sys", optional = true }
