@@ -13,16 +13,17 @@ with the C++ idea each piece replaces and the place in this tree to see it.
 
 ## Ownership is the design
 
-In C++ this code base used a recursive mutex shared by three classes to
-serialise use of a USB device. In Rust the compiler does that job, and
-reading the signatures tells you the rules:
+In C++ this code base serialised use of a USB device with locks:
+`TagMonitor` held a recursive `link_mtx`, and `Tag` held a second, plain
+mutex of its own. In Rust one `Mutex` remains, in `Tag`; below it the compiler does that
+job, and reading the signatures tells you the rules:
 
 | Signature | Means | Here |
 | --- | --- | --- |
 | `fn attach(&mut self, ...)` | Exclusive access: no other reference to this value exists while the call runs. One caller at a time, checked at compile time | `LinkAdapt`, `TagMonitor`: every method that touches the probe |
 | `fn status(&self) -> ...` | Shared access; the value is not changed through this reference (unless it holds a `Mutex`, `Cell` or atomic inside) | `Tag`: callable from several threads because it locks inside |
 | `fn new() -> Self`, `Tag { inner: Mutex<Inner> }` | Owned by value: `Tag` contains its `TagMonitor`, which contains its `LinkAdapt`. Dropping the outer drops the inner. No pointers, no `shared_ptr` | the three layers of `tagcore` |
-| `Arc<Tag>` | Shared ownership across threads (an atomic refcount, like `shared_ptr`) when two threads really need one value | a `Tag` shared by a poll and a command path |
+| `Arc<T>` | Shared ownership across threads (an atomic refcount, like `shared_ptr`) when two threads really need one value | `Arc<AtomicBool>`, the cancel flag a download checks; no application shares a `Tag`, which lives on one thread |
 | `Box<Config>` | Heap allocation, like `unique_ptr`; used to keep a large message out of an enum's size | `TagCmd::Start(Box<Config>)` |
 
 The borrow checker refuses a program in which two mutable references to one
@@ -137,7 +138,9 @@ and are the idiom for building lists for the view state.
 
 ## Foreign functions
 
-The bridge crates are the only `unsafe` in the tree. `extern "C" { fn
+Nearly all the `unsafe` in the tree is in the bridge crates; the two other
+uses are the `set_var` in `tagcore`'s build script and the SIGPIPE restore
+in the command-line tools' shared module. `extern "C" { fn
 tlw_open(...) -> *mut TlwWriter; }` declares a C function; calling it is
 `unsafe` because the compiler cannot check what C does with the pointers.
 The rules the wrappers keep (chapter 8) are what make each call sound: a

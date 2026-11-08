@@ -46,6 +46,7 @@ the detailed sources, and this guide is the thread that connects them.
 | Kind | Where | Answers |
 | --- | --- | --- |
 | This guide | `host/design/guide/` | How the host software fits together and why, for a newcomer |
+| The code-reading tutorial | [`host/design/tutorial/`](../tutorial/README.md) | How the Rust code does it, file by file, with each library and Rust idiom explained where it appears |
 | READMEs | beside every directory | What is here, how to build and use it |
 | Design documents | `design/` beside the code | How one component works now |
 | Decision records | [`docs/decisions/`](../../../docs/decisions/README.md) | What was chosen, what was rejected, the evidence |

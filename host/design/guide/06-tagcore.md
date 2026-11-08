@@ -104,7 +104,8 @@ firmware's decision. A reply that completed but lacked the expected payload
 is reported as "Tag reply carried no status" and so on.
 
 All messages go through the `log` facade at the levels the C++ uses. Tools
-install `env_logger` (`RUST_LOG=debug` shows the attach detail); the
+install `env_logger` at the level `-d` selects (`-d` shows the attach
+detail; they do not read `RUST_LOG`); the
 applications forward the records to their log panes. Two deliberate
 differences from the C++. Link failures (USB transfers, debug-register and
 memory accesses) are rate-limited: a tag that is booting or held in reset

@@ -65,7 +65,7 @@ the portal's `rust_docs` target does exactly that.
 | `TAGCORE_C_RPATH` | the `app` and `tag-tools` build scripts | The run-time search path written into a binary that links the shared library (`$ORIGIN/../lib` in the packages) |
 | `PROTOC` | `tagcore` build script | A `protoc` to use instead of the vendored one |
 | `TAGPROGRAM_HOST_VERSION` | `tagprogram-core` (compile time) | The version written into the record CSV; CMake passes the package version |
-| `RUST_LOG` | tools and examples with `env_logger` | `debug` shows the attach detail |
+| `RUST_LOG` | `tagcore`'s `tag_info` example (`env_logger::Builder::from_env`); not the `tag-tools` binaries, whose level is set by `-d` | `debug` shows the attach detail |
 | `TAGMONITOR_NO_ATTACH`, `TAGCALIBRATE_NO_ATTACH` | the applications | Do not attach when the window opens |
 | `TAGCALIBRATE_REPLAY=<capture.json>` | Tag Calibrator | Replay a capture instead of attaching |
 | `SENSORVIZ_PREVIEW_DIALOG=visible\|sides\|colors\|calibration` | Tag View | Open a dialog after loading, for screenshots |

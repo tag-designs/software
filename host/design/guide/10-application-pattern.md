@@ -98,7 +98,8 @@ sequenceDiagram
   consistent state, never a partial update.
 - **Queries block the caller, not the engine.** `Engine::query` sends a
   reply channel and waits up to 10 s; the shell runs it in
-  `spawn_blocking` so the webview's thread never waits on the engine.
+  `spawn_blocking` so Tauri's main (event-loop) thread never waits on the
+  engine.
 - **The log is a logger.** A `log::Log` implementation (`UiLogger`) forwards
   every record at or above the pane's level to the page as a `log` event, so
   `tagcore`'s and `tagprobe`'s messages reach the pane without any plumbing
