@@ -524,16 +524,19 @@ impl Catalog {
     /// every image and installs `staging` as `<cache>/<tag>`. On failure the
     /// staging (or half-installed) directory is removed.
     ///
-    /// The archive itself is deleted once extracted. Every
-    /// `firmware/<T>/` directory must hold a `<T>.elf` that
-    /// [`load_firmware_image`] accepts as a release image (manifest present
-    /// and matching); one failure refuses the whole release. An existing
+    /// The archive itself is deleted once extracted. A base's image (see
+    /// [`is_base_image`]) is removed unverified, since tags are all this
+    /// cache serves. Every other `firmware/<T>/` directory must hold a
+    /// `<T>.elf` that [`load_firmware_image`] accepts as a release image
+    /// (manifest present and matching); one failure refuses the whole
+    /// release. An existing
     /// `<cache>/<tag>` is replaced. The `.verified` marker is written last,
     /// so an interrupted install never looks cached.
     ///
     /// # Errors
     ///
-    /// [`extract_firmware`]'s error, the first image's refusal, or
+    /// [`extract_firmware`]'s error, the first image's refusal, "The archive
+    /// holds no tag images." when every image was a base's, or
     /// `"Cannot install the release in <dir>."`
     fn install(&self, tag: &str, archive: &Path, staging: &Path) -> Result<(), String> {
         let fail = |dir: &Path, why: String| {
@@ -544,10 +547,17 @@ impl Catalog {
             return fail(staging, why);
         }
         let _ = std::fs::remove_file(archive);
-        // Every image must verify before the release counts as cached; one
-        // bad image refuses the whole release.
+        // Base images (fw-v0.8 on) are for base-flash, not for tags: set them
+        // aside unverified. Every tag image must verify before the release
+        // counts as cached; one bad image refuses the whole release.
         let firmware = staging.join("firmware");
+        let mut tags = 0;
         for target in subdirectories(&firmware) {
+            if is_base_image(&firmware.join(&target), &target) {
+                let _ = std::fs::remove_dir_all(firmware.join(&target));
+                continue;
+            }
+            tags += 1;
             let image = load_firmware_image(
                 &firmware.join(&target).join(format!("{target}.elf")),
                 Some(tag),
@@ -555,6 +565,9 @@ impl Catalog {
             if !image.usable() {
                 return fail(staging, image.error);
             }
+        }
+        if tags == 0 {
+            return fail(staging, "The archive holds no tag images.".into());
         }
         let fin = self.cache_dir.join(tag);
         let _ = std::fs::remove_dir_all(&fin);
@@ -600,6 +613,21 @@ impl Catalog {
             .map(|t| load_firmware_image(&self.image_path(tag, t), Some(tag)))
             .collect()
     }
+}
+
+/// Whether `dir` (a release's `firmware/<target>/`) holds a base's image
+/// rather than a tag's: its build manifest names a `tag_type` of `null`, as
+/// `cmake/WriteBuildManifest.cmake` writes for a target with no tag identity.
+///
+/// A missing or unreadable manifest, or one without the key (releases before
+/// the key existed), counts as a tag's, so the image is still verified and a
+/// missing manifest still refuses the release.
+fn is_base_image(dir: &Path, target: &str) -> bool {
+    std::fs::read_to_string(dir.join(format!("{target}-build-manifest.json")))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|manifest| manifest.get("tag_type").map(serde_json::Value::is_null))
+        .unwrap_or(false)
 }
 
 /// Names of the subdirectories of `dir`, sorted; empty when `dir` cannot be
@@ -822,6 +850,13 @@ mod tests {
                 ("firmware/BitTag/BitTag.bin", vec![0; 4]),
                 ("../evil/firmware/BitTag/BitTag.elf", vec![0; 4]),
                 ("README", vec![0; 4]),
+                // A base's image: no tag type, and no flash layout symbol,
+                // so it would fail verification. Set aside, not refused.
+                ("firmware/base-v7/base-v7.elf", vec![0; 4]),
+                (
+                    "firmware/base-v7/base-v7-build-manifest.json",
+                    br#"{"tag_type": null}"#.to_vec(),
+                ),
             ],
         );
         c.install("fw-v0.6", &archive, &staging).unwrap();
@@ -839,6 +874,24 @@ mod tests {
         assert_eq!(
             err,
             "The release has no PresTag-build-manifest.json beside PresTag.elf, so the image cannot be checked."
+        );
+        assert!(!staging.exists() && !c.is_cached("fw-v0.7"));
+
+        // Only bases: nothing for a tag.
+        std::fs::create_dir_all(&staging).unwrap();
+        tarball(
+            &archive,
+            &[
+                ("firmware/base-v7/base-v7.elf", vec![0; 4]),
+                (
+                    "firmware/base-v7/base-v7-build-manifest.json",
+                    br#"{"tag_type": null}"#.to_vec(),
+                ),
+            ],
+        );
+        assert_eq!(
+            c.install("fw-v0.7", &archive, &staging).unwrap_err(),
+            "The archive holds no tag images."
         );
         assert!(!staging.exists() && !c.is_cached("fw-v0.7"));
 

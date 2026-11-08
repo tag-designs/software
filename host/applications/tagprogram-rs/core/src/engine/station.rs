@@ -1336,6 +1336,8 @@ impl Station {
         }
         self.refreshing = true;
         self.refresh_error = None;
+        // A refresh is also the retry for downloads that failed.
+        self.fetch_errors.clear();
         self.check_firmware();
         let catalog = self.catalog.clone();
         self.spawn_work(
@@ -1359,8 +1361,9 @@ impl Station {
 
     /// Chooses a release: qtprogram's `chooseRelease`. Saves it, forgets any
     /// chosen file, and loads its image for the tag type (downloading it if
-    /// need be).
+    /// need be, even when its last download failed).
     fn choose_release(&mut self, tag: &str) {
+        self.fetch_errors.remove(tag);
         self.save_setting(key::RELEASE, tag);
         self.remove_setting(key::FILE);
         self.remove_setting(key::LEGACY_IMAGE);
@@ -1418,7 +1421,8 @@ impl Station {
     ///
     /// A file is loaded directly, and its identity record sets the tag type. A
     /// release that is not cached starts a download when it has an archive
-    /// (the image loads when that ends); a cached one loads the image for the
+    /// and its last download did not fail (the image loads when that ends);
+    /// a cached one loads the image for the
     /// current tag type, if the release has one. Reading the ELF and hashing
     /// it happen here, on the engine thread.
     fn load_image(&mut self) {
@@ -1435,7 +1439,10 @@ impl Station {
                     .catalog
                     .release(&release)
                     .is_some_and(|r| !r.archive_url.is_empty());
-                if has_archive {
+                // A failed download is not retried from here, or its own
+                // completion (which reloads) would start the next attempt:
+                // choosing the release or refreshing the catalog retries it.
+                if has_archive && !self.fetch_errors.contains_key(&release) {
                     self.fetch(&release);
                 }
             } else if self.catalog.targets(&release).contains(&self.target) {
@@ -1448,8 +1455,9 @@ impl Station {
 
     /// Downloads, verifies and installs a release on a worker. One at a time:
     /// a second call while one runs is ignored. When it ends, a failure is kept
-    /// for the Firmware check, and the image is reloaded if the release is
-    /// still the chosen one.
+    /// for the Firmware check (the catalog logs it), and the chosen release's
+    /// image is reloaded if none is loaded -- which also starts the download of
+    /// a release chosen while this one ran.
     fn fetch(&mut self, release: &str) {
         if self.fetching.is_some() {
             return;
@@ -1464,13 +1472,16 @@ impl Station {
             move |s, result| {
                 s.fetching = None;
                 if let Err(e) = result {
-                    warn!("Fetching {tag} failed: {e}");
                     s.fetch_errors.insert(tag.clone(), e);
                 }
                 s.catalog.load();
                 if s.chosen_release().as_deref() == Some(tag.as_str()) {
                     s.image = None;
+                }
+                if s.chosen_release().is_some() && s.image.is_none() {
                     s.reload_for_catalog();
+                } else {
+                    s.check_firmware();
                 }
             }
         });
@@ -1522,7 +1533,13 @@ impl Station {
         if let Some(rel) = &release {
             if !self.catalog.is_cached(rel) {
                 let (level, text) = if let Some(e) = self.fetch_errors.get(rel) {
-                    (Level::Fail, format!("{rel} could not be downloaded: {e}"))
+                    (
+                        Level::Fail,
+                        format!(
+                            "{rel} could not be downloaded: {e} \
+                             Refresh Firmware Releases to try again."
+                        ),
+                    )
                 } else if self.fetching.as_deref() == Some(rel.as_str()) {
                     (Level::Pending, format!("Downloading {rel}"))
                 } else if self.refreshing {
