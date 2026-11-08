@@ -4648,6 +4648,7 @@ dependencies = [
  "prost",
  "prost-reflect",
  "serde_json",
+ "tagapp-engine",
  "tagcore",
  "taglogwriter",
 ]

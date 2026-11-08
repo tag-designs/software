@@ -38,8 +38,16 @@ The protocol between engine and page is the
 - **One owner per thing.** The tag thread is the only code that touches the
   `tagcore::Tag`. The engine thread owns everything else: the
   `MonitorModel`, the `ConfigEditor` (document and form), the queued prompts
-  and the progress displays. Nothing is shared between them; they exchange
-  messages (`Msg`, `TagCmd`, `Report`).
+  and the progress displays. Nothing is shared between them but the
+  download's cancel flag; they exchange messages, `TagCmd` to the tag thread
+  and `Report` back.
+- **The plumbing is the shared toolkit's.** The `Engine` handle, the
+  `Event` type, the engine loop, the prompt queue, the `ready` guard and the
+  `UiLogger` come from
+  [`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md). The
+  `Monitor` implements its `EngineState`, with the tag thread's `Report`s
+  as its messages, which the tag thread posts through the toolkit's
+  `Poster`.
 - **The engine never waits on the tag**, so the window stays live during a
   download, and a slow or silent tag shows as "no answer" rather than a hung
   window.
@@ -88,9 +96,9 @@ qtmonitor's oracles.
 
 | File | Holds | Ports |
 | --- | --- | --- |
-| `mod.rs` | `Engine` (the handle the shell uses), `Msg`, `Event`, `spawn`, the engine loop, and `UiLogger` (log records to the page) | `session/livetagsession.*`, `mainwindow.cpp` (wiring) |
+| `mod.rs` | `EngineConfig` and `spawn`: the toolkit's channel, the tag thread (given the `Poster` and the cancel flag), the `Monitor`, then the toolkit's engine loop with a 10 s query timeout; `Engine`, `Event`, `LOGGER` and `UiLogger` re-exported from `tagapp-engine` | `session/livetagsession.*`, `mainwindow.cpp` (wiring) |
 | `tagthread.rs` | The tag thread: `TagCmd` in, `Report` out, the status poll, the quiet period after Sync and Self-Test, base identification | `session/livetagsession.cpp` (`TagWorker`) |
-| `monitor.rs` | `Monitor`, the engine thread's state: commands, prompts and their answers (`After` says what continues), reports from the tag thread, the recent-files list | `mainwindow.cpp` (commands and session reports), `configtab.cpp` (document commands) |
+| `monitor.rs` | `Monitor`, the engine thread's state: commands, prompts (a `Prompts<PromptKind>` queue) and their answers (`After` says what continues), reports from the tag thread, the recent-files list, the `ready` guard; its `EngineState` impl | `mainwindow.cpp` (commands and session reports), `configtab.cpp` (document commands) |
 | `view.rs` | The view state JSON: status strip, Tag Info page, form, actions, prompt, progress; and the `menus` query | `mainwindow.cpp` (`render`), `tagstatusstrip.cpp` |
 | `download.rs` | Download Data...: the page loop over the C++ writer, behind the `sqlitelog` feature | `core/downloadjob.cc` |
 
@@ -141,8 +149,9 @@ qtmonitor's oracles.
 3. `start_with_checks` asks `startchecks.rs` which checks fail. If any do, it
    queues a `StartAnyway` prompt and stops there.
 4. The page shows the prompt (once, by id) and answers
-   `answer {id, button: "start"}`; `Monitor::answer` pops the prompt and calls
-   `start`.
+   `answer {id, button: "start"}`; `Monitor::answer` takes the prompt from
+   the toolkit's queue (`Prompts::answer`, which ignores a stale id) and
+   calls `start`.
 5. `start` asks `ConfigEditor::get_config` for what the form would send and
    sends `TagCmd::Start` to the tag thread.
 6. The tag thread calls `Tag::start` and reports `Report::StartSent` (with the

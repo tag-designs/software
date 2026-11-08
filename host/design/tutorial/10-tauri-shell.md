@@ -387,11 +387,12 @@ impl Engine {
 }
 ```
 
-Each application's core has its own handle type --
-`tagmonitor_core::engine::Engine`, `tagprogram_core::engine::Engine` and so
-on -- and each has the same two methods (Tag Calibrator's and Tag View's are
-now one type, `tagapp_engine::Engine`, from the shared engine toolkit, which
-their cores re-export; [chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)), `command(&self, &str, Value)` and
+Tag Programmer's core has its own handle type,
+`tagprogram_core::engine::Engine`; Tag Monitor's, Tag Calibrator's and Tag
+View's are one type, `tagapp_engine::Engine`, from the shared engine
+toolkit, which their cores re-export
+([chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
+Both types have the same two methods, `command(&self, &str, Value)` and
 `query(&self, &str, Value) -> Value`. The shell must call them without
 knowing which type it has. In C++ you would write an abstract base class
 with two pure virtual functions and derive each handle from it; in Rust the
@@ -402,7 +403,7 @@ a reason peculiar to Rust:
 > **Rust: the orphan rule.** An `impl Trait for Type` may be written only in
 > the crate that defines the trait or the crate that defines the type. The
 > application crate defines neither `tagapp_shell::EngineHandle` nor
-> `tagmonitor_core::engine::Engine`, so it may not connect them. The shell
+> `tagprogram_core::engine::Engine`, so it may not connect them. The shell
 > crate cannot do it either, since it would have to depend on all four core
 > crates. That leaves the core crate, which would then have to depend on
 > `tagapp-shell` and through it on Tauri -- and the cores are toolkit-free

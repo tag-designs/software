@@ -8,7 +8,8 @@ summary: "Give the Tauri applications one shell and one engine toolkit instead o
 
 **Proposed 2026-11-08; decisions taken the same day (see the end). Phase 1
 (the shell) done 2026-11-08; phase 2 (the toolkit, Tag Calibrator and Tag
-View) done 2026-11-08; phases 3 and 4 open
+View) done 2026-11-08; phase 3 (Tag Monitor) done 2026-11-08; phase 4
+open
 ([Phases](#phases)).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
 View each carry their own copy of the same two layers: a Tauri shell
 (`app/src/main.rs`, `app/build.rs`, `capabilities/`) and the plumbing of an
@@ -241,6 +242,24 @@ and read back the calibration, and quit while streaming; Tag View open a
 log, the compass, print, open a second log and quit. The page-reload step
 was dropped: the release builds have no way to reload a page by hand, and
 `Ready` is covered by the toolkit's unit tests.
+
+**Phase 3 done, 2026-11-08.** Tag Monitor's core runs
+on the toolkit. Its `engine/mod.rs` is now `EngineConfig`, `QUERY_TIMEOUT`
+(10 s) and a `spawn` that makes the toolkit's channel, starts the tag thread
+with the `Poster`, and starts the toolkit's loop on a `Monitor`; `Engine`,
+`Event`, `LOGGER` and `UiLogger` are re-exported from `tagapp-engine`. Its
+own handle, `Msg`, loop and logger are gone. `Monitor` keeps its prompts in
+`Prompts<PromptKind>` (the stale-id rule is now the toolkit's), guards
+`ready` with `Ready`, and implements `EngineState` with the tag thread's
+`Report` as its message; the tag thread posts its reports through the
+`Poster`. No behaviour change is intended: Tag Monitor already queued its
+prompts and resent the state on every `ready`, which is where the toolkit's
+versions came from. Its unit, oracle and golden tests pass unchanged. Bench-checked by the
+user: attach, configure, Start, Stop, download, erase, and quit with
+unsaved changes. The documents changed with
+it: the toolkit's README, Tag Monitor's README, architecture and contract,
+guide chapters 02, 10, 11, 12, 14 and 15, and tutorial chapters 01, 02, 10,
+11, 13 and 14.
 
 The mock engines (`ui/mock-engine.js`) and the screenshots for the manual
 change with each page; `screenshots.sh` before and after shows any visual

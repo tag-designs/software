@@ -11,7 +11,11 @@ Everything Tag Monitor decides is in one library crate, `tagmonitor-core`
 the web page. This chapter reads it: the three threads and the channels
 between them, the engine loop, the tag thread that owns `tagcore::Tag`, the
 `Monitor` state with its command table and its prompts, the view state it
-publishes, the configuration editor, the logger, and the tests. Afterwards
+publishes, the configuration editor, the logger, and the tests. The handle,
+the engine loop, the prompt queue and the logger are not Tag Monitor's own
+code: they come from the engine toolkit every application shares,
+`tagapp-engine` ([its README](../../libraries/tagapp-engine-rs/README.md)),
+and are read here as the code Tag Monitor runs. Afterwards
 you will be able to take any `invoke("command", ...)` from
 [chapter 10](10-tauri-shell.md), follow it to the line of the engine that
 handles it, and say what the next `state` event will contain and why.
@@ -25,7 +29,7 @@ will recognise them.
 
 ## The crate
 
-[core/Cargo.toml:8-20](../../applications/tagmonitor-rs/core/Cargo.toml#L8):
+[core/Cargo.toml:8-21](../../applications/tagmonitor-rs/core/Cargo.toml#L8):
 
 ```toml
 [dependencies]
@@ -34,6 +38,7 @@ prost = "0.14.4"
 prost-reflect = { version = "0.16.5", features = ["serde"] }
 serde_json = "1"
 log = "0.4"
+tagapp-engine = { path = "../../../libraries/tagapp-engine-rs" }
 taglogwriter = { path = "../../../libraries/taglogwriter-rs", optional = true }
 
 [features]
@@ -46,8 +51,10 @@ sqlitelog = ["dep:taglogwriter"]
 No `tauri`, no GUI crate: the core builds and tests with plain `cargo`, which
 is what makes it testable without a window. `tagcore` is the Rust tag
 library of chapters 3 to 5; `prost` and `prost-reflect` are its protobuf
-runtime (chapter 5); `taglogwriter` is the C++ SQLite writer reached through
-`tagcore_c` (chapter 8).
+runtime (chapter 5); `tagapp-engine` is the engine toolkit the applications
+share (the handle, the loop, the prompt queue and the logger, read below);
+`taglogwriter` is the C++ SQLite writer reached through `tagcore_c`
+(chapter 8).
 
 > **Rust:** `optional = true` plus `sqlitelog = ["dep:taglogwriter"]` makes a
 > dependency that exists only when the feature is on: without the feature
@@ -58,9 +65,9 @@ runtime (chapter 5); `taglogwriter` is the C++ SQLite writer reached through
 | Path | Lines | Holds |
 | --- | --- | --- |
 | `src/lib.rs` | 15 | `pub mod engine; pub mod model;` |
-| `src/engine/mod.rs` | 301 | `Engine`, `EngineConfig`, `Event`, `Msg`, `spawn`, the loop, the logger |
+| `src/engine/mod.rs` | 121 | `EngineConfig`, `spawn`, and the toolkit's `Engine`, `Event`, `UiLogger` and `LOGGER` re-exported |
 | `src/engine/tagthread.rs` | 357 | `TagCmd`, `Report`, the tag thread |
-| `src/engine/monitor.rs` | 955 | `Monitor`: the engine's state, commands, prompts, reports, queries |
+| `src/engine/monitor.rs` | 966 | `Monitor`: the engine's state, commands, prompts, reports, queries; its `EngineState` impl |
 | `src/engine/view.rs` | 338 | `Monitor::view_state` and the `menus` query |
 | `src/engine/download.rs` | 258 | Download Data, through `taglogwriter` |
 | `src/model/commands.rs` | 284 | `Command`, the availability rule |
@@ -125,9 +132,9 @@ logger is in [The logger](#the-logger).
 ```mermaid
 flowchart LR
     page["page (web view)"] -- "invoke command / query" --> shell["main thread<br/>command(), query()"]
-    shell -- "Msg::Command, Msg::Query" --> engine["engine thread<br/>Monitor"]
+    shell -- "Msg::Ui(Request::Command / Query)" --> engine["engine thread<br/>Monitor"]
     engine -- "TagCmd" --> tag["tag thread<br/>tagcore::Tag"]
-    tag -- "Msg::Tag(Report)" --> engine
+    tag -- "Poster: Msg::App(Report)" --> engine
     engine -- "query answer, one-shot channel" --> shell
     engine -- "sink: Event::State, Event::Exit" --> emit["tagapp-shell Events<br/>AppHandle::emit"]
     tag -. "log records: Event::Log" .-> emit
@@ -138,7 +145,7 @@ flowchart LR
 | Thread | Created by | Owns | Blocks on |
 | --- | --- | --- | --- |
 | main | the OS; runs Tauri's event loop | the window, the web view | nothing (a query's wait is moved to Tauri's blocking pool) |
-| engine (`tagmonitor-engine`) | `engine::spawn` | one `Monitor`: the model, the document and form, the prompts, the progress displays | its channel, with a timeout until the next deadline |
+| engine (`tagmonitor-engine`) | `tagapp_engine::spawn`, called by `engine::spawn` | one `Monitor`: the model, the document and form, the prompts, the progress displays | its channel, with a timeout until the next deadline |
 | tag (`tagmonitor-tag`) | `engine::spawn` | the `tagcore::Tag` | its channel, with a timeout until the next status poll; and every USB transfer |
 
 The rule that makes this work: **everything that changes the engine's state
@@ -166,22 +173,36 @@ event queue. No crossbeam, tokio or `select!` is used in the core.
 
 ## The messages
 
-Three enums carry everything between the threads.
-[engine/mod.rs:121-131](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L121):
+A handful of enums carry everything between the threads. The engine
+thread's inbox is the toolkit's,
+[tagapp-engine-rs/src/lib.rs:138-154](../../libraries/tagapp-engine-rs/src/lib.rs#L138):
 
 ```rust
-/// Messages to the engine thread, applied in the order they arrive.
+/// A UI request to the engine thread.
 #[derive(Debug)]
-pub(crate) enum Msg {
-    /// A UI command: its name and its JSON arguments.
+enum Request {
+    /// A command: its name and its JSON arguments.
     Command(String, Value),
-    /// A UI query: its name, its JSON arguments and the channel for its
-    /// answer.
+    /// A query: its name, its JSON arguments and the channel for its answer.
     Query(String, Value, Sender<Value>),
-    /// A report from the tag thread.
-    Tag(Report),
+}
+
+/// A message to the engine thread, applied in the order it arrives.
+#[derive(Debug)]
+enum Msg<M> {
+    /// From the UI, through the [`Engine`].
+    Ui(Request),
+    /// From the application, through a [`Poster`].
+    App(M),
 }
 ```
+
+`M` is the application's own message type. Tag Monitor's is the tag
+thread's `Report`, below: its `EngineState` implementation says
+`type Msg = Report`
+([monitor.rs:850](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L850)),
+so its engine thread's channel carries `Msg<Report>`, and a report arrives
+as `Msg::App(report)`.
 
 [engine/tagthread.rs:42-95](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L42):
 
@@ -251,10 +272,12 @@ refuses every `match` that does not handle it, so a new message cannot be
 silently unconnected.
 
 > **Rust:** a Rust `enum` is a tagged union: each variant may carry fields,
-> and the value records which variant it is. `Msg::Query(name, args, reply)`
-> is roughly `std::variant<Command, Query, Tag>` with each alternative a
+> and the value records which variant it is. `Request::Query(name, args, reply)`
+> is roughly `std::variant<Command, Query>` with each alternative a
 > struct, except that `match` destructures it directly and must cover every
 > variant. `#[derive(Debug)]` generates a debug formatter (`{:?}`).
+> `Msg<M>` is a generic enum, a class template over `M`: `Msg<Report>` is
+> one concrete type, `Msg<()>` (Tag View's) another.
 
 > **Rust:** `Box<Config>` is a heap-allocated `Config` (`std::unique_ptr`).
 > An enum is as large as its largest variant, and protobuf structs are big,
@@ -262,24 +285,30 @@ silently unconnected.
 
 > **Rust:** `pub(crate)` makes an item visible throughout this crate but not
 > to its users. The shell sees only `Engine`, `EngineConfig`, `Event`,
-> `spawn` and `LOGGER`; the message types are internal.
+> `spawn`, `UiLogger` and `LOGGER`; `TagCmd` and `Report` are internal to
+> the crate, and the toolkit's `Request` and `Msg`, with no `pub` at all,
+> are private to the toolkit.
 
-The third enum is the engine's output, [mod.rs:71-86](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L71):
+The last enum is the engine's output, the toolkit's `Event`, which
+`engine/mod.rs` re-exports
+([mod.rs:51](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L51):
+`pub use tagapp_engine::{Engine, Event, LOGGER, UiLogger};`),
+[tagapp-engine-rs/src/lib.rs:67-82](../../libraries/tagapp-engine-rs/src/lib.rs#L67):
 
 ```rust
 #[derive(Debug, Clone)]
 pub enum Event {
-    /// The whole view state (the contract's `state` event), sent only when it
-    /// differs from the last one sent.
+    /// The whole view state, sent only when it differs from the last one sent
+    /// (or after a `ready`; see [`EngineState::take_republish`]).
     State(Value),
-    /// One log line at or above the level the UI set.
+    /// One log line at or above the level the UI set (see [`set_log_level`]).
     Log {
         /// The level's name: `TRACE`, `DEBUG`, `INFO`, `WARN` or `ERROR`.
         level: &'static str,
         /// The message, without the level.
         text: String,
     },
-    /// Quit was confirmed (any unsaved configuration saved or discarded):
+    /// Quit was confirmed (and whatever had to happen first has happened):
     /// the shell should close the window and exit.
     Exit,
 }
@@ -291,152 +320,163 @@ hands each to the shared shell's `Events` (`state`, `log`, `exit`).
 ## The Engine handle and spawn
 
 > **Note:** The handle, `spawn`'s plumbing, the loop below and the logger
-> are read here in Tag Monitor's own copy. Tag Calibrator and Tag View no
-> longer have copies: they get the same code from the shared engine toolkit,
-> `tagapp-engine` ([its README](../../libraries/tagapp-engine-rs/README.md);
-> read in [chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
-> Tag Monitor moves onto it in phase 3 of
-> [the proposal](../proposals/unified-app-shell.md), when it is next
-> changed; until then what follows is exact for Tag Monitor and the shape of
-> the toolkit for the other two.
+> are the shared engine toolkit's, `tagapp-engine`
+> ([its README](../../libraries/tagapp-engine-rs/README.md); its place among
+> the applications is in
+> [chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
+> Tag Monitor, Tag Calibrator and Tag View all run on it, so what follows is
+> exact for all three; Tag Monitor supplies only its `Monitor` and the tag
+> thread.
 
 The shell holds an `Engine`, wrapped in the shared shell's own `Engine`
 (`Engine::new` binds the handle to the two methods below; chapter 10,
 [The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
-[mod.rs:115-161](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L115)
-(doc comments on the two methods kept, the struct's dropped):
+[tagapp-engine-rs/src/lib.rs:156-198](../../libraries/tagapp-engine-rs/src/lib.rs#L156)
+(doc comments on the struct and its methods dropped, the fields' kept):
 
 ```rust
-#[derive(Clone)]
-pub struct Engine {
-    /// The engine thread's message channel.
-    tx: Sender<Msg>,
-}
+/// Sends a request to the engine thread; false once the thread has gone.
+type SendRequest = Arc<dyn Fn(Request) -> bool + Send + Sync>;
 
 // ...
+#[derive(Clone)]
+pub struct Engine {
+    /// Queues a request on the engine thread's channel.
+    send: SendRequest,
+    /// How long [`Engine::query`] waits for its answer.
+    query_timeout: Duration,
+}
 
 impl Engine {
-    /// Sends a command; see the contract's command table.
-    ///
-    /// Returns at once. An unknown command is logged as a warning by the
-    /// engine; a command sent after the engine thread has gone is dropped.
+    // ...
     pub fn command(&self, cmd: &str, args: Value) {
-        let _ = self.tx.send(Msg::Command(cmd.to_owned(), args));
+        (self.send)(Request::Command(cmd.to_owned(), args));
     }
 
-    /// Asks a query and waits for its answer; see the contract's query table.
-    ///
-    /// The engine thread never waits on the tag, so the answer comes after at
-    /// most the messages already queued. Returns [`Value::Null`] if the
-    /// engine thread has gone or does not answer within 10 s, and
-    /// `{ "error": ... }` for an unknown query name.
+    // ...
     pub fn query(&self, name: &str, args: Value) -> Value {
         let (reply_tx, reply_rx) = mpsc::channel();
-        if self
-            .tx
-            .send(Msg::Query(name.to_owned(), args, reply_tx))
-            .is_err()
-        {
+        if !(self.send)(Request::Query(name.to_owned(), args, reply_tx)) {
             return Value::Null;
         }
         reply_rx
-            .recv_timeout(Duration::from_secs(10))
+            .recv_timeout(self.query_timeout)
             .unwrap_or(Value::Null)
     }
 }
 ```
 
-`Engine` is nothing but the sending end of the engine's channel, so cloning
-it is cheap and every clone talks to the same thread. A command is one
-`send`. A query is a synchronous call across threads made from two
+`Engine` is nothing but a way to put a request on the engine's channel, so
+cloning it is cheap and every clone talks to the same thread. A command is
+one send. A query is a synchronous call across threads made from two
 channels: the caller creates a fresh one-shot channel, sends its `Sender`
-inside the message, and waits on the `Receiver`; the engine answers by
+inside the request, and waits on the `Receiver`; the engine answers by
 sending on it. It is the shape of `QMetaObject::invokeMethod` with
-`Qt::BlockingQueuedConnection` and a return value, with a 10 s timeout added.
+`Qt::BlockingQueuedConnection` and a return value, with a timeout added:
+Tag Monitor's is 10 s (`QUERY_TIMEOUT`,
+[mod.rs:69](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L69)),
+because its engine thread never waits on the tag.
 
-> **Rust:** `let _ = self.tx.send(...)` discards a `Result` on purpose.
-> `Result` is marked `#[must_use]`, so ignoring it silently draws a warning;
-> `let _ =` says "I know". The send fails only when the engine thread has
-> ended.
+Why `send` is a closure and not simply the channel's `Sender`: the channel
+carries `Msg<Report>`, and a `Sender<Msg<Report>>` field would make the
+handle `Engine<Report>`, a different type for each application. The closure
+built by `channel` wraps the request in `Msg::Ui` and sends it, and its type,
+`dyn Fn(Request) -> bool`, mentions no application type, so every
+application's handle is the same `Engine` and the shared shell can hold any
+of them.
 
-`spawn` starts both threads, [mod.rs:239-259](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L239):
+> **Rust:** `(self.send)(...)` calls the closure stored in the field; the
+> parentheses tell the compiler it is a field, not a method named `send`.
+> It returns `false` once the engine thread has ended, and `command`
+> ignores that: a command sent after the engine has gone is dropped.
+
+`spawn` makes the channel and starts both threads,
+[mod.rs:104-121](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L104):
 
 ```rust
 pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static) -> Engine {
-    let sink: Sink = Arc::new(sink);
-    *SINK.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(sink.clone());
-    set_log_level("INFO");
-    let (tx, rx) = mpsc::channel();
+    let (engine, poster, inbox) = tagapp_engine::channel(QUERY_TIMEOUT, sink);
     let (tag_tx, tag_rx) = mpsc::channel();
     let cancel = Arc::new(AtomicBool::new(false));
     {
-        let (tx, cancel) = (tx.clone(), cancel.clone());
+        let cancel = cancel.clone();
         std::thread::Builder::new()
             .name("tagmonitor-tag".into())
-            .spawn(move || tagthread::run(tag_rx, tx, cancel))
+            .spawn(move || tagthread::run(tag_rx, poster, cancel))
             .expect("tag thread");
     }
-    let engine = Engine { tx };
-    std::thread::Builder::new()
-        .name("tagmonitor-engine".into())
-        .spawn(move || run(Monitor::new(config, tag_tx, cancel), sink, rx))
-        .expect("engine thread");
+    tagapp_engine::spawn(
+        "tagmonitor-engine",
+        Monitor::new(config, tag_tx, cancel),
+        inbox,
+    );
     engine
 }
 ```
 
-Two channels: `tx`/`rx` is the engine's inbox (`Msg`), `tag_tx`/`tag_rx` the
-tag thread's (`TagCmd`). The tag thread gets a clone of the engine's `tx` to
-send its reports; the engine thread gets `tag_tx` inside the `Monitor`. The
-one piece of state the two threads share directly is `cancel`, an atomic
-flag the engine sets to stop a download between pages.
+Two channels: the engine's inbox, made by `tagapp_engine::channel`, and
+`tag_tx`/`tag_rx`, the tag thread's (`TagCmd`). `channel` returns the three
+ends of the first: the `Engine` handle for the shell, a `Poster<Report>`
+for the tag thread to send its reports with, and the `Inbox` (the
+receiving end, with the sink) that `tagapp_engine::spawn` hands to the
+engine thread. The engine thread gets `tag_tx` inside the `Monitor`. The one
+piece of state the two threads share directly is `cancel`, an atomic flag
+the engine sets to stop a download between pages.
+
+`channel` also installs the sink as the logger's destination and resets the
+log level to INFO ([lib.rs:246-260](../../libraries/tagapp-engine-rs/src/lib.rs#L246)),
+before the tag thread starts, so the tag thread's first log line already
+reaches the page.
 
 > **Rust:** `sink: impl Fn(Event) + Send + Sync + 'static` accepts any
 > callable taking an `Event` -- a closure, usually -- like a template
 > parameter constrained by a concept. `Send + Sync` say it may be moved to and
 > called from other threads; `'static` says it borrows nothing that could
 > disappear, because the threads outlive `spawn`. `type Sink = Arc<dyn Fn(Event) + Send + Sync>`
-> ([mod.rs:164](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L164))
-> then erases the closure's type behind a shared pointer: in C++,
+> ([lib.rs:235](../../libraries/tagapp-engine-rs/src/lib.rs#L235)), inside
+> `channel`, then erases the closure's type behind a shared pointer: in C++,
 > `std::shared_ptr<std::function<void(Event)>>`.
 
-> **Rust:** the block `{ let (tx, cancel) = (tx.clone(), cancel.clone()); ... }`
-> makes clones with the same names, moves them into the tag thread's
-> closure, and ends; the originals stay available below. It is the idiom for
-> "give this thread its own copies".
+> **Rust:** the block `{ let cancel = cancel.clone(); ... }` makes a clone
+> with the same name, moves it into the tag thread's closure, and ends; the
+> original stays available below, for the `Monitor`. It is the idiom for
+> "give this thread its own copy". `poster` needs no such block: nothing
+> after the tag thread uses it, so the closure takes it outright.
 
 ## The engine loop
 
-[mod.rs:267-296](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L267):
+The loop Tag Monitor runs is the toolkit's `run_loop`, started on the
+engine thread by `tagapp_engine::spawn` with the `Monitor` as its `state`,
+[tagapp-engine-rs/src/lib.rs:278-307](../../libraries/tagapp-engine-rs/src/lib.rs#L278):
 
 ```rust
-fn run(mut monitor: Monitor, sink: Sink, rx: Receiver<Msg>) {
+fn run_loop<S: EngineState>(mut state: S, inbox: Inbox<S::Msg>) {
     let mut last_state = Value::Null;
     loop {
-        let wait = monitor
+        let wait = state
             .next_deadline()
             .map(|d| d.saturating_duration_since(Instant::now()))
             .unwrap_or(Duration::from_secs(3600));
-        match rx.recv_timeout(wait) {
-            Ok(Msg::Command(cmd, args)) => monitor.command(&cmd, &args),
-            Ok(Msg::Query(name, args, reply)) => {
-                let _ = reply.send(monitor.query(&name, &args));
+        match inbox.rx.recv_timeout(wait) {
+            Ok(Msg::Ui(Request::Command(cmd, args))) => state.command(&cmd, &args),
+            Ok(Msg::Ui(Request::Query(name, args, reply))) => {
+                let _ = reply.send(state.query(&name, &args));
             }
-            Ok(Msg::Tag(report)) => monitor.report(report),
+            Ok(Msg::App(msg)) => state.message(msg),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
-        monitor.fire_timers(Instant::now());
-        if monitor.take_republish() {
+        state.fire_timers(Instant::now());
+        if state.take_republish() {
             last_state = Value::Null;
         }
-        let state = monitor.view_state();
-        if state != last_state {
-            sink(Event::State(state.clone()));
-            last_state = state;
+        let view = state.view_state();
+        if view != last_state {
+            (inbox.sink)(Event::State(view.clone()));
+            last_state = view;
         }
-        if monitor.take_exit() {
-            sink(Event::Exit);
+        if state.take_exit() {
+            (inbox.sink)(Event::Exit);
         }
     }
 }
@@ -457,9 +497,44 @@ This is the whole of the engine's control flow. Each pass:
    comparison, and nothing reaches the page.
 6. **Passes on a confirmed quit**.
 
-The toolkit's loop (`run_loop` in `tagapp-engine`) is this one line for
-line, with the `Monitor` replaced by any type implementing its
-`EngineState` trait and `Msg::Tag(report)` by the application's own message.
+The loop knows the `Monitor` only through the toolkit's `EngineState`
+trait, which `Monitor` implements by handing each call to its own method of
+the same name, and a tag-thread message to `report`,
+[monitor.rs:848-891](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L848)
+(the rest delegate the same way, and `take_republish` is below):
+
+```rust
+/// The toolkit's engine loop runs a `Monitor` (see [`super::spawn`]).
+impl EngineState for Monitor {
+    type Msg = Report;
+
+    /// [`Monitor::command`].
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Monitor::command(self, cmd, args);
+    }
+
+    // ...
+
+    /// [`Monitor::report`]: a report from the tag thread.
+    fn message(&mut self, report: Report) {
+        self.report(report);
+    }
+
+    // ...
+}
+```
+
+> **Rust:** `run_loop<S: EngineState>` is generic: the compiler makes one
+> copy of the loop for each state type it is called with, so the calls are
+> direct, not virtual. `S::Msg` names the associated type the implementation
+> chose (`Report` here). Inside the impl, `Monitor::command(self, cmd, args)`
+> calls the *inherent* method, the one in `impl Monitor`, explicitly; the
+> trait method of the same name merely forwards to it.
+
+> **Rust:** `let _ = reply.send(...)` discards a `Result` on purpose.
+> `Result` is marked `#[must_use]`, so ignoring it silently draws a warning;
+> `let _ =` says "I know". The send fails only when the querying thread has
+> stopped waiting (its timeout passed).
 
 Steps 4 and 5 replace the whole of qtmonitor's `render()` /
 `updateActions()` / `updateTitle()` bookkeeping: nothing ever decides *what*
@@ -472,7 +547,7 @@ send. The page, in turn, redraws from the state it receives (chapter 12).
 > duration for a deadline already past), and `.unwrap_or` supplies the hour
 > when there is none. It reads like `d ? f(*d) : default`.
 
-The timers, [monitor.rs:267-299](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L267):
+The timers, [monitor.rs:243-275](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L243):
 
 ```rust
     /// The nearest deadline: the tick, while attached, and the quit
@@ -523,25 +598,49 @@ detach (a PresTag hung in its RTC initialisation once made Quit impossible).
 > content in one call.
 
 The last piece of the loop is `take_republish`. The page sends `ready` once
-its listeners are registered, [monitor.rs:199-213](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L199):
+its listeners are registered, [monitor.rs:184-191](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L184):
 
 ```rust
     /// The page is listening (the `ready` command): the view state is sent
     /// again, and the first time, the engine attaches unless the
     /// configuration says not to, as qtmonitor does when its window opens.
     fn ready(&mut self) {
-        self.republish = true;
-        if !std::mem::replace(&mut self.started, true) && self.config.auto_attach {
+        if self.ready.ready() && self.config.auto_attach {
             self.attach();
         }
     }
+```
 
-    /// True once after `ready`: the loop forgets the last state it sent, so
-    /// a page that reloaded gets the whole state again.
-    pub(crate) fn take_republish(&mut self) -> bool {
+`self.ready` is the toolkit's `Ready` guard, a pair of flags,
+[tagapp-engine-rs/src/lib.rs:330-348](../../libraries/tagapp-engine-rs/src/lib.rs#L330):
+
+```rust
+impl Ready {
+    /// Records a `ready`. True the first time only: the caller starts the
+    /// engine then.
+    pub fn ready(&mut self) -> bool {
+        self.republish = true;
+        !std::mem::replace(&mut self.started, true)
+    }
+
+    /// Whether a `ready` has been received.
+    pub fn started(&self) -> bool {
+        self.started
+    }
+
+    /// True once after each `ready`; return it from
+    /// [`EngineState::take_republish`].
+    pub fn take_republish(&mut self) -> bool {
         std::mem::take(&mut self.republish)
     }
+}
 ```
+
+and `Monitor`'s `EngineState::take_republish` returns
+`self.ready.take_republish()`
+([monitor.rs:883](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L883)):
+after each `ready` the loop forgets the last state it sent, so a page that
+reloaded gets the whole state again.
 
 > **Rust:** `std::mem::replace(&mut x, new)` stores `new` in `x` and returns
 > the old value; `std::mem::take(&mut x)` does the same with the type's
@@ -550,10 +649,8 @@ its listeners are registered, [monitor.rs:199-213](../../applications/tagmonitor
 > like `std::exchange(started, true)` in C++.
 
 Nothing happens until `ready`: the engine does not attach, and so does not
-reset a tag, before the page can show what happens. The toolkit packages
-this pair of flags as `Ready` (`ready()` true the first time only,
-`take_republish()` true once after each), which Tag Calibrator and Tag View
-use.
+reset a tag, before the page can show what happens. Tag Calibrator and Tag
+View keep the same guard.
 
 ## The tag thread
 
@@ -570,7 +667,7 @@ struct TagThread {
     /// The tag; touched only on this thread.
     tag: Tag,
     /// Where reports go: the engine thread's channel.
-    out: Sender<Msg>,
+    out: Poster<Report>,
     /// Set by the engine to stop a running download after its page.
     cancel: Arc<AtomicBool>,
     /// When the next status read is due, while attached.
@@ -581,11 +678,19 @@ struct TagThread {
 }
 ```
 
+`out` is the toolkit's `Poster`
+([lib.rs:202-223](../../libraries/tagapp-engine-rs/src/lib.rs#L202)): its
+`post` wraps a report in `Msg::App` and queues it on the engine thread's
+channel, and returns false, which the tag thread ignores, once the engine
+thread has gone. Every report goes through one helper,
+[tagthread.rs:144-147](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L144),
+whose body is `self.out.post(report);`.
+
 Its loop, [tagthread.rs:330-357](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L330),
 has the engine loop's shape:
 
 ```rust
-pub(crate) fn run(rx: Receiver<TagCmd>, out: Sender<Msg>, cancel: Arc<AtomicBool>) {
+pub(crate) fn run(rx: Receiver<TagCmd>, out: Poster<Report>, cancel: Arc<AtomicBool>) {
     let mut t = TagThread {
         tag: Tag::new(),
         out,
@@ -729,7 +834,7 @@ A download runs on the tag thread and blocks only it,
                 self.cancel.store(false, Ordering::Relaxed);
                 let out = self.out.clone();
                 let result = super::download::run(&self.tag, &path, &self.cancel, |v, m| {
-                    let _ = out.send(Msg::Tag(Report::DownloadProgress(v, m)));
+                    out.post(Report::DownloadProgress(v, m));
                 });
                 self.report(Report::DownloadFinished(result));
                 self.poll();
@@ -745,7 +850,7 @@ between pages.
 ## Monitor: the engine's state
 
 `Monitor` is qtmonitor's `MainWindow` with the widgets taken out,
-[monitor.rs:115-157](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L115).
+[monitor.rs:105-144](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L105).
 Its fields, grouped:
 
 | Fields | What they hold |
@@ -754,8 +859,8 @@ Its fields, grouped:
 | `model: MonitorModel` | the tag as known: identity, latest status, pending test, start, erase, download |
 | `editor: ConfigEditor` | the configuration document and its form |
 | `shown_info`, `attaching`, `recent`, `erase_shown`, `download`, `silence_s` | display state: the Tag Info page, the progress sheets, the recent files, the silence count |
-| `prompts: VecDeque<Prompt>`, `next_id` | questions waiting for the page; the first is shown |
-| `next_tick`, `quitting`, `exit`, `started`, `republish` | the timers and one-shot flags of the loop |
+| `prompts: Prompts<PromptKind>` | questions waiting for the page, in the toolkit's queue; the first is shown |
+| `next_tick`, `quitting`, `exit`, `ready` | the timers, the exit flag, and the `ready` guard |
 
 `view.rs` adds methods to the same type.
 
@@ -769,7 +874,7 @@ Its fields, grouped:
 ### Settings: QSettings as a JSON file
 
 The only persistent setting is the recent-files list.
-[monitor.rs:484-499](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L484):
+[monitor.rs:460-475](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L460):
 
 ```rust
     fn add_recent(&mut self, path: &str) {
@@ -790,7 +895,7 @@ The only persistent setting is the recent-files list.
     }
 ```
 
-and [monitor.rs:886-892](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L886):
+and [monitor.rs:894-900](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L894):
 
 ```rust
 fn read_settings(path: &Path) -> Value {
@@ -872,7 +977,7 @@ tag type, document and its type, downloading, test pending), which the
 
 The engine uses this one rule twice: to publish `actions` in every view
 state, and to refuse a command that is not available now.
-[monitor.rs:504-541](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L504):
+[monitor.rs:480-517](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L480):
 
 ```rust
     pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
@@ -930,8 +1035,8 @@ commands are a plain `match` on the string.
 > helper, as a C++ lambda would be.
 
 `available` feeds the rule from the model and the document,
-[monitor.rs:255-263](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L255),
-and `run_command` ([monitor.rs:559-584](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L559))
+[monitor.rs:231-239](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L231),
+and `run_command` ([monitor.rs:535-560](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L535))
 maps each command to its action, `MainWindow::runCommand`'s switch: Detach,
 Stop and Sync go straight to the tag thread, Start runs the start checks,
 Erase and Download ask first, Open and Read go through "unsaved changes?".
@@ -943,11 +1048,12 @@ nested event loop and returns the button, and the code after it continues
 with the answer. The engine cannot do that. It runs on its own thread, the
 dialog is drawn by the page in another process, and blocking the engine
 until a user answers would freeze every status update. So a question
-becomes *data*: the engine queues a `Prompt`, the view state carries the
+becomes *data*: the engine queues a prompt, the view state carries the
 first one, the page shows it and answers with the `answer` command, and the
 engine continues from there.
 
-[monitor.rs:55-113](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L55):
+What a prompt can ask is Tag Monitor's,
+[monitor.rs:54-103](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L54):
 
 ```rust
 /// What happens once the user has saved or discarded unsaved changes.
@@ -1000,14 +1106,20 @@ pub(crate) enum PromptKind {
     /// The file at this path names no tag type: which is it for?
     ChooseTagType(String, Vec<TagType>),
 }
+```
 
-/// A prompt and the id the UI answers it by.
-#[derive(Debug, Clone)]
-pub(crate) struct Prompt {
-    /// Unique within this run; a stale answer names an old one.
+and the queue that holds them, with their ids, is the toolkit's
+`Prompts<PromptKind>`, whose entries are
+[tagapp-engine-rs/src/lib.rs:352-359](../../libraries/tagapp-engine-rs/src/lib.rs#L352):
+
+```rust
+/// A prompt and the id the page answers it by.
+#[derive(Debug)]
+pub struct Prompt<K> {
+    /// Increases with each prompt asked, from 1.
     pub id: u64,
-    /// What to ask.
-    pub kind: PromptKind,
+    /// What it asks: the application's prompt kind.
+    pub kind: K,
 }
 ```
 
@@ -1015,7 +1127,7 @@ pub(crate) struct Prompt {
 answered, stored in the prompt. `Unsaved(After::Quit)` means "the document
 has unsaved changes; after the user saves or discards them, quit". It is
 the code after `exec()` in qtmonitor, turned into a value that can wait in
-a queue. [monitor.rs:339-370](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L339):
+a queue. [monitor.rs:315-346](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L315):
 
 ```rust
     /// Runs `after` now if nothing is unsaved, else asks first
@@ -1056,31 +1168,19 @@ a queue. [monitor.rs:339-370](../../applications/tagmonitor-rs/core/src/engine/m
 > while a tag is attached or attaching; otherwise the second, unguarded one
 > is. `*config` moves the `Config` out of its `Box`.
 
-`ask` ([monitor.rs:221-225](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L221))
-gives each prompt the next id and pushes it on the queue. The answer comes
-back through `answer`, [monitor.rs:630-654](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L630):
+`ask` ([monitor.rs:199-201](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L199))
+hands the kind to `Prompts::ask`, which gives it the next id and pushes it
+on the queue. The answer comes back through `answer`,
+[monitor.rs:606-617](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L606):
 
 ```rust
     fn answer(&mut self, args: &Value) {
-        let id = args.get("id").and_then(Value::as_u64);
-        if id.is_none() || self.prompts.front().map(|p| p.id) != id {
-            return debug!("Ignoring a stale answer");
-        }
-        let prompt = self.prompts.pop_front().expect("front checked");
-        let button = args
-            .get("button")
-            .and_then(Value::as_str)
-            .unwrap_or("cancel");
-        let index = args
-            .get("index")
-            .and_then(Value::as_u64)
-            .map(|i| i as usize);
-        let path = args
-            .get("path")
-            .and_then(Value::as_str)
-            .filter(|p| !p.is_empty());
-        let ok = button == "ok";
-        match prompt.kind {
+        let Some(answer) = self.prompts.answer(args) else {
+            return;
+        };
+        let ok = answer.ok();
+        let (button, index, path) = (answer.button.as_str(), answer.index, answer.path.as_deref());
+        match answer.kind {
             PromptKind::Alert { .. } => {}
             PromptKind::ChooseBase(bases) => match (ok, index.and_then(|i| bases.get(i))) {
                 (true, Some((base, _))) => self.send(TagCmd::Attach(base.clone())),
@@ -1088,16 +1188,52 @@ back through `answer`, [monitor.rs:630-654](../../applications/tagmonitor-rs/cor
             },
 ```
 
+The checking and parsing are the toolkit's `Prompts::answer`,
+[tagapp-engine-rs/src/lib.rs:431-455](../../libraries/tagapp-engine-rs/src/lib.rs#L431):
+
+```rust
+    pub fn answer(&mut self, args: &Value) -> Option<Answer<K>> {
+        let id = args.get("id").and_then(Value::as_u64)?;
+        if self.queue.front().map(|p| p.id) != Some(id) {
+            log::debug!("Ignoring a stale answer");
+            return None;
+        }
+        let prompt = self.queue.pop_front()?;
+        Some(Answer {
+            kind: prompt.kind,
+            button: args
+                .get("button")
+                .and_then(Value::as_str)
+                .unwrap_or("cancel")
+                .to_owned(),
+            index: args
+                .get("index")
+                .and_then(Value::as_u64)
+                .map(|i| i as usize),
+            path: args
+                .get("path")
+                .and_then(Value::as_str)
+                .filter(|p| !p.is_empty())
+                .map(str::to_owned),
+        })
+    }
+```
+
 An answer is accepted only for the prompt being shown; an answer with any
 other id (a double click, a page that reloaded) is ignored. Missing
-arguments default to "cancel", no index, no path.
+arguments default to "cancel", no index, no path. The answered prompt comes
+back removed from the queue, its `kind` moved out into the `Answer`, so
+`answer`'s `match` owns the `After` a continuation carries.
 
-> **Rust:** `return debug!(...)` works because `debug!` expands to an
-> expression of type `()`, which is also what `answer` returns. It is a
-> compact "log and return".
+> **Rust:** `let Some(answer) = ... else { return; };` is *let-else*: bind
+> the pattern or run the `else` block, which must leave the function. Inside
+> `Prompts::answer`, the `?` after `as_u64()` and `pop_front()` returns
+> `None` from the whole function when either gives `None`: an early return
+> written as one character. `answer.path.as_deref()` borrows the
+> `Option<String>` as an `Option<&str>`.
 
 The save dialog's arm shows a continuation being resumed,
-[monitor.rs:680-687](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L680):
+[monitor.rs:643-650](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L643):
 
 ```rust
             PromptKind::SaveConfig(after) => {
@@ -1187,7 +1323,7 @@ The prompt kinds, their fields and their buttons are tabulated in the
 
 ## Reports: what the tag thread's facts do
 
-[monitor.rs:716-784](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L716)
+[monitor.rs:679-747](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L679)
 applies each report, as `MainWindow`'s `on...` slots did. Its first arms:
 
 ```rust
@@ -1234,7 +1370,7 @@ decides, by `on_attach`, whether the tag's configuration becomes the
 document.
 
 A `Status` report goes to the model,
-[monitor.rs:761-768](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L761):
+[monitor.rs:724-731](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L724):
 
 ```rust
             Report::Status(status, voltage, host_ms) => {
@@ -1274,7 +1410,7 @@ an erase, and whether a Start succeeded,
 Start succeeded when the tag reaches RUNNING or CONFIGURED, whatever the
 call returned, and failed when it has not after 7 s. The model returns
 `MonitorEvent`s rather than acting; `monitor_event`
-([monitor.rs:787-827](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L787))
+([monitor.rs:750-790](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L750))
 logs them or raises a "Start Failed" alert. Keeping the model free of the
 engine lets the tests drive it with hand-made statuses.
 
@@ -1478,16 +1614,16 @@ canonical protobuf JSON. It is the counterpart of
 
 ## The logger
 
-[mod.rs:163-212](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L163)
-(doc comments on `UiLogger` and `LOGGER` dropped):
+The logger is the toolkit's; Tag Monitor re-exports `UiLogger` and
+`LOGGER`, and the shell installs `LOGGER` before it calls `spawn`.
+[tagapp-engine-rs/src/lib.rs:466-514](../../libraries/tagapp-engine-rs/src/lib.rs#L466)
+(doc comments on `UiLogger` and `LOGGER` dropped; `Sink` is the
+`Arc<dyn Fn(Event) + Send + Sync>` of [spawn](#the-engine-handle-and-spawn)):
 
 ```rust
-/// The event sink, shared between the engine thread and the logger.
-type Sink = Arc<dyn Fn(Event) + Send + Sync>;
-
-/// The sink [`UiLogger`] forwards to, set by [`spawn`]. `None` until the
-/// engine starts, so records logged before then are dropped.
-static SINK: OnceLock<Mutex<Option<Sink>>> = OnceLock::new();
+/// The sink [`UiLogger`] forwards to, set by [`channel`]. `None` until an
+/// engine is made, so records logged before then are dropped.
+static LOG_SINK: OnceLock<Mutex<Option<Sink>>> = OnceLock::new();
 /// The UI's log level, as `log::Level as u8` (1 ERROR .. 5 TRACE). Starts at
 /// 3 (INFO).
 static LOG_LEVEL: AtomicU8 = AtomicU8::new(3);
@@ -1517,7 +1653,7 @@ impl log::Log for UiLogger {
             log::Level::Debug => "DEBUG",
             log::Level::Trace => "TRACE",
         };
-        if let Some(sink) = SINK.get().and_then(|s| s.lock().ok()?.clone()) {
+        if let Some(sink) = LOG_SINK.get().and_then(|s| s.lock().ok()?.clone()) {
             sink(Event::Log {
                 level,
                 text: record.args().to_string(),
@@ -1547,21 +1683,19 @@ formatted.
 > for the type, like deriving from an abstract class, except that the
 > implementation is declared apart from the type.
 
-> **Rust:** `static SINK: OnceLock<Mutex<Option<Sink>>>` is a global
-> initialised on first use (`get_or_init` in `spawn`), a `Mutex` guarding an
+> **Rust:** `static LOG_SINK: OnceLock<Mutex<Option<Sink>>>` is a global
+> initialised on first use (`get_or_init` in `channel`), a `Mutex` guarding an
 > optional callback: in C++, a function-local `static std::mutex` and
 > `std::optional<std::shared_ptr<...>>`. In `|s| s.lock().ok()?.clone()` the
 > `?` makes the closure return `None` if the mutex is poisoned (a thread
 > panicked while holding it); otherwise the sink pointer is cloned out and
 > the lock released before the sink is called.
 
-`log::set_logger` succeeds only once per process, and `spawn` replaces the
-`SINK`. A process with two engines -- two tests in one test binary -- would
-have one logger feeding whichever engine started last.
-
-Tag Calibrator and Tag View use the toolkit's copy of this logger,
-`tagapp_engine::UiLogger`, whose sink is set by `tagapp_engine::channel`
-rather than by the application's `spawn`; the code is the same.
+`log::set_logger` succeeds only once per process, and `channel` replaces
+the `LOG_SINK`. A process with two engines -- two tests in one test binary
+-- would have one logger feeding whichever engine started last. Tag
+Calibrator and Tag View use the same logger, so the rule holds for every
+application: one engine per process.
 
 ## Download: two functions, one chosen at compile time
 
@@ -1654,7 +1788,7 @@ at the first.
 
 For the engine itself, the unit tests construct a `Monitor` directly, with
 the test holding the tag thread's end of the channel,
-[monitor.rs:914-941](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L914):
+[monitor.rs:922-952](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L922):
 
 ```rust
     /// A monitor whose tag thread is a channel the test holds, with settings
@@ -1667,7 +1801,10 @@ the test holding the tag thread's end of the channel,
             user_guide_url: None,
             auto_attach: false,
         };
-        (Monitor::new(config, tx, Arc::new(AtomicBool::new(false))), rx)
+        (
+            Monitor::new(config, tx, Arc::new(AtomicBool::new(false))),
+            rx,
+        )
     }
 
     /// A quit whose detach never comes back exits at the deadline.

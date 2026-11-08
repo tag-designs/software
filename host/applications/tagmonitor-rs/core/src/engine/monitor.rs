@@ -4,11 +4,10 @@
 //!
 //! `Monitor` never touches the tag: it sends [`TagCmd`]s to the tag thread
 //! and applies the [`Report`]s that come back. Where qtmonitor opened a
-//! modal dialog and waited, the monitor queues a [`Prompt`] and continues
-//! when the UI answers it (`answer`), carrying what was to happen next as an
-//! [`After`].
+//! modal dialog and waited, the monitor queues a prompt (the engine
+//! toolkit's [`Prompts`]) and continues when the UI answers it (`answer`),
+//! carrying what was to happen next as an [`After`].
 
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,13 +16,13 @@ use std::time::{Duration, Instant};
 
 use log::{debug, info, warn};
 use serde_json::{Value, json};
+use tagapp_engine::{EngineState, Prompts, Ready, query_error, set_log_level};
 use tagcore::UsbDev;
 use tagcore::configshape::ConfigShape;
 use tagcore::proto::{Config, TagInfo, TagState, TagType};
 
 use super::download::{self, DEFAULT_DOWNLOAD_NAME, DownloadResult};
 use super::tagthread::{Report, TagCmd, now_ms, now_s};
-use super::{query_error, set_log_level};
 use crate::model::commands::{ALL_COMMANDS, Availability, Command, availability, command_name};
 use crate::model::configdocument::{ConfigDocument, DocumentSource, OnAttach, on_attach};
 use crate::model::configeditor::{ConfigEditor, OpenResult};
@@ -103,15 +102,6 @@ pub(crate) enum PromptKind {
     ChooseTagType(String, Vec<TagType>),
 }
 
-/// A prompt and the id the UI answers it by.
-#[derive(Debug, Clone)]
-pub(crate) struct Prompt {
-    /// Unique within this run; a stale answer names an old one.
-    pub id: u64,
-    /// What to ask.
-    pub kind: PromptKind,
-}
-
 /// Everything the engine thread knows.
 pub(crate) struct Monitor {
     /// Files and Help.
@@ -130,9 +120,7 @@ pub(crate) struct Monitor {
     /// The configuration document and its form.
     pub(super) editor: ConfigEditor,
     /// Questions waiting for the UI; the first is shown.
-    pub(super) prompts: VecDeque<Prompt>,
-    /// The next prompt id.
-    next_id: u64,
+    pub(super) prompts: Prompts<PromptKind>,
     /// The recent configuration files, newest first.
     pub(super) recent: Vec<String>,
     /// The erase progress is shown (its Close only hides it).
@@ -150,10 +138,9 @@ pub(crate) struct Monitor {
     /// follows the tag thread's `Detached`, or this deadline, whichever comes
     /// first (see [`QUIT_DETACH_WAIT`]).
     quitting: Option<Instant>,
-    /// `ready` has been received once.
-    started: bool,
-    /// The page asked for the whole state again.
-    republish: bool,
+    /// The `ready` guard: the first `ready` attaches, every one resends the
+    /// whole view state.
+    ready: Ready,
 }
 
 use super::EngineConfig;
@@ -182,8 +169,7 @@ impl Monitor {
             shown_info: None,
             attaching: false,
             editor: ConfigEditor::new(),
-            prompts: VecDeque::new(),
-            next_id: 1,
+            prompts: Prompts::default(),
             recent,
             erase_shown: false,
             download: None,
@@ -191,8 +177,7 @@ impl Monitor {
             next_tick: None,
             exit: false,
             quitting: None,
-            started: false,
-            republish: false,
+            ready: Ready::default(),
         }
     }
 
@@ -200,16 +185,9 @@ impl Monitor {
     /// again, and the first time, the engine attaches unless the
     /// configuration says not to, as qtmonitor does when its window opens.
     fn ready(&mut self) {
-        self.republish = true;
-        if !std::mem::replace(&mut self.started, true) && self.config.auto_attach {
+        if self.ready.ready() && self.config.auto_attach {
             self.attach();
         }
-    }
-
-    /// True once after `ready`: the loop forgets the last state it sent, so
-    /// a page that reloaded gets the whole state again.
-    pub(crate) fn take_republish(&mut self) -> bool {
-        std::mem::take(&mut self.republish)
     }
 
     /// Sends a command to the tag thread.
@@ -219,9 +197,7 @@ impl Monitor {
 
     /// Queues a prompt.
     fn ask(&mut self, kind: PromptKind) {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.prompts.push_back(Prompt { id, kind });
+        self.prompts.ask(kind);
     }
 
     /// Queues a message box.
@@ -628,25 +604,12 @@ impl Monitor {
     /// The UI's answer to the shown prompt: `{id, button, index?, path?}`.
     /// An answer to any other id is stale and ignored.
     fn answer(&mut self, args: &Value) {
-        let id = args.get("id").and_then(Value::as_u64);
-        if id.is_none() || self.prompts.front().map(|p| p.id) != id {
-            return debug!("Ignoring a stale answer");
-        }
-        let prompt = self.prompts.pop_front().expect("front checked");
-        let button = args
-            .get("button")
-            .and_then(Value::as_str)
-            .unwrap_or("cancel");
-        let index = args
-            .get("index")
-            .and_then(Value::as_u64)
-            .map(|i| i as usize);
-        let path = args
-            .get("path")
-            .and_then(Value::as_str)
-            .filter(|p| !p.is_empty());
-        let ok = button == "ok";
-        match prompt.kind {
+        let Some(answer) = self.prompts.answer(args) else {
+            return;
+        };
+        let ok = answer.ok();
+        let (button, index, path) = (answer.button.as_str(), answer.index, answer.path.as_deref());
+        match answer.kind {
             PromptKind::Alert { .. } => {}
             PromptKind::ChooseBase(bases) => match (ok, index.and_then(|i| bases.get(i))) {
                 (true, Some((base, _))) => self.send(TagCmd::Attach(base.clone())),
@@ -882,6 +845,51 @@ impl Monitor {
     }
 }
 
+/// The toolkit's engine loop runs a `Monitor` (see [`super::spawn`]).
+impl EngineState for Monitor {
+    type Msg = Report;
+
+    /// [`Monitor::command`].
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Monitor::command(self, cmd, args);
+    }
+
+    /// [`Monitor::query`].
+    fn query(&mut self, name: &str, args: &Value) -> Value {
+        Monitor::query(self, name, args)
+    }
+
+    /// [`Monitor::view_state`].
+    fn view_state(&mut self) -> Value {
+        Monitor::view_state(self)
+    }
+
+    /// [`Monitor::report`]: a report from the tag thread.
+    fn message(&mut self, report: Report) {
+        self.report(report);
+    }
+
+    /// [`Monitor::next_deadline`].
+    fn next_deadline(&self) -> Option<Instant> {
+        Monitor::next_deadline(self)
+    }
+
+    /// [`Monitor::fire_timers`].
+    fn fire_timers(&mut self, now: Instant) {
+        Monitor::fire_timers(self, now);
+    }
+
+    /// True once after each `ready`.
+    fn take_republish(&mut self) -> bool {
+        self.ready.take_republish()
+    }
+
+    /// [`Monitor::take_exit`].
+    fn take_exit(&mut self) -> bool {
+        Monitor::take_exit(self)
+    }
+}
+
 /// The settings file's JSON object; empty when it is missing or unreadable.
 fn read_settings(path: &Path) -> Value {
     std::fs::read_to_string(path)
@@ -921,7 +929,10 @@ mod tests {
             user_guide_url: None,
             auto_attach: false,
         };
-        (Monitor::new(config, tx, Arc::new(AtomicBool::new(false))), rx)
+        (
+            Monitor::new(config, tx, Arc::new(AtomicBool::new(false))),
+            rx,
+        )
     }
 
     /// A quit whose detach never comes back exits at the deadline.

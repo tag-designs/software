@@ -38,14 +38,14 @@ sequenceDiagram
     participant B as Base (ST-LINK)
     participant F as Tag firmware
     P->>S: invoke("command", {cmd:"start", args:{}})
-    S->>E: Msg::Command("start", {}) on the mpsc channel
+    S->>E: Msg::Ui(Request::Command("start", {})) on the mpsc channel
     S-->>P: promise resolves (null)
     Note over E: availability, start checks
     opt a check fails
         E->>S: Event::State (prompt startAnyway)
         S->>P: emit("state")
         P->>S: invoke("command", {cmd:"answer", args:{id, button:"start"}})
-        S->>E: Msg::Command("answer", ...)
+        S->>E: Msg::Ui(Request::Command("answer", ...))
     end
     E->>T: TagCmd::Start(Box<Config>)
     T->>C: Tag::start(&config)
@@ -55,9 +55,9 @@ sequenceDiagram
     C->>B: poll DEMCR or shared status every 1 ms
     C->>B: read_mem32 reply
     C-->>T: Ok(Option<Status>) or Err(TagError)
-    T->>E: Msg::Tag(Report::StartSent(message))
+    T->>E: Poster: Msg::App(Report::StartSent(message))
     T->>C: poll(): voltage, status
-    T->>E: Msg::Tag(Report::Status(..))
+    T->>E: Poster: Msg::App(Report::Status(..))
     Note over E: apply_status settles the start (RUNNING or CONFIGURED, or 7 s)
     E->>S: Event::State(view state) if it changed
     S->>P: emit("state", state)
@@ -161,7 +161,7 @@ injected from the value the shell registered with `tauri_app.manage(engine)` at
 startup ([lib.rs:302](../../libraries/tagapp-shell-rs/src/lib.rs#L302)): the shell's `Engine`, which wraps Tag
 Monitor's handle and calls its `command` method (chapter 10,
 [The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
-and that puts a `Msg::Command` on the engine's channel.
+and that puts the command on the engine's channel.
 A command without `async` runs on the main thread, which is why this one
 does nothing but post a message. `Value` is **serde_json**'s untyped JSON
 tree, the C++ equivalent of a `QJsonValue`.
@@ -171,42 +171,52 @@ tree, the C++ equivalent of a `QJsonValue`.
 > `String` into a `&str` for the callee, while `args` is moved (ownership
 > passes to `engine.command`, no copy).
 
+Tag Monitor's handle is the shared engine toolkit's `Engine`
+(`tagapp-engine`, which `engine/mod.rs` re-exports; chapter 11,
+[The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn)).
 `Engine::command`,
-[engine/mod.rs:138](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L138),
+[tagapp-engine lib.rs:176](../../libraries/tagapp-engine-rs/src/lib.rs#L176),
 is the whole crossing from the main thread to the engine thread:
 
 ```rust
     pub fn command(&self, cmd: &str, args: Value) {
-        let _ = self.tx.send(Msg::Command(cmd.to_owned(), args));
+        (self.send)(Request::Command(cmd.to_owned(), args));
     }
+```
+
+`send` is the closure `tagapp_engine::channel` built when the engine
+started ([lib.rs:256](../../libraries/tagapp-engine-rs/src/lib.rs#L256)):
+
+```rust
+        send: Arc::new(move |request| ui_tx.send(Msg::Ui(request)).is_ok()),
 ```
 
 > **Rust:** `std::sync::mpsc` is the standard library's multi-producer,
 > single-consumer queue; `Sender::send` never blocks (the queue is
-> unbounded) and fails only if the receiving thread has gone.
-> `let _ = ...` discards that `Result` on purpose: a command sent during
-> shutdown is dropped. Without the `let _` the compiler warns about an
-> unused `Result`.
+> unbounded) and fails only if the receiving thread has gone. The closure
+> turns that `Result` into a `bool` with `is_ok()`, and `command` ignores
+> the `bool`: a command sent during shutdown is dropped.
 
 ## Hop 3: the engine
 
-The engine thread spends its life in
-[engine/mod.rs:267](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L267):
+The engine thread spends its life in the toolkit's loop, which
+`tagapp_engine::spawn` runs with Tag Monitor's `Monitor` as its `state`,
+[tagapp-engine lib.rs:278](../../libraries/tagapp-engine-rs/src/lib.rs#L278):
 
 ```rust
-fn run(mut monitor: Monitor, sink: Sink, rx: Receiver<Msg>) {
+fn run_loop<S: EngineState>(mut state: S, inbox: Inbox<S::Msg>) {
     let mut last_state = Value::Null;
     loop {
-        let wait = monitor
+        let wait = state
             .next_deadline()
             .map(|d| d.saturating_duration_since(Instant::now()))
             .unwrap_or(Duration::from_secs(3600));
-        match rx.recv_timeout(wait) {
-            Ok(Msg::Command(cmd, args)) => monitor.command(&cmd, &args),
-            Ok(Msg::Query(name, args, reply)) => {
-                let _ = reply.send(monitor.query(&name, &args));
+        match inbox.rx.recv_timeout(wait) {
+            Ok(Msg::Ui(Request::Command(cmd, args))) => state.command(&cmd, &args),
+            Ok(Msg::Ui(Request::Query(name, args, reply))) => {
+                let _ = reply.send(state.query(&name, &args));
             }
-            Ok(Msg::Tag(report)) => monitor.report(report),
+            Ok(Msg::App(msg)) => state.message(msg),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
@@ -214,8 +224,11 @@ fn run(mut monitor: Monitor, sink: Sink, rx: Receiver<Msg>) {
 ```
 
 One message, one state change, then (hop 7) one comparison of the view
-state. The `Msg::Command` arm hands the start to `Monitor::command`,
-[monitor.rs:504](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L504):
+state. The command arm calls `EngineState::command`, which `Monitor`'s
+implementation passes straight on
+([monitor.rs:853](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L853)), so the start arrives in
+`Monitor::command`,
+[monitor.rs:480](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L480):
 
 ```rust
     pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
@@ -263,8 +276,8 @@ qtmonitor's `action-states.txt` by `core/tests/oracles.rs`
 ### The start checks
 
 `run_command` maps `Command::Start` to `start_with_checks`
-([monitor.rs:564](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L564)),
-[monitor.rs:597](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L597):
+([monitor.rs:540](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L540)),
+[monitor.rs:573](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L573):
 
 ```rust
     /// The failing start checks' sentences.
@@ -317,8 +330,9 @@ engine's memory, so the checks cost nothing and never block.
 
 ### The StartAnyway prompt round trip
 
-When a check fails, `ask` queues a prompt with a fresh id
-([monitor.rs:221](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L221))
+When a check fails, `ask` queues a prompt with a fresh id in the toolkit's
+prompt queue
+([monitor.rs:199](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L199))
 and the command handler returns. Nothing has gone to the tag. The engine
 cannot open a dialog; it describes one in the view state instead,
 [view.rs:232](../../applications/tagmonitor-rs/core/src/engine/view.rs#L232):
@@ -357,9 +371,11 @@ The view state now differs from the last one sent, so the loop emits it
 
 `answer` sends `command("answer", {id, button: "start"})`, which travels
 hops 1 to 3 exactly as Start did and arrives at `Monitor::answer`. That
-checks the id against the prompt at the front of the queue (an answer to
-any other id is stale and ignored), pops it, and for this kind,
-[monitor.rs:655](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L655):
+hands the arguments to the toolkit's `Prompts::answer`
+([tagapp-engine lib.rs:431](../../libraries/tagapp-engine-rs/src/lib.rs#L431)), which checks the id against the
+prompt at the front of the queue (an answer to any other id is stale and
+ignored) and pops it; then, for this kind,
+[monitor.rs:618](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L618):
 
 ```rust
             PromptKind::StartAnyway(failures) => {
@@ -381,7 +397,7 @@ the guide's [Prompts: dialogs as data](../guide/10-application-pattern.md#prompt
 ## Hop 4: the configuration
 
 Both paths end in `start`,
-[monitor.rs:616](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L616):
+[monitor.rs:592](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L592):
 
 ```rust
     /// Sends the form's configuration to start the tag.
@@ -438,7 +454,7 @@ are compared with qtmonitor's by `core/tests/config_probe.rs`.
 > words. Clippy's `large_enum_variant` lint asks for exactly this.
 
 `self.send` is another non-blocking `mpsc` send, to the tag thread's
-channel ([monitor.rs:216](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L216)).
+channel ([monitor.rs:194](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L194)).
 The engine thread is done with the Start until a report comes back. It
 goes back to `recv_timeout` and keeps answering the page.
 
@@ -978,7 +994,7 @@ status read after it.
 ### The model settles the start
 
 The engine applies the two reports in turn,
-[monitor.rs:761](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L761):
+[monitor.rs:724](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L724):
 
 ```rust
             Report::Status(status, voltage, host_ms) => {
@@ -1023,10 +1039,10 @@ through `MonitorModel::apply_status`, which settles the start,
 > pattern test, here an "is one of" check.
 
 `monitor_event`
-([monitor.rs:802](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L802))
+([monitor.rs:765](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L765))
 logs a warning when a start succeeded although the call reported an error,
 and turns `StartFailed` into an alert prompt,
-[monitor.rs:811](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L811):
+[monitor.rs:774](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L774):
 
 ```rust
             MonitorEvent::StartFailed { state, message } => {
@@ -1087,20 +1103,22 @@ Two consequences are worth knowing when reading a log:
 
 After every message the engine loop rebuilds the whole view state and
 compares it with the last one sent,
-[engine/mod.rs:283](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L283):
+[tagapp-engine lib.rs:294](../../libraries/tagapp-engine-rs/src/lib.rs#L294):
 
 ```rust
-        monitor.fire_timers(Instant::now());
-        if monitor.take_republish() {
+        state.fire_timers(Instant::now());
+        if state.take_republish() {
             last_state = Value::Null;
         }
-        let state = monitor.view_state();
-        if state != last_state {
-            sink(Event::State(state.clone()));
-            last_state = state;
+        let view = state.view_state();
+        if view != last_state {
+            (inbox.sink)(Event::State(view.clone()));
+            last_state = view;
         }
 ```
 
+`state.view_state()` is `Monitor`'s, through its `EngineState`
+implementation ([monitor.rs:863](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L863)).
 `view_state` ([view.rs:279](../../applications/tagmonitor-rs/core/src/engine/view.rs#L279))
 builds a `serde_json::Value` with the strip, the tag page, the form, the
 prompt and `actions`, which is the availability rule of hop 3 evaluated
@@ -1134,7 +1152,8 @@ status poll sends nothing to the page. A StartFailed adds the alert to
 > container from the declared type. `json!` is serde_json's macro for
 > writing a JSON literal in Rust syntax.
 
-The sink is the closure Tag Monitor's `main` gave `engine::spawn`,
+The sink (`inbox.sink`, handed on by `tagapp_engine::channel`) is the
+closure Tag Monitor's `main` gave `engine::spawn`,
 [main.rs:47](../../applications/tagmonitor-rs/app/src/main.rs#L47):
 
 ```rust
@@ -1199,8 +1218,8 @@ alert is never shown twice however many states carry it.
   none of the three applications shares one (Tag Programmer and Tag
   Calibrator also confine each `Tag` to one thread, chapter 14). (Every
   `debug!` or `warn!` on the path also locks the UI logger's sink for a
-  moment to clone it, [engine/mod.rs:202](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L202);
-  see [chapter 11](11-engine-and-model.md).)
+  moment to clone it, [tagapp-engine lib.rs:504](../../libraries/tagapp-engine-rs/src/lib.rs#L504);
+  see [chapter 11](11-engine-and-model.md#the-logger).)
 - **No async.** Every function on the path is an ordinary blocking call on
   a thread that is allowed to block. There is no `async`, no executor and
   no `await` in the engine or tagcore. The only `async` in the shell is the

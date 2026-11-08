@@ -10,15 +10,15 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use log::{debug, warn};
+use tagapp_engine::Poster;
 use tagcore::proto::{Config, Status, TagInfo, TestReq};
 use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring, is_stopped};
 use tagcore::{LinkAdapt, Tag, UsbDev};
 
-use super::Msg;
 use crate::model::commands::Command;
 use crate::model::monitormodel::STATUS_POLL_MS;
 
@@ -130,7 +130,7 @@ struct TagThread {
     /// The tag; touched only on this thread.
     tag: Tag,
     /// Where reports go: the engine thread's channel.
-    out: Sender<Msg>,
+    out: Poster<Report>,
     /// Set by the engine to stop a running download after its page.
     cancel: Arc<AtomicBool>,
     /// When the next status read is due, while attached.
@@ -143,7 +143,7 @@ struct TagThread {
 impl TagThread {
     /// Sends a report to the engine thread; a gone engine is ignored.
     fn report(&self, report: Report) {
-        let _ = self.out.send(Msg::Tag(report));
+        self.out.post(report);
     }
 
     /// The tag's message for the last refused call, or `fallback`.
@@ -316,7 +316,7 @@ impl TagThread {
                 self.cancel.store(false, Ordering::Relaxed);
                 let out = self.out.clone();
                 let result = super::download::run(&self.tag, &path, &self.cancel, |v, m| {
-                    let _ = out.send(Msg::Tag(Report::DownloadProgress(v, m)));
+                    out.post(Report::DownloadProgress(v, m));
                 });
                 self.report(Report::DownloadFinished(result));
                 self.poll();
@@ -327,7 +327,7 @@ impl TagThread {
 
 /// The tag thread's loop: commands in order, and a status read whenever one
 /// is due. Ends, detaching first, when the engine drops its sender.
-pub(crate) fn run(rx: Receiver<TagCmd>, out: Sender<Msg>, cancel: Arc<AtomicBool>) {
+pub(crate) fn run(rx: Receiver<TagCmd>, out: Poster<Report>, cancel: Arc<AtomicBool>) {
     let mut t = TagThread {
         tag: Tag::new(),
         out,

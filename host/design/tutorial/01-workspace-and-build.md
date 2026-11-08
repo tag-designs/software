@@ -153,7 +153,7 @@ the same name exists; the package name does not.
 
 The dependency arrows all point down: the applications' `core` crates use
 `tagcore` (and `tagprobe`, `taglogwriter`, `calibsession` as needed, and
-`tagapp-engine` in Tag Calibrator and Tag View); each
+`tagapp-engine` in Tag Monitor, Tag Calibrator and Tag View); each
 `app` crate uses only its own `core`, `tagapp-shell` (and
 `tagapp-shell-build` in its build script) plus Tauri; `tag-tools` uses `tagcore`,
 `tagprobe`, `tagprogram-core` and, with a feature, `taglogwriter`. The one

@@ -55,8 +55,10 @@ It follows the structure qtmonitor was given for this purpose
 
 `core/src/engine/` is qtmonitor's `MainWindow` and `LiveTagSession` without
 Qt: a tag thread that owns the `Tag`, and an engine thread that owns the
-model, the document and the view state. `app/` is the Tauri shell and `ui/`
-the page. The protocol between them, and where this port differs from
+model, the document and the view state. `engine/mod.rs` starts them on the
+shared engine toolkit, [`tagapp-engine`](../../libraries/tagapp-engine-rs/README.md),
+which supplies the handle, the loop, the prompt queue and the logger. `app/`
+is the Tauri shell and `ui/` the page. The protocol between them, and where this port differs from
 qtmonitor, is [design/ui-engine-contract.md](design/ui-engine-contract.md).
 
 ## Building and running

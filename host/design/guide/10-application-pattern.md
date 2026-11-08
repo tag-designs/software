@@ -64,12 +64,12 @@ sequenceDiagram
   participant T as tag thread
   participant W as worker thread (Tag Programmer)
   P->>S: invoke command or query
-  S->>E: Msg::Command or Msg::Query (one channel)
+  S->>E: a command or query (one channel)
   E->>E: apply it to the state, fire due timers
   E-->>S: the query's reply
   E->>T: TagCmd, in order
   T->>T: the only code that touches tagcore::Tag
-  T-->>E: Msg::Tag(Report)
+  T-->>E: Report, posted on the same channel
   E->>W: spawn slow work (programming, releases)
   W-->>E: Msg::Done(closure), applied on the engine thread
   loop every 400 ms while attached
@@ -109,10 +109,10 @@ sequenceDiagram
   of their own.
 
 The handle, the loop and the logger are the same code in every
-application, and Tag Calibrator and Tag View get them from the shared
-engine toolkit described [below](#the-engine-toolkit). Tag Monitor and Tag
-Programmer still carry their own copies, which move onto the toolkit when
-each is next changed.
+application, and Tag Monitor, Tag Calibrator and Tag View get them from the
+shared engine toolkit described [below](#the-engine-toolkit). Tag
+Programmer still carries its own copies, which move onto the toolkit when it
+is next changed.
 
 ## Prompts: dialogs as data
 
@@ -141,8 +141,8 @@ replaces, and answers each kind with its own command carrying the id.
 (`host/libraries/tagapp-engine-rs`) is the engine half of the pattern as a
 library: the parts every engine had repeated, with no Tauri dependency, so a
 `core` crate that uses it still builds and tests without a window. Tag
-Calibrator and Tag View run on it; Tag Monitor and Tag Programmer move onto
-it in later phases of [the proposal](../proposals/unified-app-shell.md).
+Monitor, Tag Calibrator and Tag View run on it; Tag Programmer moves onto
+it in the last phase of [the proposal](../proposals/unified-app-shell.md).
 
 | Item | What it is |
 | --- | --- |
@@ -156,10 +156,10 @@ it in later phases of [the proposal](../proposals/unified-app-shell.md).
 | `Prompts<K>` | The prompt queue above, with fresh ids; `answer(args)` returns the parsed answer, or nothing for a stale id |
 | `UiLogger`, `LOGGER`, `set_log_level` | The `log` forwarding and its level |
 
-An application supplies only its state: Tag Calibrator's `Calibrator`
-(messages are the tag thread's `Report`s, with timers, prompts and a
-confirmed quit), and Tag View's `Viewer` (no messages, no timers, no
-prompts, no exit).
+An application supplies only its state: Tag Monitor's `Monitor` and Tag
+Calibrator's `Calibrator` (messages are each tag thread's `Report`s, with
+timers, prompts and a confirmed quit), and Tag View's `Viewer` (no
+messages, no timers, no prompts, no exit).
 
 ## The Tauri shell
 
@@ -282,8 +282,8 @@ In this order, for any of the four:
    threads, the source map with the C++ file each Rust file follows, how a
    command travels, where to change what.
 4. `core/src/lib.rs` and `core/src/engine/mod.rs`: the crate's front page
-   and the loop (for Tag Calibrator and Tag View, `spawn` and the loop in
-   `tagapp-engine`).
+   and the loop (for Tag Monitor, Tag Calibrator and Tag View, `spawn`, and
+   the loop in `tagapp-engine`).
 5. `core/src/engine/view.rs`: how the state becomes JSON; then the state
    type it reads from (`station.rs`, `monitor.rs`, `calibrator.rs`,
    `engine.rs`).

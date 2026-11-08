@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: "Tag Programmer and Tag Calibrator read against Tag Monitor - what each does, its core crate's types and threads, its page, and where it follows or departs from the pattern, with the shared engine toolkit (tagapp-engine) Tag Calibrator runs on - ending with a side-by-side table of the three."
+summary: "Tag Programmer and Tag Calibrator read against Tag Monitor - what each does, its core crate's types and threads, its page, and where it follows or departs from the pattern, with the shared engine toolkit (tagapp-engine) Tag Monitor and Tag Calibrator run on - ending with a side-by-side table of the three."
 ---
 
 # 14. Tag Programmer, Tag Monitor and Tag Calibrator compared
@@ -32,10 +32,10 @@ way is the later one, and Tag Calibrator usually agrees with it. The Tauri
 shells no longer differ in code: all three call the shared `tagapp-shell`
 crate ([chapter 10](10-tauri-shell.md)), and each `main.rs` only describes
 its application and builds its engine's configuration. The engines are
-converging the same way: Tag Calibrator's handle, loop, prompt queue and logger now come
-from the shared engine toolkit, `tagapp-engine`
-([below](#the-engine-toolkit-underneath)), while Tag Programmer and Tag
-Monitor still carry their own and move onto it when each is next changed.
+converging the same way: Tag Monitor's and Tag Calibrator's handle, loop,
+prompt queue and logger now come from the shared engine toolkit,
+`tagapp-engine` ([below](#the-engine-toolkit-underneath)), while Tag
+Programmer still carries its own and moves onto it when it is next changed.
 The differences are listed in the table at the end; the sections
 below explain the ones that change how the code reads.
 
@@ -100,10 +100,11 @@ pub(crate) enum Msg {
 > worker affects state it cannot touch: the `Station` lives on the engine
 > thread and no one else holds a reference to it. The nearest Qt idiom is
 > `QMetaObject::invokeMethod(obj, lambda, Qt::QueuedConnection)`. The enum
-> has no `#[derive(Debug)]`, unlike Tag Monitor's, because a boxed closure
-> cannot be printed.
+> has no `#[derive(Debug)]`, unlike the toolkit's `Msg` that Tag Monitor
+> uses, because a boxed closure cannot be printed.
 
-The loop is Tag Monitor's without the republish step. Its exit step is a
+The loop is the one Tag Monitor runs (the toolkit's) without the republish
+step. Its exit step is a
 flag: once the station sets `exit` (a confirmed quit, below), the loop sends
 `Event::Exit` once and the shell closes the window.
 [mod.rs:300](../../applications/tagprogram-rs/core/src/engine/mod.rs#L300):
@@ -879,7 +880,7 @@ its protocol [design/ui-engine-contract.md](../../applications/tagcalibrate-rs/d
 The engine has Tag Monitor's threads: an engine thread that owns all state in
 one `Calibrator` and never touches the tag, and a tag thread that owns
 `tagcore::Tag`, takes `TagCmd`s and sends `Report`s. There is no `model/`
-directory: the model *is* `calibsession::Session`. Unlike Tag Monitor, the
+directory: the model *is* `calibsession::Session`. As in Tag Monitor, the
 plumbing around the two threads (the handle, the channel, the loop, the
 logger) is not in this crate: it is the shared engine toolkit,
 `tagapp-engine`, read in the next section. What is left is `spawn`,
@@ -907,11 +908,14 @@ application knows what a `TagCmd` is. `QUERY_TIMEOUT` is 10 s. `Engine`,
 `Event`, `LOGGER` and `UiLogger` are re-exported from the toolkit
 (`pub use tagapp_engine::{Engine, Event, LOGGER, UiLogger};`), so the
 application's `main.rs` names them through `tagcalibrate_core::engine` as
-before.
+before. Tag Monitor's `spawn` is the same, with a `cancel` flag shared with
+its tag thread
+([chapter 11](11-engine-and-model.md#the-engine-handle-and-spawn)).
 
-Unlike the other two, the state is built on the caller's thread and then
-moved into the engine thread. That is only possible because the C++ session
-handle is declared movable between threads
+As in Tag Monitor, and unlike Tag Programmer, the state is built on the
+caller's thread and then moved into the engine thread, which the toolkit's
+`EngineState: Send` bound requires. For the calibrator that is only
+possible because the C++ session handle is declared movable between threads
 ([calibsession-rs/src/lib.rs:232](../../libraries/calibsession-rs/src/lib.rs#L232),
 `unsafe impl Send for Session {}`; chapter 8 explains it). Building it first
 also makes a failure to create the C++ session (an ABI mismatch, or out of
@@ -950,9 +954,9 @@ impl EngineState for Calibrator {
 
 ### The engine toolkit underneath
 
-`host/libraries/tagapp-engine-rs/src/lib.rs` is one file, fully documented,
-and is the loop of [chapter 11](11-engine-and-model.md#the-engine-loop) with
-the application taken out. Three Rust devices make that work, and none of
+`host/libraries/tagapp-engine-rs/src/lib.rs` is one file, fully documented;
+its loop is the one [chapter 11](11-engine-and-model.md#the-engine-loop)
+reads as the loop Tag Monitor runs, with no application in it. Three Rust devices make that work, and none of
 them appears elsewhere in the tree.
 
 **A trait with an associated type and default methods.**
@@ -983,8 +987,8 @@ pub trait EngineState: Send + 'static {
 > than when a template is instantiated. A method with a body is a *default*:
 > an implementation may leave it out, like a virtual function with a base
 > implementation, but resolved at compile time. Tag View writes only the
-> three required methods and `take_republish`; the calibrator writes all
-> eight. `: Send + 'static` on the trait means only a state that can be moved
+> three required methods and `take_republish`; Tag Monitor and the
+> calibrator write all eight. `: Send + 'static` on the trait means only a state that can be moved
 > into the engine thread can implement it.
 
 The loop, `run_loop` ([lib.rs:278](../../libraries/tagapp-engine-rs/src/lib.rs#L278)),
@@ -1053,8 +1057,8 @@ impl<M> Clone for Poster<M> {
 > bound is the standard fix.
 
 The rest is the prompt queue and the `ready` guard, read with the
-calibrator's prompts below, and `UiLogger`, which is chapter 11's logger
-with its sink set by `channel`. The toolkit's own tests, at the end of
+calibrator's prompts below, and `UiLogger`, which chapter 11 reads in
+[The logger](11-engine-and-model.md#the-logger). The toolkit's own tests, at the end of
 `lib.rs`, drive the loop with a small `Probe` state and no window: two
 `ready`s, a posted message, an unknown query and a `quit`.
 
@@ -1294,8 +1298,8 @@ list of bases by value; no clone of the prompt is needed.
     }
 ```
 
-`self.ready` is the toolkit's `Ready`, the pair of flags Tag Monitor keeps by
-hand ([chapter 11](11-engine-and-model.md#the-engine-loop)): `ready()` sets
+`self.ready` is the toolkit's `Ready`, the same guard Tag Monitor's `ready`
+uses ([chapter 11](11-engine-and-model.md#the-engine-loop)): `ready()` sets
 the republish flag every time and returns true only the first time, and the
 calibrator's `take_republish` returns `Ready::take_republish`, so the loop
 sends a reloaded page the whole state at once. A reload therefore neither
@@ -1539,13 +1543,13 @@ embedded in the binary unused.
 | Engine state type | `Station` (with `session.rs`, `view.rs`) | `Monitor` (with `model/` rules) | `Calibrator` over `calibsession::Session` |
 | Who owns `tagcore::Tag` | the engine thread | a tag thread | a tag thread |
 | Other threads | short-lived workers via `spawn_work` | none | none |
-| `Msg` variants | `Command`, `Query`, `Done(closure)` | `Command`, `Query`, `Tag(Report)` | the toolkit's: a UI request, or `Report` as `EngineState::Msg`, posted through a `Poster` |
+| `Msg` variants | `Command`, `Query`, `Done(closure)` | the toolkit's: a UI request, or `Report` as `EngineState::Msg`, posted through a `Poster` | the toolkit's, as Tag Monitor |
 | Shared between threads, besides channels and the logger's sink | `Arc<Catalog>` with internal `Mutex`es | `Arc<AtomicBool>` download cancel | none |
 | Timers | base poll 1 s, status poll 400 ms, attach retry, session tick 1 s, all in the station | engine: a tick and the quit deadline; tag thread: 400 ms status poll | tag thread: 100 ms samples or 1 s keep-awake; engine: 200 ms quality, replay tick, quit wait |
 | Long work | probe-rs programming and read-back, GitHub listing and downloads | SQLite download on the tag thread, with cancel | none |
 | C++ | none | `tagcore_c` SQLite writer (feature `sqlitelog`) | `tagcore_c` calibration session, always |
-| First page command | `start` (once; no republish) | `ready` (attaches the first time; republishes every time) | `ready` (attaches or starts the replay the first time, through the toolkit's `Ready`; republishes every time) |
-| Prompts | one `Option<Prompt>`, JSON body, replaced by the next | typed `PromptKind`s in a queue | typed `PromptKind`s in the toolkit's `Prompts` queue |
+| First page command | `start` (once; no republish) | `ready` (attaches the first time, through the toolkit's `Ready`; republishes every time) | `ready` (attaches or starts the replay the first time, through the toolkit's `Ready`; republishes every time) |
+| Prompts | one `Option<Prompt>`, JSON body, replaced by the next | typed `PromptKind`s in the toolkit's `Prompts` queue | typed `PromptKind`s in the toolkit's `Prompts` queue |
 | Prompt answers | per-kind commands, each with the prompt's `id`; stale ones dropped | `answer {id, button, ...}` | `answer {id, button, ...}` |
 | Menus | written in the page | `menus` query (table in `model/menus.rs`) | `menus` query (table in `view.rs`) |
 | Window close and Cmd-Q | through the engine: `quit` exits at once, or asks (`confirmQuit`) while a tag is being programmed | through the engine: `quit`, `Event::Exit` after the detach (at most 5 s) | as Tag Monitor, with no unsaved-changes question |
@@ -1563,8 +1567,8 @@ page-side menus, one command per answer); Tag Monitor moved the menus and the
 prompt protocol into the engine and added the tag thread; Tag Calibrator took
 Tag Monitor's shape unchanged and spent its novelty on the data path and the
 graphics. The next step is under way: that shape, taken out of the
-applications into `tagapp-engine`, which Tag Calibrator (and Tag View) now
-run on.
+applications into `tagapp-engine`, which Tag Monitor and Tag Calibrator (and
+Tag View) now run on; Tag Programmer is the last to move.
 
 ## Try it
 
@@ -1590,10 +1594,10 @@ run on.
   replays the reference capture through the real engine and compares its
   quality lines with qtcalibrate's (see
   [Checking a change](../../applications/tagcalibrate-rs/design/architecture.md#checking-a-change)).
-- Compare the loops directly: the `fn run` in Tag Programmer's and Tag
-  Monitor's `core/src/engine/mod.rs`, and `run_loop` in
-  `host/libraries/tagapp-engine-rs/src/lib.rs`, which Tag Calibrator runs on,
-  are each about 25 lines. `cargo test -p tagapp-engine` runs the toolkit's
+- Compare the loops directly: the `fn run` in Tag Programmer's
+  `core/src/engine/mod.rs`, and `run_loop` in
+  `host/libraries/tagapp-engine-rs/src/lib.rs`, which Tag Monitor and Tag
+  Calibrator run on, are each about 25 lines. `cargo test -p tagapp-engine` runs the toolkit's
   own tests, with no window and no tag.
 
 ## Where next

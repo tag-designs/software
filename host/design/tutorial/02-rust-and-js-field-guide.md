@@ -234,7 +234,7 @@ type Sink = Arc<dyn Fn(Event) + Send + Sync>;
 ```
 
 [session.rs:120](../../libraries/tagcore-rs/src/recovery/session.rs#L120),
-[tagmonitor engine/mod.rs:164](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L164);
+[tagapp-engine lib.rs:235](../../libraries/tagapp-engine-rs/src/lib.rs#L235);
 `type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;` at
 [tagapp-shell lib.rs:69](../../libraries/tagapp-shell-rs/src/lib.rs#L69).
 Explained in: [10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it);
@@ -341,11 +341,11 @@ latch.
 if !std::mem::take(&mut self.l4_dma_clock_set) {
 ```
 ```rust
-if !std::mem::replace(&mut self.started, true) && self.config.auto_attach {
+!std::mem::replace(&mut self.started, true)
 ```
 
 [l4.rs:661](../../libraries/tagcore-rs/src/monitor/l4.rs#L661),
-[tagmonitor monitor.rs:204](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L204).
+[tagapp-engine lib.rs:335](../../libraries/tagapp-engine-rs/src/lib.rs#L335).
 Explained in: [4, The L4 attach](04-monitor-and-rpc.md#the-l4-attach);
 [11, The engine loop](11-engine-and-model.md#the-engine-loop).
 
@@ -360,7 +360,7 @@ onto the shared engine toolkit's prompt queue).
 self.exit |= self.quitting.take().is_some();
 ```
 
-[tagmonitor monitor.rs:759](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L759).
+[tagmonitor monitor.rs:722](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L722).
 Explained in: [11, The engine loop](11-engine-and-model.md#the-engine-loop) (the quit deadline).
 
 ### `as_ref`, `as_deref`, `as_deref_mut`
@@ -403,7 +403,7 @@ tagcore::proto::debug_string(&*config)
 [tagthread.rs:54](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L54),
 [tagthread.rs:258](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L258);
 `self.load(*config, DocumentSource::Tag, "")` at
-[monitor.rs:360](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L360).
+[monitor.rs:336](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L336).
 Explained in: [5, TagError](05-protobuf-and-the-tag-api.md#tagerror-an-error-written-by-hand);
 [11, The messages](11-engine-and-model.md#the-messages);
 [11, The tag thread](11-engine-and-model.md#the-tag-thread);
@@ -604,7 +604,7 @@ the end. Read `opt.map(f)` as `opt ? f(*opt) : nullopt`.
 | `ok()` | `Result` to `Option`, dropping the error | `.ok()?`, [stlink.rs:435](../../libraries/tagcore-rs/src/link/stlink.rs#L435) |
 | `ok_or(e)`, `ok_or_else(f)` | `Option` to `Result`, `None` becoming `Err(e)` | [rescue.rs:123](../../libraries/tagcore-rs/src/recovery/rescue.rs#L123) |
 | `map_err(f)` | Converts or logs the error | `ack.map_err(\|e\| error!("Reply did not decode: {e}")).ok()`, [rpc.rs:187](../../libraries/tagcore-rs/src/monitor/rpc.rs#L187) |
-| `unwrap_or(v)`, `unwrap_or_default()`, `unwrap_or_else(f)` | The value, or a fallback | `.unwrap_or(Duration::from_secs(3600))`, [engine/mod.rs:273](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L273) |
+| `unwrap_or(v)`, `unwrap_or_default()`, `unwrap_or_else(f)` | The value, or a fallback | `.unwrap_or(Duration::from_secs(3600))`, [tagthread.rs:342](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L342) |
 | `map_or(d, f)` | `f(value)`, or `d` | `.map_or(0, \|f\| f.value & 0xFFFF)`, [capture.rs:574](../../libraries/tagcore-rs/src/recovery/capture.rs#L574) |
 | `is_some_and(p)`, `is_ok_and(p)`, `is_none_or(p)` | Test presence and content in one call | `.is_some_and(\|id\| id & L4_DBGMCU_DEV_ID_MASK == L4_DEV_ID_L43X)`, [l4.rs:474](../../libraries/tagcore-rs/src/monitor/l4.rs#L474) |
 | `transpose()` | `Option<Result<T, E>>` to `Result<Option<T>, E>` | [tag-dwnld.rs:379](../../commandline-rs/src/bin/tag-dwnld.rs#L379) |
@@ -803,7 +803,7 @@ After::Quit if self.model.attached() || self.attaching => {
 ```
 
 [tagthread.rs:247](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L247),
-[monitor.rs:363](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L363).
+[monitor.rs:339](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L339).
 Explained in: [3, Entering SWD](03-usb-and-stlink.md#entering-swd-with-a-retry-the-c-did-not-have);
 [4, The DebugMonitor call](04-monitor-and-rpc.md#the-debugmonitor-call-call_l4);
 [6, rescue.rs](06-recovery.md#rescuers-erase-only-what-has-been-captured);
@@ -1303,10 +1303,13 @@ impl log::Log for UiLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
 ```
 
-[tagmonitor engine/mod.rs:183](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L183);
+[tagapp-engine lib.rs:485](../../libraries/tagapp-engine-rs/src/lib.rs#L485);
 `impl serde_json::ser::Formatter for CppFloats` overriding two methods at
 [proto.rs:79](../../libraries/tagcore-rs/src/proto.rs#L79); and the shared
-engine toolkit's trait, `impl EngineState for Viewer` in Tag View, which
+engine toolkit's trait: `impl EngineState for Monitor`, which writes all
+eight methods, at
+[tagmonitor monitor.rs:849](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L849), and
+`impl EngineState for Viewer` in Tag View, which
 writes four of its eight methods and takes the defaults for the rest, at
 [sensorviz-rs engine.rs:601](../../applications/sensorviz-rs/core/src/engine.rs#L601).
 
@@ -1365,7 +1368,7 @@ function could free first).
 pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static) -> Engine {
 ```
 
-[tagmonitor engine/mod.rs:239](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L239).
+[tagmonitor engine/mod.rs:104](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L104).
 Explained in: [8, The handle, `Send` and not `Sync`](08-bridges-to-cpp-and-python.md#the-handle-send-and-not-sync);
 [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
@@ -1456,7 +1459,7 @@ if let Some(&command) = ALL_COMMANDS.iter().find(|c| command_name(**c) == cmd) {
 ```
 
 [monitor/mod.rs:414](../../libraries/tagcore-rs/src/monitor/mod.rs#L414),
-[monitor.rs:505](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L505).
+[monitor.rs:481](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L481).
 Explained in: [3, Base identify](03-usb-and-stlink.md#base-identify-f6-99);
 [5, textformat.rs](05-protobuf-and-the-tag-api.md#textformatrs-debugstring-byte-for-byte);
 [11, Commands and their availability](11-engine-and-model.md#commands-and-their-availability);
@@ -1540,15 +1543,15 @@ it in a block under the same name first.
 
 ```rust
 {
-    let (tx, cancel) = (tx.clone(), cancel.clone());
+    let cancel = cancel.clone();
     std::thread::Builder::new()
         .name("tagmonitor-tag".into())
-        .spawn(move || tagthread::run(tag_rx, tx, cancel))
+        .spawn(move || tagthread::run(tag_rx, poster, cancel))
         .expect("tag thread");
 }
 ```
 
-[tagmonitor engine/mod.rs:246](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L246).
+[tagmonitor engine/mod.rs:108](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L108).
 Explained in: [7, Writing](07-programming-tags-and-bases.md#writing-and-treating-the-departure-as-success);
 [10, main](10-tauri-shell.md#main);
 [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
@@ -1632,11 +1635,11 @@ which is the engine loop's timer. A reply channel sent inside a message
 turns a query into a synchronous call.
 
 ```rust
-match rx.recv_timeout(wait) {
-    Ok(Msg::Command(cmd, args)) => monitor.command(&cmd, &args),
+match inbox.rx.recv_timeout(wait) {
+    Ok(Msg::Ui(Request::Command(cmd, args))) => state.command(&cmd, &args),
 ```
 
-[tagmonitor engine/mod.rs:274](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L274).
+[tagapp-engine lib.rs:285](../../libraries/tagapp-engine-rs/src/lib.rs#L285), the engine loop Tag Monitor runs.
 Explained in: [11, The engine loop](11-engine-and-model.md#the-engine-loop);
 [13, Hop 2](13-tracing-start.md#hop-2-the-shell).
 
@@ -1685,11 +1688,11 @@ once per process.
 pub static DESCRIPTOR_POOL: LazyLock<DescriptorPool> = LazyLock::new(|| {
 ```
 ```rust
-static SINK: OnceLock<Mutex<Option<Sink>>> = OnceLock::new();
+static LOG_SINK: OnceLock<Mutex<Option<Sink>>> = OnceLock::new();
 ```
 
 [proto.rs:28](../../libraries/tagcore-rs/src/proto.rs#L28),
-[tagmonitor engine/mod.rs:168](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L168).
+[tagapp-engine lib.rs:468](../../libraries/tagapp-engine-rs/src/lib.rs#L468).
 Explained in: [5, proto.rs](05-protobuf-and-the-tag-api.md#protors-pulling-the-generated-code-in);
 [11, The logger](11-engine-and-model.md#the-logger).
 
@@ -1741,8 +1744,8 @@ pub(super) fn call_l4(&mut self, operation: u8, operand: i32) -> Option<u32> {
 ```
 
 [l4.rs:110](../../libraries/tagcore-rs/src/monitor/l4.rs#L110);
-`pub(crate) enum Msg` at
-[tagmonitor engine/mod.rs:123](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L123).
+`pub(crate) enum Report` at
+[tagmonitor tagthread.rs:69](../../applications/tagmonitor-rs/core/src/engine/tagthread.rs#L69).
 Explained in: [3, Where the link sits](03-usb-and-stlink.md#where-the-link-sits);
 [3, The 16-byte command block](03-usb-and-stlink.md#the-16-byte-command-block);
 [11, The messages](11-engine-and-model.md#the-messages);
@@ -1826,7 +1829,7 @@ occur here:
 | `format!`, `println!`, `eprintln!` | Format to a `String` or stdout/stderr | [tag-dwnld.rs:152](../../commandline-rs/src/bin/tag-dwnld.rs#L152) |
 | `write!`, `writeln!` | Format into a `String` (with `fmt::Write`) or a stream; returns a `Result` | [capture.rs:405](../../libraries/tagcore-rs/src/recovery/capture.rs#L405) |
 | `format_args!` | A pre-parsed message (`fmt::Arguments`) that allocates nothing until formatted | [link/mod.rs:493](../../libraries/tagcore-rs/src/link/mod.rs#L493) |
-| `error!`, `warn!`, `info!`, `debug!` | Log at a fixed level through the `log` facade; they evaluate to `()`, so `return debug!(...)` is "log and return" | [monitor.rs:633](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L633) |
+| `error!`, `warn!`, `info!`, `debug!` | Log at a fixed level through the `log` facade; they evaluate to `()` | `debug!("{cmd}: not available now")`, [monitor.rs:485](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L485) |
 | `log!(level, ...)` | Log at a level chosen at run time | [l4.rs:131](../../libraries/tagcore-rs/src/monitor/l4.rs#L131) |
 | `vec![x; n]` | A `Vec` of `n` copies | [monitor/mod.rs:353](../../libraries/tagcore-rs/src/monitor/mod.rs#L353) |
 | `json!({...})` | A `serde_json::Value` written in JSON syntax, with Rust expressions as values (`None` becomes `null`) | [view.rs:100](../../applications/tagmonitor-rs/core/src/engine/view.rs#L100) |
@@ -1850,7 +1853,7 @@ Explained in: [3, Attach](03-usb-and-stlink.md#attach-claim-reset-enter-swd) (fo
 [3, Failure runs](03-usb-and-stlink.md#failure-runs-one-error-per-burst) (`format_args!`);
 [3, Instrumentation](03-usb-and-stlink.md#instrumentation) (`cfg!`);
 [5, proto.rs](05-protobuf-and-the-tag-api.md#protors-pulling-the-generated-code-in) (`include!`, `env!`);
-[11, Prompts](11-engine-and-model.md#prompts-dialogs-as-data) (`return debug!`);
+[11, Commands and their availability](11-engine-and-model.md#commands-and-their-availability) (`debug!`);
 [11, The view state](11-engine-and-model.md#the-view-state) (`json!`).
 
 ## Attributes

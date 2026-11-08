@@ -98,13 +98,16 @@ configuration file), synchronise its clock, run the self tests, start it,
 stop it, download its data and erase it. A port of qtmonitor, module for
 module.
 
-**Shape.** Two threads. The **tag thread** owns the `Tag`, polls `Status`
+**Shape.** Two threads, run by the shared engine toolkit (`tagapp-engine`,
+chapter 10): the toolkit's loop drives the `Monitor`, and the tag thread
+posts its reports through the toolkit's `Poster`. The **tag thread** owns the `Tag`, polls `Status`
 every 400 ms while attached (pausing 1.5 s after Synchronize Clock and
 Self-Test, when an L432 tag cannot answer debug accesses reliably), runs
 each `TagCmd` in order and runs downloads. The **engine thread** owns the
 `MonitorModel` (the tag as known, and what each status settles), the
 `ConfigEditor` (the document and the form), the prompts and the progress
-displays. The two exchange `TagCmd` and `Report` messages and share nothing.
+displays. The two exchange `TagCmd` and `Report` messages and share nothing
+but the download's cancel flag.
 
 **The model** (`core/src/model/`) is qtmonitor's Qt-free core, file for
 file: the twelve commands and the one rule for when each is available; the
@@ -141,7 +144,7 @@ change what" table. The skeleton:
 | Path | Holds |
 | --- | --- |
 | `core/src/model/{commands,menus,startchecks,tagrules,monitormodel,configdocument,configform,configeditor}.rs` | The rules, as above |
-| `core/src/engine/{mod,tagthread,monitor,view,download}.rs` | The loop; the tag thread; `Monitor`, the engine's state and what follows each prompt; the view state and `menus` query; the download |
+| `core/src/engine/{mod,tagthread,monitor,view,download}.rs` | `spawn`, on the toolkit's channel and loop; the tag thread; `Monitor`, the engine's state, what follows each prompt, and its `EngineState` impl; the view state and `menus` query; the download |
 | `core/tests/{oracles,core_check,config_probe,panels}.rs` | The checks against qtmonitor's files |
 | `core/examples/session_check.rs`, `form_view.rs` | A whole tag cycle on hardware; one tag type's form as the page sees it |
 

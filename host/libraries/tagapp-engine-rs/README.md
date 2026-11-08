@@ -12,10 +12,10 @@ core crate that uses it still builds and tests without a window; the shell,
 [`tagapp-shell`](../tagapp-shell-rs/README.md), wraps its `Engine` for the
 page.
 
-Tag Calibrator and Tag View run on it. Tag Monitor and Tag Programmer still
-have their own copies of the same plumbing and move onto it when each is
-next changed ([the proposal](../../design/proposals/unified-app-shell.md),
-phases 3 and 4).
+Tag Monitor, Tag Calibrator and Tag View run on it. Tag Programmer still
+has its own copy of the same plumbing and moves onto it when it is next
+changed ([the proposal](../../design/proposals/unified-app-shell.md),
+phase 4).
 
 An application supplies only its state, by implementing `EngineState`; the
 toolkit supplies the rest:
@@ -104,6 +104,7 @@ whatever thread logged for `Log`, so it must be cheap and must never call
 
 | Application | `Msg` | Query timeout | Timers | Prompts | Exit |
 | --- | --- | --- | --- | --- | --- |
+| Tag Monitor | the tag thread's `Report` | 10 s | 1 s silence tick, quit deadline | `Prompts<PromptKind>` | after the detach on `quit` (at most 5 s) |
 | Tag Calibrator | the tag thread's `Report` | 10 s | quality, replay tick, quit wait | `Prompts<PromptKind>` | after the detach on `quit` |
 | Tag View | `()` | 30 s (a large log can take that long to open ahead of a query) | none | none | never: its window closes without asking |
 
@@ -129,7 +130,8 @@ The crate builds with the host workspace. Its tests cover the prompt queue
 emitted once, a second `ready` resending the same state, a posted message,
 an unknown query, and `Exit`), with no window and no tag. The applications'
 own tests run through it: Tag Calibrator's replay of the reference capture
-and Tag View's engine tests.
+and Tag View's engine tests. Tag Monitor's unit tests drive its `Monitor`
+directly, without the loop.
 
 ```sh
 cd host

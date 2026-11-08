@@ -28,7 +28,7 @@ Two threads, as qtmonitor has after its restructure
 | Thread | Owns | Does |
 | --- | --- | --- |
 | tag (`engine/tagthread.rs`) | the `tagcore::Tag` | polls status every 400 ms while attached; runs commands in order; runs downloads (`engine/download.rs`) |
-| engine (`engine/monitor.rs`) | the `MonitorModel`, the `ConfigDocument`, the prompts, the progress displays | applies commands and the tag thread's reports; publishes the view state |
+| engine (`engine/monitor.rs`, on [`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md)'s loop) | the `MonitorModel`, the `ConfigDocument`, the prompts, the progress displays | applies commands and the tag thread's reports; publishes the view state |
 
 The engine thread never touches the tag and never waits for it, so the view
 stays live during a download, and a query is answered after at most the
