@@ -26,7 +26,8 @@
 //! - a paged part (SPI NAND): no loader can erase one yet, and a NAND rescue
 //!   must also leave factory-marked bad blocks alone;
 //! - a part whose JEDEC ID differs from the one the image's identity record
-//!   names, when the image has a record.
+//!   names, when the image has a record;
+//! - an image whose identity record names no external flash at all.
 
 use std::path::Path;
 use std::time::Instant;

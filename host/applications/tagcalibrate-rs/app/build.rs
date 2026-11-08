@@ -122,15 +122,16 @@ fn main() {
     // (Linux): the binary looks for it at TAGCORE_C_RPATH when set -- a
     // package build sets $ORIGIN/../lib, where the package installs it --
     // else in TAGCORE_C_LIB_DIR, where the build left it. Only a direct
-    // dependent of calibsession sees DEP_TAGCORE_C_LIB_DIR, so the directory
-    // is read from the variable calibsession reads. macOS links
+    // dependent of tagcore-c-sys sees DEP_TAGCORE_C_LIB_DIR, and this crate
+    // reaches it through calibsession, so the directory is read from the
+    // variable tagcore-c-sys reads. macOS links
     // it statically (unless TAGCORE_C_LINK=dylib) and Windows has no rpath,
     // so neither gets one.
     println!("cargo:rerun-if-env-changed=TAGCORE_C_LIB_DIR");
     println!("cargo:rerun-if-env-changed=TAGCORE_C_RPATH");
     println!("cargo:rerun-if-env-changed=TAGCORE_C_LINK");
     let os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    // calibsession's own default: static on macOS, shared elsewhere.
+    // tagcore-c-sys's own default: static on macOS, shared elsewhere.
     let default_link = if os == "macos" { "static" } else { "dylib" };
     let shared = std::env::var("TAGCORE_C_LINK").unwrap_or_else(|_| default_link.into()) == "dylib";
     if shared && os != "windows" {

@@ -3,9 +3,11 @@
 //! `populateTagInfo`, `updateTitle`, `updateActions` and `TagStatusStrip`)
 //! applied here, so the UI only draws.
 //!
-//! [`Monitor::view_state`] reads the monitor and never changes it; it reads
-//! no clock and does no I/O, so the loop can compare its result with the
-//! last one sent. The JSON's shape is in `design/ui-engine-contract.md`.
+//! [`Monitor::view_state`] reads the monitor and never changes it, and does
+//! no I/O, so the loop can compare its result with the last one sent. It
+//! does read the clock once, through `Monitor::is_modified`, which collects
+//! the form's values at the current time to compare them with the loaded
+//! baseline. The JSON's shape is in `design/ui-engine-contract.md`.
 
 use serde_json::{Map, Value, json};
 use tagcore::configshape::ConfigShape;

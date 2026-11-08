@@ -52,8 +52,10 @@ procedures depend on them:
   mistyped option must not cost a running tag its run. `tag-dwnld` checks
   `--format` first for exactly this reason.
 - **Settle after attach.** The first status after a reset can legitimately
-  be `STATE_UNSPECIFIED` while the tag boots; tools poll once a second, up
-  to `--settle-timeout` (10 s), for a definite state.
+  be `STATE_UNSPECIFIED` while the tag boots; the tools that act on the
+  state (`tag-start`, `tag-stop`, `tag-reset`, `tag-dwnld`) poll once a
+  second, up to `--settle-timeout` (10 s), for a definite state. `tag-info`
+  does not settle: it reports the first status it reads.
 - **Poll for the state you asked for.** `Stop`, `Start` and `Erase` are
   accepted, not completed; the tools poll `Status` with a timeout and report
   the state reached. `tag-start` exits 0 for RUNNING or CONFIGURED, or
@@ -142,8 +144,8 @@ it is the clearest expression of chapter 5's download loop. Its structure:
    link statistics from `tagcore`'s instrumentation.
 
 It is built only with the `sqlitelog` feature (`cargo build --features
-sqlitelog --bin tag-dwnld`), because it links `libtagcore_c`, as is
-`tag-log-import`; the other tools build with cargo alone. The crate's
+sqlitelog --bin tag-dwnld`), because it links `libtagcore_c`, as are
+`tag-log-import` and `tag-rebuild`; the other tools build with cargo alone. The crate's
 `build.rs` gives every binary the run-time search path for a shared
 `libtagcore_c` (`TAGCORE_C_RPATH`, else the directory it was linked from).
 
@@ -165,8 +167,8 @@ comparison above and by `tagcore`'s own tests.
 ## Adding a tool
 
 1. Copy the skeleton above into `src/bin/<tool>.rs`; cargo finds binaries
-   in `src/bin/` without a manifest entry (`tag-dwnld` and `tag-log-import` have one because of
-   their `required-features`).
+   in `src/bin/` without a manifest entry (`tag-dwnld`, `tag-log-import` and
+   `tag-rebuild` have one because of their `required-features`).
 2. Start the file with a `//!` block saying what the tool does, its options,
    its exit status, its **hardware side effects** (every tool has this
    section), and, for a port, the C++ file it follows and how it differs.

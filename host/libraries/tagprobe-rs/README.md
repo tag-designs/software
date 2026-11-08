@@ -29,8 +29,10 @@ Every base presents as an ST-LINK V2 (`0483:3748`).
 - **`Driver::FieldSafe`** (`src/fieldsafe.rs`): for bases in the field that
   cannot be reflashed. It avoids the commands their firmware gets wrong:
   - stale `READ_DAP_REG` replies;
-  - 1-byte `READMEM_8BIT` replies;
-  - `C_DEBUGEN` set on every attach.
+  - 1-byte `READMEM_8BIT` replies.
+
+  Every base sets `C_DEBUGEN` on SWD entry; with either driver the session's
+  `TagSequence` clears it on detach.
 
 `Driver::for_identity(identify(&base).as_deref())` picks between them.
 
@@ -42,7 +44,7 @@ Every base presents as an ST-LINK V2 (`0483:3748`).
 | `identify(&base)` | The base's identity string, or `None` for older firmware. |
 | `connect_check(&base)` | `Connect { device_id, device_name, voltage }`, attaching under reset. |
 | `flash_bytes(&base, driver, device_id)` | An STM32L4's flash size from its register (one more attach), for `chip_for`; `None` on other parts. |
-| `chip_for(device_id, flash_bytes)` | The probe-rs target: `STM32L432KC` or `STM32U375RG`. |
+| `chip_for(device_id, flash_bytes)` | The probe-rs target: `STM32L432KC`, `STM32L432KB`, `STM32U375RG` or `STM32U375RE`, by flash size (the KC or RG when the size is unknown). |
 | `program(&base, driver, chip, elf, erase, on_progress)` | Erase (`ImagePages`, `Range`, `All`), program and verify in one session. Then clear `FLASH_SR.PEMPTY` on an L4 if it is set, and start the image from its vector table. |
 | `erase_all(&base, driver, chip)` | Mass erase and nothing else (`-e all`). An L4 then boots its ROM bootloader until programmed. |
 | `read_memory(&base, driver, chip, addr, len)` | Read target memory under reset. |

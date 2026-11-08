@@ -37,8 +37,8 @@
    * the engine's events; in a browser they go to `mock`, which must provide
    * the same three functions.
    *
-   * In the app, `command` resolves with null or rejects with the engine's
-   * error string; `query` resolves with the answer's JSON; `on` resolves
+   * In the app, `command` resolves with null (the Rust command returns
+   * nothing) and rejects only if the IPC call itself fails; `query` resolves with the answer's JSON; `on` resolves
    * once the listener is registered -- await it before the first command or
    * the first `state` event can be missed. Missing `args` are sent as `{}`.
    *

@@ -11,8 +11,10 @@ and tag connection, the firmware choice, the record file, the open prompt and
 the programming session. The UI cannot touch any of it. It sends commands and
 queries, and receives the whole view state after every change. Slow work
 (programming, flash read-back, downloads) runs on worker threads, but its
-result is applied on the engine thread, so no state is ever shared between
-threads and nothing needs a lock.
+result is applied on the engine thread, so the station's state is never
+shared between threads and needs no lock. The one exception is the firmware
+catalog, an `Arc<Catalog>` that worker threads refresh and fetch through; it
+guards its release list and fetch state with its own mutexes.
 
 The engine is a port of qtprogram's `Station` and `ProgramSession`
 ([batch station design](../../qtprogram/design/batch-station.md)). Its texts,

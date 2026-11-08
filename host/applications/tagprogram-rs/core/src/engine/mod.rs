@@ -15,7 +15,9 @@
 //! - `Msg::Command` and `Msg::Query` from the UI, through [`Engine`];
 //! - `Msg::Done` closures from worker threads (and, once, from the station
 //!   itself), applied to the station on the engine thread, so that every
-//!   state change happens there and needs no lock.
+//!   state change happens there and needs no lock. The one shared object is
+//!   the firmware catalog, an `Arc<Catalog>` that worker threads refresh and
+//!   fetch through; it guards its own state with interior mutexes.
 //!
 //! Timers -- the base poll (while no base is on USB), the status poll (while
 //! a tag is attached), the attach retry and the session's 1 s tick -- are

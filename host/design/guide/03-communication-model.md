@@ -101,18 +101,23 @@ recording that the host interrupted it.
 ## Two transports, one protocol
 
 The host identifies the processor at attach from its `DBGMCU_IDCODE`
-register and picks one of two ways to deliver a command. Above this split
-everything is the same: a request is a protobuf `Req`, a reply a protobuf
-`Ack`, and the session has a start, calls, and a stop.
+register, runs that family's attach sequence, and settles which of two
+transports the session uses. Calls dispatch on the transport, not the
+family: every STM32U375 image uses the shared block, and an STM32L432 image
+uses the DebugMonitor unless it was built with `TAG_L4_MONITOR_MAILBOX`, in
+which case it says so at attach and its calls take the shared-block path,
+with that path's limits. Above this split everything is the same: a request
+is a protobuf `Req`, a reply a protobuf `Ack`, and the session has a start,
+calls, and a stop.
 
-| | STM32L432 (BitTag, PresTag, CompassTag, UIUCTag families) | STM32U375 (IMUTag) |
+| | DebugMonitor (STM32L432 images: BitTag, PresTag, CompassTag, UIUCTag families) | Shared block (every STM32U375 image, IMUTag; STM32L432 mailbox images) |
 | --- | --- | --- |
 | Mechanism | The **DebugMonitor exception**: the host writes a command word into `DCRDR` and sets request bits in `DEMCR`; the firmware's `DebugMon_Handler` runs and clears the request bit when its result is back in `DCRDR` | A **shared block** of 64 bytes at the bottom of SRAM (`0x20000000`, laid out by `include/monitor.h`): the host writes command and arguments there and pends a reserved interrupt through the NVIC; the firmware's handler fills in `result` and `status` |
-| Attach handshake | Set `DEMCR.MON_EN` and `VC_CORERESET`, release reset, query metadata with `TAG_MONITORINFO` (version, buffer address and size, SHA address), then `MONITORSTART` | Release reset with vector catch so the core halts at its reset vector, write `MONITOR_REQUEST_MAGIC` into the block, resume; the firmware answers `MONITOR_CONNECTED_MAGIC` and the metadata, then `SESSION_READY` once ChibiOS is running |
+| Attach handshake | Set `DEMCR.MON_EN` and `VC_CORERESET`, release reset, resume the core, then query metadata with `TAG_MONITORINFO`: the version (if that first call fails, pulse nRST, reset into the monitor again and retry it once), then on newer images the transport, then the buffer address, the SHA address (and read the SHA string) and the buffer size; then `MONITORSTART`. An image that reports the mailbox continues as in the next column instead, from posting the request | Release reset with vector catch so the core halts at its reset vector, write `MONITOR_REQUEST_MAGIC` into the block, resume; the firmware answers `MONITOR_CONNECTED_MAGIC` and the metadata, then `SESSION_READY` once ChibiOS is running |
 | "Host is here" | `DEMCR.VC_CORERESET` (an attach hint the firmware reads) | The `request` word of the block |
-| Session end | `MONITORSTOP`; the firmware may sleep immediately after, so the host does not wait for a reply | `MONITORSTOP`; the firmware clears `request` to 0, which the host treats as the acknowledgement |
+| Session end | `MONITORSTOP`; the firmware may sleep immediately after, so the host does not wait for a reply | `MONITORSTOP`; the host polls up to 100 times and accepts either a `DONE` status or a cleared block (`request`, `flags` and `command` all 0); if it sees neither it logs a warning and completes the detach anyway, since the tag may already be asleep |
 | Watchdog | 60 s without a request ends the session (5 s on UIUCTag firmware up to fw-v0.6) | A 5 s heartbeat: any call sets `host_activity`; two quiet periods end the session |
-| Code | `monitor/l4.rs`, firmware `handlersL4.c` | `monitor/u3.rs`, `monitor/abi.rs`, firmware `handlersU3.c` |
+| Code | `monitor/l4.rs`, firmware `handlersL4.c` | `monitor/u3.rs`, `monitor/abi.rs`, firmware `handlersU3.c` (`handlersL4Mailbox.c` on an L432) |
 
 The attach and a session, on both transports:
 
@@ -128,14 +133,15 @@ sequenceDiagram
   H->>B: arm the debug block (L4: DEMCR MON_EN and VC_CORERESET, U3: vector catch)
   H->>B: release nRST
   Note over T: boots and sees the debugger
-  alt STM32L432
-    H->>T: TAG_MONITORINFO, four times (version, buffer address, buffer size, SHA address)
+  alt STM32L432 on the DebugMonitor
+    H->>T: TAG_MONITORINFO version (one retry after a fresh reset pulse), then transport on newer images
+    H->>T: TAG_MONITORINFO buffer address, SHA address (read the git SHA string), buffer size
     H->>T: MONITORSTART
   else STM32U375
     H->>T: MONITOR_REQUEST_MAGIC written into the shared block, then resume
     T-->>H: MONITOR_CONNECTED_MAGIC and the metadata, then SESSION_READY
+    H->>T: read the git SHA string from memory
   end
-  H->>T: read the git SHA string from memory
   loop the session, at least one request per watchdog period
     H->>T: PROTOBUF, the Req bytes in the call buffer
     T-->>H: the reply length, the Ack bytes in the same buffer
@@ -172,7 +178,7 @@ later pass, so its outcome is read from later status polls
 1. Serialise the `Req` with prost into the host's staging buffer. It must fit
    the firmware's **call buffer**, whose address and size the attach
    metadata gave (a few hundred bytes to a few kilobytes, by family).
-2. On an L432, wait up to 2.5 s for `MON_REQ` and `MON_PEND` to clear: an
+2. On an L432 using the DebugMonitor, wait up to 2.5 s for `MON_REQ` and `MON_PEND` to clear: an
    earlier call that failed part way may have left a request the firmware
    has not yet read, and overwriting the buffer under it would corrupt that
    request.
@@ -213,8 +219,9 @@ the tag reaches rather than by the start call's return.
 **Timeouts are counted in polls, not seconds.** A poll is one SWD read plus
 a 1 ms sleep, each a USB round trip, so the nominal figures are lower
 bounds: 500 ms for a result read, 2.5 s for an ordinary monitor call, and
-on an L432 65,000 polls for a protobuf call, about 120 s of wall time if the
-firmware never answers. On a U375 every call gives up after 2.5 s. During a
+on the DebugMonitor 65,000 polls for a protobuf call, about 120 s of wall
+time if the firmware never answers. On the shared block (every U375, and an
+L432 mailbox image) every call gives up after 2.5 s. During a
 timed-out call the `Tag`'s mutex is held and every other thread using that
 `Tag` waits, which is why the applications keep the tag on its own thread
 (chapter 10). After a timeout the monitor halts the core briefly to log a
@@ -223,16 +230,17 @@ diagnostic report (registers, reset cause) and releases it.
 **A host must keep talking.** The firmware's watchdogs end a session that
 goes quiet, and an IDLE tag then enters its terminal sleep, after which no
 SWD access succeeds until the next reset. The applications poll `Status`
-every 400 ms partly for display and partly for this. On the U375 a quiet
-host can call `Tag::keep_alive()` instead, a single memory write that runs
-no code on the tag. The Rust applications also opt out of macOS App Nap,
+every 400 ms partly for display and partly for this. A quiet host can call
+`Tag::keep_alive()` instead: on the shared block it is a single memory write
+that runs no code on the tag; on the DebugMonitor it sends a status
+request. The Rust applications also opt out of macOS App Nap,
 which once stretched the poll past a UIUCTag's 5 s limit while the window was
 in the background.
 
 **Memory access between calls.** `Tag::read_memory` and `write_memory` read
 and write live tag memory with no RPC, for the bench tools (`tag-peek`,
-`tag-side-channel-check`). On the U375 a write into the shared block would
-end the session, so the monitor refuses it unless forced.
+`tag-side-channel-check`). On the shared-block transport a write into the
+block would end the session, so the monitor refuses it unless forced.
 
 ## One base, one owner
 

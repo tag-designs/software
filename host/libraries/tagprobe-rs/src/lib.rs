@@ -395,8 +395,11 @@ fn session(usbdev: &UsbDev, driver: Driver, chip: &str) -> Result<Session, Strin
 pub enum Erase {
     /// Only the sectors the image covers (qtprogram's "none").
     ///
-    /// Anything outside the image, such as calibration constants stored
-    /// above it, is kept.
+    /// Anything in sectors the image does not touch, such as calibration
+    /// constants in a page of their own above it, is kept. The unwritten
+    /// tail of a sector the image only partly covers is left erased, not
+    /// restored: [`program`] downloads with probe-rs's default options,
+    /// which do not keep unwritten bytes.
     ImagePages,
     /// Flash `start..end` first (qtprogram's "below calibration").
     ///

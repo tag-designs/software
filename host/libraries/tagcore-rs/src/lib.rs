@@ -8,9 +8,11 @@
 //!
 //! - [`LinkAdapt`] finds and opens an ST-LINK with libusb and issues its USB
 //!   commands: debug-register and memory access, target voltage, nRST.
-//! - [`TagMonitor`] runs the monitor protocol over that link. On STM32L4 tags
-//!   it uses the DebugMonitor exception and the DCRDR mailbox; on STM32U3 tags
-//!   the shared block at [`monitor::abi::MONITOR_SHARED_ADDR`]. Either way an
+//! - [`TagMonitor`] runs the monitor protocol over that link, on the
+//!   transport settled at attach: the DebugMonitor exception and the DCRDR
+//!   mailbox (STM32L4 images, by default), or the shared block at
+//!   [`monitor::abi::MONITOR_SHARED_ADDR`] (every STM32U3 image, and L4
+//!   images built with the mailbox). Either way an
 //!   RPC is a serialised [`proto::Req`] written into the tag's buffer and a
 //!   [`proto::Ack`] read back.
 //! - [`Tag`] is the thread-safe facade the tools use: one method per request,
@@ -32,13 +34,15 @@
 //! - [`textformat`]: protobuf text format laid out as the C++ prints it.
 //! - [`configshape`]: which Config fields each tag type supports, from the
 //!   embedded `default-config.json` files.
+//! - [`recovery`]: SWD capture and recovery, reaching a tag without booting
+//!   its firmware (capture, SRAM loader calls, external flash, rescue erase).
 //!
 //! # Errors and logging
 //!
 //! Requests to the firmware return `Result<_, `[`TagError`]`>`. The layers
 //! below return `bool`/`Option` as the C++ does and log the reason through
-//! the [`log`] facade, so install a logger (`RUST_LOG=debug` with
-//! `env_logger` shows the attach detail).
+//! the [`log`] facade, so install a logger (with `env_logger`, as the
+//! `tag_info` example does, `RUST_LOG=debug` shows the attach detail).
 //!
 //! The architecture, and where the port deliberately differs from the C++,
 //! are described in `host/libraries/tagcore-rs/design/architecture.md`.

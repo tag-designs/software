@@ -91,7 +91,8 @@ static MEMBER: LazyLock<Regex> = LazyLock::new(|| {
 
 /// One published (or cached) firmware release.
 ///
-/// Port of qtprogram's `FirmwareRelease`. Serialized into the view state.
+/// Port of qtprogram's `FirmwareRelease`. Derives `Serialize`, but nothing
+/// serializes it: the view state is built field by field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct FirmwareRelease {
     /// e.g. `"fw-v0.7"`.

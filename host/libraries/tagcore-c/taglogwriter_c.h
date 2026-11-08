@@ -29,9 +29,12 @@
  *          tlw_close(w);
  *          @endcode
  *
- *          The library is built as one shared library (libtagcore_c) with
- *          the C++ writer, libprotobuf and SQLite linked inside it and only
- *          these functions exported, so a caller links nothing else. See
+ *          The library, libtagcore_c, has the C++ writer, libprotobuf and
+ *          SQLite linked inside it and exports only the tlw_*, tcs_*, svz_*
+ *          and rbd_* functions, so a caller links nothing else. It is a
+ *          shared library on Linux and Windows and a static archive
+ *          (tagcore_c_static) linked into each executable on macOS, by
+ *          default. See
  *          host/libraries/tagcore/design/proposals/rust-over-cpp-libraries.md.
  *
  * @note    A writer is not thread-safe: use each handle from one thread at a

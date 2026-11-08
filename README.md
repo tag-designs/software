@@ -50,7 +50,7 @@ cmake -S . -B build-all
 Host builds require CMake 3.20 or newer, a C++20 compiler, Protobuf, Git,
 SQLite 3 development files, and `libusb-1.0` development files. On
 non-Windows builds, CMake also requires `pkg-config` to locate `libusb-1.0`.
-Rust 1.85 or newer (from [rustup](https://rustup.rs)) builds the
+Rust 1.88 or newer (from [rustup](https://rustup.rs)) builds the
 applications (Tag Programmer, Tag Monitor, Tag Calibrator and Tag View) and the
 command-line tools, all from the one Cargo workspace at `host/Cargo.toml`; on
 Linux they also need the WebKitGTK 4.1 development files. Python 3 with MkDocs
@@ -80,7 +80,7 @@ Windows builds assume the Microsoft Visual Studio compiler toolchain.
 | vcpkg | Set `VCPKG_ROOT` to the vcpkg root containing `scripts/buildsystems/vcpkg.cmake`. Visual Studio's bundled vcpkg can be used. The repository manifest installs `libusb`, `protobuf`, `sqlite3`, and host `pkgconf`. |
 | Qt 6 for MSVC | Install Qt separately. The Windows presets expect `C:/Qt/6.10.3/msvc2022_64`. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python -m pip install -r host/docs/requirements.txt`. If the `mkdocs` script is not on `PATH`, CMake can run it as a Python module. |
-| Rust 1.85 or newer | For Tag Programmer. Install with [rustup](https://rustup.rs) (the MSVC toolchain, its default). Without `cargo` Tag Programmer is skipped. |
+| Rust 1.88 or newer | For Tag Programmer. Install with [rustup](https://rustup.rs) (the MSVC toolchain, its default). Without `cargo` Tag Programmer is skipped. |
 
 When using Visual Studio's bundled vcpkg from PowerShell, set `VCPKG_ROOT`
 before configuring:
@@ -202,7 +202,7 @@ cmake -S . -B build ^
 | Protobuf | Install with a package manager or provide a CMake discoverable installation. |
 | SQLite 3 | Install development headers/libraries or use the SQLite files from the macOS SDK if your toolchain exposes them to CMake. |
 | Git | Used by version-generation helpers. |
-| Rust 1.85 or newer | Builds the applications and the tag tools. Install with [rustup](https://rustup.rs). Without `cargo` a host configure stops and says how to install it. |
+| Rust 1.88 or newer | Builds the applications and the tag tools. Install with [rustup](https://rustup.rs). Without `cargo` a host configure stops and says how to install it. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
 | `codesign` | Required when `MACOS_SIGN_APPS=ON`. |
 
@@ -429,7 +429,7 @@ qtquick3d qtshadertools qtquicktimeline` at `$HOME/Qt/6.10.3/gcc_64`, where the
 | vcpkg | Clone and bootstrap it at `$HOME/Software/vcpkg`, as the preset expects. The repository manifest installs `libusb`, `protobuf`, `sqlite3` and host `pkgconf`. |
 | vcpkg's build needs | `curl zip unzip tar pkg-config`, and autotools and the libudev headers for its `libusb` port: `autoconf autoconf-archive automake libtool libudev-dev`. |
 | Python 3 and MkDocs Material | Required when `BUILD_HOST_DOCS=ON` or when manually building the `docs` target. Install with `python3 -m pip install -r host/docs/requirements.txt`. |
-| Rust 1.85 or newer, and WebKitGTK 4.1 | For the applications and tools: Rust from [rustup](https://rustup.rs) (the distributions' `cargo` is too old on Ubuntu 24.04), and `libwebkit2gtk-4.1-dev`. |
+| Rust 1.88 or newer, and WebKitGTK 4.1 | For the applications and tools: Rust from [rustup](https://rustup.rs) (the distributions' `cargo` is too old on Ubuntu 24.04), and `libwebkit2gtk-4.1-dev`. |
 
 On Debian or Ubuntu:
 

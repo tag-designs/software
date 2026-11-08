@@ -28,7 +28,8 @@ const FLASH_BASE: u32 = 0x0800_0000;
 ///
 /// Built by [`load_firmware_image`], which fills the fields in order and
 /// stops at the first refusal, so fields after the failing step keep their
-/// defaults. Serialized into the view state.
+/// defaults. Derives `Serialize`, but nothing serializes it: the view state
+/// is built field by field.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct FirmwareImage {
     /// Path of the `.elf` file; empty in the default (no image) value.

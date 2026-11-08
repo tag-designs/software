@@ -30,10 +30,12 @@
            depends on rust_tools, which builds these two with the rest.
            Otherwise, with cargo found, adds the custom target
            `flash_tools`, which runs
-           `cargo build --release --locked --bin tag-flash --bin base-flash`
-           in host/commandline-rs with its target directory in this build
-           tree, and sets the INTERNAL cache variables TAG_FLASH_EXECUTABLE
-           and BASE_FLASH_EXECUTABLE to the paths it produces. The target is
+           `cargo build --release --locked -p tag-tools --bin tag-flash
+           --bin base-flash` in the host workspace (HOST_RUST_WORKSPACE_DIR,
+           host/) with the workspace's target directory in this build tree
+           (HOST_CARGO_TARGET_DIR), copies both into <build>/<Config>/bin,
+           and sets the INTERNAL cache variables TAG_FLASH_EXECUTABLE and
+           BASE_FLASH_EXECUTABLE to the paths cargo produces. The target is
            not part of ALL: a caller that needs the executables built depends
            on it. Without cargo, the two variables are what find_program()
            finds on PATH, and no target is defined. Later calls only return

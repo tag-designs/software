@@ -57,8 +57,8 @@ The library does three things:
 - runs an arbitrary routine in SRAM (`SramCall`), which is the layer the
   loaders and the RV3028 probe share.
 
-It does not program internal flash: CubeProgrammer and the `-download` targets
-do that. It is not a monitor client (`TagMonitor`), and it does not decode
+It does not program internal flash: `tag-flash` (on `tagprobe`), which the
+`-download` targets run, does that. It is not a monitor client (`TagMonitor`), and it does not decode
 captured data. `CaptureSource` feeds captures to the existing SQLite writer.
 
 ## Session model
@@ -366,7 +366,7 @@ layers, lowest first:
 | `Session` | `recovery/session.rs`, `recovery/mcu.rs` | Owns the connection for a recovery session: attach-without-boot, declared exit (`SwdExit`), core control (halt, run, wait-for-halt, core registers through `DCRSR`/`DCRDR`), and register and memory reads of named regions per MCU |
 | `TargetImage` | `recovery/image.rs` | Loadable segments and symbols of an ELF32 ARM image, on the `object` crate |
 | `SramCall` | `recovery/sramcall.rs` | Download a `TargetImage` into SRAM and call a symbol, with the traced convention and a timeout |
-| `ExternalFlash` | `recovery/xflash.rs` | A loader session through `Serve()`: probe, read, read page; the `LoaderServiceBlock` layout is checked against `include/loader_service.h` by a test |
+| `ExternalFlash` | `recovery/xflash.rs` | A loader session through `Serve()`: probe, read, read page, and with a read-write loader erase sector and program; the `LoaderServiceBlock` layout is checked against `include/loader_service.h` by a test |
 | `IdentityRecord` | `recovery/identity.rs` | Find and parse the identity record in internal flash; shared with Tag Programmer and `tag-flash` |
 | Capture | `recovery/capture.rs`, `recovery/external.rs`, `recovery/build.rs` | The capture procedure: ordering, output directory, manifest, and the optional build files (`--with-build`) |
 | Rescue | `recovery/rescue.rs` | Rescue step 1: erase the external flash sector by sector and prove it blank, with the refusals above |

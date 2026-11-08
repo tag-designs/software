@@ -21,7 +21,7 @@
   elsewhere (target tagcore_c), which host/CMakeLists.txt installs once for
   every Rust application.
 
-  Needs cargo (Rust 1.85 or newer); Linux needs the WebKitGTK 4.1
+  Needs cargo (Rust 1.88 or newer); Linux needs the WebKitGTK 4.1
   development package, as Tag Programmer does.
 
   Added by host/CMakeLists.txt when BUILD_RUST_APPS is ON. Uses from the

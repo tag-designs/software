@@ -44,7 +44,8 @@ flowchart LR
   log text, a scroll position.
 - **The shell forwards.** `app/src/main.rs` starts the engine, exposes two
   Tauri commands (`command`, `query`) and emits two events (`state`, `log`).
-  It is a page or two of Rust and is the same in every application.
+  It is a page or two of Rust, of the same shape in every application;
+  the differences are listed under the Tauri shell below.
 
 The contract between engine and page is written down per application in
 `design/ui-engine-contract.md`: the view state's shape, the commands with
@@ -131,18 +132,21 @@ minimally:
 - two `#[tauri::command]` functions, `command` and `query`, which the page
   reaches through `invoke`;
 - `app.emit("state", json)` and `emit("log", json)`;
-- a window-close hook that sends the engine `quit` and closes the window
-  only when the engine answers `Exit`, so unsaved work is asked about;
-- on macOS, opting the process out of App Nap, which once throttled the
-  400 ms poll past a tag's sleep limit while the window was in the
-  background.
+- in Tag Monitor and Tag Calibrator, a window-close hook that sends the
+  engine `quit` and closes the window only when the engine answers `Exit`,
+  so unsaved work is asked about (Tag Programmer and Tag View close at
+  once);
+- on macOS, in the three applications that attach to a tag (not Tag View),
+  opting the process out of App Nap, which once throttled the 400 ms poll
+  past a tag's sleep limit while the window was in the background.
 
 `app/build.rs` assembles the page into a staging directory under cargo's
 `OUT_DIR` (the page plus the kit, with the kit's relative path rewritten),
 because Tauri embeds one directory at compile time and the kit lives
 outside the application. `tauri.conf.json` names the window and the
 identifier; `capabilities/default.json` grants the page the few permissions
-it uses. Tauri's own bundler and updater are not used: CMake assembles the
+it uses (Tag Programmer's lacks `core:window:allow-set-title`, so its page's
+window-title change is refused). Tauri's own bundler and updater are not used: CMake assembles the
 macOS bundle and the packages, so there is one signing path for every
 application (chapter 13).
 
@@ -156,8 +160,8 @@ makes designing it quick. `host/ui-kit` is what every page shares:
 | --- | --- |
 | `kit.css` | The look: a macOS-native style in plain CSS, with light and dark themes as custom properties, matching the Qt applications these replaced |
 | `preact-htm.js` | [Preact](https://preactjs.com) 10 (a small React-compatible renderer), its hooks, and htm (templates as tagged strings), vendored as one classic script |
-| `kit.js` | The global `Kit`: `createEngine()` (Tauri inside the app, a mock in a browser), the in-window menu bar, dialogs, file pickers, URL and folder opening |
-| `kit-components.js` | Preact components for the kit's own classes: `Button`, `Group`, `Row`, `Progress`, `StatusGrid`, `LogPane`, and `Kit.dialog` taking a Preact body |
+| `kit.js` | The global `Kit`: `createEngine()` (Tauri inside the app, a mock in a browser), the in-window menu bar, dialogs (`Kit.dialog`, whose body may be a Preact element), file pickers, URL and folder opening |
+| `kit-components.js` | Preact components for the kit's own classes: `Button`, `Group`, `Row`, `Progress`, `StatusGrid`, `LogPane` |
 | `heading-dial.js` | The heading indicator (SVG) Tag Calibrator and Tag View draw |
 | `screenshot.sh` | Captures a page against its mock with headless Chrome; each app's `ui/screenshots.sh` makes the user manual's pictures this way |
 

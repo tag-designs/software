@@ -1,7 +1,7 @@
 /*
  * Tag host UI kit: a macOS-native look for the web front ends of the host
- * applications (Tag Programmer first; qtmonitor and qtcalibrate are meant to
- * reuse it). Plain CSS, no build step. Colours are tokens on :root, redefined
+ * applications (Tag Programmer, Tag Monitor, Tag Calibrator and Tag View).
+ * Plain CSS, no build step. Colours are tokens on :root, redefined
  * for dark mode; html[data-theme] forces one theme (the mock pages accept
  * ?theme=dark|light).
  *

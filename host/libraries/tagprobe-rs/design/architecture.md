@@ -57,7 +57,8 @@ serial. With a single ST-LINK on USB, no serial is needed.
   first thread that calls it, and calling it from another thread aborts the
   process. Tag Programmer runs each programming job on a new worker thread,
   so its second program in a session crashed (`EXC_BREAKPOINT` in
-  `CFRunLoopAddSource`). The ST-LINK factory uses libusb only.
+  `CFRunLoopAddSource`). The ST-LINK factory uses probe-rs's USB stack
+  (`nusb`) only, never hidapi.
 - **FieldSafe**: `FieldSafeProbe::open` opens the base with tagcore's
   `LinkAdapt` and wraps it as a probe-rs `Probe`.
 

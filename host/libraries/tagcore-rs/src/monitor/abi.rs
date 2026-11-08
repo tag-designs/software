@@ -127,7 +127,8 @@ pub fn command_word(operation: u8, operand: i32) -> u32 {
     ((operand as u32) << 8) | u32::from(operation)
 }
 
-/// The STM32U3 shared monitor block (`monitor_shared_t`): thirteen
+/// The mailbox transport's shared monitor block (`monitor_shared_t`), used
+/// by every STM32U3 image and by STM32L4 mailbox images: thirteen
 /// little-endian words at [`MONITOR_SHARED_ADDR`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MonitorShared {
@@ -159,7 +160,9 @@ pub struct MonitorShared {
     pub host_activity: u32,
     /// Firmware monitor watchdog tick count.
     pub watchdog_ticks: u32,
-    /// Transport identifier, [`MONITOR_PATH_U3_MAGIC`] on U3.
+    /// Transport identifier the firmware publishes: [`MONITOR_PATH_U3_MAGIC`]
+    /// on U3, [`MONITOR_PATH_L4_MAGIC`] on an STM32L4 mailbox image. The host
+    /// only logs it; nothing checks it.
     pub path_magic: u32,
 }
 

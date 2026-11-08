@@ -30,10 +30,14 @@ pub const TEST_TIMEOUT_MS: i64 = 60_000;
 /// for this long, ms: about seven missed polls.
 pub const NO_ANSWER_MS: i64 = 3000;
 
-/// Start is reported as failed when the tag has not reached RUNNING or
-/// CONFIGURED this long after it was sent, ms. An acknowledgement is not a
-/// completion, and a lost one is not a failure, so Start is judged by the
-/// state the tag reaches.
+/// Start is reported as failed when a status read finds the tag not yet in
+/// RUNNING or CONFIGURED this long after [`MonitorModel::start_sent`], ms.
+/// The clock starts when the engine handles the tag thread's report that
+/// the Start request returned (which can be up to the monitor's protobuf
+/// timeout after it was sent), not when it was sent. An acknowledgement is
+/// not a completion, and a lost one is not a failure, so Start is judged by
+/// the state the tag reaches; with no status getting through, nothing is
+/// judged.
 pub const START_WAIT_MS: i64 = 7000;
 
 /// Something a status read settled, for the UI to report.

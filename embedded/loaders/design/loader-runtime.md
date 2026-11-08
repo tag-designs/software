@@ -275,8 +275,8 @@ sector-number erase is ambiguous between internal and external memory, it knows
 nothing of the capture-first and external-before-internal ordering, and it lets
 the firmware boot as it leaves, which changes the next boot's recorded
 `resetCause` ([investigation](investigations/2026-10-loader-session-reset-cause.md)).
-The host library in `tagcore` (`host/libraries/tagcore/recovery/`, used by
-`tag-xflash` and `tag-capture`) drives the same images through `Serve()` and
+The host library in tagcore-rs (`host/libraries/tagcore-rs/src/recovery/`,
+used by `tag-xflash` and `tag-capture`) drives the same images through `Serve()` and
 controls the exit; see
 [SWD Capture and Recovery Library](../../../host/libraries/tagcore-rs/design/swd-recovery.md).
 

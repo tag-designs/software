@@ -206,7 +206,8 @@ set(HOST_RUST_INTERNAL_TOOLS
   @details One `cargo build --release --locked -p tag-tools --features
            sqlitelog --bins` in the host workspace, so the crate is compiled
            once with one feature set: the sqlitelog feature brings in the C++
-           SQLite writer that tag-dwnld and tag-log-import write through, so
+           SQLite writer that tag-dwnld, tag-log-import and tag-rebuild
+           write through, so
            the build links tagcore_c (see _host_rust_environment()). The
            shipped tools (HOST_RUST_SHIPPED_TOOLS) are then copied into
            <build>/<Config>/bin and the developer tools

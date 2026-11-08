@@ -76,7 +76,7 @@ Paths are relative to `host/applications/tagcalibrate-rs`; qtcalibrate's to
 ## How a sample travels
 
 1. With Stream on, the tag thread calls `Tag::calibration_log` every 100 ms
-   and reports each `SensorData` as a `Report::Sample`.
+   and reports each read's samples, in order, as one `Report::Samples`.
 2. `Calibrator::report` passes the magnetometer and accelerometer vectors to
    `Session::orientation` (the live compass, always) and, while collecting,
    to `Session::add_sample`, and appends the sample to the capture.
@@ -91,7 +91,7 @@ Paths are relative to `host/applications/tagcalibrate-rs`; qtcalibrate's to
 1. The page sends `tag_write`; `Calibrator::command` checks the action is
    enabled (a fit exists, a tag is attached, not streaming).
 2. The engine builds `CalibrationConstants` from `Session::constants` and the
-   accelerometer offset and sends `TagCmd::WriteConstants`.
+   accelerometer offset and sends `TagCmd::WriteCalibration`.
 3. The tag thread calls `Tag::write_calibration`, which the firmware accepts
    only in IDLE, and reports the outcome; a refusal becomes an alert prompt.
 

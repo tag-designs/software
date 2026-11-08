@@ -67,7 +67,7 @@ option(BUILD_HOST "Build host libraries and tools" ON)
 # The host programs are the Rust applications (Tag Programmer, Tag Monitor,
 # Tag Calibrator, Tag View) and the Rust command-line tools, built by cargo,
 # beside the C++ programs that have no Rust equivalent (dataprocessing,
-# tag-txt-import, the SWD recovery tools). A host build without Rust is not
+# tag-txt-import). A host build without Rust is not
 # a host build, so this is on whether or not cargo is installed, and a missing
 # cargo stops the configure with how to install it; a machine that builds
 # only firmware turns it off (or BUILD_HOST).

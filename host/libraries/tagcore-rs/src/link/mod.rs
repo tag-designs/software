@@ -22,8 +22,12 @@
 //!   while attached, and every command first checks it (failing with a
 //!   logged error rather than panicking).
 //! - All calls block the calling thread on libusb bulk transfers, each with
-//!   a 1.5 s timeout (300 ms for the base-identify reply). Nothing here
-//!   retries; retry and polling policy belongs to the monitor layer.
+//!   a 1.5 s timeout (300 ms for the base-identify reply). The link's own
+//!   retries are few and local: [`LinkAdapt::enter_swd`] resends a failed
+//!   enter, a stalled bulk endpoint is cleared and the transfer tried once
+//!   more, and the last-R/W-status read falls back from the 12-byte to the
+//!   2-byte form. Polling and request-level retry belong to the monitor
+//!   layer.
 //! - A transfer failing with `LIBUSB_ERROR_NO_DEVICE` closes the probe
 //!   (`handle` becomes `None`), so an unplug ends the session at once; the
 //!   monitor's poll loops check [`LinkAdapt::is_attached`] and stop.
@@ -42,7 +46,8 @@
 //!
 //! [`LinkAdapt`] is `Send` but every method takes `&mut self` (or `&self`
 //! only for enumeration), so the borrow checker serialises use of the
-//! probe. The C++ class uses a recursive mutex for the same purpose;
+//! probe. The C++ `LinkAdapt` has no lock of its own (the C++ `TagMonitor`
+//! holds a recursive mutex around its link use);
 //! [`crate::Tag`] puts the whole stack behind a [`std::sync::Mutex`].
 //!
 //! # Side effects on the tag

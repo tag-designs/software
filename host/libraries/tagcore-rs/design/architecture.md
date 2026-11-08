@@ -17,7 +17,8 @@ The C++ is the reference. Where the two differ on the wire, the C++ is right
 and the Rust is a bug. What the port changes is the API shape:
 
 - `Result` instead of status flags;
-- a mutex in `Tag` instead of a recursive mutex shared by every layer;
+- one mutex, in `Tag`, where the C++ has one in `Tag` and a recursive
+  mutex of its own in `TagMonitor`;
 - `&mut self` on the lower layers, so the borrow checker guarantees one user
   of the link at a time.
 
@@ -46,18 +47,19 @@ drives debug registers directly, and tagprobe's field-safe driver wraps a
 reaches them by subclassing. A user of `LinkAdapt` is outside the monitor's
 rules: a register write can halt, reset or reconfigure the tag.
 
-### Two families, one monitor
+### Two families, two transports
 
-`TagMonitor::attach` identifies the part from `DBGMCU_IDCODE` and picks the
-transport:
+`TagMonitor::attach` identifies the part from `DBGMCU_IDCODE`, runs that
+family's attach sequence, and settles the session's `Transport`. Calls
+dispatch on the transport, not the family:
 
-| Family | Transport | Where |
-| --- | --- | --- |
-| STM32L4 (L432) | DebugMonitor exception; `DCRDR` is the mailbox, `DEMCR.MON_PEND/MON_REQ` the doorbell; protobuf bytes in the firmware's RPC buffer | `monitor/l4.rs` |
-| STM32U3 (U375) | A shared block at `MONITOR_SHARED_ADDR`, laid out by `include/monitor.h`, polled over SWD | `monitor/u3.rs`, `monitor/abi.rs` |
+| Transport | Used by | Mechanism | Where |
+| --- | --- | --- | --- |
+| DebugMonitor | STM32L4 (L432) images, by default | DebugMonitor exception; `DCRDR` is the mailbox, `DEMCR.MON_PEND/MON_REQ` the doorbell; protobuf bytes in the firmware's RPC buffer | `monitor/l4.rs` |
+| Mailbox | every STM32U3 (U375) image, and L4 images built with `TAG_L4_MONITOR_MAILBOX` (they report it at attach) | A shared block at `MONITOR_SHARED_ADDR`, laid out by `include/monitor.h`, polled over SWD | `monitor/u3.rs`, `monitor/abi.rs` |
 
 Above the transport, `monitor/rpc.rs` frames a `proto::Req` into the buffer
-and parses the `proto::Ack` back. It is the same for both families.
+and parses the `proto::Ack` back. It is the same for both transports.
 
 ### Attaching resets the tag
 
@@ -75,11 +77,12 @@ Timeouts are the C++ values:
 
 - 500 ms for a result read;
 - 2.5 s for an ordinary monitor call;
-- 65 s nominal for a protobuf call on L4. On U3 every call, protobuf
-  included, has the 2.5 s limit, as in the C++.
+- 65 s nominal for a protobuf call on the DebugMonitor transport. On the
+  mailbox transport (every U3 image, and L4 mailbox images) every call,
+  protobuf included, has the 2.5 s limit, as in the C++.
 
 The timeouts are counted in poll iterations, not wall time, so with USB
-latency an unanswered L4 protobuf call takes about 120 s. During that time the `Tag`
+latency an unanswered DebugMonitor protobuf call takes about 120 s. During that time the `Tag`
 lock is held. Every other caller, on any thread, waits behind it. An
 application that calls the monitor from its UI or event thread will freeze
 for that long when the firmware hangs. Tag Programmer's engine accepts this

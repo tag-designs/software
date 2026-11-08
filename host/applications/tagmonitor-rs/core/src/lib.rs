@@ -6,9 +6,10 @@
 //! interprets each status, the configuration document, and the menus as
 //! data. Each module names the C++ file it ports. The C++ core's
 //! language-neutral oracles check the port: `tests/oracles.rs` compares the
-//! command and start-check tables and the menu layout with the files in
-//! `host/applications/qtmon/test/`, and repeats `qtmon_core_check`'s
-//! assertions.
+//! command and start-check tables with the files in
+//! `host/applications/qtmon/test/`, and `tests/core_check.rs` repeats
+//! `qtmon_core_check`'s assertions and compares the menu layout with
+//! `test/menus.txt`.
 
 pub mod engine;
 pub mod model;

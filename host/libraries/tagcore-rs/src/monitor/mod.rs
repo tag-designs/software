@@ -50,9 +50,11 @@
 //!
 //! Waits are counted in poll iterations of one SWD read plus a 1 ms sleep,
 //! as in the C++ code, so the nominal millisecond figures are lower bounds:
-//! each poll is also a USB round trip. On STM32L4 a protobuf call polls up
-//! to 65000 times (about 120 s in practice) and any other call 2500 times;
-//! on STM32U3 every call except MONITORSTOP polls 2500 times. A timeout is
+//! each poll is also a USB round trip. The limits follow the session's
+//! [`Transport`], not the family: on the DebugMonitor a protobuf call polls
+//! up to 65000 times (about 120 s in practice) and any other call 2500
+//! times; on the mailbox (every STM32U3 image, and STM32L4 images built
+//! with it) every call except MONITORSTOP polls 2500 times. A timeout is
 //! followed by a diagnostic report that may briefly halt the core; see
 //! [`cortex_m`].
 //!

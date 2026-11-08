@@ -9,9 +9,9 @@ summary: The host UI kit - a macOS-native look in plain CSS, Preact components t
 A web front end for a host application is a page that draws a view state sent
 by a Rust engine and turns clicks into commands. This kit is the part every
 such page shares: a look that matches the Qt applications on macOS, and the
-plumbing to talk to the engine, show dialogs and pick files. Tag Programmer
-(`host/applications/tagprogram-rs/ui`) and Tag Monitor
-(`host/applications/tagmonitor-rs/ui`) use it.
+plumbing to talk to the engine, show dialogs and pick files. Tag Programmer,
+Tag Monitor, Tag Calibrator and Tag View (the `ui/` directory of each
+`host/applications/*-rs`) use it.
 
 Pages render with [Preact](https://preactjs.com) through
 [htm](https://github.com/developit/htm), which writes templates as tagged
@@ -102,8 +102,9 @@ updated from each state.
 
 `Kit.createEngine(mock)` returns `{ kind, command, query, on }`:
 
-- `command(cmd, args)` → `invoke("command", {cmd, args})`. The answer is
-  `null`, or an error string.
+- `command(cmd, args)` → `invoke("command", {cmd, args})`. The Rust
+  command returns nothing, so the promise resolves with `null`; it rejects
+  only if the IPC call itself fails.
 - `query(name, args)` → `invoke("query", {name, args})`. The answer is JSON.
 - `on(event, cb)` → `listen(event, …)`. Callbacks receive the payload. The
   call returns a promise, so await it before sending the first command, or

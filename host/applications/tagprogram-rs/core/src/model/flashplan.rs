@@ -38,7 +38,8 @@ const U375_PAGE: u32 = 4096;
 
 /// What programming erases.
 ///
-/// Serialized by variant name for the view state.
+/// Derives `Serialize` (by variant name), but nothing serializes it: the view
+/// state is built field by field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
 pub enum Erase {
     /// No plan: the image could not be read or its layout is unknown.

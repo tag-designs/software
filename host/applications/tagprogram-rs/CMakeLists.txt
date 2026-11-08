@@ -10,7 +10,7 @@
              runtime that Windows 10 and 11 carry);
     Linux    tag_tools/bin/tagprogram, which uses the system's WebKitGTK 4.1.
 
-  Needs cargo (Rust 1.85 or newer). libusb and protoc are vendored by the
+  Needs cargo (Rust 1.88 or newer). libusb and protoc are vendored by the
   crates, so nothing else is required on macOS and Windows; Linux needs the
   WebKitGTK 4.1 development package. The record's host_version is set to the
   package version, as qtprogram's is. See README.md and

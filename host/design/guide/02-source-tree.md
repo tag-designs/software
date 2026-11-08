@@ -139,8 +139,7 @@ Three habits of this code base's Rust worth knowing before you open a file:
 ## The shape of a Rust application
 
 ```text
-applications/tagmonitor-rs/
-├── Cargo.toml                 a comment only: the two crates below are workspace members
+applications/tagmonitor-rs/   no Cargo.toml here: core/ and app/ are members of the host workspace
 ├── README.md                  what is ported, status, how to build, run and check it
 ├── design/
 │   ├── architecture.md        layers, threads, the source map, how a command travels, where to change what
@@ -172,10 +171,11 @@ meet in two places:
   which each Rust application's `CMakeLists.txt` calls to run
   `cargo build --release --locked -p <crate>` in the host workspace, with one
   shared target directory under the build tree (`<build>/host/cargo`), and
-  copy the executable beside the C++ programs. `cmake/RustFlashTools.cmake`
-  does the same for `tag-flash` and `base-flash`, which the embedded
-  programming targets also use. `BUILD_RUST_APPS` (on where cargo is
-  installed) turns all of this on.
+  copy the executable beside the C++ programs; `host_rust_tools()` there
+  does the same for every command-line tool (`rust_tools`).
+  `cmake/RustFlashTools.cmake` provides `tag-flash` and `base-flash` to the
+  embedded programming targets too. `BUILD_RUST_APPS` (on by default; a
+  configure without cargo then stops and says so) turns all of this on.
 - **cargo links a CMake product.** The crates that reach the C++ libraries
   link `libtagcore_c`, which only CMake can build (it needs protobuf, SQLite
   and the rest of the C++ toolchain). `tagcore-c-sys`'s build script finds it

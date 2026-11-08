@@ -31,8 +31,8 @@ without a lock. `Tag` is the only layer meant to be shared: it wraps the
 monitor in a `std::sync::Mutex`, takes the lock once per request and holds it
 for the whole exchange (write, poll, read), so a `Tag` in an `Arc` can be
 called from several threads and the requests are serialised, never
-interleaved. The C++ uses a recursive mutex shared by all three classes for
-the same effect.
+interleaved. The C++ gets the same effect with two locks: a plain mutex in
+`Tag` and a recursive one in `TagMonitor` (`LinkAdapt` has none).
 
 The lower layers are public. `tag-monitor-test` drives debug registers
 through `LinkAdapt` directly, and `tagprobe`'s field-safe driver wraps a
@@ -46,8 +46,8 @@ the monitor's rules: a register write can halt, reset or reconfigure the tag.
 | `src/lib.rs` | The crate's front page (a `//!` block worth reading first) and the re-exports: `Tag`, `TagError`, `TagMonitor`, `LinkAdapt`, `UsbDev`, `TargetFamily`, `MemAccess`, the statistics types |
 | `src/tag.rs` | `Tag` and `TagError`; `Inner` (the monitor plus the last `Ack`) behind the mutex; one method per request |
 | `src/monitor/mod.rs` | `TagMonitor`: the struct, attach and detach, target identification from `DBGMCU_IDCODE`, the call dispatcher, live memory access, keep-alive, statistics |
-| `src/monitor/l4.rs` | The STM32L4 transport: the DebugMonitor/`DCRDR` call, the attach sequence, the wait for an idle monitor, the timeout report |
-| `src/monitor/u3.rs` | The STM32U3 transport: the shared-block call, the attach sequence, the timeout report |
+| `src/monitor/l4.rs` | The DebugMonitor transport: the `DCRDR` call, the wait for an idle monitor, the timeout report; the STM32L4 attach sequence, including the hand-over to the mailbox for an L4 image built with it |
+| `src/monitor/u3.rs` | The shared-block (mailbox) transport: the call that every STM32U3 image and L4 mailbox images use, the U3 attach sequence, the wait for a mailbox session, the timeout report |
 | `src/monitor/rpc.rs` | Protobuf framing over either transport (chapter 3's five steps) |
 | `src/monitor/abi.rs` | The constants and the shared-block layout from `include/monitor.h`, mirrored by hand, with a layout test |
 | `src/monitor/cortex_m.rs` | Arm debug and system-control register addresses and bits; core halt and register reads for timeout reports |
@@ -59,6 +59,7 @@ the monitor's rules: a register write can halt, reset or reconfigure the tag.
 | `src/proto.rs` | Includes the prost-generated types; `debug_string`, `short_debug_string`, `to_json`, `from_json` with the C++'s spelling |
 | `src/textformat.rs` | Protobuf text format laid out as the C++ `DebugString()` prints it |
 | `src/configshape.rs` | `ConfigShape`: which `Config` fields each tag type supports, from the embedded default configurations; `has()` and `merge()` |
+| `src/recovery/` | SWD capture and recovery without booting the firmware: per-MCU maps, the no-boot session, SRAM loader calls, external flash, the capture procedure, the rescue erase (its `mod.rs` has the layer table) |
 | `build.rs` | Runs protoc on `proto/tag.proto`, derives reflection, embeds every `default-config.json` |
 | `tests/hardware.rs` | The hardware test (`--ignored`): attaches, read-only requests, one write the firmware must refuse, the UID check |
 | `examples/tag_info.rs` | A read-only report: the smallest complete program on the crate |
@@ -154,16 +155,22 @@ they need `libudev`).
 For reading the code, this is the order `TagMonitor::attach` runs
 (`monitor/mod.rs`, then the family's file):
 
-1. `LinkAdapt::attach`: open the base by vendor, product and, when given,
-   serial; drive nRST low; enter SWD. The tag is now held in reset.
+1. `LinkAdapt::attach`: open the base the `UsbDev` names (vendor, product,
+   bus and address, as a listing gives them; a default `UsbDev` takes the
+   first ST-LINK found); drive nRST low; enter SWD. The tag is now held in
+   reset.
 2. Read `DBGMCU_IDCODE` at the L4 address, then the U3 address, to set
    `TargetFamily`. Unknown falls back to the L4 transport.
 3. The family's attach sequence (`l4::attach_l4` or `u3::attach_u3`): arm the
    debug block, release reset, read the monitor metadata (protocol version,
    call buffer address and size, SHA string address), start the session.
+   It also settles the session's `Transport`: the mailbox on a U3, and on
+   an L4 whichever the image reports.
 4. Read the firmware's git SHA string from tag memory once and cache it.
 
-From then on `rpc()` frames requests and the family's `call_*` delivers them.
+From then on `rpc()` frames requests and the session's `Transport`, not the
+family, picks the `call_*` that delivers them (`call_u3` on the mailbox,
+with its limits, even for an L4 mailbox image).
 `detach` sends `MONITORSTOP` and closes the probe; dropping a `Tag` detaches.
 
 ## Keeping it in step with the C++

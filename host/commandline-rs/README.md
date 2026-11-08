@@ -51,10 +51,10 @@ connected. **Attaching resets the tag**, as with the C++ tools.
 | `qtmonitor-fixture-capture` | `qtmonitor-fixture-capture.cc` | Capture a tag's info, config and status as a qtmonitor test fixture |
 | `tag-dwnld` | `dwnld.cc` | Download a stopped tag's log to SQLite, through the C++ writer (below) |
 | `tag-log-import` | `tag-log-import.cc` | Write a `tagclient` JSONL download as a SQLite log, with no tag, through the C++ writer (below) |
-| `tag-capture` | `tag-capture.cc` | Capture registers, flash and external flash over SWD without booting the firmware (`tagcore::recovery`) |
-| `tag-xflash` | `tag-xflash.cc` | Read a tag's external flash over SWD through a loader |
-| `tag-sramcall` | `tag-sramcall.cc` | Call one function of an SRAM image on a halted tag |
-| `tag-rebuild` | `tag-rebuild.cc` | Rebuild a SQLite download from a capture directory, through the C++ decoders and writer (`rbd_*`) |
+| `tag-capture` | `tag-capture.cc` (deleted) | Capture registers, flash and external flash over SWD without booting the firmware (`tagcore::recovery`) |
+| `tag-xflash` | `tag-xflash.cc` (deleted) | Read a tag's external flash over SWD through a loader |
+| `tag-sramcall` | `tag-sramcall.cc` (deleted) | Call one function of an SRAM image on a halted tag |
+| `tag-rebuild` | `tag-rebuild.cc` (deleted) | Rebuild a SQLite download from a capture directory, through the C++ decoders and writer (`rbd_*`) |
 
 ### tag-dwnld, tag-log-import and the C++ writer
 
@@ -129,10 +129,9 @@ It succeeds only when the base comes back as an ST-LINK reporting the
 identity string the image carries. On Linux it needs the `0483:df11` line of
 `host/linux/70-ultralight-tags.rules`.
 
-The four SWD recovery tools are built with cargo but not yet copied into
-`bin/internal` by CMake, where the C++ tools of the same names still are; run
-them from the cargo target directory until the C++ tools are deleted
-(`host/libraries/tagcore-rs/design/proposals/swd-recovery-in-rust.md`).
+The four SWD recovery tools replace C++ tools that have been deleted
+(`5d25e6d1`); CMake copies them into `bin/internal` with the other developer
+tools (`HOST_RUST_INTERNAL_TOOLS` in `cmake/HostRust.cmake`).
 `tag-rebuild` needs the `sqlitelog` feature, as `tag-dwnld` does.
 
 ## Not ported yet

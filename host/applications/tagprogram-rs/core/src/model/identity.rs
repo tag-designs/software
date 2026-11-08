@@ -24,7 +24,8 @@ const FLASH_BASE: u32 = 0x0800_0000;
 /// What an image says it is for (qtprogram's `ImageIdentity`).
 ///
 /// The subset of the record qtprogram uses, flattened to strings; a string
-/// the record lacks is empty. Serialized into the view state.
+/// the record lacks is empty. Derives `Serialize`, but nothing serializes
+/// it: the view state is built field by field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct ImageIdentity {
     /// The image carries a well-formed identity record.

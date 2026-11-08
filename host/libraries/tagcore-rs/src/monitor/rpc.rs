@@ -37,8 +37,10 @@ impl TagMonitor {
     /// [`keep_bus_matrix_in_sleep`](Self::keep_bus_matrix_in_sleep)), and
     /// the tag would then decode whatever the buffer held. So the request is
     /// read back and, on a mismatch, written again after a short wait, up to
-    /// three attempts in all. Costs one extra read per call. The U3 mailbox
-    /// is not checked: its handshake already confirms what the tag saw.
+    /// three attempts in all. Costs one extra read per call. The check keys
+    /// on the family, not the transport: an STM32L4 is checked on either
+    /// transport, and an STM32U3 is not, its mailbox handshake already
+    /// confirming what the tag saw.
     ///
     /// Returns false, with the reason logged, if a write fails or the request
     /// still does not read back intact.
@@ -89,7 +91,9 @@ impl TagMonitor {
     /// buffer is rejected rather than read. A firmware refusal is not a
     /// failure here: it is an [`Ack`] with a non-OK `err`, and the caller
     /// decides. Blocks for as long as the transport's call timeout (about
-    /// 120 s for a protobuf call on STM32L4, a few seconds on STM32U3).
+    /// 120 s for a protobuf call on the DebugMonitor transport, a few
+    /// seconds on the mailbox, which every STM32U3 image and STM32L4
+    /// mailbox images use).
     /// Updates [`TagMonitorStats`](super::TagMonitorStats).
     pub fn rpc(&mut self, req: &Req) -> Option<Ack> {
         let rpc_start = Instant::now();

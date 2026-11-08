@@ -22,6 +22,7 @@ is not wired into the CMake build.
 | `proto.rs` | `tag.pb.h`, `json_util` | prost types generated from `proto/` at build time, with reflection; JSON in and out as the C++ prints and parses it |
 | `textformat.rs` | `TextFormat`, `DebugString()` | Protobuf text format laid out as the C++ prints it |
 | `configshape.rs` — `ConfigShape` | `configshape.*` | Which Config fields each tag type supports, from the embedded `default-config.json` files, and the `--merge` overlay |
+| `recovery/` | `recovery/` (deleted but for `CaptureSource`) | SWD capture and recovery without booting the firmware: capture, SRAM loader calls, external flash, rescue erase; see [the design](design/swd-recovery.md) |
 
 `TagMonitor` and `LinkAdapt` are each one type whose methods are spread over
 a folder, one file per concern, so each question has one place to look:
@@ -96,7 +97,9 @@ Logging uses the [`log`](https://docs.rs/log) facade; install any logger
 
 ## Building and testing
 
-Needs a Rust toolchain, `protoc` on `PATH` (or `PROTOC` set) and libusb-1.0.
+Needs only a Rust toolchain: `protoc` comes from the `protoc-bin-vendored`
+crate unless `PROTOC` names another, and libusb is built from source and
+linked statically (`rusb`'s `vendored` feature).
 
 ```sh
 cargo build

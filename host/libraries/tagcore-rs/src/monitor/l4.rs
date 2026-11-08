@@ -108,9 +108,17 @@ impl TagMonitor {
     /// MON_REQ and VC_CORERESET), which runs the firmware's DebugMon
     /// handler.
     pub(super) fn call_l4(&mut self, operation: u8, operand: i32) -> Option<u32> {
+        // Result-read limit: a poll count (one DCRDR read and a 1 ms sleep
+        // each), so the `_MS` name is a nominal lower bound, as in the C++.
         const MONITOR_RESULT_TIMEOUT_MS: u32 = 500;
+        // Wait after sending MONITORSTOP, in milliseconds (a real sleep).
         const MONITORSTOP_POST_MS: u64 = 5;
+        // Limit for any call but PROTOBUF: a poll count (one DEMCR read
+        // and a 1 ms sleep each), not milliseconds.
         const MONITOR_FAST_CALL_TIMEOUT_MS: u32 = 2500;
+        // Limit for a PROTOBUF call: a poll count, not milliseconds; each
+        // poll is a USB round trip plus a 1 ms sleep, so 65000 polls take
+        // about 120 s in practice. The name follows the C++.
         const MONITOR_PROTOBUF_CALL_TIMEOUT_MS: u32 = 65000;
         let call_timeout_ms = if operation == op::PROTOBUF {
             MONITOR_PROTOBUF_CALL_TIMEOUT_MS

@@ -295,7 +295,8 @@ pub fn program(
     }
 }
 
-/// Hardware-free checks of the memory-map parser and the ELF flattening.
+/// Hardware-free checks of the memory-map parser (the ELF flattening has no
+/// test here).
 #[cfg(test)]
 mod tests {
     use super::*;

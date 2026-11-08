@@ -82,7 +82,8 @@ The rules every entry point keeps:
   (`guarded()` in the shims) and turns it into a failure; a C++ exception
   crossing into Rust would abort the process.
 - **A version check first.** Each header has an ABI version
-  (`TLW_ABI_VERSION`, `TCS_ABI_VERSION`, `SVZ_ABI_VERSION`), raised whenever a
+  (`TLW_ABI_VERSION`, `TCS_ABI_VERSION`, `SVZ_ABI_VERSION`,
+  `RBD_ABI_VERSION`), raised whenever a
   signature, meaning, struct layout or JSON schema changes. The Rust wrapper
   refuses a library built from a different version, so a stale library fails
   with a message rather than misbehaving.
@@ -111,7 +112,7 @@ records consumed (0 at the end, negative on error), `tlw_end_log()`,
 Cargo allows only one crate in a build to declare `links = "tagcore_c"`, so
 `libraries/tagcore-c-sys` is that crate, and the three wrappers depend on
 it. It holds one module of hand-written `extern "C"` declarations per header
-(`tlw.rs`, `tcs.rs`, `svz.rs`; with a few dozen functions, `bindgen` would
+(`tlw.rs`, `tcs.rs`, `svz.rs`, `rbd.rs`; with a few dozen functions, `bindgen` would
 cost more than it saves) and the build script that links the library:
 
 - `TAGCORE_C_LIB_DIR` names the directory holding it, `<build>/<Config>/lib`

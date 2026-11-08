@@ -1,7 +1,7 @@
 //! Sets the run-time search path for `libtagcore_c` on the crate's binaries.
 //!
-//! With the `sqlitelog` feature, `tag-dwnld` and `tag-log-import` write
-//! through `taglogwriter`, which links `libtagcore_c` through
+//! With the `sqlitelog` feature, `tag-dwnld`, `tag-log-import` and
+//! `tag-rebuild` write through `taglogwriter`, which links `libtagcore_c` through
 //! `tagcore-c-sys`. When that link is shared (the Linux and Windows default,
 //! or `TAGCORE_C_LINK=dylib`), the binaries need to find the library at run
 //! time. Only this package's build script can give its own binaries an

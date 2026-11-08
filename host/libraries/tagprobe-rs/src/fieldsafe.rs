@@ -581,7 +581,7 @@ impl ArmDebugInterface for FieldSafeArm {
     /// The base stays in SWD mode; the probe is only ever dropped afterwards,
     /// which detaches it.
     fn close(self: Box<Self>) -> Probe {
-        // from_attached_probe() is crate-private; the spike never reuses a
+        // from_attached_probe() is crate-private; nothing here reuses a
         // closed probe, so an unattached Probe is enough.
         Probe::from_specific_probe(self.probe)
     }

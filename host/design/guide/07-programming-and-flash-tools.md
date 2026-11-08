@@ -70,7 +70,7 @@ crashed the process until this was found.
 0x454 STM32U375) and the flash size to a probe-rs target name:
 `STM32L432KC` or `STM32L432KB` (the UIUCTag's 128 KB part; choosing the KC
 for it would make probe-rs's flash algorithm address flash that does not
-exist) or `STM32U375RG`. The flash size comes from the tag's own `TagInfo`
+exist), or `STM32U375RG` or `STM32U375RE` (the 512 KB part). The flash size comes from the tag's own `TagInfo`
 when its firmware answers, otherwise from the image's `__flash0_size__`
 symbol, and `tag-flash` reads it from the part's register in a session of
 its own.
@@ -78,7 +78,8 @@ its own.
 `program()` runs one probe-rs session under reset:
 
 1. Erase as the `Erase` plan says: `ImagePages` (only the sectors the image
-   covers, what the CMake `-download` targets always did), `Range` (Tag
+   covers; the CMake `-download` targets now run `tag-flash program`, whose
+   default `--erase plan` follows Tag Programmer's flash plan instead), `Range` (Tag
    Programmer passes everything below the calibration page, so a CompassTag's
    stored calibration survives a reflash), or `All` (chip erase).
 2. Download the ELF with verification, in the same session, so no reset

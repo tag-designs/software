@@ -14,7 +14,7 @@ the root `README.md` has the Windows preset and prerequisites.
 
 | For | Install | Check |
 | --- | --- | --- |
-| The Rust crates | Rust 1.85 or newer from [rustup](https://rustup.rs); on Linux, `libudev-dev` for the vendored libusb and `libwebkit2gtk-4.1-dev` for the applications | `cargo --version` |
+| The Rust crates | Rust 1.88 or newer from [rustup](https://rustup.rs); on Linux, `libudev-dev` for the vendored libusb and `libwebkit2gtk-4.1-dev` for the applications | `cargo --version` |
 | The C++ libraries, `libtagcore_c`, the C++ tools | CMake 3.20+, a C++20 compiler, protobuf, SQLite 3, libusb-1.0 (with `pkg-config` off Windows), Git; vcpkg on Windows and macOS | `cmake --version` |
 | The Qt applications | Qt 6.10.3 (`CMAKE_PREFIX_PATH` or `Qt6_DIR`) | the configure warns on another version |
 | The user manual, the portal | Python 3 with `host/docs/requirements.txt`; Doxygen for the C++ reference | |
@@ -39,7 +39,7 @@ cargo clippy --all-targets -p tagcore                    # lints, the documentat
 Crates that link the C++ library (`tagcore-c-sys` and everything above it:
 `taglogwriter`, `calibsession`, `sensorviz-session`, `tagcalibrate-core`,
 `sensorviz-core`, `tagview`, `tagcalibrate`, Tag Monitor with `sqlitelog`,
-`tag-dwnld`) need it built first:
+`tag-dwnld`, `tag-log-import`, `tag-rebuild`) need it built first:
 
 ```sh
 cmake -S . -B build-host -DBUILD_EMBEDDED=OFF -DBUILD_TAGCORE_C=ON   # or BUILD_RUST_APPS=ON, which implies it
@@ -58,7 +58,7 @@ the portal's `rust_docs` target does exactly that.
 
 | Name | Where | Effect |
 | --- | --- | --- |
-| feature `sqlitelog` | `tag-tools` (for `tag-dwnld` and `tag-log-import`), `tagmonitor-core`, `tagmonitor` | Brings in `taglogwriter` and so the C++ writer; off by default so the other binaries build with cargo alone. CMake always turns it on for Tag Monitor |
+| feature `sqlitelog` | `tag-tools` (for `tag-dwnld`, `tag-log-import` and `tag-rebuild`), `tagmonitor-core`, `tagmonitor` | Brings in `taglogwriter` and so the C++ writer; off by default so the other binaries build with cargo alone. CMake always turns it on for Tag Monitor |
 | feature `instrumentation` | `tagcore` (default on) | Counts and times USB transfers, ST-LINK commands and RPCs |
 | `TAGCORE_C_LIB_DIR` | `tagcore-c-sys` build script | The directory holding `libtagcore_c` |
 | `TAGCORE_C_LINK` | `tagcore-c-sys` build script | `static` (macOS default) or `dylib` (Linux and Windows default) |
@@ -89,8 +89,12 @@ The top-level options that matter to the host:
 Focused targets: `tagcore`, `tagcore_c_static`, `tagcore_c`, `tagprogram`,
 `tagmonitor`, `tagcalibrate`, `tagview`, `rust_tools`, `flash_tools`, `docs`, `developer_docs`, `rust_docs`, `api_docs`, `package`.
 A Rust target always runs cargo (cargo decides what is stale) with
-`--locked`, in the host workspace, through `host_rust_app()` in
-`cmake/HostRust.cmake`, and copies the executable to `<build>/<Config>/bin`.
+`--locked`, in the host workspace, and copies the executables to
+`<build>/<Config>/bin`: the applications through `host_rust_app()` and
+`rust_tools` through `host_rust_tools()`, both in `cmake/HostRust.cmake`,
+and `flash_tools` through `rust_flash_tools()` in
+`cmake/RustFlashTools.cmake` (in a tree with the host tools it only depends
+on `rust_tools`).
 That directory holds the programs a package installs; the developer and bench
 tools (`tag-capture`, `tag-rebuild`, `tag-peek`, `tag-attach-cycle` and the
 rest of `HOST_RUST_INTERNAL_TOOLS` in `cmake/HostRust.cmake`) build into
