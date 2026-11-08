@@ -42,6 +42,13 @@ fn err(msg: impl Into<String>) -> PyErr {
     RecoveryError::new_err(msg.into())
 }
 
+/// The error for a session another Python thread is using: the GIL is
+/// released during long operations, so a second thread can reach a session
+/// that is busy, and a plain `borrow_mut` would panic there.
+fn busy(_: pyo3::pycell::PyBorrowMutError) -> PyErr {
+    err("the session is in use by another thread")
+}
+
 /// Parses an exit name: `"reset"` (a hardware reset, so the tag boots as
 /// after a plain connection) or `"halted"` (the core stays halted).
 fn parse_exit(exit: &str) -> PyResult<SwdExit> {
@@ -324,7 +331,7 @@ impl PySession {
         let image = load_loader(loader, loader_dirs)?;
         let py = slf.py();
         let xf = {
-            let mut me = slf.borrow_mut();
+            let mut me = slf.try_borrow_mut().map_err(busy)?;
             let s = &mut me.inner;
             py.detach(|| ExternalFlash::open(s, &image))
                 .map_err(|e| err(format!("loader failed: {e}")))?
@@ -397,7 +404,7 @@ impl PyExternalFlash {
             .xf
             .as_mut()
             .ok_or_else(|| err("the loader session is closed"))?;
-        let mut sess = self.session.bind(py).borrow_mut();
+        let mut sess = self.session.bind(py).try_borrow_mut().map_err(busy)?;
         let s = &mut sess.inner;
         py.detach(|| f(xf, s)).map_err(err)
     }
@@ -500,10 +507,14 @@ impl PyExternalFlash {
 
     /// Sends `Serve()` EXIT. Closing twice does nothing.
     fn close(&mut self, py: Python<'_>) -> PyResult<()> {
+        if self.xf.is_none() {
+            return Ok(());
+        }
+        // Borrow before taking the loader, so a busy session leaves it open.
+        let mut sess = self.session.bind(py).try_borrow_mut().map_err(busy)?;
         let Some(mut xf) = self.xf.take() else {
             return Ok(());
         };
-        let mut sess = self.session.bind(py).borrow_mut();
         let s = &mut sess.inner;
         py.detach(|| xf.close(s))
             .map_err(|e| err(format!("Serve() did not exit cleanly: {e}")))
