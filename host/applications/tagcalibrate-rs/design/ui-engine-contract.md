@@ -30,7 +30,7 @@ Where this port differs from qtcalibrate, it says so below.
 | Thread | Owns | Does |
 | --- | --- | --- |
 | tag (`engine/tagthread.rs`) | the `tagcore::Tag` | attaches; while streaming, reads the calibration log every 100 ms (qtcalibrate's sample timer); otherwise reads the status every second, which keeps the tag awake; writes and reads constants |
-| engine (`engine/calibrator.rs`) | the calibration session, the sample capture, the display settings, the prompt, the timers | applies commands, the tag thread's reports and the timers; publishes the view state (`engine/view.rs`) |
+| engine (`engine/calibrator.rs`, on [`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md)'s loop) | the calibration session, the sample capture, the display settings, the prompt queue, the timers | applies commands, the tag thread's reports and the timers; publishes the view state (`engine/view.rs`) |
 
 The engine thread never touches the tag. While collecting from a tag it
 recomputes the quality figures every 200 ms (qtcalibrate's quality timer).
@@ -61,9 +61,11 @@ As Tag Monitor's: `invoke("command", {cmd, args})`, `invoke("query",
 {name, args})`, and events `state` and `log`. In a plain browser
 `ui/mock-engine.js` stands in, with scenarios (`?scenario=`).
 
-Nothing happens until the page sends `ready`. `ready` starts a replay when
-one is configured, or attaches (unless `TAGCALIBRATE_NO_ATTACH` is set), as
-qtcalibrate does when its window opens.
+Nothing happens until the page sends `ready`. The first `ready` starts a
+replay when one is configured, or attaches (unless `TAGCALIBRATE_NO_ATTACH`
+is set), as qtcalibrate does when its window opens. Every `ready` makes the
+engine send the whole view state again, so a reloaded page is redrawn at
+once; a later `ready` neither attaches again nor restarts the replay.
 
 ## View state (event `state`)
 
@@ -119,8 +121,11 @@ it is the page's.
 
 ## Prompts
 
-As in Tag Monitor: the engine shows one prompt at a time with a fresh `id`,
-and the page answers with `answer {id, button, index?, path?}`.
+As in Tag Monitor: prompts wait in a queue, each with a fresh `id`, and
+`state.prompt` is the front one; the page answers it with `answer {id,
+button, index?, path?}`, and the next one, if any, takes its place. A prompt
+raised while another is up waits its turn rather than replacing it. An
+answer whose `id` is not the shown prompt's is ignored.
 
 | `kind` | Fields | Buttons |
 | --- | --- | --- |
@@ -132,7 +137,7 @@ and the page answers with `answer {id, button, index?, path?}`.
 
 | `cmd` | `args` | Does |
 | --- | --- | --- |
-| `ready` | -- | the page is listening: start the replay, or attach |
+| `ready` | -- | the page is listening: the first time, start the replay or attach; every time, resend the whole view state |
 | `attach`, `detach` | -- | find the bases (choosing when there are several) and attach; or detach, ending any capture and stream |
 | `set_stream` | `{on}` | the Stream box: on sets the tag's clock and enters calibration; off acts as Stop first, then stops the tag |
 | `start`, `stop`, `clear` | -- | collect samples into the session and the capture; stop; discard the samples, the fit and the capture |

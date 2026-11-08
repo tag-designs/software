@@ -2,7 +2,7 @@
 //! its widgets.
 //!
 //! [`Calibrator`] owns the calibration session, the sample capture, the
-//! display settings, the prompt on screen and the timers. Each UI command,
+//! display settings, the prompts and the timers. Each UI command,
 //! tag report and timer changes it; `view.rs` turns it into the view state.
 //! Every behaviour names the qtcalibrate method it follows.
 
@@ -16,9 +16,10 @@ use serde_json::{Value, json};
 use tagcore::UsbDev;
 use tagcore::proto::{CalibrationConstants, TagInfo, calibration_constants};
 
+use super::EngineConfig;
 use super::capture::{self, Capture, CaptureSample, Replay};
 use super::tagthread::{Report, Sample, TagCmd};
-use super::{EngineConfig, query_error, set_log_level};
+use tagapp_engine::{EngineState, Prompts, Ready, query_error, set_log_level};
 
 /// How often the quality figures are recomputed while collecting from a tag:
 /// qtcalibrate's 200 ms quality timer, one update every two samples.
@@ -50,15 +51,6 @@ pub(crate) enum PromptKind {
     ChooseBase(Vec<(UsbDev, Option<String>)>),
     /// Where to save the sample capture.
     SaveCapture,
-}
-
-/// The prompt on screen, by id.
-#[derive(Debug)]
-pub(crate) struct Prompt {
-    /// Increases with each prompt; the page answers by it.
-    pub id: u64,
-    /// What it asks.
-    pub kind: PromptKind,
 }
 
 /// The live compass, as the last sample with an accelerometer gave it.
@@ -112,10 +104,10 @@ pub(crate) struct Calibrator {
     pub declination: f64,
     /// Whether the tag is shown battery forward.
     pub battery_forward: bool,
-    /// The prompt on screen.
-    pub prompt: Option<Prompt>,
-    /// The id the next prompt gets.
-    next_prompt: u64,
+    /// The prompts waiting for the page; the front one is on screen.
+    pub prompts: Prompts<PromptKind>,
+    /// The `ready` guard: the first `ready` starts, every one resends.
+    ready: Ready,
     /// Set when Quit is confirmed.
     exit: bool,
     /// While Quit waits for the tag thread to detach: when to exit anyway.
@@ -148,8 +140,8 @@ impl Calibrator {
             newest: None,
             declination: 0.0,
             battery_forward: true,
-            prompt: None,
-            next_prompt: 1,
+            prompts: Prompts::default(),
+            ready: Ready::default(),
             exit: false,
             quit_due: None,
         })
@@ -160,13 +152,9 @@ impl Calibrator {
         let _ = self.tag_tx.send(cmd);
     }
 
-    /// Shows a prompt, replacing any other.
+    /// Queues a prompt; it shows once those before it are answered.
     fn ask(&mut self, kind: PromptKind) {
-        self.prompt = Some(Prompt {
-            id: self.next_prompt,
-            kind,
-        });
-        self.next_prompt += 1;
+        self.prompts.ask(kind);
     }
 
     /// Shows an alert.
@@ -251,9 +239,13 @@ impl Calibrator {
         }
     }
 
-    /// The page is up: start the replay, or attach as qtcalibrate does on
-    /// opening.
+    /// The page is up: the whole view state is sent again, and the first
+    /// time, start the replay or attach as qtcalibrate does on opening. A
+    /// reloaded page does not attach again.
     fn ready(&mut self) {
+        if !self.ready.ready() {
+            return;
+        }
         if let Some(path) = self.config.replay.clone() {
             self.start_replay(&path);
         } else if self.config.auto_attach {
@@ -428,27 +420,24 @@ impl Calibrator {
         info!("Read timestamp {}", c.timestamp);
     }
 
-    /// Answers the prompt with the page's id.
+    /// The page's answer to the prompt on screen: `{id, button, index?,
+    /// path?}`. An answer to any other id is stale and ignored.
     fn answer(&mut self, args: &Value) {
-        let Some(prompt) = self.prompt.take_if(|p| Some(p.id) == args["id"].as_u64()) else {
+        let Some(answer) = self.prompts.answer(args) else {
             return;
         };
-        let ok = args["button"] == "ok";
-        match prompt.kind {
+        let ok = answer.ok();
+        match answer.kind {
             PromptKind::Alert { .. } => {}
             PromptKind::ChooseBase(bases) => {
-                match args["index"]
-                    .as_u64()
-                    .and_then(|i| bases.get(i as usize))
-                    .filter(|_| ok)
-                {
+                match answer.index.and_then(|i| bases.get(i)).filter(|_| ok) {
                     Some((base, _)) => self.send(TagCmd::Attach(base.clone())),
                     None => self.attaching = false,
                 }
             }
             PromptKind::SaveCapture => {
-                if let (true, Some(path)) = (ok, args["path"].as_str()) {
-                    self.save_capture(path);
+                if let (true, Some(path)) = (ok, answer.path) {
+                    self.save_capture(&path);
                 }
             }
         }
@@ -744,5 +733,51 @@ impl Calibrator {
             "user_guide_url" => json!(self.config.user_guide_url),
             other => query_error(&format!("unknown query {other}")),
         }
+    }
+}
+
+/// The engine loop's view of the calibrator (`tagapp-engine`): each method
+/// is the calibrator's own, and tag reports are its messages.
+impl EngineState for Calibrator {
+    type Msg = Report;
+
+    /// [`Calibrator::command`].
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Calibrator::command(self, cmd, args);
+    }
+
+    /// [`Calibrator::query`].
+    fn query(&mut self, name: &str, args: &Value) -> Value {
+        Calibrator::query(self, name, args)
+    }
+
+    /// [`Calibrator::view_state`].
+    fn view_state(&mut self) -> Value {
+        Calibrator::view_state(self)
+    }
+
+    /// [`Calibrator::report`]: a report from the tag thread.
+    fn message(&mut self, report: Report) {
+        self.report(report);
+    }
+
+    /// [`Calibrator::next_deadline`].
+    fn next_deadline(&self) -> Option<Instant> {
+        Calibrator::next_deadline(self)
+    }
+
+    /// [`Calibrator::fire_timers`].
+    fn fire_timers(&mut self, now: Instant) {
+        Calibrator::fire_timers(self, now);
+    }
+
+    /// True once after each `ready`.
+    fn take_republish(&mut self) -> bool {
+        self.ready.take_republish()
+    }
+
+    /// [`Calibrator::take_exit`].
+    fn take_exit(&mut self) -> bool {
+        Calibrator::take_exit(self)
     }
 }

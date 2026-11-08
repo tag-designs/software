@@ -16,7 +16,7 @@ toolkit-free engine, a thin Tauri shell, and a page on the shared
 
 | Path | What |
 | --- | --- |
-| `core/src/engine.rs` | The engine: one thread owning the open log's `Session` and the per-tag `Preferences`; commands in, the whole view state out after every change, and the `envelope`, `hover`, `range` and `about` queries. Its doc comment lists every command and query |
+| `core/src/engine.rs` | The engine: one thread owning the open log's `Session` and the per-tag `Preferences`; commands in, the whole view state out after every change (and after every `ready`, so a reloaded page is redrawn), and the `envelope`, `hover`, `range` and `about` queries. Its doc comment lists every command and query. The handle, loop and logger are the shared [`tagapp-engine`](../../libraries/tagapp-engine-rs/README.md)'s |
 | `core/tests/engine.rs` | The engine on the committed fixtures: descriptions, File Info and the status line, view commands, preference files, failures as messages, saving the PDF |
 | `app/` | The Tauri shell (`main.rs`, which describes Tag View to the shared [`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md)), its build script (one call to [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md), which stages `ui/` and the kit and writes the shared capabilities), configuration and icons |
 | `ui/index.html`, `app.js`, `app.css` | The window: the Qt app's menus and plot context menu, Plot and File Info tabs, the dialogs, the status line |

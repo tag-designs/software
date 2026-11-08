@@ -65,7 +65,14 @@ fn main() {
         let engine = engine::spawn(config, move |event| match event {
             Event::State(state) => events.state(state),
             Event::Log { level, text } => events.log(level, &text),
+            // The toolkit's event type has it; Tag View's engine never asks
+            // to exit, since its window closes without asking.
+            Event::Exit => events.exit(),
         });
-        Ok(Engine::new(engine, engine::Engine::command, engine::Engine::query))
+        Ok(Engine::new(
+            engine,
+            engine::Engine::command,
+            engine::Engine::query,
+        ))
     });
 }

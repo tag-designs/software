@@ -3,7 +3,10 @@
 //! [`spawn`] starts the engine and returns an [`Engine`] handle. The UI talks
 //! to it only through [`Engine::command`] and [`Engine::query`], and hears
 //! from it only through the [`Event`] sink: the whole view state after every
-//! change, and log lines.
+//! change, and log lines. The handle, the event type, the engine loop and the
+//! logger are the shared engine toolkit's (`tagapp-engine`); this module
+//! supplies the state. Tag View has no prompts to answer and never asks to
+//! exit: its window closes without asking the engine.
 //!
 //! # Threading
 //!
@@ -16,7 +19,7 @@
 //!
 //! | Command | Arguments | Does |
 //! | --- | --- | --- |
-//! | `ready` | | Opens [`EngineConfig::initial_log`] and loads [`EngineConfig::initial_preferences`], if set |
+//! | `ready` | | The first time, opens [`EngineConfig::initial_log`] and loads [`EngineConfig::initial_preferences`], if set; every time (a reloaded page), resends the whole view state |
 //! | `open` | `path` | File > Load: remembers the open log's display choices, then opens the log and applies its tag's preferences |
 //! | `set_visible_streams` | `ids` | View > Visible Streams |
 //! | `set_stream_range` | `id`, `lower`, `upper` | View > Ranges: the range and the ranges linked to it |
@@ -42,14 +45,12 @@
 //! | `about` | | `{title, version, userGuide, previewDialog}` |
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use sensorviz_session::{OrientationSample, Preferences, Session, Side};
 use serde_json::{Map, Value, json};
+use tagapp_engine::{EngineState, Ready};
 
 /// Where the engine starts, and what it tells Help.
 #[derive(Debug, Clone, Default)]
@@ -67,116 +68,14 @@ pub struct EngineConfig {
     pub preview_dialog: Option<String>,
 }
 
-/// What the engine tells the UI, through the sink given to [`spawn`].
-///
-/// The sink is called on the engine thread for [`Event::State`], and on
-/// whatever thread logged for [`Event::Log`], so it must be cheap and must not
-/// call [`Engine::query`] and wait.
-#[derive(Debug, Clone)]
-pub enum Event {
-    /// The whole view state, sent only when it differs from the last one.
-    State(Value),
-    /// One log line at or above INFO.
-    Log {
-        /// The level's name: `TRACE`, `DEBUG`, `INFO`, `WARN` or `ERROR`.
-        level: &'static str,
-        /// The message, without the level.
-        text: String,
-    },
-}
+pub use tagapp_engine::{Engine, Event, LOGGER, UiLogger};
 
-/// The UI's side of the engine: a cheap, cloneable sender of messages.
-///
-/// Commands are fire-and-forget; their effect is seen in a later
-/// [`Event::State`].
-#[derive(Clone)]
-pub struct Engine {
-    /// The engine thread's message channel.
-    tx: Sender<Msg>,
-}
-
-/// Messages to the engine thread, applied in the order they arrive.
-#[derive(Debug)]
-enum Msg {
-    /// A UI command: its name and its JSON arguments.
-    Command(String, Value),
-    /// A UI query: its name, its JSON arguments and the channel for its answer.
-    Query(String, Value, Sender<Value>),
-}
-
-impl Engine {
-    /// Sends a command. Returns at once; an unknown command is logged as a
-    /// warning, and a command sent after the engine has gone is dropped.
-    pub fn command(&self, cmd: &str, args: Value) {
-        let _ = self.tx.send(Msg::Command(cmd.to_owned(), args));
-    }
-
-    /// Asks a query and waits for its answer: [`Value::Null`] if the engine
-    /// thread has gone or does not answer within 30 s (a large log can take
-    /// that long to open ahead of it), and `{ "error": ... }` for an unknown
-    /// query.
-    pub fn query(&self, name: &str, args: Value) -> Value {
-        let (reply_tx, reply_rx) = mpsc::channel();
-        if self
-            .tx
-            .send(Msg::Query(name.to_owned(), args, reply_tx))
-            .is_err()
-        {
-            return Value::Null;
-        }
-        reply_rx
-            .recv_timeout(Duration::from_secs(30))
-            .unwrap_or(Value::Null)
-    }
-}
-
-/// The event sink, shared between the engine thread and the logger.
-type Sink = Arc<dyn Fn(Event) + Send + Sync>;
-
-/// The sink [`UiLogger`] forwards to, set by [`spawn`].
-static SINK: OnceLock<Mutex<Option<Sink>>> = OnceLock::new();
-/// The level passed on, as `log::Level as u8` (1 ERROR .. 5 TRACE).
-static LOG_LEVEL: AtomicU8 = AtomicU8::new(3);
-
-/// A `log` logger that forwards records to the sink as [`Event::Log`].
-/// Install it once, before [`spawn`].
-pub struct UiLogger;
-
-/// The logger to install with `log::set_logger`.
-pub static LOGGER: UiLogger = UiLogger;
-
-impl log::Log for UiLogger {
-    /// Passes records at or above INFO.
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.level() as u8 <= LOG_LEVEL.load(Ordering::Relaxed)
-    }
-
-    /// Sends one enabled record to the sink.
-    fn log(&self, record: &log::Record<'_>) {
-        if !self.enabled(record.metadata()) {
-            return;
-        }
-        let level = match record.level() {
-            log::Level::Error => "ERROR",
-            log::Level::Warn => "WARN",
-            log::Level::Info => "INFO",
-            log::Level::Debug => "DEBUG",
-            log::Level::Trace => "TRACE",
-        };
-        if let Some(sink) = SINK.get().and_then(|s| s.lock().ok()?.clone()) {
-            sink(Event::Log {
-                level,
-                text: record.args().to_string(),
-            });
-        }
-    }
-
-    /// Does nothing: nothing is buffered.
-    fn flush(&self) {}
-}
+/// How long [`Engine::query`] waits: a large log can take this long to open
+/// ahead of a query.
+const QUERY_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Starts the engine thread and returns its handle. Nothing is opened until
-/// the page sends `ready`.
+/// the page sends `ready`. Log lines at `INFO` and above reach the sink.
 ///
 /// # Panics
 ///
@@ -184,34 +83,10 @@ impl log::Log for UiLogger {
 /// make a session (built from another version of its header, or out of
 /// memory).
 pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static) -> Engine {
-    let sink: Sink = Arc::new(sink);
-    *SINK.get_or_init(|| Mutex::new(None)).lock().unwrap() = Some(sink.clone());
-    log::set_max_level(log::LevelFilter::Info);
+    let (engine, _poster, inbox) = tagapp_engine::channel::<()>(QUERY_TIMEOUT, sink);
     let viewer = Viewer::new(config).expect("sensorviz session");
-    let (tx, rx) = mpsc::channel();
-    std::thread::Builder::new()
-        .name("sensorviz-engine".into())
-        .spawn(move || run(viewer, sink, rx))
-        .expect("engine thread");
-    Engine { tx }
-}
-
-/// The engine loop: apply messages and publish the view state when it changed.
-fn run(mut viewer: Viewer, sink: Sink, rx: Receiver<Msg>) {
-    let mut last_state = Value::Null;
-    while let Ok(msg) = rx.recv() {
-        match msg {
-            Msg::Command(cmd, args) => viewer.command(&cmd, &args),
-            Msg::Query(name, args, reply) => {
-                let _ = reply.send(viewer.query(&name, &args));
-            }
-        }
-        let state = viewer.view_state();
-        if state != last_state {
-            sink(Event::State(state.clone()));
-            last_state = state;
-        }
-    }
+    tagapp_engine::spawn("sensorviz-engine", viewer, inbox);
+    engine
 }
 
 /// A message for the page to show once: a failed load, a refused file.
@@ -239,6 +114,9 @@ pub struct Viewer {
     last_dir: PathBuf,
     /// The open log's compass samples, for the compass panel; empty without one.
     compass: Vec<OrientationSample>,
+    /// The `ready` guard: the first `ready` opens the startup files, every
+    /// one resends the view state.
+    ready: Ready,
 }
 
 /// A string argument, or "".
@@ -279,6 +157,7 @@ impl Viewer {
             preferences: Preferences::new()?,
             message: None,
             compass: Vec::new(),
+            ready: Ready::default(),
             config,
         })
     }
@@ -312,6 +191,11 @@ impl Viewer {
     pub fn command(&mut self, cmd: &str, args: &Value) {
         match cmd {
             "ready" => {
+                // A reloaded page sends ready again: it gets the state, but
+                // the startup files are not reopened over what is open now.
+                if !self.ready.ready() {
+                    return;
+                }
                 if let Some(path) = self.config.initial_log.clone() {
                     self.open(&path);
                 }
@@ -710,4 +594,30 @@ fn file_info(catalog: &Value) -> String {
         }
     }
     lines.join("\n")
+}
+
+/// The engine loop's view of the viewer (`tagapp-engine`): each method is the
+/// viewer's own. It has no messages of its own, no timers and no exit.
+impl EngineState for Viewer {
+    type Msg = ();
+
+    /// [`Viewer::command`].
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Viewer::command(self, cmd, args);
+    }
+
+    /// [`Viewer::query`].
+    fn query(&mut self, name: &str, args: &Value) -> Value {
+        Viewer::query(self, name, args)
+    }
+
+    /// [`Viewer::view_state`].
+    fn view_state(&mut self) -> Value {
+        Viewer::view_state(self)
+    }
+
+    /// True once after each `ready`.
+    fn take_republish(&mut self) -> bool {
+        self.ready.take_republish()
+    }
 }

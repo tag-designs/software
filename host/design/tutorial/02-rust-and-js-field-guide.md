@@ -352,18 +352,16 @@ Explained in: [4, The L4 attach](04-monitor-and-rpc.md#the-l4-attach);
 ### `Option::take` and `Option::take_if`
 
 `opt.take()` moves the value out and leaves `None`: the `Option` form of
-`mem::take`. `take_if(pred)` does so only when the predicate holds.
+`mem::take`. `take_if(pred)` does so only when the predicate holds; no code
+in the tree uses it now (Tag Calibrator's prompt answer did, before it moved
+onto the shared engine toolkit's prompt queue).
 
 ```rust
 self.exit |= self.quitting.take().is_some();
 ```
-```rust
-let Some(prompt) = self.prompt.take_if(|p| Some(p.id) == args["id"].as_u64()) else {
-```
 
-[tagmonitor monitor.rs:759](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L759),
-[calibrator.rs:433](../../applications/tagcalibrate-rs/core/src/engine/calibrator.rs#L433).
-Explained in: [14, Prompts, ready and quit](14-the-three-applications.md#prompts-ready-and-quit).
+[tagmonitor monitor.rs:759](../../applications/tagmonitor-rs/core/src/engine/monitor.rs#L759).
+Explained in: [11, The engine loop](11-engine-and-model.md#the-engine-loop) (the quit deadline).
 
 ### `as_ref`, `as_deref`, `as_deref_mut`
 
@@ -1307,7 +1305,10 @@ impl log::Log for UiLogger {
 
 [tagmonitor engine/mod.rs:183](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L183);
 `impl serde_json::ser::Formatter for CppFloats` overriding two methods at
-[proto.rs:79](../../libraries/tagcore-rs/src/proto.rs#L79).
+[proto.rs:79](../../libraries/tagcore-rs/src/proto.rs#L79); and the shared
+engine toolkit's trait, `impl EngineState for Viewer` in Tag View, which
+writes four of its eight methods and takes the defaults for the rest, at
+[sensorviz-rs engine.rs:601](../../applications/sensorviz-rs/core/src/engine.rs#L601).
 
 One limit, the *orphan rule*: `impl Trait for Type` may be written only in
 the crate that defines the trait or the crate that defines the type. A

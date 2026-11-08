@@ -91,7 +91,7 @@ inheritance. The ones this tree relies on:
 | `Sync` | The value may be shared by reference between threads | Deliberately **not** implemented by the C-bridge wrappers (`Send + !Sync`), which is the C side's one-thread rule as a type |
 | `Drop` | A destructor | `Tag` detaches, `LogWriter` closes its handle, `Session` frees it: RAII as in C++ |
 | `Default`, `Clone`, `Debug`, `PartialEq` | What `#[derive(...)]` writes for you: a default value, a copy, a printable form, equality | On nearly every data type; `PartialEq` is what lets the engine compare view states |
-| `log::Log` | A logger; the global `log` facade calls it | `UiLogger` in each application |
+| `log::Log` | A logger; the global `log` facade calls it | `UiLogger`: in `tagapp-engine` for Tag Calibrator and Tag View, still a copy of its own in Tag Programmer and Tag Monitor |
 | `serde::Serialize` | Conversion to JSON through `serde_json` | View-state pieces, settings |
 | probe-rs's `DebugProbe` | What a probe must provide | `FieldSafeProbe` in `tagprobe` |
 

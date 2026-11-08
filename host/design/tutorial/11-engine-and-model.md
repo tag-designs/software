@@ -290,6 +290,16 @@ hands each to the shared shell's `Events` (`state`, `log`, `exit`).
 
 ## The Engine handle and spawn
 
+> **Note:** The handle, `spawn`'s plumbing, the loop below and the logger
+> are read here in Tag Monitor's own copy. Tag Calibrator and Tag View no
+> longer have copies: they get the same code from the shared engine toolkit,
+> `tagapp-engine` ([its README](../../libraries/tagapp-engine-rs/README.md);
+> read in [chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
+> Tag Monitor moves onto it in phase 3 of
+> [the proposal](../proposals/unified-app-shell.md), when it is next
+> changed; until then what follows is exact for Tag Monitor and the shape of
+> the toolkit for the other two.
+
 The shell holds an `Engine`, wrapped in the shared shell's own `Engine`
 (`Engine::new` binds the handle to the two methods below; chapter 10,
 [The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
@@ -447,6 +457,10 @@ This is the whole of the engine's control flow. Each pass:
    comparison, and nothing reaches the page.
 6. **Passes on a confirmed quit**.
 
+The toolkit's loop (`run_loop` in `tagapp-engine`) is this one line for
+line, with the `Monitor` replaced by any type implementing its
+`EngineState` trait and `Msg::Tag(report)` by the application's own message.
+
 Steps 4 and 5 replace the whole of qtmonitor's `render()` /
 `updateActions()` / `updateTitle()` bookkeeping: nothing ever decides *what*
 changed; the engine describes everything, and equality finds out whether to
@@ -536,7 +550,10 @@ its listeners are registered, [monitor.rs:199-213](../../applications/tagmonitor
 > like `std::exchange(started, true)` in C++.
 
 Nothing happens until `ready`: the engine does not attach, and so does not
-reset a tag, before the page can show what happens.
+reset a tag, before the page can show what happens. The toolkit packages
+this pair of flags as `Ready` (`ready()` true the first time only,
+`take_republish()` true once after each), which Tag Calibrator and Tag View
+use.
 
 ## The tag thread
 
@@ -1541,6 +1558,10 @@ formatted.
 `log::set_logger` succeeds only once per process, and `spawn` replaces the
 `SINK`. A process with two engines -- two tests in one test binary -- would
 have one logger feeding whichever engine started last.
+
+Tag Calibrator and Tag View use the toolkit's copy of this logger,
+`tagapp_engine::UiLogger`, whose sink is set by `tagapp_engine::channel`
+rather than by the application's `spawn`; the code is the same.
 
 ## Download: two functions, one chosen at compile time
 

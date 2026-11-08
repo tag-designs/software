@@ -45,6 +45,7 @@ host/
 │   ├── sensorviz-session-rs/   Rust: sensorViz's core, through svz_*                            (chapter 8)
 │   ├── tagapp-shell-rs/        Rust: the Tauri shell every application shares                  (chapter 10)
 │   ├── tagapp-shell-build-rs/  Rust: its build-script half: page staging, capabilities, rpath   (chapter 10)
+│   ├── tagapp-engine-rs/       Rust: the engine toolkit: handle, loop, prompts, ready, logger  (chapter 10)
 │   ├── sensoranalysis/         C++: compass calibration and orientation; its core/ is Qt-free
 │   ├── sensordata/             C++: decimating SQLite log reader (sqlite3 only)
 │   ├── sensorui/               C++/Qt: shared widgets for the Qt apps
@@ -97,6 +98,7 @@ familiar; the host README carries the same table.
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | | | wraps `applications/sensorviz/core` |
 | `libraries/tagapp-shell-rs` | `tagapp-shell` | | | nothing; the Tauri shell the four applications share |
 | `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | | | nothing; the applications' build-script helper |
+| `libraries/tagapp-engine-rs` | `tagapp-engine` | | | nothing; the engine toolkit the applications' core crates share (Tag Calibrator and Tag View so far) |
 | `commandline-rs` | `tag-tools` | `tag-info`, `tag-start`, ..., `tag-flash`, `base-flash` | | `commandline/*.cc` |
 | `applications/tagprogram-rs` | `tagprogram-core`, `tagprogram` | `tagprogram` | Tag Programmer | `applications/qtprogram` (`qtprogram`) |
 | `applications/tagmonitor-rs` | `tagmonitor-core`, `tagmonitor` | `tagmonitor` | Tag Monitor | `applications/qtmon` (`qtmonitor`) |

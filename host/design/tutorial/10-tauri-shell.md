@@ -287,8 +287,9 @@ and `exec()`:
 > after the setup closure returns, so it must own its captures; borrowing
 > them from the setup closure's stack would not compile. The `match` must
 > handle every variant of `Event`; adding a variant in the core makes this
-> file fail to compile until it is handled. Tag View's core has no `Exit`
-> variant, so its `match` has two arms.
+> file fail to compile until it is handled. Tag View's `Event` is the
+> shared engine toolkit's, which has an `Exit` variant, so its `match` has
+> the third arm too, although Tag View's engine never sends `Exit`.
 
 > **Rust:** `engine::Engine::command` with no parentheses is not a call: it
 > names the method as a function value, here of type
@@ -388,7 +389,9 @@ impl Engine {
 
 Each application's core has its own handle type --
 `tagmonitor_core::engine::Engine`, `tagprogram_core::engine::Engine` and so
-on -- and each has the same two methods, `command(&self, &str, Value)` and
+on -- and each has the same two methods (Tag Calibrator's and Tag View's are
+now one type, `tagapp_engine::Engine`, from the shared engine toolkit, which
+their cores re-export; [chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)), `command(&self, &str, Value)` and
 `query(&self, &str, Value) -> Value`. The shell must call them without
 knowing which type it has. In C++ you would write an abstract base class
 with two pure virtual functions and derive each handle from it; in Rust the
@@ -960,7 +963,9 @@ engine:
   settings file, so its `EngineConfig` has no `settings_path`; it has
   `replay` and `replay_period` instead.
 - **Tag View** attaches no tag and has no unsaved work, so it neither keeps
-  awake nor closes through the engine, and its core has no `Exit` event. Its
+  awake nor closes through the engine, and its engine never sends the
+  `Exit` event (its `main` handles it all the same, because the toolkit's
+  `Event` has it). Its
   `main` reads the log and preference file named on the command line before
   calling `run`, and its closure is a `move` closure that moves them into
   the configuration -- the case `FnOnce` exists for.

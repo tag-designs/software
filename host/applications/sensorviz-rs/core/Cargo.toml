@@ -6,6 +6,7 @@ description = "sensorViz engine: no UI toolkit (the Qt sensorviz's MainWindow lo
 publish = false
 
 [dependencies]
+tagapp-engine = { path = "../../../libraries/tagapp-engine-rs" }
 sensorviz-session = { path = "../../../libraries/sensorviz-session-rs" }
 # The compass display angles (the core's displayAngles(), decision 0040).
 calibsession = { path = "../../../libraries/calibsession-rs" }

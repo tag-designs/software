@@ -7,7 +7,9 @@ summary: "Give the Tauri applications one shell and one engine toolkit instead o
 # One shell and one engine toolkit for the Tauri applications
 
 **Proposed 2026-11-08; decisions taken the same day (see the end). Phase 1
-(the shell) done 2026-11-08; phases 2 to 4 open ([Phases](#phases)).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
+(the shell) done 2026-11-08; phase 2 (the toolkit, Tag Calibrator and Tag
+View) done 2026-11-08; phases 3 and 4 open
+([Phases](#phases)).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
 View each carry their own copy of the same two layers: a Tauri shell
 (`app/src/main.rs`, `app/build.rs`, `capabilities/`) and the plumbing of an
 engine (the `Engine` handle, the engine loop, the logger, prompts, `ready`).
@@ -210,6 +212,35 @@ attach and detach. The shell is described in the crates' READMEs
 [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md)),
 guide chapter 10 and tutorial chapter 10, and recorded in decision
 [0046](../../../docs/decisions/0046-host-shared-app-shell.md).
+
+**Phase 2 done, 2026-11-08.**
+`host/libraries/tagapp-engine-rs` (package `tagapp-engine`, no Tauri
+dependency) is in the workspace and documented in its
+[README](../../libraries/tagapp-engine-rs/README.md). It differs from the
+sketch above in names only: the trait is `EngineState` (`command`, `query`,
+`view_state`, and optional `message`, `next_deadline`, `fire_timers`,
+`take_republish`, `take_exit`), the loop is started by `spawn`, and
+`channel` makes the `Engine`, a `Poster` for the application's own messages
+and the engine thread's inbox. `Engine` is not generic over the
+application's message type. Tag Calibrator's `engine/mod.rs` is now its
+`spawn` and re-exports, its tag thread posts `Report`s through the `Poster`,
+and `Calibrator` implements `EngineState`; Tag View's `Viewer` implements it
+with `Msg = ()` and a 30 s query timeout. Three behaviour changes follow:
+
+- **Tag Calibrator queues prompts.** A prompt raised while another is up
+  waits its turn instead of replacing it.
+- **Tag Calibrator's `ready` starts once and resends every time.** A page
+  reload no longer re-attaches or restarts the replay; it gets the whole
+  state again.
+- **Tag View's `ready` starts once and resends every time.** A page reload
+  no longer reopens the startup log and preferences over what is open; it
+  gets the whole state again.
+
+Bench-checked by the user: Tag Calibrator attach, stream, collect, write
+and read back the calibration, and quit while streaming; Tag View open a
+log, the compass, print, open a second log and quit. The page-reload step
+was dropped: the release builds have no way to reload a page by hand, and
+`Ready` is covered by the toolkit's unit tests.
 
 The mock engines (`ui/mock-engine.js`) and the screenshots for the manual
 change with each page; `screenshots.sh` before and after shows any visual

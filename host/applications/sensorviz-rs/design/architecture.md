@@ -48,6 +48,15 @@ There is no tag thread: Tag View never talks to a tag. It opens files.
 - **Every setter returns what changed.** `Session`'s setters return
   `Changes` bits, so the engine republishes only when something did and the
   page redraws only what must.
+- **The plumbing is the shared toolkit's.** The `Engine` handle, the
+  `Event` type, the engine loop and the `UiLogger` come from
+  [`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md); the
+  `Viewer` implements its `EngineState` with no messages of its own, no
+  timers, no prompts and no exit. Queries wait up to 30 s, since a large log
+  can take that long to open ahead of one.
+- **`ready` starts once and resends every time.** The first `ready` opens the
+  startup log and preference file, if given; a reloaded page's `ready` gets
+  the whole view state again and does not reopen them over what is open.
 
 ## Source map
 
@@ -57,7 +66,7 @@ to `host/applications/sensorviz`.
 | File | Holds | Follows |
 | --- | --- | --- |
 | `core/src/lib.rs` | The crate's documentation and the `engine` module | |
-| `core/src/engine.rs` | `Engine`, `EngineConfig`, `Event`, `spawn`, the loop; `Viewer`: every command and query (its doc comment tables them), the status line, File Info, preference handling, the PDF save | `mainwindow.cpp` (menus and slots), `dataloading.cpp`, `sensor_preferences.cpp` |
+| `core/src/engine.rs` | `EngineConfig` and `spawn` (on the toolkit's `channel` and `spawn`; `Engine`, `Event`, `LOGGER` and `UiLogger` re-exported from `tagapp-engine`); `Viewer`: every command and query (its doc comment tables them), the status line, File Info, preference handling, the PDF save, its `ready` guard and `EngineState` impl | `mainwindow.cpp` (menus and slots), `dataloading.cpp`, `sensor_preferences.cpp` |
 | `core/tests/engine.rs` | The engine on the committed fixtures: descriptions, File Info and the status line, view commands, preference files, failures as messages, saving the PDF | |
 | `app/src/main.rs` | The Tauri shell: describes Tag View to the shared [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md) with no App Nap opt-out and a plain close (no tag, nothing unsaved), and starts the engine with `tagview [log.db3] [--load-preferences prefs.json]` and `SENSORVIZ_PREVIEW_DIALOG` for screenshots | the other Tauri apps, without the tag |
 | `app/build.rs` | One call to [`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md) with `Rpath::Always`: stages `ui/` and the kit, writes the shared capabilities, the rpath to a shared `tagcore_c` | |

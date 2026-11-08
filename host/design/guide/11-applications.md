@@ -180,7 +180,9 @@ accelerometer's zero-g offset, show quality figures and a sphere of the
 calibrated samples, write the constants to the tag, and show the live
 compass that results. A port of qtcalibrate's window.
 
-**Shape.** Two threads as in Tag Monitor. The tag thread attaches, puts the
+**Shape.** Two threads as in Tag Monitor, run by the shared engine toolkit
+(`tagapp-engine`, chapter 10): the toolkit's loop drives the `Calibrator`,
+and the tag thread posts its reports through the toolkit's `Poster`. The tag thread attaches, puts the
 tag in CALIBRATE, reads the calibration log every 100 ms (qtcalibrate's
 sample timer), otherwise polls status every second to keep the tag awake,
 and writes and reads constants; stopping the stream waits for IDLE, because
@@ -201,8 +203,8 @@ with qtcalibrate's for the same capture.
 
 | Path | Holds |
 | --- | --- |
-| `core/src/engine/mod.rs` | The loop, as Tag Monitor's |
-| `core/src/engine/calibrator.rs` | `Calibrator`: every command, report and timer; the session; prompts |
+| `core/src/engine/mod.rs` | `spawn`: the toolkit's channel, the tag thread given its `Poster`, the `Calibrator`, and the toolkit's loop; re-exports `Engine`, `Event`, `LOGGER` and `UiLogger` from `tagapp-engine` |
+| `core/src/engine/calibrator.rs` | `Calibrator`: every command, report and timer; the session; the prompt queue (`Prompts<PromptKind>`) and the `ready` guard; its `EngineState` impl |
 | `core/src/engine/tagthread.rs` | Attach, the stream, the status poll, constants, the stop-and-wait |
 | `core/src/engine/view.rs` | The view state: constants, quality, sphere points, orientation readouts |
 | `core/src/engine/capture.rs` | The capture file, read and written in qtcalibrate's schema |
@@ -233,7 +235,9 @@ compass logs, per-tag preference files, File Info, and PDF export. A port of
 the Qt SensorViz's window; it took a new name so that the two could ship
 side by side before v4.0.
 
-**Shape.** One engine thread and no tag. The engine owns the open log as a
+**Shape.** One engine thread and no tag, run by the shared engine toolkit
+(`tagapp-engine`, chapter 10) with no messages of its own, no timers and no
+prompts. The engine owns the open log as a
 `sensorviz_session::Session`: sensorViz's C++ core (chapter 5), so the
 streams, transforms, plot specification, hover text and preference files are
 the Qt application's. The page draws the core's **plot spec** with
@@ -252,7 +256,7 @@ the README.
 
 | Path | Holds |
 | --- | --- |
-| `core/src/engine.rs` | `Engine`, the loop, `Viewer`: every command and query (tabled in its doc comment), status line, File Info, preferences, the PDF save |
+| `core/src/engine.rs` | `spawn` (the toolkit's channel and loop, a 30 s query timeout) and `Viewer`: every command and query (tabled in its doc comment), status line, File Info, preferences, the PDF save, its `EngineState` impl; re-exports `Engine`, `Event`, `LOGGER` and `UiLogger` from `tagapp-engine` |
 | `core/tests/engine.rs` | The engine on the committed fixtures |
 | `ui/plot.js` | The uPlot chart from the spec: stacked axes, time axes, markers, gaps, cursors, zoom, the metadata box and legend, the PDF export |
 | `ui/app.js` | The Qt menus and dialogs, the tabs, the compass panel |

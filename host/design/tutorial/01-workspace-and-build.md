@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: "How the host's Rust code is organised and built: cargo's vocabulary in CMake terms, the one workspace and its sixteen crates, the crate layout, the build scripts, how CMake runs cargo, the documentation lints, the tests, and the commands to use day to day."
+summary: "How the host's Rust code is organised and built: cargo's vocabulary in CMake terms, the one workspace and its nineteen crates, the crate layout, the build scripts, how CMake runs cargo, the documentation lints, the tests, and the commands to use day to day."
 ---
 
 # 1. The workspace and the build
@@ -73,9 +73,11 @@ members = [
   "libraries/taglogwriter-rs",
   "libraries/calibsession-rs",
   "libraries/sensorviz-session-rs",
-  # The Tauri shell every application shares, and its build-script half.
+  # The Tauri shell every application shares, its build-script half, and the
+  # engine toolkit the applications' core crates share.
   "libraries/tagapp-shell-rs",
   "libraries/tagapp-shell-build-rs",
+  "libraries/tagapp-engine-rs",
   # The command-line tools (crate tag-tools: one binary per tool).
   "commandline-rs",
   # The Python binding of tagcore's recovery module (built with maturin).
@@ -124,7 +126,7 @@ notice:
 
 ### The members
 
-Eighteen packages. The directory keeps a `-rs` suffix where a C++ directory of
+Nineteen packages. The directory keeps a `-rs` suffix where a C++ directory of
 the same name exists; the package name does not.
 
 | Directory under `host/` | Package | Produces | What it is | Read in |
@@ -137,6 +139,7 @@ the same name exists; the package name does not.
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | lib | Safe wrapper over sensorViz's C++ core | not covered (sensorViz is out of scope) |
 | `libraries/tagapp-shell-rs` | `tagapp-shell` | lib | The Tauri shell every application shares: the two commands, the two events, closing through the engine, App Nap, the user guide | chapter [10](10-tauri-shell.md) |
 | `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | lib | The applications' build-script helper: page staging, the shared capabilities, the rpath, `tauri-build` | chapters [1](#the-tauri-applications-staging-the-page), [10](10-tauri-shell.md) |
+| `libraries/tagapp-engine-rs` | `tagapp-engine` | lib | The engine toolkit the applications' `core` crates share (no Tauri): the `Engine` handle, the engine loop over an `EngineState`, the `Poster`, the prompt queue, the `ready` guard, the logger. Tag Calibrator and Tag View use it so far | chapters [11](11-engine-and-model.md#the-engine-handle-and-spawn), [14](14-the-three-applications.md#the-engine-toolkit-underneath) |
 | `commandline-rs` | `tag-tools` | lib + 21 binaries | The command-line tools | chapter [9](09-command-line-tools.md) |
 | `python/tagcore-py` | `tagcore-py` | `cdylib` named `_native` | The Python module `tagcore`, over `tagcore::recovery`, built with maturin | chapter [8](08-bridges-to-cpp-and-python.md) |
 | `applications/tagprogram-rs/core` | `tagprogram-core` | lib | Tag Programmer's engine and model (also the ELF reader and flash plan `tag-flash` uses) | chapters [11](11-engine-and-model.md), [14](14-the-three-applications.md) |
@@ -149,7 +152,8 @@ the same name exists; the package name does not.
 | `applications/sensorviz-rs/app` | `tagview` | bin | Tag View (sensorViz in Rust) | not covered |
 
 The dependency arrows all point down: the applications' `core` crates use
-`tagcore` (and `tagprobe`, `taglogwriter`, `calibsession` as needed); each
+`tagcore` (and `tagprobe`, `taglogwriter`, `calibsession` as needed, and
+`tagapp-engine` in Tag Calibrator and Tag View); each
 `app` crate uses only its own `core`, `tagapp-shell` (and
 `tagapp-shell-build` in its build script) plus Tauri; `tag-tools` uses `tagcore`,
 `tagprobe`, `tagprogram-core` and, with a feature, `taglogwriter`. The one

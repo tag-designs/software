@@ -7,14 +7,14 @@
 //! [`KEEP_AWAKE`], which keeps the tag from sleeping. Everything it learns
 //! goes back to the engine thread as a [`Report`]; it decides nothing.
 
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
+
 use std::time::{Duration, Instant};
+use tagapp_engine::Poster;
 
 use log::{info, warn};
 use tagcore::proto::{CalibrationConstants, TagInfo, TagState, ack};
 use tagcore::{LinkAdapt, Tag, UsbDev};
-
-use super::Msg;
 
 /// How often the calibration log is read while streaming: qtcalibrate's
 /// 100 ms sample timer.
@@ -89,7 +89,7 @@ struct TagThread {
     /// The tag; touched only on this thread.
     tag: Tag,
     /// Where reports go: the engine thread's channel.
-    out: Sender<Msg>,
+    out: Poster<Report>,
     /// Whether the tag is streaming calibration samples.
     streaming: bool,
     /// When the next read (samples or keep-awake status) is due.
@@ -99,7 +99,7 @@ struct TagThread {
 impl TagThread {
     /// Sends a report to the engine thread; a gone engine is ignored.
     fn report(&self, report: Report) {
-        let _ = self.out.send(Msg::Tag(report));
+        self.out.post(report);
     }
 
     /// The tag's message for the last refused call, or `fallback`.
@@ -260,7 +260,7 @@ impl TagThread {
 
 /// The tag thread's loop: commands in order, and a read whenever one is due.
 /// Ends, detaching first, when the engine drops its sender.
-pub(crate) fn run(rx: Receiver<TagCmd>, out: Sender<Msg>) {
+pub(crate) fn run(rx: Receiver<TagCmd>, out: Poster<Report>) {
     let mut t = TagThread {
         tag: Tag::new(),
         out,

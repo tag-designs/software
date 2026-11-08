@@ -239,9 +239,9 @@ impl Calibrator {
         })
     }
 
-    /// The prompt on screen, or null.
+    /// The prompt on screen (the front of the queue), or null.
     fn prompt_view(&self) -> Value {
-        let Some(p) = &self.prompt else {
+        let Some(p) = self.prompts.front() else {
             return Value::Null;
         };
         let mut v = match &p.kind {

@@ -4071,6 +4071,7 @@ dependencies = [
  "log",
  "sensorviz-session",
  "serde_json",
+ "tagapp-engine",
 ]
 
 [[package]]
@@ -4535,6 +4536,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tagapp-engine"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde_json",
+]
+
+[[package]]
 name = "tagapp-shell"
 version = "0.1.0"
 dependencies = [
@@ -4574,6 +4583,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "tagapp-engine",
  "tagcore",
 ]
 

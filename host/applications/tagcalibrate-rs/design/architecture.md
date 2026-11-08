@@ -43,7 +43,14 @@ into C++ rather than ported is [decision 0039](../../../../docs/decisions/0039-h
 
 - **One owner per thing.** The tag thread is the only code that touches the
   `tagcore::Tag`. The engine thread owns the `Session`, the sample capture,
-  the display settings, the prompt and the timers.
+  the display settings, the prompt queue and the timers.
+- **The plumbing is the shared toolkit's.** The `Engine` handle, the
+  `Event` type, the engine loop, the prompt queue, the `ready` guard and the
+  `UiLogger` come from
+  [`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md). The
+  `Calibrator` implements its `EngineState`, with the tag thread's `Report`s
+  as its messages, which the tag thread posts through the toolkit's
+  `Poster`.
 - **The arithmetic is not here.** `Session::add_sample`, `update_quality`,
   `orientation` and the rest run the C++ code qtcalibrate runs; the engine
   only decides when to call them and formats their results as qtcalibrate's
@@ -60,8 +67,8 @@ Paths are relative to `host/applications/tagcalibrate-rs`; qtcalibrate's to
 | File | Holds | Follows |
 | --- | --- | --- |
 | `core/src/lib.rs` | The crate's documentation and the `engine` module | |
-| `core/src/engine/mod.rs` | `Engine` (the shell's handle), `EngineConfig`, `Msg`, `Event`, `spawn`, the engine loop, `UiLogger` | `mainwindow.cpp` (wiring), as Tag Monitor's `engine/mod.rs` |
-| `core/src/engine/calibrator.rs` | `Calibrator`: the engine thread's state; every command, report and timer; the prompts and what follows them | `MainWindow`'s slots and `CompassData`'s use of the session |
+| `core/src/engine/mod.rs` | `EngineConfig` and `spawn`: the toolkit's channel, the tag thread (given the `Poster`), the `Calibrator`, then the toolkit's engine loop with a 10 s query timeout; `Engine`, `Event`, `LOGGER` and `UiLogger` re-exported from `tagapp-engine` | `mainwindow.cpp` (wiring) |
+| `core/src/engine/calibrator.rs` | `Calibrator`: the engine thread's state; every command, report and timer; the prompts (a `Prompts<PromptKind>` queue) and what follows them; the `ready` guard; its `EngineState` impl | `MainWindow`'s slots and `CompassData`'s use of the session |
 | `core/src/engine/tagthread.rs` | `TagCmd` in, `Report` out; attach, the stream (calibrate state, 100 ms calibration-log reads), the 1 s status poll that keeps the tag awake, Tag Write and Read, the wait for IDLE after Stop | `MainWindow`'s sample timer and tag calls |
 | `core/src/engine/view.rs` | The view state JSON: link bar, actions, calibration constants, quality figures, sphere points, orientation readouts, settings, prompt; the `menus` query | `calibration_update`, `updateMagQualityDisplay`, `MyCompass.qml`'s formatting |
 | `core/src/engine/capture.rs` | qtcalibrate's capture file: reading one for replay, writing one as `saveSampleCapture` does | `saveSampleCapture`, `--replay-capture` |

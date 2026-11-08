@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: Chapter 10 of the Host Software Guide - the pattern all four Rust applications share (a toolkit-free engine that owns every rule and all state, a tag thread, a whole view state published after every change, dialogs as prompts, a Tauri shell with two commands and two events, a web page on the shared UI kit that draws and never decides), why it was chosen, how a command and a redraw travel, and how such an application is read, run without hardware and tested.
+summary: Chapter 10 of the Host Software Guide - the pattern all four Rust applications share (a toolkit-free engine that owns every rule and all state, a tag thread, a whole view state published after every change, dialogs as prompts, the shared engine toolkit, a Tauri shell with two commands and two events, a web page on the shared UI kit that draws and never decides), why it was chosen, how a command and a redraw travel, and how such an application is read, run without hardware and tested.
 ---
 
 # 10. The application pattern
@@ -99,13 +99,20 @@ sequenceDiagram
   sent. An idle application emits nothing; a change emits one complete,
   consistent state, never a partial update.
 - **Queries block the caller, not the engine.** `Engine::query` sends a
-  reply channel and waits up to 10 s; the shell runs it in
+  reply channel and waits up to 10 s (30 s in Tag View, where a large log
+  can take that long to open ahead of a query); the shell runs it in
   `spawn_blocking` so Tauri's main (event-loop) thread never waits on the
   engine.
 - **The log is a logger.** A `log::Log` implementation (`UiLogger`) forwards
   every record at or above the pane's level to the page as a `log` event, so
   `tagcore`'s and `tagprobe`'s messages reach the pane without any plumbing
   of their own.
+
+The handle, the loop and the logger are the same code in every
+application, and Tag Calibrator and Tag View get them from the shared
+engine toolkit described [below](#the-engine-toolkit). Tag Monitor and Tag
+Programmer still carry their own copies, which move onto the toolkit when
+each is next changed.
 
 ## Prompts: dialogs as data
 
@@ -120,6 +127,39 @@ prompt that needs several answers carries its continuation: Tag Monitor's
 Quit was interrupted, so Save-then-continue works the same for all four.
 Even the file pickers are prompts, so the engine decides where they start
 and what happens with the result.
+
+Tag Monitor and Tag Calibrator keep their prompts in a **queue**: a prompt
+raised while another is up waits its turn rather than replacing it, the
+page shows the front one, and one command, `answer {id, button, index?,
+path?}`, answers it; an answer to any id but the front one's is ignored.
+Tag Programmer, the first port, still holds one prompt, which a new one
+replaces, and answers each kind with its own command carrying the id.
+
+## The engine toolkit
+
+[`tagapp-engine`](../../libraries/tagapp-engine-rs/README.md)
+(`host/libraries/tagapp-engine-rs`) is the engine half of the pattern as a
+library: the parts every engine had repeated, with no Tauri dependency, so a
+`core` crate that uses it still builds and tests without a window. Tag
+Calibrator and Tag View run on it; Tag Monitor and Tag Programmer move onto
+it in later phases of [the proposal](../proposals/unified-app-shell.md).
+
+| Item | What it is |
+| --- | --- |
+| `EngineState` | The trait an application's state implements: `command`, `query`, `view_state`, and optionally `message` (its own messages, type `Msg`), `next_deadline` and `fire_timers`, `take_republish` and `take_exit` |
+| `channel(timeout, sink)` | Makes the `Engine` handle, a `Poster` for the application's own messages, and the inbox; installs `sink` as the logger's destination and resets the level to `INFO` |
+| `spawn(name, state, inbox)` | Starts the engine thread: wait until the next deadline, apply the message, fire timers, rebuild the view state and emit it if it changed (or a `ready` asked for it), emit `Exit` if asked |
+| `Engine` | The handle the shell holds: `command`, and `query` with the application's timeout. Not generic: every application's handle is the same type |
+| `Poster<M>` | What a tag thread posts its reports through |
+| `Event` | `State`, `Log`, `Exit` |
+| `Ready` | The `ready` guard: the first `ready` starts the engine (attach, open the startup file), and every `ready` resends the whole view state, so a reloaded page is redrawn at once without attaching or opening anything again |
+| `Prompts<K>` | The prompt queue above, with fresh ids; `answer(args)` returns the parsed answer, or nothing for a stale id |
+| `UiLogger`, `LOGGER`, `set_log_level` | The `log` forwarding and its level |
+
+An application supplies only its state: Tag Calibrator's `Calibrator`
+(messages are the tag thread's `Report`s, with timers, prompts and a
+confirmed quit), and Tag View's `Viewer` (no messages, no timers, no
+prompts, no exit).
 
 ## The Tauri shell
 
@@ -242,7 +282,8 @@ In this order, for any of the four:
    threads, the source map with the C++ file each Rust file follows, how a
    command travels, where to change what.
 4. `core/src/lib.rs` and `core/src/engine/mod.rs`: the crate's front page
-   and the loop.
+   and the loop (for Tag Calibrator and Tag View, `spawn` and the loop in
+   `tagapp-engine`).
 5. `core/src/engine/view.rs`: how the state becomes JSON; then the state
    type it reads from (`station.rs`, `monitor.rs`, `calibrator.rs`,
    `engine.rs`).

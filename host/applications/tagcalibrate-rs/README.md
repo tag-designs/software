@@ -21,7 +21,7 @@ runs, reached through [`calibsession-rs`](../../libraries/calibsession-rs/README
 
 | Path | What |
 | --- | --- |
-| `core/src/engine/` | The engine: `calibrator.rs` (qtcalibrate's `MainWindow` rules), `tagthread.rs` (attach, Stream, the 100 ms calibration-log poll, Tag Write and Read), `view.rs` (the view state and menus), `capture.rs` (qtcalibrate's capture file) |
+| `core/src/engine/` | The engine: `calibrator.rs` (qtcalibrate's `MainWindow` rules), `tagthread.rs` (attach, Stream, the 100 ms calibration-log poll, Tag Write and Read), `view.rs` (the view state and menus), `capture.rs` (qtcalibrate's capture file); `mod.rs` starts it on the shared engine toolkit, [`tagapp-engine`](../../libraries/tagapp-engine-rs/README.md), which supplies the handle, the loop, the prompt queue and the logger |
 | `core/tests/` | `replay_log.rs`: the engine's quality log for the CompassTag fixture against qtcalibrate's, line for line; `imutag_axes.rs`: the IMUTag fixture keeps the site's dip |
 | `app/` | The Tauri shell: `main.rs` describes the application to the shared [`tagapp-shell`](../../libraries/tagapp-shell-rs/README.md) and starts the engine; `build.rs` is one call to [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md) |
 

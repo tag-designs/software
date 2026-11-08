@@ -18,9 +18,11 @@ members = [
   "libraries/taglogwriter-rs",
   "libraries/calibsession-rs",
   "libraries/sensorviz-session-rs",
-  # The Tauri shell every application shares, and its build-script half.
+  # The Tauri shell every application shares, its build-script half, and the
+  # engine toolkit the applications' core crates share.
   "libraries/tagapp-shell-rs",
   "libraries/tagapp-shell-build-rs",
+  "libraries/tagapp-engine-rs",
   # The command-line tools (crate tag-tools: one binary per tool).
   "commandline-rs",
   # The Python binding of tagcore's recovery module (built with maturin).
