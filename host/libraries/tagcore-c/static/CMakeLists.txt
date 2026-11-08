@@ -24,6 +24,31 @@ if(NOT APPLE)
   return()
 endif()
 
+#[[
+  The pre-link can absorb only static archives. Against a shared libprotobuf
+  (Homebrew's) the configure and the C++ build succeed and every Rust
+  application and tool then fails at its final link, with undefined protobuf
+  and abseil symbols. Stop at configure time instead. A module-mode
+  FindProtobuf target has type UNKNOWN_LIBRARY, so its file is checked too.
+#]]
+if(TARGET protobuf::libprotobuf)
+  get_target_property(_tagcore_c_pb_type protobuf::libprotobuf TYPE)
+  get_target_property(_tagcore_c_pb_file protobuf::libprotobuf IMPORTED_LOCATION_RELEASE)
+  if(NOT _tagcore_c_pb_file)
+    get_target_property(_tagcore_c_pb_file protobuf::libprotobuf IMPORTED_LOCATION)
+  endif()
+  if(_tagcore_c_pb_type STREQUAL "SHARED_LIBRARY"
+     OR (_tagcore_c_pb_file AND _tagcore_c_pb_file MATCHES "\\.dylib$"))
+    message(FATAL_ERROR
+      "tagcore_c_static needs static protobuf and abseil libraries, but "
+      "protobuf was found as a shared library (${Protobuf_DIR}). On macOS "
+      "configure the host with vcpkg: `cmake --preset macos-vcpkg`, or pass "
+      "-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake "
+      "-DVCPKG_TARGET_TRIPLET=arm64-osx-static. See "
+      "docs/build/toolchain-inventory.md.")
+  endif()
+endif()
+
 set(CMAKE_CXX_CREATE_SHARED_MODULE
     "<CMAKE_CXX_COMPILER> <LANGUAGE_COMPILE_FLAGS> -r -nostdlib <LINK_FLAGS> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
 

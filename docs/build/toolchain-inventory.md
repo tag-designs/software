@@ -22,7 +22,7 @@ real reinstall list.
 
 | Outside `~` | What it is | How it comes back |
 | --- | --- | --- |
-| `/opt/homebrew` | The whole Homebrew prefix: `arm-none-eabi-gcc`, `protobuf`/`protoc-29.3.0`, `libusb` 1.0.30, `pkg-config`, `fmpp` 0.9.16, `graphviz`, `nanopb`, `mkdocs`, `python@3.13` | Reinstall Homebrew, then the formulae below. Nothing here is restorable by copying. |
+| `/opt/homebrew` | The whole Homebrew prefix: `arm-none-eabi-gcc`, `protobuf` 36.2 with `abseil` 20260817, `libusb` 1.0.30, `pkg-config`, `fmpp` 0.9.16, `graphviz`, `nanopb`, `mkdocs`, `python@3.13` | Reinstall Homebrew, then the formulae below. Nothing here is restorable by copying. |
 | `/Applications/Xcode.app` | Apple toolchain, SDK MacOSX14.4, clang 15.0.0, and the SQLite3 headers the host build links against | App Store or developer.apple.com. Install before configuring anything. |
 | `/Applications/CMake.app` | CMake 3.28.3 — the one that configured the current build trees | cmake.org disk image |
 | `/Applications/Doxygen.app` | Doxygen | doxygen.nl, or use the Homebrew formula instead |
@@ -60,7 +60,7 @@ the recorded path in `build-host/CMakeCache.txt`.
 | Formula | Version seen | Serves |
 | --- | --- | --- |
 | `arm-none-eabi-gcc` | 14.2.1 | All tag firmware; version is pinned. |
-| `protobuf` | protoc 29.3.0 (`/opt/homebrew/bin/protoc-29.3.0`) | Host protobuf; pulls `abseil`, `utf8_range`. |
+| `protobuf` | 36.2 with `abseil` 20260817.0 (was 29.3 until 2026-11-08) | A `protoc` and C++ library for a non-vcpkg configure; pulls `abseil`, `utf8_range`. The macOS host build does not link it: see Traps, *The macOS host build needs vcpkg*. |
 | `python@3.13` | 3.13.2 | What `find_package(Python3)` resolved to, and what builds the `config-gen` virtualenv. |
 | `libusb` | 1.0.30 | Host tools' USB transport. |
 | `pkg-config` | — | Locates `libusb-1.0`. |
@@ -254,6 +254,23 @@ hand-made shim. A full `nanopb-0.4.9.1-macosx-x86` distribution also sits in
 `~/Software`, unused by that cache entry. On the rebuilt machine, point
 `NANOPB_ROOT` at the real 0.4.9.1 distribution rather than recreating the shim,
 and check that `protoc` sits beside the generator.
+
+**The macOS host build needs vcpkg.** Configure the host with
+`cmake --preset macos-vcpkg` (or the vcpkg toolchain file and
+`-DVCPKG_TARGET_TRIPLET=arm64-osx-static`). The Rust applications and tools
+link `libtagcore_c.a`, a pre-linked object that must contain protobuf, abseil
+and SQLite, and the pre-link can absorb only static archives. A plain
+configure finds Homebrew's shared protobuf instead; it used to configure
+cleanly and then fail at every Rust link with undefined protobuf and abseil
+symbols, and now stops at configure time with a message saying so
+(`host/libraries/tagcore-c/static/CMakeLists.txt`). Homebrew upgrades can also
+break a plain configure on their own: on 2026-11-08 `abseil` 20260817 arrived
+while `protobuf` stayed at 29.3, whose CMake package names an abseil target the
+new abseil dropped (`absl::if_constexpr`), so `find_package(Protobuf)` failed;
+`brew upgrade protobuf` repaired it. Build trees that share one
+`VCPKG_INSTALLED_DIR` (`~/codedev/Build/tag-designs-host` reads the
+`software-vcpkg-release` tree's) also see that tree's install while it is being
+rebuilt: configure one only after the other's `vcpkg install` has finished.
 
 **Path casing.** The presets reference `$HOME/qt/6.10.3/macos`; the directory is
 `~/Qt`. This works only on a case-insensitive volume.
