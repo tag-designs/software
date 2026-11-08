@@ -234,7 +234,8 @@ to keep the decoders in step with the firmware, is in
 
 A Rust port with the same options, output and database is in
 [`../commandline-rs`](../commandline-rs/README.md#tag-dwnld-tag-log-import-and-the-c-writer);
-it replaces this one in the v4.0 release.
+it replaces this one in the v4.0 release. It adds `-d`: without it the writer
+logs only errors, where this tool left it logging at DEBUG.
 
 Writes a download in the JSONL format of `tagclient`'s
 [`tag_dwnld.py`](../python/tagclient/examples/tag_dwnld.py) as a SQLite log,

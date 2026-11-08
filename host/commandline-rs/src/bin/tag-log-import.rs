@@ -69,6 +69,10 @@ struct Cli {
     /// Extra info-table row KEY=VALUE (repeatable)
     #[arg(long, value_name = "KEY=VALUE")]
     info: Vec<String>,
+
+    /// Log the writer's progress at DEBUG; otherwise only errors
+    #[arg(short, long)]
+    debug: bool,
 }
 
 /// Parses one header member as message `M`, re-serialising it so the
@@ -194,10 +198,12 @@ fn import(
 }
 
 /// Parses the options, reads the header and imports, reporting as the C++
-/// tool does.
+/// tool does, except that the writer logs only errors unless `-d` is given
+/// (the C++ tool left its writer at DEBUG).
 fn main() -> ExitCode {
     tag_tools::restore_sigpipe();
     let cli = Cli::parse();
+    taglogwriter::set_debug(cli.debug);
     let fail = |error: String| {
         eprintln!("tag-log-import: {error}");
         ExitCode::FAILURE
