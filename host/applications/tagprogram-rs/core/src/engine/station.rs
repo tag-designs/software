@@ -179,6 +179,17 @@ pub(crate) struct Prompt {
     pub body: Value,
 }
 
+/// The commands that answer a prompt, each checked against the outstanding
+/// prompt's `id` before it runs.
+const PROMPT_ANSWERS: [&str; 6] = [
+    "answer_auto_attach",
+    "choose_base",
+    "record_use_default",
+    "record_open",
+    "record_create",
+    "prompt_cancel",
+];
+
 /// Station state, owned by the engine thread.
 ///
 /// qtprogram's `Station` plus the parts of its `MainWindow` that held state
@@ -557,15 +568,36 @@ impl Station {
 
     // ---- commands and queries ----------------------------------------
 
+    /// True when a prompt answer's `id` names the outstanding prompt, or the
+    /// answer carries no `id`.
+    ///
+    /// The page answers a prompt with the `id` it showed. If the engine has
+    /// raised another prompt meanwhile (an alert while the base list was
+    /// open), the late answer would otherwise clear the new prompt unseen and
+    /// act on the old one; Tag Monitor and Tag Calibrator drop such answers
+    /// the same way. An answer without an `id` is taken as answering the
+    /// current prompt, as before ids were checked.
+    fn answers_current(&self, args: &Value) -> bool {
+        match args.get("id").and_then(Value::as_u64) {
+            None => true,
+            Some(id) => self.prompt.as_ref().is_some_and(|p| p.id == id),
+        }
+    }
+
     /// Applies one UI command (the contract's command table).
     ///
     /// Runs on the engine thread. Missing or mistyped arguments read as empty
     /// strings, `false` or index 0; an unknown command is logged as a warning.
-    /// The answers to prompts (`answer_auto_attach`, `choose_base`,
-    /// `record_*`, `prompt_cancel`) clear the outstanding prompt first.
+    /// The answers to prompts ([`PROMPT_ANSWERS`]) clear the outstanding
+    /// prompt first; one whose `id` names a prompt that has since been
+    /// replaced or cleared is dropped (see [`Station::answers_current`]).
     /// `save_text` writes the file synchronously and raises an alert if it
     /// cannot.
     pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
+        if PROMPT_ANSWERS.contains(&cmd) && !self.answers_current(args) {
+            info!("Ignored {cmd}: it answers a prompt that has been replaced");
+            return;
+        }
         let s = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
         let b = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(false);
         match cmd {
@@ -1945,5 +1977,41 @@ impl Station {
         if let Err(e) = self.settings.remove(name) {
             warn!("{e}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A station whose settings and cache live in a fresh temporary
+    /// directory. Creating it opens a libusb context but sends nothing on USB.
+    fn station(name: &str) -> Station {
+        let dir = std::env::temp_dir().join(format!("tagprogram-{name}-{}", std::process::id()));
+        let cfg = EngineConfig {
+            cache_dir: dir.join("cache"),
+            settings_path: dir.join("settings.json"),
+            documents_dir: dir,
+            user_guide_url: None,
+        };
+        Station::new(cfg, std::sync::mpsc::channel().0)
+    }
+
+    /// An answer for a prompt that has been replaced is dropped; an answer
+    /// for the current prompt, or one without an id, clears it.
+    #[test]
+    fn stale_prompt_answers_are_dropped() {
+        let mut st = station("prompt-ids");
+        st.alert("First", "one");
+        let first = st.prompt.as_ref().map(|p| p.id);
+        st.alert("Second", "two");
+        st.command("prompt_cancel", &json!({ "id": first }));
+        assert!(st.prompt.is_some(), "a stale answer cleared the newer prompt");
+        let second = st.prompt.as_ref().map(|p| p.id);
+        st.command("prompt_cancel", &json!({ "id": second }));
+        assert!(st.prompt.is_none());
+        st.alert("Third", "three");
+        st.command("prompt_cancel", &json!({}));
+        assert!(st.prompt.is_none());
     }
 }

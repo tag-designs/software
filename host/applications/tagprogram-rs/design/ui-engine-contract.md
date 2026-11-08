@@ -59,8 +59,9 @@ it says so below.
 
 In the app, `window.__TAURI__` is present (`withGlobalTauri`):
 
-- `invoke("command", { cmd, args })` -- fire and forget; returns `null` or an
-  error string.
+- `invoke("command", { cmd, args })` -- fire and forget; the Rust command
+  returns nothing, so it resolves with `null`, and rejects only if the IPC
+  call itself fails.
 - `invoke("query", { name, args })` -- returns the answer as JSON.
 - Events from the engine: `listen("state", e => e.payload)`,
   `listen("log", ...)`.
@@ -151,7 +152,10 @@ ERROR. The UI appends `"<LEVEL> <text>"` lines to the log pane.
 
 When the engine needs an answer it sets `state.prompt` to one of these, with a
 fresh `id`. The UI shows the dialog once per `id` and answers with the named
-command. Until answered the prompt stays in the state.
+command, adding the prompt's `id` to its arguments; the engine drops an
+answer whose `id` is not the outstanding prompt's, so a dialog left open
+while another prompt replaced it cannot clear the new one. Until answered
+the prompt stays in the state.
 
 | `kind` | Fields | Dialog (qtprogram's) | Answer |
 | --- | --- | --- | --- |
@@ -178,7 +182,7 @@ command. Until answered the prompt stays in the state.
 | `set_auto_attach` | `{on}` | Station > Attach Automatically |
 | `list_bases` | -- | Station > Choose Base... (raises `chooseBase`, or an `alert`) |
 | `choose_record` | -- | Station > Choose Record File... (raises `recordFile`) |
-| `answer_auto_attach`, `record_use_default`, `record_open`, `record_create`, `choose_base`, `prompt_cancel` | see Prompts | |
+| `answer_auto_attach`, `record_use_default`, `record_open`, `record_create`, `choose_base`, `prompt_cancel` | see Prompts, each plus `id` | An answer whose `id` is not the outstanding prompt's is dropped; one without an `id` answers the outstanding prompt |
 | `set_log_level` | `{level}` | log pane combo |
 | `save_text` | `{path, text}` | Save Error Log (truncates; qtprogram's did not) |
 

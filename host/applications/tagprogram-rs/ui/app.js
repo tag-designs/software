@@ -207,24 +207,29 @@
   function showPrompt(p) {
     if (!p || p.id === shownPrompt) return;
     shownPrompt = p.id;
-    if (p.kind === "autoAttach") return promptAutoAttach();
+    if (p.kind === "autoAttach") return promptAutoAttach(p);
     if (p.kind === "recordFile") return promptRecordFile(p);
     if (p.kind === "chooseBase") return promptChooseBase(p);
     if (p.kind === "alert") {
-      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel"));
+      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel", { id: p.id }));
     }
-    send("prompt_cancel");
+    send("prompt_cancel", { id: p.id });
   }
 
-  /** The first-run question: attach automatically? Answers `answer_auto_attach`. */
-  async function promptAutoAttach() {
+  /**
+   * The first-run question: attach automatically? Answers
+   * `answer_auto_attach`. Every answer carries the prompt's `id`, so the
+   * engine can drop one for a prompt it has since replaced.
+   * @param {Object} p The prompt.
+   */
+  async function promptAutoAttach(p) {
     const on = await Kit.confirm("Attach Automatically?",
       "Tag Programmer can connect to each tag as soon as it finds the base, so its state and identity " +
       "are shown without pressing Attach.\n\nConnecting resets the tag, which ends a deployment that is " +
       "running. Attach automatically from now on? (Station > Attach Automatically changes this.)",
       null,
       [{ label: "No", value: false, default: true, enter: true, cancel: true }, { label: "Yes", value: true }]);
-    send("answer_auto_attach", { on });
+    send("answer_auto_attach", { on, id: p.id });
   }
 
   /**
@@ -246,15 +251,15 @@
         { label: "Create Elsewhere...", value: "create" },
         { label: p.exists ? "Use It" : "Create", value: "default", default: true, enter: true },
       ], 560);
-    if (choice === "default") return send("record_use_default");
+    if (choice === "default") return send("record_use_default", { id: p.id });
     if (choice === "open") {
       const path = await Kit.openFile({ title: "Record file", filters, defaultPath: p.defaultPath });
-      if (path) return send("record_open", { path });
+      if (path) return send("record_open", { path, id: p.id });
     } else if (choice === "create") {
       const path = await Kit.saveFile({ title: "New record file", filters, defaultPath: p.defaultPath });
-      if (path) return send("record_create", { path });
+      if (path) return send("record_create", { path, id: p.id });
     }
-    send("prompt_cancel");
+    send("prompt_cancel", { id: p.id });
   }
 
   /**
@@ -264,7 +269,7 @@
    */
   async function promptChooseBase(p) {
     const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
-    send(index === null ? "prompt_cancel" : "choose_base", index === null ? {} : { index });
+    send(index === null ? "prompt_cancel" : "choose_base", index === null ? { id: p.id } : { index, id: p.id });
   }
 
   // ---- Dialogs started by the user --------------------------------------
