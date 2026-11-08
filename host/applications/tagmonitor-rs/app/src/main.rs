@@ -11,6 +11,12 @@
 //! the user has saved or discarded them and the tag has been detached -- or
 //! after a few seconds without the detach, for a tag that no longer answers.
 //!
+//! Cmd-Q goes the same way. Tauri's default macOS menu quits through
+//! Cocoa's `terminate:`, which ends the process with no close request the
+//! shell could turn into `quit`, so the shell installs that menu with its own
+//! Quit item, which sends `quit` ([`app_menu`]). The Dock's Quit and a
+//! log-out still end the process directly.
+//!
 //! The settings (the recent configuration files) are `settings.json` under
 //! the platform app config directory. The shell is Tag Programmer's
 //! (`tagprogram-rs/app/src/main.rs`) with those two changes.
@@ -99,9 +105,48 @@ fn stay_awake() {
     }
 }
 
+/// The id of the Quit item [`app_menu`] puts in the application menu.
+#[cfg(target_os = "macos")]
+const QUIT_MENU_ID: &str = "quit";
+
+/// Tauri's default macOS menu with its Quit item replaced by one that sends
+/// the engine `quit`, so Cmd-Q asks about unsaved changes and detaches as
+/// closing the window does.
+///
+/// The default Quit is a predefined item that sends Cocoa's `terminate:`;
+/// tao answers that from `applicationWillTerminate` by ending the event
+/// loop, with no `CloseRequested` and no exit request that could be
+/// prevented. The rest of the menu (Edit's copy and paste, which the page's
+/// text fields need, Window, Hide) is Tauri's own.
+///
+/// # Errors
+///
+/// When Tauri cannot build or change the menu.
+#[cfg(target_os = "macos")]
+fn app_menu(app: &tauri::AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    use tauri::menu::{Menu, MenuItem, MenuItemKind};
+    let menu = Menu::default(app)?;
+    if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
+        let items = app_submenu.items()?;
+        if let Some(MenuItemKind::Predefined(_)) = items.last() {
+            app_submenu.remove_at(items.len() - 1)?;
+        }
+        let quit = format!("Quit {}", app.package_info().name);
+        app_submenu.append(&MenuItem::with_id(
+            app,
+            QUIT_MENU_ID,
+            quit,
+            true,
+            Some("CmdOrCtrl+Q"),
+        )?)?;
+    }
+    Ok(menu)
+}
+
 /// Starts Tauri with the dialog and opener plugins, builds the
 /// [`EngineConfig`], installs the engine's logger, spawns the engine (which
-/// attaches at once, as qtmonitor does) and registers the two commands.
+/// attaches at once, as qtmonitor does) and registers the two commands. On
+/// macOS it installs [`app_menu`] and sends its Quit item to the engine.
 ///
 /// # Panics
 ///
@@ -109,11 +154,18 @@ fn stay_awake() {
 /// or `setup` fails, e.g. when no config or home directory can be found.
 fn main() {
     stay_awake();
-    // Set once the engine allows the exit, so the close it causes is let
-    // through.
+    // Set once the engine allows the exit, so a close request that arrives
+    // after it is let through rather than turned into another `quit`.
     let exiting = Arc::new(AtomicBool::new(false));
     let exiting_close = exiting.clone();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "macos")]
+    let builder = builder.menu(app_menu).on_menu_event(|app, event| {
+        if event.id() == QUIT_MENU_ID {
+            app.state::<Engine>().command("quit", json!({}));
+        }
+    });
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
