@@ -118,7 +118,7 @@ qtmonitor's oracles.
 
 | File | Holds |
 | --- | --- |
-| `src/main.rs` | Describes Tag Monitor to `tagapp-shell` (App Nap opt-out on, closing through the engine on) and starts the engine with the settings path, home directory, user guide URL and `TAGMONITOR_NO_ATTACH`; the sink forwards `State`, `Log` and `Exit` to the shell. The shell holds the `command` and `query` Tauri commands, the `state` and `log` events, the close hook (a close or Cmd-Q becomes `quit`; the window closes on `Exit`), App Nap and the user guide search |
+| `src/main.rs` | Describes Tag Monitor to `tagapp-shell` (App Nap opt-out on, closing through the engine on) and builds the engine's configuration (settings path, home directory, user guide URL and `TAGMONITOR_NO_ATTACH`), spawning the engine with the shell's sink. The shell installs the logger and holds the sink (which emits `State` and `Log` and ends the application on `Exit`), the `command` and `query` Tauri commands, the `state` and `log` events, the close hook (a close or Cmd-Q becomes `quit`; the window closes on `Exit`), App Nap and the user guide search |
 | `build.rs` | One call to [`tagapp-shell-build`](../../../libraries/tagapp-shell-build-rs/README.md), with the `libtagcore_c` rpath when the `sqlitelog` feature is on: stages `ui/` and `host/ui-kit/` for Tauri and writes the shared capabilities (dialogs, opener, window title) |
 | `tauri.conf.json` | The window and the identifier |
 | `Cargo.toml` | The `sqlitelog` feature, passed to the core |

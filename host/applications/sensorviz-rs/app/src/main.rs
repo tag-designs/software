@@ -17,8 +17,8 @@
 
 use std::path::PathBuf;
 
-use sensorviz_core::engine::{self, EngineConfig, Event};
-use tagapp_shell::{App, Engine};
+use sensorviz_core::engine::{self, EngineConfig};
+use tagapp_shell::App;
 
 /// The log and preference file named on the command line: the first
 /// argument not starting with `-`, and the one after `--load-preferences`.
@@ -37,8 +37,7 @@ fn startup_files() -> (Option<PathBuf>, Option<PathBuf>) {
 }
 
 /// Runs Tag View: builds the [`EngineConfig`] (with the files named on the
-/// command line), installs the engine's logger and spawns the engine,
-/// forwarding its events to the page.
+/// command line) and spawns the engine with the shell's event sink.
 ///
 /// # Panics
 ///
@@ -55,24 +54,11 @@ fn main() {
     tagapp_shell::run(app, tauri::generate_context!(), move |setup| {
         let config = EngineConfig {
             home_dir: tauri::Manager::path(setup.app).home_dir()?,
-            user_guide_url: Some(setup.user_guide_url),
+            user_guide_url: Some(setup.user_guide_url()),
             initial_log,
             initial_preferences,
             preview_dialog: std::env::var("SENSORVIZ_PREVIEW_DIALOG").ok(),
         };
-        let _ = log::set_logger(&engine::LOGGER);
-        let events = setup.events;
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            Event::Log { level, text } => events.log(level, &text),
-            // The toolkit's event type has it; Tag View's engine never asks
-            // to exit, since its window closes without asking.
-            Event::Exit => events.exit(),
-        });
-        Ok(Engine::new(
-            engine,
-            engine::Engine::command,
-            engine::Engine::query,
-        ))
+        Ok(engine::spawn(config, setup.sink()))
     });
 }

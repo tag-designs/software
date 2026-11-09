@@ -300,7 +300,7 @@ All three return promises.
 "resolves with null (the Rust command returns nothing) and rejects only if
 the IPC call itself fails". The shared shell's `fn command(...)` has no
 return value
-([tagapp-shell-rs/src/lib.rs:153](../../libraries/tagapp-shell-rs/src/lib.rs#L153)),
+([tagapp-shell-rs/src/lib.rs:136](../../libraries/tagapp-shell-rs/src/lib.rs#L136)),
 so an unknown or refused command is reported by the engine as a log line or
 an `alert` prompt in the next state. The page's `send()` (below) alerts on a
 non-null answer or a rejected `invoke`; in practice only the second can

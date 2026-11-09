@@ -4,17 +4,21 @@
 //! Each application's `main` describes itself ([`App`]), passes in its
 //! `tauri::generate_context!()` (which must expand in the application's own
 //! crate, since it reads that crate's `tauri.conf.json`), and gives a
-//! function that builds its engine. [`run`] does the rest, the same way for
+//! function that builds its engine's configuration and spawns the engine
+//! with the sink [`Setup::sink`] gives. Every engine is the shared engine
+//! toolkit's (`tagapp-engine`), so [`run`] does the rest, the same way for
 //! every application:
 //!
+//! - the toolkit's logger, installed before the engine starts, so the
+//!   engine's and its libraries' `log` records reach the page;
 //! - the page's two commands, `invoke("command", {cmd, args})` and
-//!   `invoke("query", {name, args})`, forwarded to the engine ([`Engine`]);
-//!   a query waits off Tauri's main thread;
-//! - the engine's two events, `state` and `log`, emitted to the page
-//!   ([`Events`]);
+//!   `invoke("query", {name, args})`, forwarded to the engine's
+//!   [`Engine`]; a query waits off Tauri's main thread;
+//! - the engine's events ([`Event`]): `State` and `Log` emitted to the page
+//!   as the `state` and `log` events, `Exit` ending the application;
 //! - with [`App::close_through_engine`], a window close and the macOS Quit
 //!   item (Cmd-Q) become the engine's `quit` command, and the window closes
-//!   when the engine calls [`Events::exit`]. Tauri's default macOS Quit sends
+//!   when the engine sends [`Event::Exit`]. Tauri's default macOS Quit sends
 //!   Cocoa's `terminate:`, which tao ends from `applicationWillTerminate`
 //!   with no close request and no exit request that could be prevented, so
 //!   the shell installs Tauri's default menu with its own Quit item instead.
@@ -38,6 +42,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{Value, json};
+use tagapp_engine::{Engine, Event};
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 
 /// What an application tells the shell about itself.
@@ -53,60 +58,21 @@ pub struct App {
     /// application that keeps a tag attached.
     pub keep_awake: bool,
     /// Turn a window close and the macOS Quit item into the engine's `quit`
-    /// command; the window then closes only when the engine calls
-    /// [`Events::exit`]. Set by every application whose engine has something
+    /// command; the window then closes only when the engine sends
+    /// [`Event::Exit`]. Set by every application whose engine has something
     /// to ask or finish first (unsaved work, a tag to detach, programming in
     /// progress). When clear, a close closes at once and the default macOS
     /// menu is kept.
     pub close_through_engine: bool,
 }
 
-/// Queues a command: the engine handle's `command` with the handle bound.
-type CommandFn = Box<dyn Fn(&str, Value) + Send + Sync>;
-
-/// Asks a query and waits: the engine handle's `query` with the handle bound.
-/// An `Arc`, so a blocking task can hold its own reference.
-type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;
-
-/// The engine as the shell sees it: where commands and queries go.
-///
-/// Each application's engine handle has `command(&self, &str, Value)` and
-/// `query(&self, &str, Value) -> Value`; [`Engine::new`] wraps one, so the
-/// shell needs no trait the engine crates would have to depend on.
-pub struct Engine {
-    /// Queues a command for the engine thread.
-    command: CommandFn,
-    /// Asks a query and waits for the answer; cloned into a blocking task.
-    query: QueryFn,
-}
-
-impl Engine {
-    /// Wraps an engine handle and its two methods, e.g.
-    /// `Engine::new(engine, engine::Engine::command, engine::Engine::query)`.
-    pub fn new<E>(engine: E, command: fn(&E, &str, Value), query: fn(&E, &str, Value) -> Value) -> Self
-    where
-        E: Clone + Send + Sync + 'static,
-    {
-        let for_query = engine.clone();
-        Self {
-            command: Box::new(move |cmd, args| command(&engine, cmd, args)),
-            query: Arc::new(move |name, args| query(&for_query, name, args)),
-        }
-    }
-
-    /// Queues `cmd` for the engine thread.
-    pub fn command(&self, cmd: &str, args: Value) {
-        (self.command)(cmd, args);
-    }
-}
-
 /// Where an engine's events go: the page, and the shell's exit.
 ///
 /// Cloned into the engine's event sink, which runs on the engine thread (and,
-/// for a log record, on whatever thread logged), so every method is cheap and
-/// never waits on the engine.
+/// for a log record, on whatever thread logged), so it is cheap and never
+/// waits on the engine.
 #[derive(Clone)]
-pub struct Events {
+struct Events {
     /// The running application.
     handle: AppHandle<Wry>,
     /// Set once the engine allows the exit, so a close request that arrives
@@ -115,36 +81,53 @@ pub struct Events {
 }
 
 impl Events {
-    /// The whole view state, as the `state` event. A failure to emit (the
-    /// window is gone) is ignored.
-    pub fn state(&self, state: Value) {
-        let _ = self.handle.emit("state", state);
-    }
-
-    /// One log line for the page's log pane, as the `log` event
-    /// `{level, text}`.
-    pub fn log(&self, level: &str, text: &str) {
-        let _ = self.handle.emit("log", json!({ "level": level, "text": text }));
-    }
-
-    /// Ends the application: the engine has finished what `quit` asked of it.
-    pub fn exit(&self) {
-        self.exiting.store(true, Ordering::Relaxed);
-        self.handle.exit(0);
+    /// Passes one engine event on: `State` as the `state` event, `Log` as
+    /// the `log` event `{level, text}`, and `Exit` by ending the
+    /// application. A failure to emit (the window is gone) is ignored.
+    fn send(&self, event: Event) {
+        match event {
+            Event::State(state) => {
+                let _ = self.handle.emit("state", state);
+            }
+            Event::Log { level, text } => {
+                let _ = self
+                    .handle
+                    .emit("log", json!({ "level": level, "text": text }));
+            }
+            Event::Exit => {
+                self.exiting.store(true, Ordering::Relaxed);
+                self.handle.exit(0);
+            }
+        }
     }
 }
 
 /// What the application's start function gets: the running app (for its
-/// platform paths), the user guide's URL, and the [`Events`] its engine's
-/// sink forwards to.
+/// platform paths), the user guide's URL, and the sink its engine sends
+/// events to.
 pub struct Setup<'a> {
     /// The running Tauri application; `app.path()` gives the platform
     /// directories.
     pub app: &'a tauri::App<Wry>,
-    /// The manual's page for the application ([`user_guide_url`]).
-    pub user_guide_url: String,
+    /// The manual's page for the application.
+    guide_url: String,
     /// Where the engine's events go.
-    pub events: Events,
+    events: Events,
+}
+
+impl Setup<'_> {
+    /// The manual's page for the application ([`user_guide_url`]), for the
+    /// engine's Help.
+    pub fn user_guide_url(&self) -> String {
+        self.guide_url.clone()
+    }
+
+    /// The event sink to spawn the engine with: it forwards every [`Event`]
+    /// to the page or, for [`Event::Exit`], ends the application.
+    pub fn sink(&self) -> impl Fn(Event) + Send + Sync + 'static {
+        let events = self.events.clone();
+        move |event| events.send(event)
+    }
 }
 
 /// The `invoke("command", {cmd, args})` command: queued for the engine
@@ -163,8 +146,8 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 /// join error's text is returned to the page as the rejected promise.
 #[tauri::command]
 async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<Value, String> {
-    let query = engine.query.clone();
-    tauri::async_runtime::spawn_blocking(move || query(&name, args))
+    let engine = Engine::clone(&engine);
+    tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
         .await
         .map_err(|e| e.to_string())
 }
@@ -253,14 +236,13 @@ pub fn user_guide_url(page: &str) -> String {
         .unwrap_or_else(|| format!("https://tag-designs.github.io/software/user/apps/{page}.html"))
 }
 
-/// Runs the application: Tauri with the dialog and opener plugins, the two
-/// commands, the close and Quit handling [`App`] asks for, and the engine
-/// `start` builds.
+/// Runs the application: the toolkit's logger, Tauri with the dialog and
+/// opener plugins, the two commands, the close and Quit handling [`App`]
+/// asks for, and the engine `start` spawns.
 ///
-/// `start` runs once, in Tauri's setup, on the main thread. It typically
-/// builds the engine's configuration from `setup.app.path()`, installs the
-/// engine's logger, spawns the engine with a sink that forwards its events to
-/// `setup.events`, and returns the handle wrapped in an [`Engine`].
+/// `start` runs once, in Tauri's setup, on the main thread. It builds the
+/// engine's configuration (from `setup.app.path()` and the like), spawns the
+/// engine with [`Setup::sink`], and returns the engine's handle.
 ///
 /// # Panics
 ///
@@ -270,6 +252,9 @@ pub fn run<F>(app: App, context: tauri::Context<Wry>, start: F)
 where
     F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static,
 {
+    // Ignored if a logger is already set. The toolkit's logger drops records
+    // until the engine's channel gives it the sink.
+    let _ = log::set_logger(&tagapp_engine::LOGGER);
     if app.keep_awake {
         stay_awake();
     }
@@ -296,7 +281,7 @@ where
             };
             let engine = start(Setup {
                 app: tauri_app,
-                user_guide_url: user_guide_url(app.guide_page),
+                guide_url: user_guide_url(app.guide_page),
                 events,
             })?;
             tauri_app.manage(engine);

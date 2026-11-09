@@ -41,7 +41,7 @@ document describes what is behind them.
 | `core/src/engine/session.rs` | The program and retest step machine, as more `impl Station` |
 | `core/src/engine/view.rs` | The view-state JSON built from `Station`, including the front prompt's JSON (`prompt_json`); the `menus` query's answer (`menus`) |
 | `core/src/model/` | Toolkit-free model: ELF reading, flash plan, identity record, image, release catalog, record CSV, settings |
-| `app/src/main.rs` | The Tauri shell: describes the app to the shared [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md), which forwards `command`/`query`, emits `state` and `log` events, and turns a window close or Cmd-Q into `quit`; creates the engine and forwards its `State`, `Log` and `Exit` |
+| `app/src/main.rs` | The Tauri shell: describes the app to the shared [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md), which forwards `command`/`query`, emits `state` and `log` events, and turns a window close or Cmd-Q into `quit`; builds the `EngineConfig` and spawns the engine with the shell's sink, which forwards its `State`, `Log` and `Exit`. The shell also installs the logger |
 
 `session.rs` is a second `impl Station` block, not a separate object. A
 session needs the tag, the base, the record and the checks, all of which the
@@ -167,7 +167,9 @@ privacy prompt. Opening the record inline would have left the window blank
 
 `UiLogger`, the toolkit's, is a `log` logger that forwards every record at
 or above the log pane's level (`set_log_level`) to the UI as `Event::Log`. tagcore and tagprobe log through the
-same facade, so their messages reach the pane as qtprogram's did. The sink is
+same facade, so their messages reach the pane as qtprogram's did. The shared
+shell, `tagapp-shell`, installs it with `log::set_logger` before Tauri
+starts. The sink is
 a process-wide static because `log` allows one logger per process. The level
 is an atomic so that `log::Log::enabled` reads it without a lock.
 

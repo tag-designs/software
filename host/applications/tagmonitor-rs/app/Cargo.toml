@@ -16,7 +16,6 @@ tauri = { version = "2", features = [] }
 # plugins' permissions (cargo passes them only to direct dependents).
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-log = "0.4"
 
 [build-dependencies]
 tagapp-shell-build = { path = "../../../libraries/tagapp-shell-build-rs" }

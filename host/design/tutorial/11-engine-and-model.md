@@ -284,7 +284,8 @@ silently unconnected.
 > so boxing them keeps every `Report` small to move through the channel.
 
 > **Rust:** `pub(crate)` makes an item visible throughout this crate but not
-> to its users. The shell sees only `Engine`, `EngineConfig`, `Event`,
+> to its users. Its users (the application's `main` and, through the
+> toolkit, the shell) see only `Engine`, `EngineConfig`, `Event`,
 > `spawn`, `UiLogger` and `LOGGER`; `TagCmd` and `Report` are internal to
 > the crate, and the toolkit's `Request` and `Msg`, with no `pub` at all,
 > are private to the toolkit.
@@ -314,8 +315,9 @@ pub enum Event {
 }
 ```
 
-Chapter 10 showed the application's sink, a `match` over these three that
-hands each to the shared shell's `Events` (`state`, `log`, `exit`).
+Chapter 10 showed the sink the shared shell gives every application,
+`Setup::sink`, whose `match` over these three emits `State` and `Log` to the
+page and ends the application on `Exit`.
 
 ## The Engine handle and spawn
 
@@ -328,8 +330,8 @@ hands each to the shared shell's `Events` (`state`, `log`, `exit`).
 > exact for all three; Tag Monitor supplies only its `Monitor` and the tag
 > thread.
 
-The shell holds an `Engine`, wrapped in the shared shell's own `Engine`
-(`Engine::new` binds the handle to the two methods below; chapter 10,
+The shell holds the `Engine` that `spawn` returns, as it is, and calls the
+two methods below (chapter 10,
 [The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
 [tagapp-engine-rs/src/lib.rs:156-198](../../libraries/tagapp-engine-rs/src/lib.rs#L156)
 (doc comments on the struct and its methods dropped, the fields' kept):
@@ -1615,7 +1617,10 @@ canonical protobuf JSON. It is the counterpart of
 ## The logger
 
 The logger is the toolkit's; Tag Monitor re-exports `UiLogger` and
-`LOGGER`, and the shell installs `LOGGER` before it calls `spawn`.
+`LOGGER`. The shared shell installs `LOGGER` (`log::set_logger` in
+`tagapp_shell::run`, before Tauri starts, so before the application's
+closure calls `spawn`), the same way for every application; a core's own
+tests and examples install it themselves.
 [tagapp-engine-rs/src/lib.rs:466-514](../../libraries/tagapp-engine-rs/src/lib.rs#L466)
 (doc comments on `UiLogger` and `LOGGER` dropped; `Sink` is the
 `Arc<dyn Fn(Event) + Send + Sync>` of [spawn](#the-engine-handle-and-spawn)):

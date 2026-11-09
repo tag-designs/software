@@ -45,7 +45,8 @@ flowchart LR
 - **The shell forwards.** One shared crate, `tagapp-shell`, exposes two
   Tauri commands (`command`, `query`) and emits two events (`state`, `log`)
   for every application. An application's `app/src/main.rs` is about fifty
-  lines: it describes the application to the shell and starts its engine.
+  lines: it describes the application to the shell, builds its engine's
+  configuration and spawns the engine with the shell's sink.
   The few differences are flags, listed under the Tauri shell below.
 
 The contract between engine and page is written down per application in
@@ -106,7 +107,8 @@ sequenceDiagram
 - **The log is a logger.** A `log::Log` implementation (`UiLogger`) forwards
   every record at or above the pane's level to the page as a `log` event, so
   `tagcore`'s and `tagprobe`'s messages reach the pane without any plumbing
-  of their own.
+  of their own. The shell installs it, once per process, before Tauri
+  starts.
 
 The handle, the loop and the logger are the same code in every
 application: all four get them from the shared engine toolkit described
@@ -173,7 +175,12 @@ application uses it the same way, through two shared crates in
   plugin (native file dialogs) and the `opener` plugin (URLs and folders),
   registers the two `#[tauri::command]` functions, `command` and `query`,
   which the page reaches through `invoke`, emits `state` and `log`, finds
-  the user manual's page for the application, and handles closing.
+  the user manual's page for the application, and handles closing. It
+  depends on the engine toolkit (never the reverse): it installs the
+  toolkit's `LOGGER`, keeps the toolkit's `Engine` as Tauri state, and gives
+  each engine its event sink (`Setup::sink`), which emits `State` and `Log`
+  and ends the application on `Exit`. Since every engine handle is that one
+  type, the shell needs no adapter between itself and the engines.
 - [`tagapp-shell-build`](../../libraries/tagapp-shell-build-rs/README.md) is
   the build-script half: each application's `app/build.rs` is one call to
   it.
@@ -181,8 +188,8 @@ application uses it the same way, through two shared crates in
 An application's `main.rs` passes an `App` description, its
 `tauri::generate_context!()` (which must expand in the application's own
 crate) and a closure that builds the engine's configuration from the
-platform directories and spawns the engine with a sink forwarding its
-events to the shell. The `App` flags are the only differences between the
+platform directories and returns `engine::spawn(config, setup.sink())`:
+the engine, spawned with the shell's sink. The `App` flags are the only differences between the
 shells:
 
 | Application | `keep_awake` | `close_through_engine` |

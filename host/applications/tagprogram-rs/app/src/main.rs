@@ -4,7 +4,7 @@
 //! Tauri commands, the `state` and `log` events, App Nap, the user guide, and
 //! closing through the engine. A window close or Cmd-Q becomes the engine's
 //! `quit`, which quits at once unless a tag is being programmed, when it asks
-//! first; the window closes when the engine sends [`Event::Exit`].
+//! first; the window closes when the engine sends `Event::Exit`.
 //! Everything else is the engine's (`../core`) or the page's (`../ui`); see
 //! `../design/ui-engine-contract.md`.
 //!
@@ -19,12 +19,11 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tagapp_shell::{App, Engine};
-use tagprogram_core::engine::{self, EngineConfig, Event};
+use tagapp_shell::App;
+use tagprogram_core::engine::{self, EngineConfig};
 
 /// Runs Tag Programmer: builds the [`EngineConfig`] from the platform
-/// directories, installs the engine's logger and spawns the engine,
-/// forwarding its events to the page.
+/// directories and spawns the engine with the shell's event sink.
 ///
 /// # Panics
 ///
@@ -48,17 +47,8 @@ fn main() {
             documents_dir: paths
                 .document_dir()
                 .or_else(|_| paths.home_dir().map(|home| home.join("Documents")))?,
-            user_guide_url: Some(setup.user_guide_url),
+            user_guide_url: Some(setup.user_guide_url()),
         };
-        // Ignored if a logger is already set; the engine's logger feeds the
-        // page's log pane through Event::Log.
-        let _ = log::set_logger(&engine::LOGGER);
-        let events = setup.events;
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            Event::Log { level, text } => events.log(level, &text),
-            Event::Exit => events.exit(),
-        });
-        Ok(Engine::new(engine, engine::Engine::command, engine::Engine::query))
+        Ok(engine::spawn(config, setup.sink()))
     });
 }

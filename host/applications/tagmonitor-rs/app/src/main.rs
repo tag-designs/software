@@ -4,7 +4,7 @@
 //! Tauri commands, the `state` and `log` events, App Nap, the user guide, and
 //! closing through the engine. A window close or Cmd-Q becomes the engine's
 //! `quit`, since the configuration may have unsaved changes; the window
-//! closes when the engine sends [`Event::Exit`], after the user has saved or
+//! closes when the engine sends `Event::Exit`, after the user has saved or
 //! discarded them and the tag has been detached -- or after a few seconds
 //! without the detach, for a tag that no longer answers. Everything else is
 //! the engine's (`../core`) or the page's (`../ui`); see
@@ -16,12 +16,11 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tagapp_shell::{App, Engine};
-use tagmonitor_core::engine::{self, EngineConfig, Event};
+use tagapp_shell::App;
+use tagmonitor_core::engine::{self, EngineConfig};
 
-/// Runs Tag Monitor: builds the [`EngineConfig`], installs the engine's
-/// logger and spawns the engine (which attaches at once, as qtmonitor does),
-/// forwarding its events to the page.
+/// Runs Tag Monitor: builds the [`EngineConfig`] and spawns the engine with
+/// the shell's event sink. The engine attaches at once, as qtmonitor does.
 ///
 /// # Panics
 ///
@@ -39,16 +38,9 @@ fn main() {
         let config = EngineConfig {
             settings_path: paths.app_config_dir()?.join("settings.json"),
             home_dir: paths.home_dir()?,
-            user_guide_url: Some(setup.user_guide_url),
+            user_guide_url: Some(setup.user_guide_url()),
             auto_attach: std::env::var_os("TAGMONITOR_NO_ATTACH").is_none(),
         };
-        let _ = log::set_logger(&engine::LOGGER);
-        let events = setup.events;
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            Event::Log { level, text } => events.log(level, &text),
-            Event::Exit => events.exit(),
-        });
-        Ok(Engine::new(engine, engine::Engine::command, engine::Engine::query))
+        Ok(engine::spawn(config, setup.sink()))
     });
 }

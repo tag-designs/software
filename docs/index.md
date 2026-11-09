@@ -521,7 +521,7 @@ design document.
 
 ### Libraries / tagapp-shell-rs
 
-- [tagapp-shell (Rust)](../host/libraries/tagapp-shell-rs/README.md) — tagapp-shell, the Tauri shell the four Rust applications share -- the command and query Tauri commands, the state and log events, closing and Cmd-Q through the engine, the App Nap opt-out and the user guide search -- what an application passes it, and how to build and check it.
+- [tagapp-shell (Rust)](../host/libraries/tagapp-shell-rs/README.md) — tagapp-shell, the Tauri shell the four Rust applications share -- the engine toolkit's logger, the command and query Tauri commands, the state and log events, closing and Cmd-Q through the engine, the App Nap opt-out and the user guide search -- what an application passes it, and how to build and check it.
 
 ### Libraries / tagcore
 

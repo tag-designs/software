@@ -146,7 +146,7 @@ the type, e.g. which managed state to fetch or what to parse into.
 window.state::<Engine>().command("quit", json!({}));
 ```
 
-[tagapp-shell lib.rs:311](../../libraries/tagapp-shell-rs/src/lib.rs#L311);
+[tagapp-shell lib.rs:296](../../libraries/tagapp-shell-rs/src/lib.rs#L296);
 also `select_base::<Cli>(&tag, &cli.base)` at
 [tag-dwnld.rs:385](../../commandline-rs/src/bin/tag-dwnld.rs#L385) and
 `xyz.as_chunks::<3>()` at
@@ -235,10 +235,9 @@ type Sink = Arc<dyn Fn(Event) + Send + Sync>;
 
 [session.rs:120](../../libraries/tagcore-rs/src/recovery/session.rs#L120),
 [tagapp-engine lib.rs:235](../../libraries/tagapp-engine-rs/src/lib.rs#L235);
-`type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;` at
-[tagapp-shell lib.rs:69](../../libraries/tagapp-shell-rs/src/lib.rs#L69).
-Explained in: [10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it);
-[11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn).
+`type SendRequest = Arc<dyn Fn(Request) -> bool + Send + Sync>;` at
+[tagapp-engine lib.rs:156](../../libraries/tagapp-engine-rs/src/lib.rs#L156).
+Explained in: [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn).
 
 ### `?Sized`
 
@@ -268,11 +267,12 @@ enum. Anything else is duplicated only by an explicit `.clone()`. Cloning
 an `Arc` or a channel `Sender` copies a handle, not the data behind it.
 
 ```rust
-let query = engine.query.clone();
+let engine = Engine::clone(&engine);
 ```
 
-[tagapp-shell lib.rs:166](../../libraries/tagapp-shell-rs/src/lib.rs#L166)
-(`query` is an `Arc` around a closure, so this copies a pointer).
+[tagapp-shell lib.rs:149](../../libraries/tagapp-shell-rs/src/lib.rs#L149)
+(an `Engine` holds its sender in an `Arc`, so this copies a pointer; the
+type is named because Tauri's `State` wrapper is `Clone` too).
 Explained in: [7, Choosing the driver](07-programming-tags-and-bases.md#choosing-the-driver-from-the-bases-identity);
 [10, The two commands](10-tauri-shell.md#the-two-commands);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
@@ -423,7 +423,7 @@ drop(session);
 
 [tagprobe lib.rs:647](../../libraries/tagprobe-rs/src/lib.rs#L647);
 `std::mem::forget(token);` at
-[tagapp-shell lib.rs:220](../../libraries/tagapp-shell-rs/src/lib.rs#L220).
+[tagapp-shell lib.rs:203](../../libraries/tagapp-shell-rs/src/lib.rs#L203).
 Explained in: [7, The other session users](07-programming-tags-and-bases.md#the-other-session-users);
 [10, The user guide and App Nap](10-tauri-shell.md#the-user-guide-and-app-nap).
 
@@ -1242,7 +1242,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 
 [discovery.rs:16](../../libraries/tagcore-rs/src/link/discovery.rs#L16)
 (for `ctx.devices()`),
-[tagapp-shell lib.rs:41](../../libraries/tagapp-shell-rs/src/lib.rs#L41)
+[tagapp-shell lib.rs:46](../../libraries/tagapp-shell-rs/src/lib.rs#L46)
 (for `handle.emit` and `tauri_app.manage`; Tag Monitor's `main.rs` instead
 writes `tauri::Manager::path(setup.app)`, naming the trait at the call); `use prost::Message;` at
 [rpc.rs:16](../../libraries/tagcore-rs/src/monitor/rpc.rs#L16);
@@ -1315,9 +1315,9 @@ writes four of its eight methods and takes the defaults for the rest, at
 
 One limit, the *orphan rule*: `impl Trait for Type` may be written only in
 the crate that defines the trait or the crate that defines the type. A
-crate that owns neither cannot connect them, which is why the Tauri shell
-takes the engine's two methods as function pointers rather than a trait
-the applications would implement.
+crate that owns neither cannot connect them. The Tauri shell needs no such
+connection: every application's engine handle is one concrete type, the
+engine toolkit's `Engine`, which the shell names directly.
 Explained in: [5, JSON](05-protobuf-and-the-tag-api.md#json-to_json-from_json-and-the-float-formatter);
 [7, The session](07-programming-tags-and-bases.md#the-session-target-debug-sequence-attach-under-reset);
 [10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it) (the orphan rule);
@@ -1553,7 +1553,7 @@ it in a block under the same name first.
 
 [tagmonitor engine/mod.rs:108](../../applications/tagmonitor-rs/core/src/engine/mod.rs#L108).
 Explained in: [7, Writing](07-programming-tags-and-bases.md#writing-and-treating-the-departure-as-success);
-[10, main](10-tauri-shell.md#main);
+[10, Events, Setup and the sink](10-tauri-shell.md#events-setup-and-the-sink);
 [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, The core](14-the-three-applications.md#the-core-tag-monitors-two-threads-over-a-c-session).
 
@@ -1576,7 +1576,7 @@ apply: impl FnOnce(&mut Station, T) + Send + 'static,
 [station.rs:500](../../applications/tagprogram-rs/core/src/engine/station.rs#L500);
 `F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static`,
 the application's setup closure, at
-[tagapp-shell lib.rs:271](../../libraries/tagapp-shell-rs/src/lib.rs#L271).
+[tagapp-shell lib.rs:253](../../libraries/tagapp-shell-rs/src/lib.rs#L253).
 Explained in: [7, The program sequence](07-programming-tags-and-bases.md#the-program-sequence);
 [10, run: building the application](10-tauri-shell.md#run-building-the-application);
 [11, Download](11-engine-and-model.md#download-two-functions-one-chosen-at-compile-time);
@@ -1598,12 +1598,12 @@ pub(crate) type Done = Box<dyn FnOnce(&mut Station) + Send>;
 
 [tagprogram engine/mod.rs:90](../../applications/tagprogram-rs/core/src/engine/mod.rs#L90),
 [tagprobe lib.rs:357](../../libraries/tagprobe-rs/src/lib.rs#L357);
-`Engine::new(engine, engine::Engine::command, engine::Engine::query)`, two
-methods passed as `fn(&E, &str, Value)` pointers, at
-[tagmonitor main.rs:52](../../applications/tagmonitor-rs/app/src/main.rs#L52).
+`move |event| events.send(event)`, a closure returned as the value of
+`Setup::sink` (`-> impl Fn(Event) + Send + Sync + 'static`), at
+[tagapp-shell lib.rs:129](../../libraries/tagapp-shell-rs/src/lib.rs#L129).
 Explained in: [7, Opening the probe](07-programming-tags-and-bases.md#opening-the-probe);
 [9, The state log and a method as a function pointer](09-command-line-tools.md#the-state-log-and-a-method-as-a-function-pointer);
-[10, The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it);
+[10, Events, Setup and the sink](10-tauri-shell.md#events-setup-and-the-sink);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ## Threads and shared state
@@ -1654,7 +1654,7 @@ let exiting = Arc::new(AtomicBool::new(false));
 let exiting_close = exiting.clone();
 ```
 
-[tagapp-shell lib.rs:276](../../libraries/tagapp-shell-rs/src/lib.rs#L276).
+[tagapp-shell lib.rs:261](../../libraries/tagapp-shell-rs/src/lib.rs#L261).
 Explained in: [10, run: building the application](10-tauri-shell.md#run-building-the-application);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1839,7 +1839,7 @@ occur here:
 | `env!`, `option_env!`, `concat!` | Read an environment variable at compile time (`option_env!` gives `None` if unset); join literals | [session.rs:81](../../applications/tagprogram-rs/core/src/engine/session.rs#L81) |
 | `panic!`, `debug_assert!` | Abort the thread; a check that only debug builds run | [configshape.rs:253](../../libraries/tagcore-rs/src/configshape.rs#L253) |
 | `thread_local!` | A per-thread static; see [`thread_local!`](#thread_local) | [link/mod.rs:600](../../libraries/tagcore-rs/src/link/mod.rs#L600) |
-| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagapp-shell lib.rs:314](../../libraries/tagapp-shell-rs/src/lib.rs#L314), [tagmonitor main.rs:37](../../applications/tagmonitor-rs/app/src/main.rs#L37) |
+| `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagapp-shell lib.rs:299](../../libraries/tagapp-shell-rs/src/lib.rs#L299), [tagmonitor main.rs:36](../../applications/tagmonitor-rs/app/src/main.rs#L36) |
 
 The `cfg!` constant, as the code writes it,
 [link/mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80):
@@ -1872,7 +1872,7 @@ module or crate.
 | `#[default]` | The default enum variant; see [`#[default]`](#default-on-a-variant) | [monitor/mod.rs:184](../../libraries/tagcore-rs/src/monitor/mod.rs#L184) |
 | `#[test]`, `#[ignore = "..."]` | A unit test; one skipped unless asked for | [image.rs:433](../../applications/tagprogram-rs/core/src/model/image.rs#L433) |
 | `#[arg(...)]`, `#[command(...)]` (clap) | Per-option and per-command settings for the derived parser | [tag-flash.rs:106](../../commandline-rs/src/bin/tag-flash.rs#L106) |
-| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagapp-shell lib.rs:152](../../libraries/tagapp-shell-rs/src/lib.rs#L152) |
+| `#[tauri::command]` | Generate the glue that lets the page `invoke` the function by name, as `moc` does for `Q_INVOKABLE` | [tagapp-shell lib.rs:135](../../libraries/tagapp-shell-rs/src/lib.rs#L135) |
 | `#[pyclass]`, `#[pymethods]`, `#[pyfunction]` | Expose a struct, its methods or a function to Python | [tagcore-py lib.rs:180](../../python/tagcore-py/src/lib.rs#L180) |
 
 Doc comments are attributes too: `///` documents the next item and `//!`
@@ -2171,12 +2171,12 @@ query that waits on the engine does not block the window's thread
 (roughly `QtConcurrent::run` plus a continuation).
 
 ```rust
-tauri::async_runtime::spawn_blocking(move || query(&name, args))
+tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
     .await
     .map_err(|e| e.to_string())
 ```
 
-[tagapp-shell lib.rs:167](../../libraries/tagapp-shell-rs/src/lib.rs#L167).
+[tagapp-shell lib.rs:150](../../libraries/tagapp-shell-rs/src/lib.rs#L150).
 Explained in: [10, The two commands](10-tauri-shell.md#the-two-commands).
 
 ## JavaScript

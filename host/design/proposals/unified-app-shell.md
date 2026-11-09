@@ -308,6 +308,25 @@ documents changed with it: the contract and engine design, the README, the
 toolkit's README, `host/README.md`, guide chapters 02, 10, 11, 12, 14 and
 15, and tutorial chapters 01, 02, 10, 12 and 14.
 
+**Follow-up, 2026-11-09.** With all four engines on the toolkit, the shell
+runs toolkit engines directly. `tagapp-shell` now depends on
+`tagapp-engine` and `log`; `run` installs `tagapp_engine::LOGGER` before
+Tauri starts, keeps the toolkit's `Engine` as Tauri state (`command` calls
+it, `query` clones it into `spawn_blocking`), and its `Events`, now private,
+emits `State` and `Log` and ends the application on `Exit`. `Setup` gives
+the application `user_guide_url()` and `sink()`, the event sink to spawn
+the engine with. Each application's `main.rs` only builds its
+`EngineConfig` and returns `engine::spawn(config, setup.sink())`; the
+applications' own `log` dependency, logger installation and event `match`
+are gone, and so are the shell's `Engine` wrapper, `Engine::new` and its
+function-pointer binding. clippy and rustdoc are clean. Launch-checked by the
+user: all four applications open, log, open the user guide, answer a
+command and a query, and quit (Tag Calibrator while streaming, after
+which Tag Monitor found the tag back in IDLE). The documents changed with it:
+the shell's and the toolkit's READMEs, the applications' architecture and
+engine documents, guide chapter 10, and tutorial chapters 02, 10, 11, 12,
+13 and 14.
+
 The mock engines (`ui/mock-engine.js`) and the screenshots for the manual
 change with each page; `screenshots.sh` before and after shows any visual
 difference.

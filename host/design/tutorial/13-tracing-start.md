@@ -143,7 +143,7 @@ outcome of the Start reaches the page later, as a `state` event.
 ## Hop 2: the shell
 
 The shell's half is four lines in the shell every application shares,
-[tagapp-shell lib.rs:150](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
+[tagapp-shell lib.rs:133](../../libraries/tagapp-shell-rs/src/lib.rs#L133):
 
 ```rust
 /// The `invoke("command", {cmd, args})` command: queued for the engine
@@ -158,10 +158,11 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 into an IPC handler: Tauri deserialises the JSON payload's `cmd` and `args`
 keys into the parameters of the same names, and `State<'_, Engine>` is
 injected from the value the shell registered with `tauri_app.manage(engine)` at
-startup ([lib.rs:302](../../libraries/tagapp-shell-rs/src/lib.rs#L302)): the shell's `Engine`, which wraps Tag
-Monitor's handle and calls its `command` method (chapter 10,
-[The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)),
-and that puts the command on the engine's channel.
+startup ([lib.rs:287](../../libraries/tagapp-shell-rs/src/lib.rs#L287)): Tag Monitor's engine handle
+itself, the `Engine` that `engine::spawn` returned, which the shell stores
+as it is (chapter 10,
+[The engine as the shell sees it](10-tauri-shell.md#the-engine-as-the-shell-sees-it)).
+Its `command` method puts the command on the engine's channel.
 A command without `async` runs on the main thread, which is why this one
 does nothing but post a message. `Value` is **serde_json**'s untyped JSON
 tree, the C++ equivalent of a `QJsonValue`.
@@ -1153,22 +1154,24 @@ status poll sends nothing to the page. A StartFailed adds the alert to
 > writing a JSON literal in Rust syntax.
 
 The sink (`inbox.sink`, handed on by `tagapp_engine::channel`) is the
-closure Tag Monitor's `main` gave `engine::spawn`,
-[main.rs:47](../../applications/tagmonitor-rs/app/src/main.rs#L47):
+closure the shell gave Tag Monitor's `main` to pass to `engine::spawn`,
+[main.rs:44](../../applications/tagmonitor-rs/app/src/main.rs#L44):
 
 ```rust
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            // ...
+        Ok(engine::spawn(config, setup.sink()))
 ```
 
-and the shell's `Events::state`,
-[tagapp-shell lib.rs:120](../../libraries/tagapp-shell-rs/src/lib.rs#L120):
+It calls the shell's `Events::send`, whose first arm emits the `state`
+event,
+[tagapp-shell lib.rs:87](../../libraries/tagapp-shell-rs/src/lib.rs#L87):
 
 ```rust
-    pub fn state(&self, state: Value) {
-        let _ = self.handle.emit("state", state);
-    }
+    fn send(&self, event: Event) {
+        match event {
+            Event::State(state) => {
+                let _ = self.handle.emit("state", state);
+            }
+            // ...
 ```
 
 Both run on the engine thread. `AppHandle::emit` serialises the value to

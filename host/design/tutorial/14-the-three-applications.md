@@ -629,15 +629,13 @@ then checks that an answer with no `id` is dropped.
 
 `tagprogram-rs/app/src/main.rs` describes Tag Programmer to the shared shell
 as Tag Monitor's does, with both `keep_awake` and `close_through_engine`
-set, so a window close or Cmd-Q reaches the engine as `quit`. Its sink,
-[main.rs:57](../../applications/tagprogram-rs/app/src/main.rs#L57):
+set, so a window close or Cmd-Q reaches the engine as `quit`. Like every
+application's, its engine is the toolkit's, so it spawns the engine with the
+shell's own sink, which ends the application on `Event::Exit`,
+[main.rs:52](../../applications/tagprogram-rs/app/src/main.rs#L52):
 
 ```rust
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            Event::Log { level, text } => events.log(level, &text),
-            Event::Exit => events.exit(),
-        });
+        Ok(engine::spawn(config, setup.sink()))
 ```
 
 Its `quit` asks only when quitting would do harm: while probe-rs is erasing,
@@ -938,8 +936,9 @@ inbox (`tag_tx`/`tag_rx`) is still a plain `mpsc` channel, since only this
 application knows what a `TagCmd` is. `QUERY_TIMEOUT` is 10 s. `Engine`,
 `Event`, `LOGGER` and `UiLogger` are re-exported from the toolkit
 (`pub use tagapp_engine::{Engine, Event, LOGGER, UiLogger};`), so the
-application's `main.rs` names them through `tagcalibrate_core::engine` as
-before. Tag Monitor's `spawn` is the same, with a `cancel` flag shared with
+core's own users can name them through `tagcalibrate_core::engine`; the
+application's `main.rs` needs none of them, since the shell takes the
+`Engine`, supplies the sink and installs `LOGGER` itself. Tag Monitor's `spawn` is the same, with a `cancel` flag shared with
 its tag thread
 ([chapter 11](11-engine-and-model.md#the-engine-handle-and-spawn)).
 

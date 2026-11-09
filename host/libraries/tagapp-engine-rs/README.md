@@ -9,8 +9,9 @@ summary: "tagapp-engine, the engine toolkit the Tauri applications' core crates 
 The engine half of the application pattern, as a library: the plumbing every
 application's `core` crate had repeated. It has no Tauri dependency, so a
 core crate that uses it still builds and tests without a window; the shell,
-[`tagapp-shell`](../tagapp-shell-rs/README.md), wraps its `Engine` for the
-page.
+[`tagapp-shell`](../tagapp-shell-rs/README.md), depends on it (never the
+reverse), holds its `Engine` directly, gives each engine its event sink and
+installs its logger.
 
 All four applications run on it: Tag Programmer, Tag Monitor, Tag
 Calibrator and Tag View ([the proposal](../../design/proposals/unified-app-shell.md)
@@ -78,9 +79,9 @@ impl EngineState for Counter {
     }
 }
 
-let _ = log::set_logger(&tagapp_engine::LOGGER);
+let _ = log::set_logger(&tagapp_engine::LOGGER); // the Tauri shell does this itself
 let (engine, poster, inbox) = tagapp_engine::channel(Duration::from_secs(10), |event| {
-    // forward Event::State, Event::Log and Event::Exit to the shell
+    // in an application, the shell's sink (tagapp_shell::Setup::sink)
 });
 // hand `poster` to the tag thread, if there is one, then:
 tagapp_engine::spawn("counter-engine", Counter { total: 0, ready: Ready::default() }, inbox);
@@ -116,7 +117,10 @@ whatever thread logged for `Log`, so it must be cheap and must never call
 - **One engine per process.** The logger's sink and level are process-wide;
   `channel` replaces the sink.
 - **Install `LOGGER` once**, with `log::set_logger`, before or after
-  `channel`; records logged before `channel` are dropped.
+  `channel`; records logged before `channel` are dropped. In the Tauri
+  applications the shell (`tagapp_shell::run`) installs it before Tauri
+  starts, so an application's `main.rs` does not; a test or a headless use
+  of a core installs it itself.
 - **Guard `ready` with `Ready`** and return its `take_republish` from
   `EngineState::take_republish`, or a reloaded page waits for the next
   change to be drawn.

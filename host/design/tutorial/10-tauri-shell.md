@@ -106,12 +106,12 @@ for one of its own ([below](#the-macos-application-menu)).
 
 | File | Lines | What it is |
 | --- | --- | --- |
-| [tagmonitor-rs/app/Cargo.toml](../../applications/tagmonitor-rs/app/Cargo.toml) | 35 | The binary crate `tagmonitor`: the core, the shell, Tauri and the two plugins |
-| [tagmonitor-rs/app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 54 | Describes Tag Monitor to the shell and starts its engine |
+| [tagmonitor-rs/app/Cargo.toml](../../applications/tagmonitor-rs/app/Cargo.toml) | 34 | The binary crate `tagmonitor`: the core, the shell, Tauri and the two plugins |
+| [tagmonitor-rs/app/src/main.rs](../../applications/tagmonitor-rs/app/src/main.rs) | 46 | Describes Tag Monitor to the shell and starts its engine |
 | [tagmonitor-rs/app/build.rs](../../applications/tagmonitor-rs/app/build.rs) | 10 | One call to `tagapp_shell_build::build` |
 | [tagmonitor-rs/app/tauri.conf.json](../../applications/tagmonitor-rs/app/tauri.conf.json) | 30 | Product name, identifier, the window, security |
 | `tagmonitor-rs/app/icons/` | -- | `icon.png`, `icon.icns`, `icon.ico` |
-| [tagapp-shell-rs/src/lib.rs](../../libraries/tagapp-shell-rs/src/lib.rs) | 317 | The shell: two commands, two events, the close hook, the macOS Quit item, App Nap, the user guide |
+| [tagapp-shell-rs/src/lib.rs](../../libraries/tagapp-shell-rs/src/lib.rs) | 302 | The shell: the logger, two commands, two events, the close hook, the macOS Quit item, App Nap, the user guide |
 | [tagapp-shell-build-rs/src/lib.rs](../../libraries/tagapp-shell-build-rs/src/lib.rs) | 163 | Stages the page, writes the capabilities, sets `TAURI_CONFIG`, the rpath, runs `tauri_build` |
 | [tagapp-shell-build-rs/capabilities.json](../../libraries/tagapp-shell-build-rs/capabilities.json) | 16 | What the page may call, for every application |
 | [tagmonitor-rs/CMakeLists.txt](../../applications/tagmonitor-rs/CMakeLists.txt) | 82 | Runs cargo; installs the program per platform |
@@ -119,7 +119,7 @@ for one of its own ([below](#the-macos-application-menu)).
 
 ## The crate manifest
 
-[app/Cargo.toml:10-27](../../applications/tagmonitor-rs/app/Cargo.toml#L10):
+[app/Cargo.toml:10-26](../../applications/tagmonitor-rs/app/Cargo.toml#L10):
 
 ```toml
 [dependencies]
@@ -131,7 +131,6 @@ tauri = { version = "2", features = [] }
 # plugins' permissions (cargo passes them only to direct dependents).
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
-log = "0.4"
 
 [build-dependencies]
 tagapp-shell-build = { path = "../../../libraries/tagapp-shell-build-rs" }
@@ -182,8 +181,8 @@ of the dependencies look redundant and are not:
 ```rust
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tagapp_shell::{App, Engine};
-use tagmonitor_core::engine::{self, EngineConfig, Event};
+use tagapp_shell::App;
+use tagmonitor_core::engine::{self, EngineConfig};
 ```
 
 > **Rust:** `#![...]` (with `!`) is an attribute on the whole crate.
@@ -195,14 +194,14 @@ use tagmonitor_core::engine::{self, EngineConfig, Event};
 > has to be in the application's `main.rs`, since it describes the
 > executable; a library crate cannot set it.
 
-There are two types called `Engine` in play: the shell's
-`tagapp_shell::Engine`, imported by name, and the core's handle,
-`engine::Engine`, always written with its module prefix. The shell's is a
-wrapper around the core's, [below](#the-engine-as-the-shell-sees-it).
+From the shell the application needs only `App`; from its core, the module
+`engine` (for `engine::spawn`) and the configuration struct. It never names
+the engine's handle type or its `Event`: those pass straight from the core
+to the shell.
 
 ### main
 
-[main.rs:30-54](../../applications/tagmonitor-rs/app/src/main.rs#L30):
+[main.rs:29-46](../../applications/tagmonitor-rs/app/src/main.rs#L29):
 
 ```rust
 fn main() {
@@ -217,17 +216,10 @@ fn main() {
         let config = EngineConfig {
             settings_path: paths.app_config_dir()?.join("settings.json"),
             home_dir: paths.home_dir()?,
-            user_guide_url: Some(setup.user_guide_url),
+            user_guide_url: Some(setup.user_guide_url()),
             auto_attach: std::env::var_os("TAGMONITOR_NO_ATTACH").is_none(),
         };
-        let _ = log::set_logger(&engine::LOGGER);
-        let events = setup.events;
-        let engine = engine::spawn(config, move |event| match event {
-            Event::State(state) => events.state(state),
-            Event::Log { level, text } => events.log(level, &text),
-            Event::Exit => events.exit(),
-        });
-        Ok(Engine::new(engine, engine::Engine::command, engine::Engine::query))
+        Ok(engine::spawn(config, setup.sink()))
     });
 }
 ```
@@ -248,7 +240,7 @@ That is the whole application-specific part of the shell. `main` hands
    Tauri's setup, with a `Setup` value.
 
 The closure does what a Qt `main` does between constructing `QApplication`
-and `exec()`:
+and `exec()`, and nothing else:
 
 1. **Builds the engine's configuration.** `tauri::Manager::path(setup.app)`
    is Tauri's path resolver. `app_config_dir()` is the per-application
@@ -257,14 +249,20 @@ and `exec()`:
    `~/Library/Application Support/com.tagdesigns.tagmonitor`), and
    `settings.json` there replaces qtmonitor's `QSettings`.
    `TAGMONITOR_NO_ATTACH` in the environment stops the automatic attach. The
-   user guide's URL comes from the shell, which searched for it.
-2. **Installs the logger** (`engine::LOGGER`, chapter 11). `log::set_logger`
-   can succeed only once per process; the result is ignored on purpose.
-3. **Starts the engine** with `engine::spawn`, passing a *sink*: the closure
-   the engine calls for every `Event`. Each variant maps to one method of
-   the shell's `Events`. It returns the core's `engine::Engine` handle.
-4. **Returns the handle wrapped for the shell**, `Engine::new(handle,
-   command method, query method)`.
+   user guide's URL comes from the shell, which searched for it
+   (`setup.user_guide_url()`).
+2. **Starts the engine** with `engine::spawn`, passing the *sink* the shell
+   supplies, `setup.sink()`: the closure the engine calls for every
+   `Event`. `spawn` returns the engine's handle, a `tagapp_engine::Engine`,
+   and the closure returns it to the shell as it is.
+
+What the closure does not do is as telling. It installs no logger (the
+shell installs the toolkit's `LOGGER` before Tauri starts; chapter 11),
+it does not look inside the engine's events (the shell's sink does), and it
+does not adapt the handle for the shell (the shell stores it as it is). Every
+engine is built from the shared engine toolkit, so every one of those steps
+was the same in all four applications, and now happens once, in
+`tagapp_shell::run`.
 
 > **Rust:** `tauri::Manager::path(setup.app)` calls the `path` method of the
 > trait `Manager` in its fully qualified form. A trait's methods can be
@@ -274,29 +272,25 @@ and `exec()`:
 
 > **Rust:** `?` after `app_config_dir()` returns early from the closure with
 > the error, like a `return` of an error code after a failed call. The
-> closure must return `Result<Engine, Box<dyn Error>>` (the shell's
-> signature), and `?` converts Tauri's error type into the boxed
+> closure must return `Result<tagapp_engine::Engine, Box<dyn Error>>` (the
+> shell's signature), and `?` converts Tauri's error type into the boxed
 > `dyn Error` on the way out, through the standard `From` conversion every
 > error type gets. The shell passes the error up to Tauri, which fails to
 > start, and the shell's `run` then panics with "error while running Tag
 > Monitor". The closure's final `Ok(...)` is its success value.
 
-> **Rust:** `move |event| match event { ... }` is a closure that takes
-> ownership of what it captures (`events`), like a C++ lambda capturing by
-> value with `[events = std::move(events)]`. The engine thread calls it long
-> after the setup closure returns, so it must own its captures; borrowing
-> them from the setup closure's stack would not compile. The `match` must
-> handle every variant of `Event`; adding a variant in the core makes this
-> file fail to compile until it is handled. Tag View's `Event` is the
-> shared engine toolkit's, which has an `Exit` variant, so its `match` has
-> the third arm too, although Tag View's engine never sends `Exit`.
-
-> **Rust:** `engine::Engine::command` with no parentheses is not a call: it
-> names the method as a function value, here of type
-> `fn(&engine::Engine, &str, Value)`. A method with `&self` is an ordinary
-> function whose first parameter is the receiver, so it can be passed like
-> a C function pointer -- the counterpart of passing `&Engine::command`, a
-> pointer to member function, in C++.
+> **Rust:** why `user_guide_url()` is a method and not a public field.
+> Writing `setup.user_guide_url` for a `String` field *moves* the string out
+> of `setup` -- a partial move, which leaves `setup` usable only field by
+> field. The next line's `setup.sink()` borrows the whole of `setup`, and the
+> compiler rejects a borrow of a partly moved value. The method takes
+> `&self` and returns a copy, so both calls only borrow, in either order.
+> `setup.sink()` returns a closure that owns a clone of what it needs and
+> borrows nothing from `setup`, so it may outlive `setup`, as it must: the
+> engine thread calls it long after setup has returned. Its type,
+> `impl Fn(Event) + Send + Sync + 'static`, says exactly that -- callable
+> from any thread, borrowing nothing -- and is the type `engine::spawn` asks
+> for, so the two fit without any glue.
 
 ## tagapp-shell: the shared shell
 
@@ -304,8 +298,9 @@ Everything else is in
 [tagapp-shell-rs/src/lib.rs](../../libraries/tagapp-shell-rs/src/lib.rs),
 one file, the same for every application. Its manifest names Tauri, the two
 plugins, `serde_json` (for the `log` event's payload and the `quit`
-command's empty arguments; chapter 11 introduces it properly) and, on
-macOS only, `objc2-foundation`:
+command's empty arguments; chapter 11 introduces it properly), the engine
+toolkit `tagapp-engine` (whose `Engine`, `Event` and `LOGGER` it uses),
+`log` (to install that logger) and, on macOS only, `objc2-foundation`:
 
 ```toml
 # Already in the graph through Tauri; named here to opt out of App Nap.
@@ -319,7 +314,7 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = ["s
 
 ### What an application tells the shell
 
-[lib.rs:43-62](../../libraries/tagapp-shell-rs/src/lib.rs#L43):
+[lib.rs:48-67](../../libraries/tagapp-shell-rs/src/lib.rs#L48):
 
 ```rust
 /// What an application tells the shell about itself.
@@ -353,159 +348,147 @@ pub struct App {
 
 ### The engine as the shell sees it
 
-[lib.rs:64-101](../../libraries/tagapp-shell-rs/src/lib.rs#L64) (doc
-comments shortened):
+The shell's imports, [lib.rs:44-46](../../libraries/tagapp-shell-rs/src/lib.rs#L44):
 
 ```rust
-/// Queues a command: the engine handle's `command` with the handle bound.
-type CommandFn = Box<dyn Fn(&str, Value) + Send + Sync>;
-
-/// Asks a query and waits: the engine handle's `query` with the handle bound.
-/// An `Arc`, so a blocking task can hold its own reference.
-type QueryFn = Arc<dyn Fn(&str, Value) -> Value + Send + Sync>;
-
-pub struct Engine {
-    command: CommandFn,
-    query: QueryFn,
-}
-
-impl Engine {
-    pub fn new<E>(engine: E, command: fn(&E, &str, Value), query: fn(&E, &str, Value) -> Value) -> Self
-    where
-        E: Clone + Send + Sync + 'static,
-    {
-        let for_query = engine.clone();
-        Self {
-            command: Box::new(move |cmd, args| command(&engine, cmd, args)),
-            query: Arc::new(move |name, args| query(&for_query, name, args)),
-        }
-    }
-
-    pub fn command(&self, cmd: &str, args: Value) {
-        (self.command)(cmd, args);
-    }
-}
+use serde_json::{Value, json};
+use tagapp_engine::{Engine, Event};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, Wry};
 ```
 
-All four cores now hand the shell one handle type, `tagapp_engine::Engine`,
-from the shared engine toolkit, which each core re-exports as
-`engine::Engine`
-([chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
-It was not one type when the shell was written: Tag Programmer's core, the
-last to move onto the toolkit, had its own `Engine`, with the same two
-methods, `command(&self, &str, Value)` and `query(&self, &str, Value) ->
-Value`. The shell does not depend on the toolkit, and calls those two
-methods without knowing which type it has. In C++ you would write an abstract base class
-with two pure virtual functions and derive each handle from it; in Rust the
-equivalent is a *trait*, and the obvious design is a trait `EngineHandle` in
-the shell, implemented for each core's handle. That does not work here, for
-a reason peculiar to Rust:
+`Engine` here is the engine toolkit's handle, `tagapp_engine::Engine`, and
+it is the only engine type the shell knows. Every application's core is
+built on the toolkit ([chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)),
+re-exports the toolkit's handle as `engine::Engine`, and returns it from
+`engine::spawn`. Each core has its own message type and its own state, but
+the toolkit hides both behind the handle: an `Engine` holds a type-erased
+sender and a query timeout, and its two methods, `command(&self, &str,
+Value)` and `query(&self, &str, Value) -> Value`, are the same whatever
+engine is behind it (chapter 11 reads them). So one concrete type serves
+all four applications, and the shell simply names it: `run`'s closure
+returns an `Engine`, Tauri stores it as managed state, and the two commands
+take it as `State<'_, Engine>`. There is no trait, no wrapper and no
+function pointer between the shell and the engine.
+
+In C++ terms, the toolkit did the type erasure once, inside the handle --
+the way `std::function` hides a callable's type -- so that its users never
+need an abstract base class. Had each core kept a handle type of its own,
+the shell would have needed some common interface over them, and that is
+awkward in Rust:
 
 > **Rust: the orphan rule.** An `impl Trait for Type` may be written only in
-> the crate that defines the trait or the crate that defines the type. The
-> application crate defines neither `tagapp_shell::EngineHandle` nor
-> `tagapp_engine::Engine`, so it may not connect them. The shell crate
-> could only by depending on every crate that defines a handle type; when
-> it was written, that meant Tag Programmer's core as well as the toolkit.
-> The core crate could, but it would then have to depend on
-> `tagapp-shell` and through it on Tauri -- and the cores are toolkit-free
-> on purpose, so they can be tested without a window. The rule exists so
-> that two unrelated crates can never both supply the same `impl` and
-> conflict; C++ has no such rule, because a class lists its bases where it
-> is defined.
+> the crate that defines the trait or the crate that defines the type. A
+> trait `EngineHandle` defined in the shell could be implemented for a
+> core's handle only in the shell (which would then depend on every core)
+> or in the core (which would then depend on the shell, and through it on
+> Tauri). The application crate, which defines neither, may not connect
+> them. The rule exists so that two unrelated crates can never both supply
+> the same `impl` and conflict; C++ has no such rule, because a class lists
+> its bases where it is defined. One concrete handle type in the toolkit
+> sidesteps the question.
 
-So the shell takes no trait at all. `Engine::new` accepts the handle and
-the two methods as plain function pointers, `fn(&E, &str, Value)` and
-`fn(&E, &str, Value) -> Value`, for whatever type `E` the handle is. The
-application passes `engine::Engine::command` and `engine::Engine::query`,
-and the compiler checks their signatures against those types. `new` then
-*binds* the handle to each method in a closure, the way `std::bind` or a
-capturing lambda turns a member-function pointer and an object into one
-callable, and stores the closures. After `new`, the type `E` is gone from
-view: `Engine` is one concrete type whatever the application, so Tauri can
-store it as managed state.
+The dependencies run one way: the shell depends on the toolkit, and the
+toolkit and the cores never depend on the shell. `tagapp-engine` names
+neither Tauri nor any window type, so a core and its tests build and run
+with no window at all -- the reason the cores are kept toolkit-free
+(chapter 11).
 
-> **Rust:** `Box<dyn Fn(&str, Value) + Send + Sync>` is a heap-allocated
-> closure called through a vtable -- a `std::function<void(std::string_view,
-> Value)>`. `dyn Fn(...)` is "some type that can be called like this",
-> whose concrete type (each closure has its own, unnamed) is hidden behind
-> the pointer. `+ Send + Sync` adds that it may be moved to and called from
-> other threads, which Tauri requires of managed state. `Arc<dyn Fn ...>`
-> is the same closure behind a thread-safe reference count -- a
-> `std::shared_ptr<std::function<...>>` -- because the query closure must
-> be handed to a separate blocking task ([below](#the-two-commands)). The
-> `type CommandFn = ...;` lines are aliases, as `using` declares one in
-> C++.
+### Events, Setup and the sink
 
-> **Rust:** the `where E: Clone + Send + Sync + 'static` clause is the
-> template's requirements, spelled out and checked when `new` is compiled
-> rather than when it is instantiated (as a C++20 `requires` clause would
-> be). `Clone` because the handle is copied into two closures (`engine` and
-> `for_query`; cloning a core's handle copies a channel sender, as cheap as
-> copying a `std::shared_ptr`). `Send + Sync` because the closures are
-> called from other threads. `'static` because the closures outlive `new`,
-> so the handle may not borrow anything shorter-lived. `(self.command)(cmd,
-> args)` needs the parentheses: `self.command(...)` would look for a method
-> named `command`, which is the very method being defined.
-
-### Events and Setup
-
-[lib.rs:103-148](../../libraries/tagapp-shell-rs/src/lib.rs#L103) (doc
-comments shortened):
+[lib.rs:69-131](../../libraries/tagapp-shell-rs/src/lib.rs#L69) (doc
+comments dropped):
 
 ```rust
 #[derive(Clone)]
-pub struct Events {
+struct Events {
     handle: AppHandle<Wry>,
     exiting: Arc<AtomicBool>,
 }
 
 impl Events {
-    pub fn state(&self, state: Value) {
-        let _ = self.handle.emit("state", state);
-    }
-
-    pub fn log(&self, level: &str, text: &str) {
-        let _ = self.handle.emit("log", json!({ "level": level, "text": text }));
-    }
-
-    pub fn exit(&self) {
-        self.exiting.store(true, Ordering::Relaxed);
-        self.handle.exit(0);
+    fn send(&self, event: Event) {
+        match event {
+            Event::State(state) => {
+                let _ = self.handle.emit("state", state);
+            }
+            Event::Log { level, text } => {
+                let _ = self
+                    .handle
+                    .emit("log", json!({ "level": level, "text": text }));
+            }
+            Event::Exit => {
+                self.exiting.store(true, Ordering::Relaxed);
+                self.handle.exit(0);
+            }
+        }
     }
 }
 
 pub struct Setup<'a> {
     pub app: &'a tauri::App<Wry>,
-    pub user_guide_url: String,
-    pub events: Events,
+    guide_url: String,
+    events: Events,
+}
+
+impl Setup<'_> {
+    pub fn user_guide_url(&self) -> String {
+        self.guide_url.clone()
+    }
+
+    pub fn sink(&self) -> impl Fn(Event) + Send + Sync + 'static {
+        let events = self.events.clone();
+        move |event| events.send(event)
+    }
 }
 ```
 
-`Events` is where the engine's sink sends its events. It is called on the
-engine thread for `State` and `Exit`, and on whichever thread logged for
-`Log` (often the tag thread). That is safe because `AppHandle` is a cheap,
-cloneable handle that may be used from any thread; `emit` serialises the
-payload to JSON and posts it to the web view, much as emitting a signal from
-a worker thread to an object in the GUI thread queues a call there. `emit`
-returns a `Result` (the web view may be gone during shutdown), and `let _ =`
-discards it deliberately.
+`Events` is where the engine's events go, and it is private to the shell:
+an application never sees it. Its one method, `send`, passes each variant
+of the toolkit's `Event` on. `State` becomes the page's `state` event, `Log`
+the `log` event `{level, text}`, and `Exit` ends the application. It is
+called on the engine thread for `State` and `Exit`, and on whichever thread
+logged for `Log` (often the tag thread). That is safe because `AppHandle`
+is a cheap, cloneable handle that may be used from any thread; `emit`
+serialises the payload to JSON and posts it to the web view, much as
+emitting a signal from a worker thread to an object in the GUI thread
+queues a call there. `emit` returns a `Result` (the web view may be gone
+during shutdown), and `let _ =` discards it deliberately.
 
-`exit` is the end of a close that went through the engine: it sets the
+`Exit` is the end of a close that went through the engine: `send` sets the
 `exiting` flag and calls `handle.exit(0)`, which asks the event loop to end
 ([below](#run-the-close-hook-the-command-table-and-run)).
 
+> **Rust:** the `match` must handle every variant of `Event`. Adding a
+> variant to the toolkit makes the shell fail to compile until it is
+> handled -- here, in one place, rather than in four applications. Tag
+> View's engine never sends `Exit`, which costs nothing: the arm is simply
+> never taken.
+
 `Setup` is what the application's closure receives: the running
-`tauri::App` (for its path resolver), the user guide's URL, and the
-`Events`. The application moves `setup.events` into its sink, which then
-owns it for the life of the engine.
+`tauri::App` (for its path resolver, the one public field), and two
+methods. `user_guide_url()` gives a copy of the manual page's URL the shell
+found. `sink()` gives the closure to pass to `engine::spawn`: a `move`
+closure owning its own clone of the `Events`, which it calls `send` on for
+every event, for the life of the engine.
+
+> **Rust:** `-> impl Fn(Event) + Send + Sync + 'static` returns "some
+> closure type that can be called with an `Event`", without naming it:
+> every closure has its own unnamed type, so it can be returned only this
+> way or boxed. Unlike a `Box<dyn Fn>` (a `std::function`), there is no
+> heap allocation or indirect call; the caller's code is compiled for the
+> actual type, as a C++ function returning `auto` would be. `Send + Sync`
+> lets the engine call it from other threads, and `'static` says it borrows
+> nothing, so it may outlive the `Setup` it came from. `move |event|
+> events.send(event)` takes ownership of `events`, like a C++ lambda
+> capturing `[events = std::move(events)]`.
 
 > **Rust:** `Setup<'a>` has a *lifetime parameter*: `app: &'a tauri::App`
 > is a borrow that is valid only while Tauri's setup runs, and the `'a`
 > records that a `Setup` cannot outlive it. The compiler therefore rejects
 > an application closure that tries to keep `setup.app` (in the sink, say)
 > past its return. In C++ this would be a raw `App*` with a comment saying
-> "do not store".
+> "do not store". `impl Setup<'_>` implements the methods for every
+> lifetime, without naming it.
 
 > **Rust:** `Arc<AtomicBool>` is a reference-counted shared boolean
 > (`std::shared_ptr<std::atomic<bool>>`). The flag is shared between the
@@ -515,7 +498,7 @@ owns it for the life of the engine.
 
 ### The two commands
 
-[lib.rs:150-170](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
+[lib.rs:133-153](../../libraries/tagapp-shell-rs/src/lib.rs#L133):
 
 ```rust
 /// The `invoke("command", {cmd, args})` command: queued for the engine
@@ -534,8 +517,8 @@ fn command(engine: State<'_, Engine>, cmd: String, args: Value) {
 /// join error's text is returned to the page as the rejected promise.
 #[tauri::command]
 async fn query(engine: State<'_, Engine>, name: String, args: Value) -> Result<Value, String> {
-    let query = engine.query.clone();
-    tauri::async_runtime::spawn_blocking(move || query(&name, args))
+    let engine = Engine::clone(&engine);
+    tauri::async_runtime::spawn_blocking(move || engine.query(&name, args))
         .await
         .map_err(|e| e.to_string())
 }
@@ -578,13 +561,15 @@ suspends the command until that finishes.
 > ordinary blocking closure on a separate thread and gives back a future of
 > its result.
 
-> **Rust:** `engine.query.clone()` -- `State<'_, Engine>` is a borrow of the
-> value Tauri stores, and a borrow cannot be moved into a closure that runs on
-> another thread and may outlive the call. So the query closure is held in an
-> `Arc`, and cloning the `Arc` copies only the pointer and bumps the count,
-> like copying a `std::shared_ptr`; the clone is moved into the blocking
-> task with `move`. This is why `QueryFn` is an `Arc` while `CommandFn`,
-> only ever called in place, is a `Box`.
+> **Rust:** `Engine::clone(&engine)` -- `State<'_, Engine>` is a borrow of
+> the value Tauri stores, and a borrow cannot be moved into a closure that
+> runs on another thread and may outlive the call. So the handle is cloned
+> and the clone is moved into the blocking task with `move`. Cloning an
+> `Engine` copies a reference-counted pointer to its sender and bumps the
+> count, as cheap as copying a `std::shared_ptr`. It is written
+> `Engine::clone(&engine)` rather than `engine.clone()` because `State`
+> itself is `Clone` too: method syntax would find `State::clone` first and
+> clone the borrow, not the handle. Naming the type picks the right one.
 
 `query` returns `Result<Value, String>`: `Ok(value)` resolves the page's
 promise with the JSON, `Err(text)` rejects it. The only `Err` is a failed
@@ -596,16 +581,16 @@ so the signature could not drop it anyway.
 
 ### The user guide and App Nap
 
-`user_guide_url` ([lib.rs:232-254](../../libraries/tagapp-shell-rs/src/lib.rs#L232))
+`user_guide_url` ([lib.rs:215-237](../../libraries/tagapp-shell-rs/src/lib.rs#L215))
 looks for a built copy of the manual page `apps/<page>.html` (or
 `apps/<page>/index.html`) beside the executable and up to five directories
 above it, then in the source tree, and returns a `file://` URL, or the
 published manual's URL. `<page>` is the `App`'s `guide_page`. It is plain
-path searching; `run` passes the result to the application in `Setup`, the
-engine answers the `user_guide_url` query with it, and the page opens it
-with the opener plugin.
+path searching; `run` passes the result to the application in `Setup`
+(`setup.user_guide_url()`), the engine answers the `user_guide_url` query
+with it, and the page opens it with the opener plugin.
 
-[lib.rs:211-222](../../libraries/tagapp-shell-rs/src/lib.rs#L211):
+[lib.rs:194-205](../../libraries/tagapp-shell-rs/src/lib.rs#L194):
 
 ```rust
 fn stay_awake() {
@@ -646,7 +631,7 @@ used.
 
 ### The macOS application menu
 
-[lib.rs:172-201](../../libraries/tagapp-shell-rs/src/lib.rs#L172):
+[lib.rs:155-184](../../libraries/tagapp-shell-rs/src/lib.rs#L155):
 
 ```rust
 /// The id of the Quit item [`app_menu`] puts in the application menu.
@@ -728,13 +713,16 @@ fails to start.
 
 ### run: building the application
 
-[lib.rs:269-304](../../libraries/tagapp-shell-rs/src/lib.rs#L269):
+[lib.rs:251-289](../../libraries/tagapp-shell-rs/src/lib.rs#L251):
 
 ```rust
 pub fn run<F>(app: App, context: tauri::Context<Wry>, start: F)
 where
     F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static,
 {
+    // Ignored if a logger is already set. The toolkit's logger drops records
+    // until the engine's channel gives it the sink.
+    let _ = log::set_logger(&tagapp_engine::LOGGER);
     if app.keep_awake {
         stay_awake();
     }
@@ -761,7 +749,7 @@ where
             };
             let engine = start(Setup {
                 app: tauri_app,
-                user_guide_url: user_guide_url(app.guide_page),
+                guide_url: user_guide_url(app.guide_page),
                 events,
             })?;
             tauri_app.manage(engine);
@@ -783,6 +771,14 @@ where
 > roughly). In C++ this would be a template parameter `F` with a comment;
 > here the compiler checks the closure against the bound in the
 > application's crate, with the error pointing at the closure.
+
+The first line installs the logger. `log::set_logger` registers the
+process's one logger for the `log` crate, through which the engine and the
+libraries it calls report; the toolkit's `LOGGER` turns
+each record into an `Event::Log` once the engine's channel has given it the
+sink (chapter 11). It is installed here, before Tauri starts, so that every
+application gets it and none has to remember it. `set_logger` succeeds only
+once per process, and the result is ignored on purpose.
 
 `tauri::Builder::default()` starts a builder: each method configures it and
 returns it, and the chain ends in `.run(...)`, which enters the event loop.
@@ -841,7 +837,7 @@ setup and Tauri fails to start.
 
 ### run: the close hook, the command table and run
 
-[lib.rs:305-316](../../libraries/tagapp-shell-rs/src/lib.rs#L305):
+[lib.rs:290-302](../../libraries/tagapp-shell-rs/src/lib.rs#L290):
 
 ```rust
         .on_window_event(move |window, event| {
@@ -865,8 +861,8 @@ attached tag should be detached before the process ends. So a close request
 (the red button, File > Close Window) is vetoed and turned into the engine
 command `quit`, which is what the page's File > Quit and, on macOS, the menu
 bar's Quit item (Cmd-Q) also send. The engine may ask about unsaved changes,
-then detaches, then emits `Event::Exit`; the sink calls `Events::exit`,
-which sets `exiting` and calls `handle.exit(0)`, which asks the event loop
+then detaches, then emits `Event::Exit`; the sink's `Events::send` sets
+`exiting` and calls `handle.exit(0)`, which asks the event loop
 to end (Tauri raises `RunEvent::ExitRequested`, which nothing here
 prevents, and the loop exits without sending the window another
 `CloseRequested`). The flag is a guard: any close request that does arrive
@@ -889,7 +885,7 @@ sequenceDiagram
     E->>E: unsaved? ask with a prompt, else continue
     E->>T: TagCmd::Detach
     T-->>E: Report::Detached (or the 5 s deadline passes)
-    E->>W: sink(Event::Exit), Events::exit sets exiting, calls handle.exit(0)
+    E->>W: sink(Event::Exit), Events::send sets exiting, calls handle.exit(0)
     W->>W: event loop ends, process exits
 ```
 
@@ -967,8 +963,8 @@ engine:
   `replay` and `replay_period` instead.
 - **Tag View** attaches no tag and has no unsaved work, so it neither keeps
   awake nor closes through the engine, and its engine never sends the
-  `Exit` event (its `main` handles it all the same, because the toolkit's
-  `Event` has it). Its
+  `Exit` event (the shell's sink handles it all the same, because the
+  toolkit's `Event` has it). Its
   `main` reads the log and preference file named on the command line before
   calling `run`, and its closure is a `move` closure that moves them into
   the configuration -- the case `FnOnce` exists for.
@@ -1460,8 +1456,8 @@ An unknown `cmd` is logged as a warning.
 
 | Event | Emitted by | Payload | Thread |
 | --- | --- | --- | --- |
-| `state` | the sink, on `Event::State`, through `Events::state` | the whole view state object (`title`, `modified`, `attaching`, `strip`, `tag`, `config`, `actions`, `recent`, `erase`, `download`, `prompt`); sent only when it differs from the last one sent | engine |
-| `log` | the sink, on `Event::Log`, through `Events::log` | `{level, text}` | whichever thread logged |
+| `state` | the shell's sink, on `Event::State` (`Events::send`) | the whole view state object (`title`, `modified`, `attaching`, `strip`, `tag`, `config`, `actions`, `recent`, `erase`, `download`, `prompt`); sent only when it differs from the last one sent | engine |
+| `log` | the shell's sink, on `Event::Log` (`Events::send`) | `{level, text}` | whichever thread logged |
 
 The view state's fields are in the
 [contract](../../applications/tagmonitor-rs/design/ui-engine-contract.md#view-state-event-state)
@@ -1478,8 +1474,8 @@ and chapter 11 builds them.
 
 **Window events** (Tag Monitor sets `close_through_engine`): a
 `CloseRequested` before the engine allowed the exit is vetoed and becomes
-`command("quit")`; `Event::Exit` from the engine calls `Events::exit`, which
-calls `handle.exit(0)`.
+`command("quit")`; `Event::Exit` from the engine reaches `Events::send`,
+which calls `handle.exit(0)`.
 
 **Menu events** (macOS): the application menu's Quit item, id `quit`,
 becomes `command("quit")`.
@@ -1487,7 +1483,7 @@ becomes `command("quit")`.
 ## Try it
 
 - Read [kit.js:51-62](../../ui-kit/kit.js#L51) next to
-  [tagapp-shell's lib.rs:150-170](../../libraries/tagapp-shell-rs/src/lib.rs#L150):
+  [tagapp-shell's lib.rs:133-153](../../libraries/tagapp-shell-rs/src/lib.rs#L133):
   the three lines of JavaScript and the two Rust functions are the whole
   bridge, for every application.
 - Open `host/applications/tagmonitor-rs/ui/index.html` directly in a browser.
@@ -1506,9 +1502,10 @@ becomes `command("quit")`.
   applications' descriptions side by side: everything that differs between
   their shells, apart from the engine configuration.
 - `cargo doc -p tagapp-shell --open` (from `host/`) shows the shell's public
-  API: `App`, `Engine`, `Events`, `Setup`, `run` and `user_guide_url`.
-- `cargo doc -p tagmonitor-core --open` and read `engine::Engine` and
-  `engine::Event`: the shell's whole view of the core.
+  API: `App`, `Setup` (with `sink` and `user_guide_url`), `run` and
+  `user_guide_url`.
+- `cargo doc -p tagapp-engine --open` and read `Engine`, `Event` and
+  `LOGGER`: the shell's whole view of every core.
 
 ## Where next
 
