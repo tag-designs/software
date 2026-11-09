@@ -958,6 +958,11 @@ Directory: [`embedded/tags/families/PresTag/`](embedded/tags/families/PresTag/).
   window each) are agreed rather than single; consider a release-check pass on
   `prestag-hr-20.json` beside `prestag-60.json`. Low noise at 20 s leaves no
   five-month margin on 5.5 mAh; say so in the user manual.
+- **Release the host first.** A host up to v4.1.1 does not recognise
+  `PresTagHRLog` (`Ack` field 18): its `PRESTAG` case returns 0, which reads as
+  end of log, so downloading a high-resolution tag writes an empty database with
+  no error. Ship this host before or with the PresTag firmware, and say in the
+  firmware release notes that a high-resolution tag needs it to download.
 - **Side-by-side noise.** Run two PresTags together for an hour, default and
   high-resolution, and compare sample-to-sample noise in both noise modes.
 - **Legacy qtmonitor has no pressure-sensor panel.** Its
