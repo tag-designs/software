@@ -79,7 +79,7 @@ protocol names; the explanation column names the device actually tested.
 | `RUN_RTC` | Initializes the RTC, reads the date/time, and checks that the STM32 RTC divider configuration matches the external RTC source. |
 | `RUN_EXT_FLASH` | Wakes the AT25-series external flash and verifies that it returns a valid chip identity. |
 
-## PresTag, PresTagRaw And PresTagHR
+## PresTag And PresTagRaw
 
 | Test request | What it checks |
 | --- | --- |

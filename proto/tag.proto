@@ -92,7 +92,7 @@ message Ack {
     IMUTagLog imu_data_log = 15;
     IMUTagRawLog imu_raw_data_log = 16;
     UIUCTagLog uiuctag_data_log = 17;
-    PresTagHRLog prestag_hr_data_log = 18;
+    PresTagHRLog prestag_hr_data_log = 18;  // PresTag in high resolution
 
     
   }

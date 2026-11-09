@@ -61,7 +61,7 @@ typedef struct {
 } t_PresTagRawLogScales;
 
 /*
- * PresTagHR full-resolution log.
+ * PresTag high-resolution log (Config.lps27.high_resolution).
  *
  * A PresTagHRLog carries one packed byte stream, a concatenation of
  * t_PresTagHRBlock records. Each block is one internal header (epoch, voltage,
@@ -81,9 +81,9 @@ typedef struct {
  * ready; it holds its slot so later samples keep their timestamps.
  */
 
-/** @brief Samples in one PresTagHR external page. */
+/** @brief Samples in one high-resolution PresTag page. */
 #define PRESTAG_HR_LOG_SAMPLES 48
-/** @brief Bytes in one PresTagHR sample: 3 pressure, 2 temperature. */
+/** @brief Bytes in one high-resolution sample: 3 pressure, 2 temperature. */
 #define PRESTAG_HR_SAMPLE_BYTES 5
 /** @brief Raw LPS27 pressure counts per hPa at full resolution. */
 #define PRESTAG_HR_PRESSURE_LSB_PER_HPA 4096
@@ -100,7 +100,7 @@ typedef struct {
     int16_t temperature;   /**< Signed 16-bit temperature. */
 } t_PresTagHRSample;
 
-/** @brief One PresTagHR external page. */
+/** @brief One high-resolution PresTag page. */
 typedef struct {
     t_PresTagHRSample data[PRESTAG_HR_LOG_SAMPLES]; /**< Samples in time order. */
 } t_PresTagHRDataLog;

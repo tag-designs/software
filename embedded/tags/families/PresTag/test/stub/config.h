@@ -7,7 +7,8 @@ typedef struct {
   int32_t start, stop;
   Config_Interval hibernate[2];
   uint32_t lps_period;
-  bool lps_low_noise;
+  uint8_t lps_low_noise;
+  uint8_t lps_high_res;
 } t_storedconfig;
 extern t_storedconfig sconfig;
 #endif

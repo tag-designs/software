@@ -78,8 +78,8 @@ target's `./cfg`, `./inc` and `./src` override same-named files in `common/`.
 ## Naming: one loader per board and part
 
 A loader is bound to a board -- its pins, its flash part, its MCU and SRAM map
--- not to a tag. PresTag, PresTagRaw and PresTagHR all run on PresTagv3, so one
-loader serves them all. Names follow ST's `<MEMORY>_<BOARD>` convention:
+-- not to a tag. PresTag and PresTagRaw both run on PresTagv3, so one loader
+serves both. Names follow ST's `<MEMORY>_<BOARD>` convention:
 
 | Image | Contents |
 | --- | --- |

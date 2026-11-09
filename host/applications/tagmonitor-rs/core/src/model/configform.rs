@@ -1192,13 +1192,14 @@ pub enum Panel {
     Adxl(Adxl),
     /// The IMU: rate, accelerometer and gyro ranges.
     Lsm6([RadioGroup; 3]),
-    /// The LPS27 pressure sensor: low-noise conversion (PresTagHR).
+    /// The LPS27 pressure sensor: low-noise conversion and high-resolution
+    /// logging, as (low_noise, high_resolution).
     ///
-    /// PresTag variants share one tag type, and only PresTagHR supports this
-    /// field. A proto3 message field has presence, and PresTagHR always
-    /// reports `lps27` while older PresTag firmware never sends it, so the
-    /// panel is shown only for a configuration that carries `lps27`.
-    Lps27(bool),
+    /// PresTag firmware with these options always reports `lps27`; PresTag up
+    /// to fw-v0.8 and PresTagRaw never send it. A proto3 message field has
+    /// presence, so the panel is shown only for a configuration that carries
+    /// `lps27`, and a tag that cannot honour the options is never offered them.
+    Lps27(bool, bool),
 }
 
 /// The panels in page order, by the names the probe's layout uses.
@@ -1256,8 +1257,11 @@ impl Panel {
                 accel.set_checked(lsm.accel_rng);
                 gyro.set_checked(lsm.gyro_rng);
             }
-            Panel::Lps27(low_noise) => match config.lps27 {
-                Some(l) => *low_noise = l.low_noise,
+            Panel::Lps27(low_noise, high_res) => match config.lps27 {
+                Some(l) => {
+                    *low_noise = l.low_noise;
+                    *high_res = l.high_resolution;
+                }
                 None => return false,
             },
         }
@@ -1278,9 +1282,10 @@ impl Panel {
                 lsm.gyro_rng = gyro.checked;
                 config.lsm6 = Some(lsm);
             }
-            Panel::Lps27(low_noise) => {
+            Panel::Lps27(low_noise, high_res) => {
                 config.lps27 = Some(Lps27 {
                     low_noise: *low_noise,
+                    high_resolution: *high_res,
                 });
             }
         }
@@ -1313,18 +1318,34 @@ impl Panel {
                 c("lsm6.accel", &["IMU", "Accelerometer Range"], "", accel),
                 c("lsm6.gyro", &["IMU", "Gyro Range"], "", gyro),
             ],
-            Panel::Lps27(low_noise) => vec![Control {
-                id: "lps27.low_noise".into(),
-                path: &["Pressure Sensor"],
-                label: "",
-                tooltip: "Convert in the LPS27's low-noise mode: less noise per \
-                          sample, at a cost in current per sample",
-                enabled,
-                kind: ControlKind::Check {
-                    text: "Low-noise conversion",
-                    checked: *low_noise,
+            Panel::Lps27(low_noise, high_res) => vec![
+                Control {
+                    id: "lps27.high_resolution".into(),
+                    path: &["Pressure Sensor"],
+                    label: "",
+                    tooltip: "Log the full 24-bit pressure (1/4096 hPa steps) \
+                              instead of 1/16 hPa: 48 samples a page instead \
+                              of 60, so the log fills a fifth sooner",
+                    enabled,
+                    kind: ControlKind::Check {
+                        text: "High-resolution pressure",
+                        checked: *high_res,
+                    },
                 },
-            }],
+                Control {
+                    id: "lps27.low_noise".into(),
+                    path: &["Pressure Sensor"],
+                    label: "",
+                    tooltip: "Convert in the LPS27's low-noise mode: about \
+                              a third the noise per sample, at about half as \
+                              much again in charge per sample",
+                    enabled,
+                    kind: ControlKind::Check {
+                        text: "Low-noise conversion",
+                        checked: *low_noise,
+                    },
+                },
+            ],
         }
     }
 
@@ -1348,8 +1369,12 @@ impl Panel {
                 groups[i].set_checked(int);
                 true
             }
-            Panel::Lps27(low_noise) if id == "lps27.low_noise" => {
+            Panel::Lps27(low_noise, _) if id == "lps27.low_noise" => {
                 *low_noise = v.as_bool().unwrap_or(false);
+                true
+            }
+            Panel::Lps27(_, high_res) if id == "lps27.high_resolution" => {
+                *high_res = v.as_bool().unwrap_or(false);
                 true
             }
             _ => false,
@@ -1383,7 +1408,7 @@ impl Panel {
                 p
             }
             Panel::Lsm6(_) => vec!["lsm6.odr", "lsm6.accel_rng", "lsm6.gyro_rng"],
-            Panel::Lps27(_) => vec!["lps27.low_noise"],
+            Panel::Lps27(..) => vec!["lps27.low_noise", "lps27.high_resolution"],
         }
     }
 
@@ -1395,7 +1420,7 @@ impl Panel {
             Panel::Adxl(a) if a.variant == AdxlVariant::Standard => "Accelerometer",
             Panel::Adxl(_) => "Activity Wakeup",
             Panel::Lsm6(_) => "IMU",
-            Panel::Lps27(_) => "Pressure Sensor",
+            Panel::Lps27(..) => "Pressure Sensor",
         }
     }
 }
@@ -1518,7 +1543,7 @@ impl ConfigForm {
                     RadioGroup::new(&LSM6_ACCEL),
                     RadioGroup::new(&LSM6_GYRO),
                 ]),
-                Panel::Lps27(false),
+                Panel::Lps27(false, false),
             ],
             shown: Vec::new(),
             enabled: false,
@@ -1624,7 +1649,8 @@ mod tests {
     }
 
     /// The pressure-sensor panel shows only for a PresTag configuration that
-    /// carries lps27 (PresTagHR), and Start sends what the box says.
+    /// carries lps27 (firmware with the options), and Start sends what the
+    /// boxes say.
     #[test]
     fn lps27_panel_follows_presence() {
         let mut form = ConfigForm::new();
@@ -1639,7 +1665,7 @@ mod tests {
 
         let hr = Config {
             period: 20,
-            lps27: Some(Lps27 { low_noise: false }),
+            lps27: Some(Lps27::default()),
             ..Config::default()
         };
         form.load(&hr, TagType::Prestag, 0);
@@ -1648,8 +1674,15 @@ mod tests {
             ["IntervalScheduleWithPeriod", "Lps27Pressure"]
         );
         assert!(form.edit("lps27.low_noise", &json!(true)));
+        assert!(form.edit("lps27.high_resolution", &json!(true)));
         let sent = form.collect(&hr, TagType::Prestag, 0);
-        assert_eq!(sent.lps27, Some(Lps27 { low_noise: true }));
+        assert_eq!(
+            sent.lps27,
+            Some(Lps27 {
+                low_noise: true,
+                high_resolution: true
+            })
+        );
     }
 
     /// The hour rounding of the schedule's boxes.

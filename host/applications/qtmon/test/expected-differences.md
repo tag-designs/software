@@ -10,6 +10,28 @@ Each entry records a change to `golden/` that a code change was meant to make:
 which cases changed, how, and why. A difference that `compare.py` reports
 without an entry here is a defect. See [README.md](README.md).
 
+## 2026-11-09: PresTag's default configuration carries lps27
+
+Change: PresTag gained two stored-configuration options, `lps27.low_noise` and
+`lps27.high_resolution` ([decision 0047](../../../../docs/decisions/0047-prestag-high-resolution-pressure.md)),
+and its `default-config.json` lists both. Tag Monitor shows a Pressure Sensor
+panel (`Lps27Pressure`, two check boxes) for a PresTag configuration that
+carries `lps27`.
+
+18 cases differ: `open:foreign:PRESTAG` in each of the seven other tag types'
+goldens, and in `prestag.json` the 11 cases that start from the PresTag
+default (`new`, `new@detached`, `open:own-full`, `open:own-full@detached`,
+`open:only:*` and `open:zero:*` for the three schedule fields, and
+`open:empty-object`). In each, and nowhere else: `sent_hex` gains `5a00` (an
+empty `lps27`, field 11), `sent` gains `lps27` with both flags false, `layout`
+gains `panel Lps27Pressure` after the schedule panel, and `ui` gains the
+panel's group and its two check boxes, enabled as the schedule is.
+
+**These goldens were patched, not regenerated.** The reference qtmonitor is no
+longer built and has no Pressure Sensor panel, so the patch records Tag
+Monitor's intended behaviour for these 18 cases; every other case is still the
+qtmonitor reference. Regenerating from qtmonitor would undo it.
+
 ## 2026-11-03: Erase is available while the tag is erasing
 
 Change: an erase sent to a tag in sRESET continues the sweep

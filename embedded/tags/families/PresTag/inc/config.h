@@ -16,6 +16,18 @@
 /** Tag type reported in monitor configuration messages. */
 #define TAG_TYPE PRESTAG
 
+/**
+ * @brief 1 when this build honours Config.lps27: PresTag does, PresTagRaw,
+ *        whose download format is fixed, does not.
+ */
+#ifndef PRESTAG_CONFIGURABLE
+#if defined(PRESTAG_RAW_LOG) && PRESTAG_RAW_LOG
+#define PRESTAG_CONFIGURABLE 0
+#else
+#define PRESTAG_CONFIGURABLE 1
+#endif
+#endif
+
 /** @brief Hibernation window stored in flash configuration. */
 typedef struct {
   int32_t start_epoch;
@@ -31,11 +43,18 @@ typedef struct
   uint32_t lps_period;
   bool internal;
   /**
-   * PresTagHR: convert in LPS27 low-noise mode (Config.lps27.low_noise).
-   * Occupies what was padding before session, so no other member moves;
-   * every other PresTag variant leaves it zero. Stored-config layout 3.
+   * 1: convert in LPS27 low-noise mode (Config.lps27.low_noise). Only the
+   * value 1 counts, so an erased configuration (0xFF) reads as off. With
+   * lps_high_res, occupies what was padding before session, so no other
+   * member moves. Stored-config layout 3.
    */
-  bool lps_low_noise;
+  uint8_t lps_low_noise;
+  /**
+   * 1: log full-resolution pages, 48 five-byte samples
+   * (Config.lps27.high_resolution); otherwise 60 four-byte samples. Fixed for
+   * a run: the page geometry, the log cursor and the download all follow it.
+   */
+  uint8_t lps_high_res;
   t_sessionFacts session; ///< Session facts; filled at start (session_facts.h).
 } t_storedconfig __attribute__ ((aligned (8)));
 

@@ -1,20 +1,23 @@
 ---
 type: proposal
 status: superseded
-superseded-by: docs/decisions/0047-prestaghr-full-resolution-pressure.md
+superseded-by: docs/decisions/0047-prestag-high-resolution-pressure.md
 summary: "PresTagHR -- a PresTag variant that logs the LPS27's full 24-bit pressure in 5-byte packed records, with low-noise mode as a stored-configuration option, sized for 20 s sampling over 3-5 months."
 ---
 
 # PresTagHR: Full-Resolution Pressure Logging
 
 > **Built (2026-11-09).** What was decided is
-> [decision 0047](../../../../../../docs/decisions/0047-prestaghr-full-resolution-pressure.md);
-> how it works now is the [family README](../../README.md#prestaghr); what is
-> still open is in the [TODO](../../../../../../TODO.md#prestag). Two details
-> changed in building: `Config.lps27` is field 11, not 10, which the
+> [decision 0047](../../../../../../docs/decisions/0047-prestag-high-resolution-pressure.md);
+> how it works now is the [family README](../../README.md#configuration-options);
+> what is still open is in the [TODO](../../../../../../TODO.md#prestag). It
+> was built as described here, then changed: **there is no PresTagHR target.**
+> High resolution is a second PresTag configuration option,
+> `Config.lps27.high_resolution`, beside `low_noise`, in the one PresTag
+> image, and the page geometry follows the stored configuration. Also,
+> `Config.lps27` is field 11, not 10, which the
 > [tag-reported presence proposal](../../../../../../docs/shared/design/proposals/tag-reported-config-presence.md)
-> reserves; and Tag Monitor offers the setting only when the tag reports
-> `lps27`, since the config shape is shared by every PresTag variant.
+> reserves.
 
 PresTagHR is a third member of the PresTag family. It stores every sample as the
 LPS27HHW's five output bytes -- 24-bit pressure and 16-bit temperature -- in

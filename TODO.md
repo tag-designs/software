@@ -949,15 +949,17 @@ Directory: [`embedded/tags/families/PresTag/`](embedded/tags/families/PresTag/).
 - **Measure B1, B4 and B5** (1 s, 15 s and 30 s) if extra fit leverage is
   wanted. They are optional; the field fit already rests on three measured
   points.
-- **PresTagHR qualification** ([decision 0047](docs/decisions/0047-prestaghr-full-resolution-pressure.md)).
-  Before PresTagHR leaves `NO_PROFILE` in `tag_release_check.py`: measure the
-  low-noise conversion time and settle `LPS27_READY_POLLS` (6 x 5 ms now);
-  take a second run window per mode so the 2026-11-09 figures (0.88 and
-  1.29 uA at 20 s, 2.496 V, one window each) are agreed rather than single;
-  then add a `PresTagHR` profile on `prestaghr-20.json`. Low-noise at 20 s
-  leaves no five-month margin on 5.5 mAh; say so in the user manual.
-- **PresTagHR side-by-side noise.** Run a PresTag and a PresTagHR together for
-  an hour and compare sample-to-sample noise in both modes.
+- **High-resolution and low-noise options: qualification**
+  ([decision 0047](docs/decisions/0047-prestag-high-resolution-pressure.md)).
+  PresTag's image changed, so it joins the batched qualification. Also:
+  measure the low-noise conversion time and settle
+  `LPS27_LOW_NOISE_READY_POLLS` (6 x 5 ms now); take a second run window per
+  option so the 2026-11-09 figures (0.88 and 1.29 uA at 20 s, 2.496 V, one
+  window each) are agreed rather than single; consider a release-check pass on
+  `prestag-hr-20.json` beside `prestag-60.json`. Low noise at 20 s leaves no
+  five-month margin on 5.5 mAh; say so in the user manual.
+- **Side-by-side noise.** Run two PresTags together for an hour, default and
+  high-resolution, and compare sample-to-sample noise in both noise modes.
 - **Legacy qtmonitor has no pressure-sensor panel.** Its
   `--check-config-panels` will report the `PRESTAG` shape's `lps27`. Port the
   panel from `tagmonitor-rs` (`configform.rs`, `Panel::Lps27`) if the legacy

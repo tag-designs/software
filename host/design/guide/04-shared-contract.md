@@ -189,8 +189,8 @@ firmware.
 
 ## Packed binary log formats: `include/*_log_format.h`
 
-Four targets (IMUTag, PresTagRaw, PresTagHR, UIUCTag) send their data pages
-as the raw bytes they wrote to flash, inside a protobuf `bytes` field
+IMUTag, PresTagRaw, UIUCTag and PresTag in high resolution send their data
+pages as the raw bytes they wrote to flash, inside a protobuf `bytes` field
 (`IMUTagRawLog.samples`, `PresTagRawLog.samples`, `PresTagHRLog.samples`,
 `UIUCTagLog.samples`),
 rather than as decoded protobuf fields. It saves the tag the work and the

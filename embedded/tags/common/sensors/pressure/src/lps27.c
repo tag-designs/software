@@ -46,6 +46,20 @@ enum LPS27_Reg
 #define LPS27_READY_POLLS 6
 #endif
 
+/**
+ * @brief Readiness polls allowed for a low-noise conversion in
+ *        lps27GetPressureTempFull(), LPS27_READY_POLL_MS apart.
+ *
+ * @details Low-noise conversions take longer than low-power ones, and a target
+ *          may set LPS27_READY_POLLS as low as one for the low-power case.
+ *          The loop leaves on the first ready status, so the allowance costs
+ *          nothing when the data is ready sooner. Six polls of 5 ms sufficed
+ *          for every low-noise sample on the bench (2026-11-09).
+ */
+#ifndef LPS27_LOW_NOISE_READY_POLLS
+#define LPS27_LOW_NOISE_READY_POLLS 6
+#endif
+
 /** @name LPS27 register helpers
  * Register helpers keep the one-shot sampling path independent of the concrete
  * bus used by the pressure device descriptor. Each access opens and closes the
@@ -216,13 +230,13 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
  *          byte: 24 bits at 4096 LSB/hPa instead of 16 at 16 LSB/hPa. The
  *          noise mode is chosen per call rather than by LPS_LOW_POWER, so a
  *          stored configuration can select it. Readiness is polled up to
- *          LPS27_READY_POLLS times, LPS27_READY_POLL_MS apart, and the loop
- *          leaves on the first ready status; a target that offers low-noise
- *          mode must allow enough polls for its longer conversion.
+ *          LPS27_READY_POLLS times in low-power mode and
+ *          LPS27_LOW_NOISE_READY_POLLS in low-noise mode, LPS27_READY_POLL_MS
+ *          apart; the loop leaves on the first ready status.
  *
  *          lps27GetPressureTemp() is deliberately left as it was: it is the
- *          path qualified on PresTag, PresTagRaw and BitPresTag, and sharing
- *          code with it would change their images.
+ *          path qualified on PresTagRaw and BitPresTag, and PresTag still uses
+ *          it when neither LPS27 option is configured.
  *
  * @param[in]  device    Pressure device descriptor.
  * @param[in]  low_noise true to set CTRL_REG2.LOW_NOISE_EN for this conversion.
@@ -262,7 +276,8 @@ bool lps27GetPressureTempFull(const TagPressureDevice *device, bool low_noise,
   lps27_SetReg(device, LPS27_CTRL_REG1, cmd, 2);
   tagPhaseProbeMark(3);   /* one-shot triggered */
 
-  for (int i = 0; i < LPS27_READY_POLLS; i++) {
+  const int polls = low_noise ? LPS27_LOW_NOISE_READY_POLLS : LPS27_READY_POLLS;
+  for (int i = 0; i < polls; i++) {
     stopMilliseconds(LPS27_READY_POLL_MS);
     lps27_GetReg(device, LPS27_STATUS, &status, 1);
     if ((status & 3) == 3)

@@ -15,6 +15,9 @@ PB_BIND(Config, Config, AUTO)
 PB_BIND(Config_Interval, Config_Interval, AUTO)
 
 
+PB_BIND(Lps27, Lps27, AUTO)
+
+
 PB_BIND(Lsm6dsv, Lsm6dsv, AUTO)
 
 
@@ -25,6 +28,9 @@ PB_BIND(PresTagLog_PT, PresTagLog_PT, AUTO)
 
 
 PB_BIND(BitPresTagLog_BPT, BitPresTagLog_BPT, AUTO)
+
+
+PB_BIND(PresTagHRLog, PresTagHRLog, 2)
 
 
 PB_BIND(CompassTagLog_Compass, CompassTagLog_Compass, AUTO)

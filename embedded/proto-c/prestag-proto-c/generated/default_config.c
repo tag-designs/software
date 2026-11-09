@@ -1,5 +1,5 @@
-const unsigned char tag_default_config[16] = {
+const unsigned char tag_default_config[18] = {
    8, 3, 18, 6, 16, 255, 255, 255, 255, 7, 
-   26, 0, 26, 0, 56, 60
+   26, 0, 26, 0, 56, 60, 90, 0
 };
-const unsigned int tag_default_config_len = 16;
+const unsigned int tag_default_config_len = 18;

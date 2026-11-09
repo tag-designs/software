@@ -297,15 +297,23 @@ uint32_t StatusCount(const CaptureSource &src) {
 }
 
 /**
- * @brief   PresTag with converted samples (decoder "prestag").
+ * @brief   PresTag (decoder "prestag"), in either of its formats.
  *
  * @details Follows embedded/tags/families/PresTag/src/datalog.c and config.c.
  *          One page is a t_DataHeader in internal flash (vddHeader[index]:
  *          int32 epoch, uint16 vdd100[2], the second being temperature) plus
- *          60 raw LPS27 samples (int16 pressure, int16 temperature) at
- *          index * 240 in external flash. A page ends at its first pressure of
- *          -1. The tag converts on the way out: pressure / 16 hPa, temperature
- *          / 100 C, header fields * 0.01.
+ *          240 bytes at index * 240 in external flash.
+ *
+ *          Default format: 60 raw LPS27 samples (int16 pressure, int16
+ *          temperature); a page ends at its first pressure of -1, and the tag
+ *          converts on the way out (pressure / 16 hPa, temperature / 100 C,
+ *          header fields * 0.01) into one PresTagLog per page.
+ *
+ *          High resolution, when stored-config layout 3 has lps_high_res
+ *          (offset 30) == 1: 48 t_PresTagHRSample records, answered as
+ *          data_logAck() does, with as many whole t_PresTagHRBlock records as
+ *          PresTagHRLog.samples holds (15) from the index on, stopping at the
+ *          first unwritten header.
  */
 class PresTagDecoder : public CaptureDecoder {
 public:
@@ -313,9 +321,28 @@ public:
   static constexpr uint32_t kPageBytes = kSamples * 4; ///< sizeof(t_PresTagDataLog)
   static constexpr uint32_t kHeaderBytes = 8;       ///< sizeof(t_DataHeader)
 
+  static constexpr uint32_t kHRBlockBytes = sizeof(t_PresTagHRBlock); ///< 252
+  static constexpr uint32_t kHRBlocksPerReply = 3780 / kHRBlockBytes;   ///< max_size / block
+
   std::vector<KnownLayout> Layouts() const override {
     return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
-            {"data_headers", 1, kHeaderBytes}};
+            {"stored_config", 3, 0}, {"data_headers", 1, kHeaderBytes}};
+  }
+
+  /**
+   * @brief   One byte of the LPS27 options in a layout-3 stored configuration.
+   *
+   * @param[in] src    The capture.
+   * @param[in] offset 29 (lps_low_noise) or 30 (lps_high_res).
+   * @return  True only when the layout is 3 or later and the byte is 1, as
+   *          the firmware reads it; older layouts have neither option.
+   */
+  static bool Lps27Option(const CaptureSource &src, uint32_t offset) {
+    const auto it = src.Identity().regions.find("stored_config");
+    if (it == src.Identity().regions.end() || it->second.layout_version < 3)
+      return false;
+    uint8_t v = 0;
+    return src.Flash(it->second.start + offset, &v, 1) && v == 1;
   }
 
   bool ReadConfig(const CaptureSource &src, Config &config,
@@ -340,6 +367,11 @@ public:
       h->set_start_epoch(static_cast<int32_t>(Le32(c + 8 + 8 * i)));
       h->set_end_epoch(static_cast<int32_t>(Le32(c + 12 + 8 * i)));
     }
+    // readConfig() reports lps27 from layout 3 on, always present.
+    if (it->second.layout_version >= 3) {
+      config.mutable_lps27()->set_low_noise(Lps27Option(src, 29));
+      config.mutable_lps27()->set_high_resolution(Lps27Option(src, 30));
+    }
     return true;
   }
 
@@ -352,6 +384,10 @@ public:
   }
 
   void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+    if (Lps27Option(src, 30)) {
+      HighResolutionLog(src, index, ack);
+      return;
+    }
     // Invalid indices answer err OK with no payload, which ends the download.
     ack.Clear();
     ack.set_err(Ack_Err_OK);
@@ -389,43 +425,16 @@ public:
       d->set_temperature(static_cast<int16_t>(Le16(page + 4 * j + 2)) / 100.0f);
     }
   }
-};
 
-/**
- * @brief   PresTagHR, full-resolution samples (decoder "prestag_hr").
- *
- * @details Follows the PRESTAG_HR_LOG branches of
- *          embedded/tags/families/PresTag/src/datalog.c and config.c. Headers
- *          and the 240-byte page stride are PresTag's; a page holds 48
- *          t_PresTagHRSample records (int24 pressure, int16 temperature,
- *          include/prestag_log_format.h). data_logAck() answers with as many
- *          whole t_PresTagHRBlock records as PresTagHRLog.samples holds (15),
- *          starting at the index and stopping at the first unwritten header;
- *          the writer advances by the number it receives. Stored-config
- *          layout 3 adds lps_low_noise at offset 29.
- */
-class PresTagHRDecoder : public PresTagDecoder {
-public:
-  static constexpr uint32_t kBlockBytes = sizeof(t_PresTagHRBlock); ///< 252
-  static constexpr uint32_t kBlocksPerReply = 3780 / kBlockBytes;   ///< max_size / block
-
-  std::vector<KnownLayout> Layouts() const override {
-    return {{"stored_config", 3, 0}, {"data_headers", 1, kHeaderBytes}};
-  }
-
-  bool ReadConfig(const CaptureSource &src, Config &config,
-                  std::string *error) const override {
-    if (!PresTagDecoder::ReadConfig(src, config, error))
-      return false;
-    const auto it = src.Identity().regions.find("stored_config");
-    uint8_t low_noise = 0;
-    if (!src.Flash(it->second.start + 29, &low_noise, 1))
-      return Fail(error, "stored configuration outside the captured image");
-    config.mutable_lps27()->set_low_noise(low_noise != 0);
-    return true;
-  }
-
-  void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+private:
+  /**
+   * @brief   hrLogAck(): the high-resolution download from @p index on.
+   *
+   * @param[in]  src   The capture.
+   * @param[in]  index First log page.
+   * @param[out] ack   Cleared and filled; no payload ends the download.
+   */
+  void HighResolutionLog(const CaptureSource &src, uint32_t index, Ack &ack) const {
     ack.Clear();
     ack.set_err(Ack_Err_OK);
     const IdentityRecord &id = src.Identity();
@@ -435,7 +444,7 @@ public:
       return;
     const uint32_t end = dh->second.end ? dh->second.end : ps->second.end;
     std::string payload;
-    for (uint32_t n = 0; n < kBlocksPerReply; n++) {
+    for (uint32_t n = 0; n < kHRBlocksPerReply; n++) {
       const uint64_t i = uint64_t(index) + n;
       const uint64_t address = uint64_t(dh->second.start) + i * kHeaderBytes;
       const uint64_t byte_offset = uint64_t(kPageBytes) * i;
@@ -1012,8 +1021,6 @@ bool CaptureSource::Open(const std::string &dir, std::string *error) {
     decoder_ = std::make_unique<ImuTagNandDecoder>();
   else if (decoder == "prestag" && !external_.empty())
     decoder_ = std::make_unique<PresTagDecoder>();
-  else if (decoder == "prestag_hr" && !external_.empty())
-    decoder_ = std::make_unique<PresTagHRDecoder>();
   else if (decoder == "compasstag" && !external_.empty())
     decoder_ = std::make_unique<CompassTagDecoder>();
   else if (decoder == "uiuctag" && !external_.empty())

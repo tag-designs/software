@@ -99,7 +99,7 @@ message Config {
 
   // 10 is reserved for config_schema
   // (docs/shared/design/proposals/tag-reported-config-presence.md).
-  Lps27 lps27 = 11;                 // LPS27 pressure sensor (PresTagHR)
+  Lps27 lps27 = 11;                 // LPS27 pressure sensor (PresTag)
  
   
 }
@@ -175,10 +175,11 @@ message Adxl362 {
   float active_sec = 10;             // need active seconds for triaxial mode
 }
 
-// LPS27HHW pressure sensor settings (PresTagHR).
+// LPS27HHW pressure sensor settings (PresTag, decision 0047).
 
 message Lps27 {
-  bool low_noise = 1;  // CTRL_REG2.LOW_NOISE_EN for every one-shot conversion
+  bool low_noise = 1;        // CTRL_REG2.LOW_NOISE_EN for every one-shot conversion
+  bool high_resolution = 2;  // log full 24-bit pressure: 48 five-byte samples a page
 }
 
 //
@@ -297,7 +298,8 @@ message PresTagRawLog {
   bytes samples = 3; // packed repeated t_PresTagRawBlock records
 }
 
-// PresTagHR full-resolution log: packed repeated t_PresTagHRBlock records
+// PresTag full-resolution log (Config.lps27.high_resolution): packed repeated
+// t_PresTagHRBlock records
 // (include/prestag_log_format.h). The scales are fixed by the format:
 // pressure 4096 counts/hPa (signed 24-bit), temperature 100 counts/degC.
 message PresTagHRLog {

@@ -86,8 +86,8 @@ static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * siz
 
 (`families/IMUTag/src/datalog.c`; the PresTag family has the equivalent `>=`
 checks against `t_PresTagRawBlock` when `PRESTAG_RAW_LOG` is set, as it is for
-PresTagRaw, and against `t_PresTagHRBlock` when `PRESTAG_HR_LOG` is set, as it
-is for PresTagHR.) A tag may send fewer records than the buffer holds:
+PresTagRaw, and otherwise against `t_PresTagHRBlock`, which PresTag sends when
+its stored configuration selects high resolution.) A tag may send fewer records than the buffer holds:
 UIUCTag trims trailing never-written records from a block before sending it
 (`UIUCTag/src/datalog.c`).
 

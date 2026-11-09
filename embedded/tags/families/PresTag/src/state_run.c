@@ -48,18 +48,21 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     // this is a recovery action -- round up in the case of partial blocks
     // written.
     //
-    // The unit is DATALOG_SAMPLES, not sizeof(t_DataLog)/2. external_blocks
-    // counts 4-byte samples (writeDataLog uses external_blocks * 4, and
-    // restoreLog sets pages * DATALOG_SAMPLES), so one page is DATALOG_SAMPLES
-    // of it; sizeof(t_DataLog)/2 is that page measured in 16-bit words, which
-    // is twice as many. Download pairs header vddHeader[i] with the page at
+    // The unit is samples per page, prestagSamplesPerPage(): 60, or 48 when
+    // the stored configuration selects high resolution, fixed for the run --
+    // not sizeof(t_DataLog)/2. external_blocks counts samples (writeDataLog
+    // addresses external_blocks * 4, writeDataSample external_blocks * 5, and
+    // restoreLog sets pages * samples per page), so one page is that many of
+    // it; sizeof(t_DataLog)/2 is a 4-byte page measured in 16-bit words, twice
+    // as many. Download pairs header vddHeader[i] with the page at
     // i * sizeof(t_DataLog), so the invariant this must preserve is
-    // external_blocks == pages * DATALOG_SAMPLES. Rounding to twice the page
+    // external_blocks == pages * samples per page. Rounding to twice the page
     // advanced the cursor a whole page without advancing pages, which
     // desynchronised every later block from its header for the rest of the run.
-    int remainder = pState->external_blocks % DATALOG_SAMPLES;
+    const uint32_t page_samples = prestagSamplesPerPage();
+    int remainder = pState->external_blocks % page_samples;
     if (remainder)
-      pState->external_blocks = pState->external_blocks + DATALOG_SAMPLES - remainder;
+      pState->external_blocks = pState->external_blocks + page_samples - remainder;
       // need to recover internal block start
     adcVDD(&vdd100, &temp10);
 
@@ -106,14 +109,15 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
     //
     // Check for hibernation
-    //     Only hibernate on datalog block boundary, which is DATALOG_SAMPLES
-    //     of external_blocks -- see the unit note in the T_INIT branch above.
+    //     Only hibernate on datalog block boundary, which is
+    //     prestagSamplesPerPage() of external_blocks -- see the unit note in
+    //     the T_INIT branch above.
 
     for (size_t i = 0; i < sizeof(sconfig.hibernate) / sizeof(Config_Interval); i++)
     {
       if ((timestamp >= sconfig.hibernate[i].start_epoch) &&
           (timestamp < sconfig.hibernate[i].end_epoch) &&
-          (pState->external_blocks % DATALOG_SAMPLES == 0))
+          (pState->external_blocks % prestagSamplesPerPage() == 0))
       {
         return Hibernating(T_INIT, State_EVENT_STARTHIB);
       }
@@ -141,17 +145,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       enum LOGERR err = LOGWRITE_OK;
 
-#if PRESTAG_HR_LOG
-      /* Full resolution: the five output registers as read, in the
-       * t_PresTagHRSample layout; a failed read leaves the 24-bit minimum. */
-      uint8_t datablock[LPS27_FULL_SAMPLE_BYTES];
-
-      tagPhaseProbeBegin();
-      tagPhaseProbeMark(0);   /* sample tick: entering the sample path */
-      lps27GetPressureTempFull(TAG_PRESSURE_DEVICE, sconfig.lps_low_noise,
-                               datablock);
-      tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
-#else
+      const uint32_t page_samples = prestagSamplesPerPage();
+      const bool high_res = prestagHighResolution();
+      /* The five output registers as read, in t_PresTagHRSample layout; a
+       * failed read leaves the 24-bit minimum (bytes 00 00 80). */
+      uint8_t full[LPS27_FULL_SAMPLE_BYTES];
       struct{
         int16_t pressure;
         int16_t temperature;
@@ -159,10 +157,25 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
 
       tagPhaseProbeBegin();
       tagPhaseProbeMark(0);   /* sample tick: entering the sample path */
-      lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
-                           &datablock.temperature);
+      if (high_res || prestagLowNoise())
+      {
+        /*
+         * Either option needs the full read: high resolution for the low
+         * pressure byte, low noise for the per-call mode. In PresTag's 4-byte
+         * format the low byte is dropped, which is exactly what
+         * lps27GetPressureTemp() reads (PRESS_OUT_L, PRESS_OUT_H), and a
+         * failed read gives its SHRT_MIN.
+         */
+        lps27GetPressureTempFull(TAG_PRESSURE_DEVICE, prestagLowNoise(), full);
+        datablock.pressure = (int16_t)((uint16_t)full[1] | ((uint16_t)full[2] << 8));
+        datablock.temperature = (int16_t)((uint16_t)full[3] | ((uint16_t)full[4] << 8));
+      }
+      else
+      {
+        lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
+                             &datablock.temperature);
+      }
       tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
-#endif
       t_DataHeader dataheader;
 
       /*
@@ -177,7 +190,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
        * hence the tolerance of at least a second.
        */
       {
-        const uint32_t slot = pState->external_blocks % DATALOG_SAMPLES;
+        const uint32_t slot = pState->external_blocks % page_samples;
         t_DataHeader page_head;
         if ((slot != 0U) && (pState->pages > 0U) &&
             (FLASH_Read_Checked(&vddHeader[pState->pages - 1U], &page_head,
@@ -188,16 +201,16 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
           const int32_t drift =
               timestamp - (page_head.epoch + (int32_t)slot * period);
           if ((drift > tolerance) || (drift < -tolerance))
-            pState->external_blocks += DATALOG_SAMPLES - slot;
+            pState->external_blocks += page_samples - slot;
         }
       }
 
-      if ((pState->external_blocks % (DATALOG_SAMPLES)) == (DATALOG_SAMPLES/2))
+      if ((pState->external_blocks % page_samples) == (page_samples / 2))
       {
         pState->temp10 = pState->vdd100;
       }
 
-      if ((pState->external_blocks % (DATALOG_SAMPLES)) == 0)
+      if ((pState->external_blocks % page_samples) == 0)
       {
         dataheader.epoch = timestamp;
         dataheader.vdd100[0] = pState->vdd100;
@@ -220,11 +233,12 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       // write data 
 
       tagPhaseProbeMark(6);   /* about to write the sample to external flash */
-#if PRESTAG_HR_LOG
-      err = writeDataSample(datablock);
-#else
-      err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+#if PRESTAG_CONFIGURABLE
+      if (high_res)
+        err = writeDataSample(full);
+      else
 #endif
+        err = writeDataLog((uint16_t *)&datablock.pressure, 2);
       tagPhaseProbeMark(11);  /* external flash write returned */
       switch (err)
       {

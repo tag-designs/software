@@ -1,6 +1,7 @@
 /* Minimal stand-ins for the nanopb types the PresTag sources use. PresTagLog
    mirrors embedded/proto-c/prestag-proto-c, PresTagRawLog prestagraw-proto-c
-   and PresTagHRLog prestaghr-proto-c (samples max_size 3780 for both,
+   and PresTagHRLog, which prestag-proto-c also enables (samples max_size 3780
+   for both,
    default-options/tagdata.options). The Ack tags are the stubs' own. */
 #ifndef STUB_TAG_PB_H
 #define STUB_TAG_PB_H

@@ -1120,3 +1120,29 @@ and the target was qualified by hand. The host's SWD enter retry fixed that.
   5.5 mAh **219 days** nominal; low-noise 1.45 uA, 5.5 mAh **158 days**
   nominal, 11 mAh 316 days. Low-noise at 20 s on 5.5 mAh therefore has no
   margin for a five-month run once derated.
+
+### 2026-11-09  PresTag with the LPS27 options in its stored configuration — default life cycle **PASS**
+- **build**: `PresTag` from branch `prestaghr` after `090618a1`, the high
+  resolution and low noise as stored-configuration options (decision 0047; the
+  PresTagHR target of the entry above is gone). ELF sha256 `515802578f...`.
+  Flashed with `tag-flash program`; `tag-test` ALL_PASSED; IDLE config reports
+  `lps27 {}`.
+- **board**: UUID `20333050364150040063005F`, on `bittag-base-v7`.
+- **conditions**: 2.496 V through the JS320, as above.
+- **result**:
+  - Default configuration (`prestag-60.json`, no `lps27`),
+    `tag_lifecycle_check.py` with the PresTag release profile (1800 s run,
+    idle <= 0.22 uA, run 0.22-0.47 uA): idle 0.12, **running 0.37 uA**,
+    stopped 0.12, idle after 0.12 -- **PASS**; 31 samples, one 60-sample
+    header. 0.37 uA is the low end of the qualified 0.37-0.41 uA, and
+    (0.37 - 0.12) x 60 = 15 uC per sample, the family's figure.
+  - High resolution + low noise at 20 s, ~7 min: 20 samples, no gaps, none on
+    the 1/16 hPa grid, `lps27 {low_noise, high_resolution}` stored. A
+    `tag-capture` rebuilt (decoder `prestag`, format from the captured
+    configuration) identically to the download.
+  - 4-byte format + low noise at 20 s, ~7 min: 20 samples, one 60-sample
+    header, every value on the 1/16 hPa grid as the format requires;
+    sample-to-sample noise 3.04 Pa (low noise rounded to 1/16 hPa).
+- **notes**: the two option runs were functional checks, not power windows;
+  the per-option charge figures are the PresTagHR entry above, measured on the
+  same sensor path.

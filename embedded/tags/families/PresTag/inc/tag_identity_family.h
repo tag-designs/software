@@ -8,14 +8,18 @@
  *          temperature} samples (prestag_log_format.h). The sample period
  *          comes from the stored configuration (lps_period).
  *
- *          PresTagHR (PRESTAG_HR_LOG) keeps the 240-byte page but packs 48
- *          five-byte samples {int24 pressure, int16 temperature}, decoder
- *          "prestag_hr", with the pressure divisor 4096.
+ *          The data_format facts below describe the default format. PresTag
+ *          (not PresTagRaw) can instead log full resolution when its stored
+ *          configuration says so (stored-config layout 3, lps_high_res at
+ *          offset 30 == 1): the same 240-byte page holds 48 five-byte samples
+ *          {int24 pressure, int16 temperature} and the pressure divisor is
+ *          4096. A reader must take the format from the stored configuration,
+ *          not from these facts alone.
  *
  *          Scale slots, in this order, as data_logAck() applies them:
  *          0. header voltage: vdd100[0] * 0.01;
- *          1. sample pressure: raw / 16 (hPa), raw / 4096 for PresTagHR --
- *             a divisor;
+ *          1. sample pressure: raw / 16 (hPa) in the default format -- a
+ *             divisor;
  *          2. sample temperature: raw / 100 (degC) -- a divisor;
  *          3. header second voltage: vdd100[1] * 0.01.
  */
@@ -28,14 +32,12 @@
 #if defined(PRESTAG_RAW_LOG) && PRESTAG_RAW_LOG
 /** @brief Host sqlitelog decoder that reads this family's data log. */
 #define TAG_IDENTITY_DECODER "prestag_raw"
-#elif defined(PRESTAG_HR_LOG) && PRESTAG_HR_LOG
-/** @brief Host sqlitelog decoder that reads this family's data log. */
-#define TAG_IDENTITY_DECODER "prestag_hr"
-/** @brief Stored-config layout 3: layout 2 plus lps_low_noise at offset 29. */
-#define TAG_IDENTITY_STORED_CONFIG_VERSION 3U
 #else
 /** @brief Host sqlitelog decoder that reads this family's data log. */
 #define TAG_IDENTITY_DECODER "prestag"
+/** @brief Stored-config layout 3: layout 2 plus lps_low_noise at offset 29
+ *         and lps_high_res at offset 30. */
+#define TAG_IDENTITY_STORED_CONFIG_VERSION 3U
 #endif
 /** @brief Version of the data layout; bump when it changes. */
 #define TAG_IDENTITY_DATA_LAYOUT_VERSION 1U
@@ -52,10 +54,6 @@
 /** @brief Nominal sample period in seconds; 0 when it comes from the stored config. */
 #define TAG_IDENTITY_SAMPLE_PERIOD_S 0U
 /** @brief Scale factors, in the order this file documents. */
-#if defined(PRESTAG_HR_LOG) && PRESTAG_HR_LOG
-#define TAG_IDENTITY_SCALES 0.01f, 4096.0f, 100.0f, 0.01f
-#else
 #define TAG_IDENTITY_SCALES 0.01f, 16.0f, 100.0f, 0.01f
-#endif
 
 #endif /* TAG_IDENTITY_FAMILY_H */

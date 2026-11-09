@@ -82,11 +82,9 @@ PROFILES: dict[str, dict] = {
 }
 
 #: Targets that share a family prefix but not its profile. BitTagNG and
-#: BitTag-legacy are other firmware, PresTagRaw logs to different tables, and
-#: PresTagHR has its own config (prestaghr-20.json) and per-sample charge,
-#: still to be measured; none has been qualified, so none inherits a qualified
-#: tag's bounds.
-NO_PROFILE = ("BitTagNG", "BitTag-legacy", "PresTagRaw", "PresTagHR")
+#: BitTag-legacy are other firmware, and PresTagRaw logs to different tables;
+#: none has been qualified, so none inherits a qualified tag's bounds.
+NO_PROFILE = ("BitTagNG", "BitTag-legacy", "PresTagRaw")
 
 
 def profile_for(target: str) -> dict | None:

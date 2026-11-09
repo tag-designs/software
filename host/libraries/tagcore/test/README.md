@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, PresTagHR decoder, and ConfigShape.
+summary: How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, PresTag high-resolution decoder, and ConfigShape.
 ---
 
 # tagcore Offline Checks
@@ -70,7 +70,8 @@ counts, that the failed read leaves no row but the samples after it keep their
 times, the conversions to hPa and degrees C, and where the partial page ends.
 Expect `prestaghr_decoder_check: all assertions passed`. The firmware side of
 the same format is checked by the PresTag family simulation
-(`embedded/tags/families/PresTag/test/`, built with `-DPRESTAG_HR_LOG=1`).
+(`embedded/tags/families/PresTag/test/`, whose PresTag build runs every test
+in high resolution as well).
 
 ## `uiuctag_end_to_end_check`
 

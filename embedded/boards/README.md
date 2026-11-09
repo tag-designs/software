@@ -51,7 +51,7 @@ in `<board>/generated/`.
 | `CompassTagv1` | `board-compasstag` | `CompassTagv1/board.mk` | `generate_configured_board_files()`, committed | Tags: `CompassTag`, `CompassTagAT25`, `CompassTagAT25Breakout` |
 | `IMUTagNandv1` | `board-imutag-nand-v1` | `IMUTagNandv1/board.mk` | `generate_configured_board_files()` | Tags: `IMUTagNand` |
 | `IMUTagNandv2` | `board-imutag-nand-v2` | `IMUTagNandv2/board.mk` | `generate_configured_board_files()`, committed | Tags: `IMUTagNandBmp581` |
-| `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()`, committed | Tags: `PresTag`, `PresTagRaw`, `PresTagHR` |
+| `PresTagv3` | `board-prestag` | `PresTagv3/board.mk` | `generate_configured_board_files()`, committed | Tags: `PresTag`, `PresTagRaw` |
 | `Stop1Test` | `board-stop1test` | none: `project.mk` adds `$(BOARDDIR)/Stop1Test` to `ALLINC` and compiles its `board.c` | `generate_configured_board_files()` | Tags: `stop1test` |
 | `UIUCTag` | `board-uiuctag` | `UIUCTag/board.mk` | `generate_configured_board_files()`, committed | Tags: `UIUCTag` |
 | `bittag-base-jlcpcb-v3` | `board-bittag-base-jlcpcb-v3` | `bittag-base-jlcpcb-v3/board.mk` | `generate_board_files()` | Bases: `bittag-base-jlcpcb-v3` |

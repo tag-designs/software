@@ -210,7 +210,7 @@ int dumpPresTagRawLog(WriterContext &ctx, const PresTagRawLog &log)
 }
 
 /**
- * @brief   Write one PresTagHR download reply: packed header-plus-page blocks
+ * @brief   Write one high-resolution PresTag download reply: packed header-plus-page blocks
  *          of full-resolution samples.
  *
  * @details Each t_PresTagHRBlock is copied out of the payload, never cast in
@@ -236,7 +236,7 @@ int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log)
     }
 
     if (ctx.config.period() == 0) {
-        ctx.setLastError("PresTagHR SQLite output requires a nonzero sample period");
+        ctx.setLastError("PresTag high-resolution SQLite output requires a nonzero sample period");
         return -2;
     }
 
@@ -256,7 +256,7 @@ int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log)
     const std::string &payload = log.samples();
     if (payload.empty() || (payload.size() % sizeof(t_PresTagHRBlock)) != 0) {
         std::ostringstream error;
-        error << "PresTagHR payload has " << payload.size()
+        error << "PresTag high-resolution payload has " << payload.size()
               << " bytes, expected a nonzero multiple of " << sizeof(t_PresTagHRBlock);
         ctx.setLastError(error.str());
         return -2;
@@ -274,7 +274,7 @@ int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log)
         if (!voltage_insert.bindInt64(1, timestamp)
             || !voltage_insert.bindDouble(2, block.voltage)
             || !voltage_insert.stepDone()) {
-            ctx.setLastSqliteError("PresTagHR log header insert failed");
+            ctx.setLastSqliteError("PresTag high-resolution log header insert failed");
             return -2;
         }
 
@@ -295,7 +295,7 @@ int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log)
                     || !temperature_insert.bindInt64(1, timestamp)
                     || !temperature_insert.bindDouble(2, celsius)
                     || !temperature_insert.stepDone()) {
-                    ctx.setLastSqliteError("PresTagHR log data insert failed");
+                    ctx.setLastSqliteError("PresTag high-resolution log data insert failed");
                     return -2;
                 }
             }

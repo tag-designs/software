@@ -1,6 +1,6 @@
 /**
  * @file    prestaghr_decoder_check.cc
- * @brief   Drives the PresTagHR SQLite decoder with synthetic download blocks.
+ * @brief   Drives the PresTag high-resolution SQLite decoder with synthetic blocks.
  *
  * @details Builds PresTagHRLog messages by hand, as the firmware's
  *          data_logAck() packs them, and runs them through SqliteTagLogWriter.
@@ -13,7 +13,7 @@
  *
  * @note    Built only when BUILD_TAGCORE_CHECKS is enabled.
  *
- * @see     embedded/tags/families/PresTag/design/proposals/prestaghr.md
+ * @see     docs/decisions/0047-prestag-high-resolution-pressure.md
  */
 
 // These are assertion programs: keep assert() live in Release builds too,
@@ -98,7 +98,7 @@ static double scalar(sqlite3 *db, const char *sql)
 }
 
 /**
- * @brief Decode synthetic PresTagHR replies and check the database.
+ * @brief Decode synthetic high-resolution PresTag replies and check the database.
  *
  * @param[in] argc Argument count.
  * @param[in] argv Optional argv[1]: output database path.

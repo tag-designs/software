@@ -10,7 +10,7 @@ PresTagLog.data max_count:60
 BitPresTagLog.data max_count:12
 UIUCTagLog.samples max_size:256
 PresTagRawLog.samples max_size:3780
-// 15 t_PresTagHRBlock records of 252 bytes, as PresTagRaw sends.
+// 15 t_PresTagHRBlock records of 252 bytes, as PresTagRaw sends of its own.
 PresTagHRLog.samples max_size:3780
 CompassTagLog.data max_count:40
 CalibrationLog.data max_count:25
