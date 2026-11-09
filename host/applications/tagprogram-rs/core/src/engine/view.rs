@@ -4,13 +4,15 @@
 //! applied here, so the UI only draws.
 //!
 //! [`Station::view_state`] reads the station and never changes it, and talks
-//! to no device. The engine loop (`super::run`) calls it on the engine thread
+//! to no device. The engine loop (the toolkit's) calls it on the engine thread
 //! after every message and timer pass, compares the result with the last one
 //! sent, and publishes it only when it differs, so it must stay cheap and
 //! deterministic: no clock reads, and no I/O beyond the release catalog's
 //! checks of its cache directory (`Catalog::is_cached` and `targets` look
 //! for files on every call). The JSON's shape is specified in
 //! `design/ui-engine-contract.md`.
+//!
+//! [`menus`] is the `menus` query's answer: the menu bar as data.
 
 use std::path::Path;
 
@@ -19,7 +21,7 @@ use tagcore::proto::TagState;
 
 use super::session::Step;
 use super::station::{
-    CHECK_NAMES, CLOCK_TOLERANCE_S, Check, Level, Station, state_name, test_name,
+    CHECK_NAMES, CLOCK_TOLERANCE_S, Check, Level, PromptKind, Station, state_name, test_name,
 };
 
 /// The window title (the `about` query's text repeats its version).
@@ -276,13 +278,76 @@ impl Station {
             ),
             "autoAttach": self.auto_attach(),
             "recordPath": self.record.as_ref().and_then(|r| r.path()).map(|p| p.to_string_lossy().into_owned()),
-            "prompt": self.prompt.as_ref().map(|p| {
-                let mut body = p.body.clone();
-                body["id"] = json!(p.id);
-                body
-            }),
+            "prompt": self.prompt_json(),
         })
     }
+}
+
+impl Station {
+    /// The front prompt as the page shows it, with its `id`; `null` when
+    /// none is waiting.
+    pub(super) fn prompt_json(&self) -> Value {
+        let Some(p) = self.prompts.front() else {
+            return Value::Null;
+        };
+        let mut v = match &p.kind {
+            PromptKind::Alert { title, text, style } => {
+                json!({ "kind": "alert", "title": title, "text": text, "style": style })
+            }
+            PromptKind::AutoAttach => json!({ "kind": "autoAttach" }),
+            PromptKind::RecordFile {
+                default_path,
+                exists,
+            } => json!({
+                "kind": "recordFile",
+                "defaultPath": default_path.to_string_lossy(),
+                "exists": exists,
+            }),
+            PromptKind::ChooseBase {
+                label,
+                bases,
+                current,
+            } => {
+                let items: Vec<String> = bases
+                    .iter()
+                    .map(|b| {
+                        let serial = if b.serial.is_empty() {
+                            "serial unknown"
+                        } else {
+                            &b.serial
+                        };
+                        format!("ST-LINK {serial}  (bus {}, address {})", b.bus, b.address)
+                    })
+                    .collect();
+                json!({ "kind": "chooseBase", "label": label, "items": items, "current": current })
+            }
+            PromptKind::ConfirmQuit => json!({
+                "kind": "confirmQuit",
+                "title": "Programming in Progress",
+                "text": "Programming is in progress. Quitting now can leave the tag with a partial image. Quit anyway?",
+            }),
+        };
+        v["id"] = json!(p.id);
+        v
+    }
+}
+
+/// The `menus` query's answer: the menu bar as data, in Tag Calibrator's
+/// and Tag Monitor's shape. Every entry is an `item` the page acts on by its
+/// `id`; Attach Automatically shows the state's `autoAttach` as its check.
+pub(crate) fn menus() -> Value {
+    json!({ "menus": [
+        { "title": "Help", "entries": [
+            { "kind": "item", "id": "user_guide", "label": "Tag Programmer User Guide", "tooltip": "Open the Tag Programmer page of the user manual" },
+            { "kind": "item", "id": "about", "label": "About Tag Programmer", "tooltip": "" },
+        ] },
+        { "title": "Station", "entries": [
+            { "kind": "item", "id": "auto_attach", "label": "Attach Automatically", "tooltip": "" },
+            { "kind": "item", "id": "list_bases", "label": "Choose Base...", "tooltip": "" },
+            { "kind": "item", "id": "choose_record", "label": "Choose Record File...", "tooltip": "" },
+            { "kind": "item", "id": "refresh_releases", "label": "Refresh Firmware Releases", "tooltip": "" },
+        ] },
+    ] })
 }
 
 /// Unit tests for the view's text formatting.

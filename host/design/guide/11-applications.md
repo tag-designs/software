@@ -22,11 +22,17 @@ describes the station it reproduces).
 **Shape.** The first port, and the one that fixed the pattern. One engine
 thread owns a `Station` that holds everything: eight **checks** (Programmer,
 Base, SWD, Supply, Tag, Tag state, Firmware, Record), the base and the
-`Tag`, the chosen image, the record file, the open prompt and the
-programming **session**. Monitor calls run on the engine thread; the slow
+`Tag`, the chosen image, the record file, the queued prompts and the
+programming **session**. The handle, the loop, the prompt queue, the
+`ready` guard and the logger are the shared engine toolkit's
+(`tagapp-engine`, chapter 10), as in the other applications. Monitor calls run on the engine thread; the slow
 work (the connect check, programming, the flash read-back, listing and
 downloading releases) runs on **worker threads** started per job, whose
-results come back as closures applied on the engine thread. A worker that
+results come back as closures (`Done`), posted through the toolkit's
+`Poster` and applied on the engine thread. There is no tag thread: the
+programming step detaches the monitor and hands the base to probe-rs in
+consecutive statements, which a tag thread would turn into a message and a
+wait. A worker that
 owns the base sets `worker_busy`, and nothing else touches the USB device
 meanwhile.
 
@@ -66,14 +72,14 @@ session ends with the tag **IDLE** and never starts it.
 | Path | Holds |
 | --- | --- |
 | `core/src/model/` | Pure logic over files, each with unit tests: `elf.rs` (a minimal ELF32 reader), `flashplan.rs` (the erase from the image's linker symbols), `identity.rs` (the TGID record), `image.rs` (a `FirmwareImage` with its SHA-256 and manifest check), `catalog.rs` (GitHub releases: list, download, extract, verify, cache), `record.rs` (the CSV), `settings.rs` |
-| `core/src/engine/mod.rs` | `Engine`, `Msg`, the loop, `UiLogger` |
-| `core/src/engine/station.rs` | `Station`: checks, base and tag, firmware, record, prompts, commands, queries |
+| `core/src/engine/mod.rs` | `spawn`: the toolkit's channel, the `Station` built on the calling thread, and the toolkit's loop; `Done`, the closure a worker posts; re-exports `Engine`, `Event`, `LOGGER` and `UiLogger` from `tagapp-engine` |
+| `core/src/engine/station.rs` | `Station`: checks, base and tag, firmware, record, prompts (`Prompts<PromptKind>`) and their answers, the `ready` guard, commands, queries; its `EngineState` impl |
 | `core/src/engine/session.rs` | The step machine, as a second `impl Station` |
-| `core/src/engine/view.rs` | The view state from the station |
+| `core/src/engine/view.rs` | The view state from the station, the front prompt's JSON, and the `menus` query's answer |
 | `core/examples/smoke.rs`, `bench.rs` | A headless run that never attaches; qtprogram's `--bench-program`, which programs one tag |
 | `app/`, `ui/` | The shell and the page |
 
-**Checks.** The model's unit tests; `examples/bench.rs` on hardware;
+**Checks.** The model's and station's unit tests; `examples/bench.rs` on hardware;
 Program and Retest passed on a BitTag through both base generations, Retest
 on an IMUTag, Program on a UIUCTag through a field base, and a batch of
 PresTags in one session.

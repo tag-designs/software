@@ -98,7 +98,7 @@ familiar; the host README carries the same table.
 | `libraries/sensorviz-session-rs` | `sensorviz-session` | | | wraps `applications/sensorviz/core` |
 | `libraries/tagapp-shell-rs` | `tagapp-shell` | | | nothing; the Tauri shell the four applications share |
 | `libraries/tagapp-shell-build-rs` | `tagapp-shell-build` | | | nothing; the applications' build-script helper |
-| `libraries/tagapp-engine-rs` | `tagapp-engine` | | | nothing; the engine toolkit the applications' core crates share (Tag Monitor, Tag Calibrator and Tag View so far) |
+| `libraries/tagapp-engine-rs` | `tagapp-engine` | | | nothing; the engine toolkit the applications' core crates share (all four) |
 | `commandline-rs` | `tag-tools` | `tag-info`, `tag-start`, ..., `tag-flash`, `base-flash` | | `commandline/*.cc` |
 | `applications/tagprogram-rs` | `tagprogram-core`, `tagprogram` | `tagprogram` | Tag Programmer | `applications/qtprogram` (`qtprogram`) |
 | `applications/tagmonitor-rs` | `tagmonitor-core`, `tagmonitor` | `tagmonitor` | Tag Monitor | `applications/qtmon` (`qtmonitor`) |

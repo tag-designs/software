@@ -89,10 +89,10 @@ states for working with real tags, and are not repeated in full.
 | Assumption | Where |
 | --- | --- |
 | **The engine owns every rule and all state; the page holds none** | chapter 10; each contract's "deliberate differences" are the only exceptions |
-| **The whole view state is published, only when it changed** (and again after every `ready`, in the applications that resend it); the page renders all of it | the engine loops: `tagapp-engine`'s for Tag Monitor, Tag Calibrator and Tag View, its own in Tag Programmer |
+| **The whole view state is published, only when it changed** (and again after every `ready`); the page renders all of it | the engine loop, `tagapp-engine`'s, in all four applications |
 | **One thread touches the tag**; the engine never waits on it (Tag Programmer runs quick monitor calls on its engine thread and slow work on workers) | each architecture document |
 | **Every dialog is a prompt answered by id**; an answer to another id is ignored | each contract |
-| **Nothing happens until the page sends `ready`**; the first `ready` starts the engine (attaches unless told not to, starts a replay, or opens the startup log), and every `ready` resends the whole view state, so a reloaded page never attaches or opens anything again | Tag Monitor, Tag Calibrator and Tag View contracts; `tagapp-engine`'s `Ready` |
+| **Nothing happens until the page sends `ready`**; the first `ready` starts the engine (attaches unless told not to, starts a replay, opens the startup log, or begins Tag Programmer's checks), and every `ready` resends the whole view state, so a reloaded page never attaches or opens anything again | each contract; `tagapp-engine`'s `Ready` |
 | **The Qt application is the reference**; its test files are the oracles and change with its behaviour | chapter 13 |
 | **Do not open user files inline during start-up** on macOS: a privacy prompt blocks the engine thread and blanks the window | Tag Programmer's engine design |
 | **The page opens from `file://` against its mock**; no build step, no ES modules, vendored libraries | `ui-kit/README.md` |

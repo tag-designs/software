@@ -387,14 +387,15 @@ impl Engine {
 }
 ```
 
-Tag Programmer's core has its own handle type,
-`tagprogram_core::engine::Engine`; Tag Monitor's, Tag Calibrator's and Tag
-View's are one type, `tagapp_engine::Engine`, from the shared engine
-toolkit, which their cores re-export
+All four cores now hand the shell one handle type, `tagapp_engine::Engine`,
+from the shared engine toolkit, which each core re-exports as
+`engine::Engine`
 ([chapter 14](14-the-three-applications.md#the-engine-toolkit-underneath)).
-Both types have the same two methods, `command(&self, &str, Value)` and
-`query(&self, &str, Value) -> Value`. The shell must call them without
-knowing which type it has. In C++ you would write an abstract base class
+It was not one type when the shell was written: Tag Programmer's core, the
+last to move onto the toolkit, had its own `Engine`, with the same two
+methods, `command(&self, &str, Value)` and `query(&self, &str, Value) ->
+Value`. The shell does not depend on the toolkit, and calls those two
+methods without knowing which type it has. In C++ you would write an abstract base class
 with two pure virtual functions and derive each handle from it; in Rust the
 equivalent is a *trait*, and the obvious design is a trait `EngineHandle` in
 the shell, implemented for each core's handle. That does not work here, for
@@ -403,9 +404,10 @@ a reason peculiar to Rust:
 > **Rust: the orphan rule.** An `impl Trait for Type` may be written only in
 > the crate that defines the trait or the crate that defines the type. The
 > application crate defines neither `tagapp_shell::EngineHandle` nor
-> `tagprogram_core::engine::Engine`, so it may not connect them. The shell
-> crate cannot do it either, since it would have to depend on all four core
-> crates. That leaves the core crate, which would then have to depend on
+> `tagapp_engine::Engine`, so it may not connect them. The shell crate
+> could only by depending on every crate that defines a handle type; when
+> it was written, that meant Tag Programmer's core as well as the toolkit.
+> The core crate could, but it would then have to depend on
 > `tagapp-shell` and through it on Tauri -- and the cores are toolkit-free
 > on purpose, so they can be tested without a window. The rule exists so
 > that two unrelated crates can never both supply the same `impl` and
@@ -950,10 +952,10 @@ engine:
 
 - **Tag Programmer**'s `quit` matters only during the one step a quit would
   interrupt mid-write: while probe-rs is erasing, programming and verifying
-  a tag. Then the engine raises a `confirmQuit` prompt, "Programming is in
+  a tag. Then the engine queues a `confirmQuit` prompt, "Programming is in
   progress. Quitting now can leave the tag with a partial image. Quit
-  anyway?", with Keep Programming the default; Quit answers `quit_anyway`,
-  which exits, and Keep Programming answers `prompt_cancel`. At any other
+  anyway?", with Keep Programming the default; Quit answers with the button
+  `quit`, which exits, and Keep Programming with `cancel`. At any other
   time `quit` exits at once (its
   [contract](../../applications/tagprogram-rs/design/ui-engine-contract.md)).
   Its `EngineConfig` holds a firmware cache folder (under the app data

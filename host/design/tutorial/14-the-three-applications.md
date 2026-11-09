@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: "Tag Programmer and Tag Calibrator read against Tag Monitor - what each does, its core crate's types and threads, its page, and where it follows or departs from the pattern, with the shared engine toolkit (tagapp-engine) Tag Monitor and Tag Calibrator run on - ending with a side-by-side table of the three."
+summary: "Tag Programmer and Tag Calibrator read against Tag Monitor - what each does, its core crate's types and threads, its page, and where it follows or departs from the pattern, with the shared engine toolkit (tagapp-engine) all three run on - ending with a side-by-side table of the three."
 ---
 
 # 14. Tag Programmer, Tag Monitor and Tag Calibrator compared
@@ -31,11 +31,11 @@ Tag Monitor's engine shape. So when the two older apps differ, Tag Monitor's
 way is the later one, and Tag Calibrator usually agrees with it. The Tauri
 shells no longer differ in code: all three call the shared `tagapp-shell`
 crate ([chapter 10](10-tauri-shell.md)), and each `main.rs` only describes
-its application and builds its engine's configuration. The engines are
-converging the same way: Tag Monitor's and Tag Calibrator's handle, loop,
-prompt queue and logger now come from the shared engine toolkit,
-`tagapp-engine` ([below](#the-engine-toolkit-underneath)), while Tag
-Programmer still carries its own and moves onto it when it is next changed.
+its application and builds its engine's configuration. The engines have
+converged the same way: all three take their handle, loop, prompt queue,
+`ready` guard and logger from the shared engine toolkit, `tagapp-engine`
+([below](#the-engine-toolkit-underneath)), and Tag Programmer, the last to
+move onto it, still runs it in its own way, with no tag thread.
 The differences are listed in the table at the end; the sections
 below explain the ones that change how the code reads.
 
@@ -69,28 +69,18 @@ thread runs on its state.
 flowchart LR
   page["page (JS)"] -- "command / query" --> eng["engine thread<br/>Station, owns Tag"]
   eng -- "spawn_work(work, apply)" --> w["worker thread<br/>probe-rs, HTTP"]
-  w -- "Msg::Done(closure)" --> eng
+  w -- "Done closure, through a Poster" --> eng
   eng -- "state / log events" --> page
 ```
 
-The message type says it.
-[tagprogram-rs/core/src/engine/mod.rs:139](../../applications/tagprogram-rs/core/src/engine/mod.rs#L139):
+The engine thread's message type says it.
+[tagprogram-rs/core/src/engine/mod.rs:90](../../applications/tagprogram-rs/core/src/engine/mod.rs#L90):
 
 ```rust
-/// Messages to the engine thread, applied in the order they arrive.
-pub(crate) enum Msg {
-    /// A UI command: its name and its JSON arguments (see
-    /// [`Station::command`]).
-    Command(String, Value),
-    /// A UI query: its name, its JSON arguments and the channel for its
-    /// answer (see [`Station::query`]).
-    Query(String, Value, Sender<Value>),
-    /// A worker finished, or reports progress; its closure is applied to the
-    /// station on the engine thread. The station also posts one to itself to
-    /// defer opening the record until after the first view is published
-    /// (`Station::begin_checks`).
-    Done(Box<dyn FnOnce(&mut Station) + Send>),
-}
+/// A worker's result or progress: a closure applied to the station on the
+/// engine thread. The station also posts one to itself to defer opening the
+/// record until after the first view is published (`Station::begin_checks`).
+pub(crate) type Done = Box<dyn FnOnce(&mut Station) + Send>;
 ```
 
 > **Rust:** `Box<dyn FnOnce(&mut Station) + Send>` is a heap-allocated,
@@ -99,52 +89,65 @@ pub(crate) enum Msg {
 > `std::function<void(Station&)>`. Sending *code* rather than data is how a
 > worker affects state it cannot touch: the `Station` lives on the engine
 > thread and no one else holds a reference to it. The nearest Qt idiom is
-> `QMetaObject::invokeMethod(obj, lambda, Qt::QueuedConnection)`. The enum
-> has no `#[derive(Debug)]`, unlike the toolkit's `Msg` that Tag Monitor
-> uses, because a boxed closure cannot be printed.
+> `QMetaObject::invokeMethod(obj, lambda, Qt::QueuedConnection)`. `type
+> Done = ...` is a type alias, C++'s `using Done = ...`.
 
-The loop is the one Tag Monitor runs (the toolkit's) without the republish
-step. Its exit step is a
-flag: once the station sets `exit` (a confirmed quit, below), the loop sends
-`Event::Exit` once and the shell closes the window.
-[mod.rs:300](../../applications/tagprogram-rs/core/src/engine/mod.rs#L300):
+The engine itself is the shared toolkit's, as in the other two apps; `Done`
+is the application message it carries, where Tag Monitor's is the tag
+thread's `Report`. `spawn`,
+[mod.rs:131](../../applications/tagprogram-rs/core/src/engine/mod.rs#L131):
 
 ```rust
-fn run(config: EngineConfig, sink: Sink, tx: Sender<Msg>, rx: Receiver<Msg>) {
-    let mut station = Station::new(config, tx);
-    let mut last_state = Value::Null;
-    let mut exited = false;
-    loop {
-        let wait = station
-            .next_deadline()
-            .map(|d| d.saturating_duration_since(Instant::now()))
-            .unwrap_or(Duration::from_secs(3600));
-        match rx.recv_timeout(wait) {
-            Ok(Msg::Command(cmd, args)) => station.command(&cmd, &args),
-            Ok(Msg::Query(name, args, reply)) => {
-                let _ = reply.send(station.query(&name, &args));
-            }
-            Ok(Msg::Done(apply)) => apply(&mut station),
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => break,
-        }
-        station.fire_timers(Instant::now());
-        let state = station.view_state();
-        if state != last_state {
-            sink(Event::State(state.clone()));
-            last_state = state;
-        }
-        if station.exit && !exited {
-            exited = true;
-            sink(Event::Exit);
-        }
+pub fn spawn(config: EngineConfig, sink: impl Fn(Event) + Send + Sync + 'static) -> Engine {
+    let (engine, poster, inbox) = tagapp_engine::channel(QUERY_TIMEOUT, sink);
+    tagapp_engine::spawn("tagprogram-engine", Station::new(config, poster), inbox);
+    engine
+}
+```
+
+Compare Tag Calibrator's `spawn` ([below](#the-core-tag-monitors-two-threads-over-a-c-session)):
+there is no tag thread to start, so the `Poster` goes to the `Station`
+itself, which hands clones of it to its workers. `QUERY_TIMEOUT` is 10 s.
+`Station::new` runs on the caller's thread, loading the settings file and
+the cached release list, and the station then moves into the engine thread.
+
+The station is handed to the loop through the toolkit's trait,
+[station.rs:312](../../applications/tagprogram-rs/core/src/engine/station.rs#L312)
+(doc comments dropped):
+
+```rust
+impl EngineState for Station {
+    type Msg = Done;
+
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Station::command(self, cmd, args);
+    }
+    // query, view_state, next_deadline and fire_timers likewise
+    fn message(&mut self, done: Done) {
+        done(self);
+    }
+    fn take_republish(&mut self) -> bool {
+        self.ready.take_republish()
+    }
+    fn take_exit(&mut self) -> bool {
+        std::mem::take(&mut self.exit)
     }
 }
 ```
 
-`Station::new` runs on the engine thread itself, and the station is given a
-clone of the channel's sender (`tx`), which is how it starts workers that can
-reply. The worker launcher, [station.rs:442](../../applications/tagprogram-rs/core/src/engine/station.rs#L442)
+`message` simply calls the closure on the station. The loop, which
+[chapter 11](11-engine-and-model.md#the-engine-loop) reads, waits for the
+next message or timer deadline, applies it, fires the timers, and sends the
+view state when it changed or a `ready` asked for it. Its exit step is a
+flag: once the station sets `exit` (a confirmed quit, below), `take_exit`
+returns true once, the loop sends `Event::Exit`, and the shell closes the
+window.
+
+> **Rust:** `std::mem::take(&mut self.exit)` returns the flag's value and
+> leaves `false` (the type's default) in its place: a read-and-clear in one
+> call, so the loop sees each exit once.
+
+The worker launcher, [station.rs:497](../../applications/tagprogram-rs/core/src/engine/station.rs#L497)
 (doc comment dropped; it warns that `apply` "sees the station as it is when
 the message is handled, not as it was when the work began"):
 
@@ -156,25 +159,25 @@ the message is handled, not as it was when the work began"):
     ) {
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let done: Box<dyn FnOnce(&mut Station) + Send> =
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
-                    Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
-                    Err(panic) => {
-                        let what = panic
-                            .downcast_ref::<&str>()
-                            .map(|s| (*s).to_owned())
-                            .or_else(|| panic.downcast_ref::<String>().cloned())
-                            .unwrap_or_else(|| "unknown panic".to_owned());
-                        Box::new(move |s: &mut Station| s.worker_panicked(&what))
-                    }
-                };
-            let _ = tx.send(Msg::Done(done));
+            let done: Done = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
+                Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
+                Err(panic) => {
+                    let what = panic
+                        .downcast_ref::<&str>()
+                        .map(|s| (*s).to_owned())
+                        .or_else(|| panic.downcast_ref::<String>().cloned())
+                        .unwrap_or_else(|| "unknown panic".to_owned());
+                    Box::new(move |s: &mut Station| s.worker_panicked(&what))
+                }
+            };
+            tx.post(done);
         });
     }
 ```
 
-`work` runs on the new thread and produces a `T`; `apply` is packaged with
-that `T` into a `Done` closure and runs later on the engine thread.
+`self.tx` is the station's `Poster<Done>`. `work` runs on the new thread
+and produces a `T`; `apply` is packaged with that `T` into a `Done` closure,
+posted, and runs later on the engine thread.
 
 > **Rust:** `spawn_work<T: Send + 'static>` is generic over the result type;
 > the *bounds* (like a C++20 concept) say a `T` may move to another thread
@@ -209,7 +212,7 @@ pub struct Catalog {
 ```
 
 and its refresh hands a clone of the `Arc` to a worker,
-[station.rs:1376](../../applications/tagprogram-rs/core/src/engine/station.rs#L1376):
+[station.rs:1408](../../applications/tagprogram-rs/core/src/engine/station.rs#L1408):
 
 ```rust
         let catalog = self.catalog.clone();
@@ -236,10 +239,10 @@ the next pass of the loop, after the current view has been published. At
 start-up it opens the record CSV this way, because on macOS the first `open()`
 under Documents blocks until the user answers the system's folder-access
 prompt; deferring it lets the window draw first, with the Record row saying
-what is happening. [station.rs:798](../../applications/tagprogram-rs/core/src/engine/station.rs#L798):
+what is happening. [station.rs:846](../../applications/tagprogram-rs/core/src/engine/station.rs#L846):
 
 ```rust
-        let _ = self.tx.send(Msg::Done(Box::new(move |s: &mut Station| {
+        self.tx.post(Box::new(move |s: &mut Station| {
             let mut record = RecordLog::new();
             match record.open(Path::new(&path)) {
                 Ok(()) => s.record = Some(record),
@@ -249,16 +252,16 @@ what is happening. [station.rs:798](../../applications/tagprogram-rs/core/src/en
             if s.record.is_none() {
                 s.raise_record_prompt();
             }
-        })));
+        }));
 ```
 
 ### The Station
 
-`Station` ([station.rs:200](../../applications/tagprogram-rs/core/src/engine/station.rs#L200))
+`Station` ([station.rs:215](../../applications/tagprogram-rs/core/src/engine/station.rs#L215))
 is qtprogram's `Station` plus the parts of its `MainWindow` that held state.
 Its `impl` is spread over three files: `station.rs` (checks, base, attach,
 polling, firmware choice, record, prompts), `session.rs` (the programming
-session) and `view.rs` (the view state).
+session) and `view.rs` (the view state, the prompt's JSON and the menus).
 
 > **Rust:** A type's methods may be defined in several `impl Station { ... }`
 > blocks in different files of the same crate. It is how one large class is
@@ -273,12 +276,13 @@ The parts worth knowing:
 | `worker_busy: bool` | a worker owns the base; polls, attaches and Choose Base wait |
 | `base_poll`, `status_poll`, `attach_retry` | timer deadlines: 1 s while no base, 400 ms while attached, 200 ms retries |
 | `session: Option<SessionState>` | the current or last programming session |
-| `prompt: Option<Prompt>` | at most one outstanding question |
+| `prompts: Prompts<PromptKind>` | the questions waiting for the page, in the toolkit's queue |
+| `ready: Ready` | the toolkit's `ready` guard |
 | `catalog: Arc<Catalog>` | the release list, shared with workers |
 
-`command` ([station.rs:627](../../applications/tagprogram-rs/core/src/engine/station.rs#L627))
+`command` ([station.rs:664](../../applications/tagprogram-rs/core/src/engine/station.rs#L664))
 is one `match` on the command name, with two small closures to read
-arguments ([station.rs:632](../../applications/tagprogram-rs/core/src/engine/station.rs#L632)):
+arguments ([station.rs:665](../../applications/tagprogram-rs/core/src/engine/station.rs#L665)):
 
 ```rust
         let s = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
@@ -289,34 +293,42 @@ A missing or mistyped argument reads as `""` or `false`, and an unknown
 command is logged as a warning: nothing is returned to the page, which matches
 the shell's `command` returning `()` ([chapter 12](12-ui-kit-and-pages.md#kitcreateengine-tauri-or-the-mock)).
 
-`start` versus `ready`: the page's first command is `start`, not `ready`.
-[station.rs:741](../../applications/tagprogram-rs/core/src/engine/station.rs#L741):
+The page's first command is `ready`, as in the other two apps. Its arm in
+`command`, [station.rs:668](../../applications/tagprogram-rs/core/src/engine/station.rs#L668):
+
+```rust
+            "ready" => {
+                if self.ready.ready() {
+                    self.begin();
+                }
+            }
+```
+
+and what it starts the first time,
+[station.rs:793](../../applications/tagprogram-rs/core/src/engine/station.rs#L793):
 
 ```rust
     fn begin(&mut self) {
-        if self.started {
-            return;
-        }
-        self.started = true;
         if !self.settings.contains(key::AUTO_ATTACH) {
-            self.raise(json!({ "kind": "autoAttach" }));
+            self.ask(PromptKind::AutoAttach);
             return;
         }
         self.begin_checks();
     }
 ```
 
-It is one-shot: a second `start` is ignored, and nothing forces the engine to
-send the whole state again. Tag Monitor's `ready` does both jobs (start once,
-republish every time), so a reloaded Tag Monitor page gets its state at once;
-a reloaded Tag Programmer page waits for the next change. In the app the page
-loads once, so the difference shows only in development.
+`Ready::ready()` is true only the first time, so a second `ready` neither
+asks the first-run question again nor re-runs the checks; but every `ready`
+sets the republish flag, so a reloaded page gets the whole state at once.
+Before Tag Programmer moved onto the toolkit (2026-11-09), its first command
+was a one-shot `start` with no republish, and a reloaded page waited for the
+next change. The test `ready_starts_once` in `station.rs` checks both halves.
 
 ### Programming: tagprobe on a worker, progress as closures
 
 A Program session stops the tag through its monitor, has the tag's own
 firmware erase a held log, then detaches and programs with probe-rs on a
-worker. [session.rs:725](../../applications/tagprogram-rs/core/src/engine/session.rs#L725),
+worker. [session.rs:723](../../applications/tagprogram-rs/core/src/engine/session.rs#L723),
 the end of `run_programmer`:
 
 ```rust
@@ -328,9 +340,7 @@ the end of `run_programmer`:
         self.spawn_work(
             move || {
                 tagprobe::program(&base, driver, chip, &image.elf_path, erase, |p| {
-                    let _ = tx.send(Msg::Done(Box::new(move |s: &mut Station| {
-                        s.program_progress(p)
-                    })));
+                    tx.post(Box::new(move |s: &mut Station| s.program_progress(p)));
                 })
             },
             |s, result| {
@@ -361,8 +371,9 @@ link and probe-rs must never hold the base at once (the hazard list in
 worker, from inside probe-rs's flash loop, with a `tagprobe::Progress`
 ([tagprobe-rs/src/lib.rs:426](../../libraries/tagprobe-rs/src/lib.rs#L426)):
 `Step(&'static str)` ("Erasing", "Programming", "Verifying", "Reading back")
-or `Bytes { done, total }`. Each event becomes its own `Done` closure, so the
-station is updated on its own thread. [session.rs:762](../../applications/tagprogram-rs/core/src/engine/session.rs#L762):
+or `Bytes { done, total }`. Each event becomes its own `Done` closure,
+posted through the station's `Poster` (`self.sender()` above is a clone of
+it), so the station is updated on its own thread. [session.rs:758](../../applications/tagprogram-rs/core/src/engine/session.rs#L758):
 
 ```rust
     fn program_progress(&mut self, p: Progress) {
@@ -387,7 +398,7 @@ station is updated on its own thread. [session.rs:762](../../applications/tagpro
 > dropped.
 
 The view turns `progress` into what the page's bar needs,
-[view.rs:203](../../applications/tagprogram-rs/core/src/engine/view.rs#L203):
+[view.rs:205](../../applications/tagprogram-rs/core/src/engine/view.rs#L205):
 
 ```rust
         let progress = if s.running && s.step != Step::PowerCycle {
@@ -401,7 +412,7 @@ The view turns `progress` into what the page's bar needs,
 ```
 
 So the whole progress path is: probe-rs flash loop, `on_progress` on the
-worker, a `Msg::Done` closure, `SessionState.progress` on the engine thread,
+worker, a posted `Done` closure, `SessionState.progress` on the engine thread,
 a changed view state, a `state` event, and the page's `Session` component
 drawing a `Progress` bar (`null` hidden, `"busy"` indeterminate, `{done,
 total}` a fraction). Every progress event rebuilds the view; the change check
@@ -441,7 +452,7 @@ pub(crate) enum Step {
 
 The waiting steps are driven by a 1 s tick, a deadline kept in the session
 (`tick_at`) and fired by `Station::fire_timers`, which re-arms it before
-running the step ([station.rs:545](../../applications/tagprogram-rs/core/src/engine/station.rs#L545)):
+running the step ([station.rs:605](../../applications/tagprogram-rs/core/src/engine/station.rs#L605)):
 
 ```rust
         if self
@@ -457,7 +468,7 @@ running the step ([station.rs:545](../../applications/tagprogram-rs/core/src/eng
         }
 ```
 
-and dispatched by step, [session.rs:425](../../applications/tagprogram-rs/core/src/engine/session.rs#L425):
+and dispatched by step, [session.rs:423](../../applications/tagprogram-rs/core/src/engine/session.rs#L423):
 
 ```rust
     pub(crate) fn session_tick(&mut self) {
@@ -477,10 +488,10 @@ and dispatched by step, [session.rs:425](../../applications/tagprogram-rs/core/s
 Programming and Reading have no tick: they end when their worker's `Done`
 arrives. PowerCycle waits for the user's Retry or Give Up. Each waiting step
 counts ticks against a limit (`STOP_TICKS = 30`, `CONNECT_TICKS = 6`,
-`TEST_TICKS = 120`, [session.rs:60](../../applications/tagprogram-rs/core/src/engine/session.rs#L60)).
+`TEST_TICKS = 120`, [session.rs:58](../../applications/tagprogram-rs/core/src/engine/session.rs#L58)).
 `Station::finish` ends every session and writes the record row. The engine's
 `next_deadline` is the minimum of the four timers,
-[station.rs:512](../../applications/tagprogram-rs/core/src/engine/station.rs#L512):
+[station.rs:572](../../applications/tagprogram-rs/core/src/engine/station.rs#L572):
 
 ```rust
     pub(crate) fn next_deadline(&self) -> Option<Instant> {
@@ -505,114 +516,114 @@ Compared with Tag Monitor, where timers live in both the engine (`Monitor`)
 and the tag thread (status polls), all of Tag Programmer's timers live in the
 station, because the station is also the code that talks to the tag.
 
-### Prompts: one at a time, answered by per-kind commands with the id
+### Prompts: a typed queue, answered by `answer` with the id
 
-Tag Monitor keeps a queue of typed prompts and answers every kind with one
-`answer {id, button, ...}` command. Tag Programmer keeps **one** prompt,
-whose body is free-form JSON, and a new one replaces the old.
-[station.rs:496](../../applications/tagprogram-rs/core/src/engine/station.rs#L496):
+Prompts are Tag Monitor's style: a typed `PromptKind` in the toolkit's
+`Prompts` queue, the page shown the front one, every kind answered by one
+command, `answer {id, button, index?, path?}`. A prompt raised while another
+is up waits its turn.
+[station.rs:173](../../applications/tagprogram-rs/core/src/engine/station.rs#L173)
+(doc comments dropped):
 
 ```rust
-    /// Raises a prompt, replacing any outstanding one, with a fresh id.
-    pub(crate) fn raise(&mut self, body: Value) {
-        self.prompt_seq += 1;
-        self.prompt = Some(Prompt {
-            id: self.prompt_seq,
-            body,
-        });
-    }
+pub(crate) enum PromptKind {
+    Alert {
+        title: String,
+        text: String,
+        style: &'static str,
+    },
+    AutoAttach,
+    RecordFile {
+        default_path: PathBuf,
+        exists: bool,
+    },
+    ChooseBase {
+        label: &'static str,
+        bases: Vec<UsbDev>,
+        current: usize,
+    },
+    ConfirmQuit,
+}
+```
 
-    /// Raises a warning-style `alert` prompt: a message box with OK.
-    pub(crate) fn alert(&mut self, title: &str, text: &str) {
-        self.raise(json!({ "kind": "alert", "title": title, "text": text, "style": "warning" }));
+`ChooseBase` keeps the bases themselves, in the order the list showed them,
+so the answer's index names the base the operator saw even if one is
+plugged or unplugged while the list is open. The page never sees them: the
+view turns the front prompt into the JSON the page draws, building each
+base's line of text there, and adds the prompt's `id`
+([view.rs:289](../../applications/tagprogram-rs/core/src/engine/view.rs#L289),
+`prompt_json`). Raising a prompt is one call,
+[station.rs:551](../../applications/tagprogram-rs/core/src/engine/station.rs#L551):
+
+```rust
+    pub(crate) fn ask(&mut self, kind: PromptKind) {
+        self.prompts.ask(kind);
     }
 ```
 
-The view adds the id to the body ([view.rs:279](../../applications/tagprogram-rs/core/src/engine/view.rs#L279)),
-and the page shows each id once, as Tag Monitor's does. But the answers are
-**distinct commands**, listed in one table,
-[station.rs:182](../../applications/tagprogram-rs/core/src/engine/station.rs#L182):
+with `alert` and `alert_styled` beside it for the commonest kind. The
+answer, [station.rs:714](../../applications/tagprogram-rs/core/src/engine/station.rs#L714):
 
 ```rust
-/// The commands that answer a prompt, each checked against the outstanding
-/// prompt's `id` before it runs.
-const PROMPT_ANSWERS: [&str; 7] = [
-    "quit_anyway",
-    "answer_auto_attach",
-    "choose_base",
-    "record_use_default",
-    "record_open",
-    "record_create",
-    "prompt_cancel",
-];
-```
-
-Each carries its own arguments (`quit_anyway {}`, `answer_auto_attach {on}`,
-`choose_base {index}`, `record_open {path}`, `record_create {path}`) plus
-the `id` of the prompt it answers. Before the `match`, `command` drops an
-answer whose prompt is no longer the outstanding one,
-[station.rs:627](../../applications/tagprogram-rs/core/src/engine/station.rs#L627):
-
-```rust
-    pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
-        if PROMPT_ANSWERS.contains(&cmd) && !self.answers_current(args) {
-            info!("Ignored {cmd}: it answers a prompt that has been replaced");
+    fn answer(&mut self, args: &Value) {
+        let Some(answer) = self.prompts.answer(args) else {
+            info!("Ignored an answer to a prompt that is no longer shown");
             return;
-        }
-```
-
-with the test in `answers_current`,
-[station.rs:602](../../applications/tagprogram-rs/core/src/engine/station.rs#L602):
-
-```rust
-    /// True when a prompt answer's `id` names the outstanding prompt, or the
-    /// answer carries no `id`.
-    ///
-    /// The page answers a prompt with the `id` it showed. If the engine has
-    /// raised another prompt meanwhile (an alert while the base list was
-    /// open), the late answer would otherwise clear the new prompt unseen and
-    /// act on the old one; Tag Monitor and Tag Calibrator drop such answers
-    /// the same way. An answer without an `id` is taken as answering the
-    /// current prompt, as before ids were checked.
-    fn answers_current(&self, args: &Value) -> bool {
-        match args.get("id").and_then(Value::as_u64) {
-            None => true,
-            Some(id) => self.prompt.as_ref().is_some_and(|p| p.id == id),
-        }
-    }
-```
-
-> **Rust:** `[&str; 6]` is a fixed-size array of six string slices, a
-> `const char *const[6]` in C; `.contains(&cmd)` is a linear search
-> (`std::find`), and takes `&cmd` because it compares by reference.
-> `self.prompt.as_ref().is_some_and(...)` borrows the `Option<Prompt>`
-> rather than moving it out of `self`, then tests the prompt inside.
-
-An answer that passes the check clears the outstanding prompt and acts,
-[station.rs:662](../../applications/tagprogram-rs/core/src/engine/station.rs#L662):
-
-```rust
-            "answer_auto_attach" => {
-                self.prompt = None;
-                self.set_auto_attach(b("on"));
+        };
+        let ok = answer.ok();
+        let (button, index, path) = (answer.button, answer.index, answer.path);
+        match answer.kind {
+            PromptKind::Alert { .. } => {}
+            PromptKind::AutoAttach => {
+                self.set_auto_attach(ok);
                 self.begin_checks();
             }
-            "list_bases" => self.list_bases(),
-            "choose_base" => {
-                self.prompt = None;
-                let index = args.get("index").and_then(Value::as_u64).unwrap_or(0) as usize;
-                self.choose_base(index);
+            PromptKind::RecordFile { .. } => match (button.as_str(), path) {
+                ("default", _) => {
+                    let path = self.default_record_path();
+                    self.open_or_create_record(&path);
+                }
+                ("open", Some(path)) => self.open_record(Path::new(&path)),
+                ("create", Some(path)) => self.open_or_create_record(Path::new(&path)),
+                _ => {}
+            },
+            PromptKind::ChooseBase { bases, .. } => {
+                if ok && let Some(base) = index.and_then(|i| bases.get(i)) {
+                    self.use_base(base.clone());
+                }
             }
+            PromptKind::ConfirmQuit => {
+                if button == "quit" {
+                    self.exit = true;
+                }
+            }
+        }
+    }
 ```
 
-So a late answer (the page still showing a base list when the engine has
-raised an alert) is logged and ignored instead of clearing the alert unseen.
-The test `stale_prompt_answers_are_dropped`
-([station.rs:2077](../../applications/tagprogram-rs/core/src/engine/station.rs#L2077))
-raises two alerts, answers the first, and checks that the second survives,
-then that an answer with the right id, or with none, clears the prompt. An
-answer with no `id` still applies to whatever prompt is outstanding; the
-page always sends one.
+`Prompts::answer` takes the answer only if its `id` is the front prompt's,
+removes that prompt and returns its kind with the button, index and path
+parsed out of the JSON; anything else, including an answer with no `id`,
+returns `None`, and the let-else logs it and returns. So a late answer (the
+page still showing a base list when the engine has queued an alert) cannot
+act on the wrong question. Before the move, an answer without an `id` was
+taken as answering whatever prompt was outstanding; now it is dropped, and
+the page always sends one. The buttons are per kind: `ok` and `cancel` for
+the yes-or-no and list kinds, `default`, `open` and `create` for the record
+file, `quit` for `confirmQuit`; any other button cancels. The test
+`prompts_queue_and_stale_answers_are_dropped`
+([station.rs:2120](../../applications/tagprogram-rs/core/src/engine/station.rs#L2120))
+queues two alerts, answers the waiting one's id and checks that nothing was
+taken, answers the front one and checks that the second is now in front,
+then checks that an answer with no `id` is dropped.
+
+> **Rust:** `let (button, index, path) = (answer.button, ...)` moves the
+> three fields out of `answer` before `match answer.kind` moves the fourth;
+> a struct may be taken apart field by field like this. `match
+> (button.as_str(), path)` matches a tuple, so one arm can test the button
+> and whether a path came with it at once. `if ok && let Some(base) = ...`
+> is a *let chain* (Rust 2024): a condition and a pattern match in one `if`,
+> the body running only when both hold.
 
 ### The shell, and quitting
 
@@ -631,7 +642,7 @@ set, so a window close or Cmd-Q reaches the engine as `quit`. Its sink,
 
 Its `quit` asks only when quitting would do harm: while probe-rs is erasing,
 programming and verifying a tag, an exit would leave the tag with a partial
-image. [station.rs:576](../../applications/tagprogram-rs/core/src/engine/station.rs#L576):
+image. [station.rs:638](../../applications/tagprogram-rs/core/src/engine/station.rs#L638):
 
 ```rust
     fn programming(&self) -> bool {
@@ -642,11 +653,7 @@ image. [station.rs:576](../../applications/tagprogram-rs/core/src/engine/station
 
     fn quit(&mut self) {
         if self.programming() {
-            self.raise(json!({
-                "kind": "confirmQuit",
-                "title": "Programming in Progress",
-                "text": "Programming is in progress. Quitting now can leave the tag with a partial image. Quit anyway?",
-            }));
+            self.ask(PromptKind::ConfirmQuit);
         } else {
             self.exit = true;
         }
@@ -654,10 +661,11 @@ image. [station.rs:576](../../applications/tagprogram-rs/core/src/engine/station
 ```
 
 (doc comments dropped). At any other step, a test, a read-back, waiting for
-a tag, `quit` exits at once. The page shows `confirmQuit` with Keep
-Programming as the default; Quit sends `quit_anyway`, which clears the
-prompt and sets `exit`, and Keep Programming sends `prompt_cancel`. Like
-every answer, both carry the prompt's `id`, so a stale one is dropped. The
+a tag, `quit` exits at once. The page shows `confirmQuit` (its title and
+text are filled in by the view) with Keep Programming as the default; Quit
+answers with the button `quit`, which sets `exit`, and Keep Programming
+answers `cancel`. Like every answer, both carry the prompt's `id`, so a
+stale one is dropped. The
 choice stays with the user, so a stuck programming job cannot trap the
 program. The test `quit_asks_only_while_programming` in `station.rs` checks
 both paths. The page's capability set is the shared one, so its
@@ -673,31 +681,46 @@ both paths. The page's capability set is the shared one, so its
 
 [tagprogram-rs/ui/app.js](../../applications/tagprogram-rs/ui/app.js) has the
 same skeleton as Tag Monitor's (`send`, `draw`, `Window`, `showPrompt`,
-wiring), with four differences.
+wiring), and since the move onto the toolkit the same protocol: menus from
+the `menus` query, every prompt answered with `answer`, and `ready` at
+start-up. What is its own is the dialogs it starts itself, below.
 
-**The menus are written in the page**, not fetched with a `menus` query.
-[app.js:438](../../applications/tagprogram-rs/ui/app.js#L438):
+**The menus come from the engine.** The `menus` query answers the menu bar
+as data (`menus()` in `view.rs`), and the page turns each entry into a kit
+menu item by its `id`,
+[app.js:457](../../applications/tagprogram-rs/ui/app.js#L457):
 
 ```js
-  Kit.menuBar(document.getElementById("menubar"), [
-    { title: "Help", items: [
-      { label: "Tag Programmer User Guide", tooltip: "Open the Tag Programmer page of the user manual", action: userGuide },
-      { label: "About Tag Programmer", action: about },
-    ] },
-    { title: "Station", items: () => [
-      { label: "Attach Automatically", checked: state && state.autoAttach,
-        action: () => send("set_auto_attach", { on: !(state && state.autoAttach) }) },
-      { label: "Choose Base...", action: () => send("list_bases") },
-      { label: "Choose Record File...", action: () => send("choose_record") },
-      { label: "Refresh Firmware Releases", action: () => send("refresh_releases") },
-    ] },
-  ]);
+  function menuItem(e) {
+    if (e.kind === "separator") return "-";
+    const item = { label: e.label, tooltip: e.tooltip || undefined };
+    switch (e.id) {
+      case "user_guide": item.action = userGuide; break;
+      case "about": item.action = about; break;
+      case "auto_attach":
+        item.checked = !!(state && state.autoAttach);
+        item.action = () => send("set_auto_attach", { on: !(state && state.autoAttach) });
+        break;
+      default: item.action = () => send(e.id);
+    }
+    return item;
+  }
 ```
 
-The Station menu's `items` is a function, so its check mark follows
-`state.autoAttach` each time it opens.
+Help's two entries open pages; Attach Automatically shows `state.autoAttach`
+as its check mark and sends its opposite; every other entry (`list_bases`,
+`choose_record`, `refresh_releases`) sends the command its `id` names. Each
+menu's `items` is a function, so the check mark is read each time the menu
+opens. Until the move these menus were written out in the page.
 
-**Prompts answer with their own commands, and the prompt's id.** [app.js:207](../../applications/tagprogram-rs/ui/app.js#L207):
+**Prompts answer with `answer` and the prompt's id.** A one-line helper,
+[app.js:63](../../applications/tagprogram-rs/ui/app.js#L63):
+
+```js
+  const answer = (id, button, extra) => send("answer", Object.assign({ id, button }, extra || {}));
+```
+
+and the dispatcher, [app.js:221](../../applications/tagprogram-rs/ui/app.js#L221):
 
 ```js
   function showPrompt(p) {
@@ -708,31 +731,39 @@ The Station menu's `items` is a function, so its check mark follows
     if (p.kind === "chooseBase") return promptChooseBase(p);
     if (p.kind === "confirmQuit") return promptConfirmQuit(p);
     if (p.kind === "alert") {
-      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel", { id: p.id }));
+      return Kit.alert(p.title, p.text, null, p.style).then(() => answer(p.id, "ok"));
     }
-    send("prompt_cancel", { id: p.id });
+    answer(p.id, "cancel");
   }
 ```
 
-Each `prompt*` function passes `p.id` on with whatever it sends, for
+Each `prompt*` function answers with the prompt's id and its button, for
 example `promptChooseBase`
-([app.js:271](../../applications/tagprogram-rs/ui/app.js#L271)):
+([app.js:284](../../applications/tagprogram-rs/ui/app.js#L284)):
 
 ```js
   async function promptChooseBase(p) {
     const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
-    send(index === null ? "prompt_cancel" : "choose_base", index === null ? { id: p.id } : { index, id: p.id });
+    if (index === null) answer(p.id, "cancel");
+    else answer(p.id, "ok", { index });
   }
 ```
 
-> **JavaScript:** `{ index, id: p.id }` is an object literal with a
-> shorthand property: `index` alone means `index: index`.
+> **JavaScript:** `Object.assign({ id, button }, extra || {})` copies
+> `extra`'s fields into a new object; `{ id, button }` is an object literal
+> with shorthand properties (`id` alone means `id: id`).
 
-**Start-up sends `start`**, then opens a preview dialog if the URL asks for
-one ([app.js:454](../../applications/tagprogram-rs/ui/app.js#L454)):
+**Start-up asks for the menus, listens, then sends `ready`**, and opens a
+preview dialog if the URL asks for one
+([app.js:474](../../applications/tagprogram-rs/ui/app.js#L474)):
 
 ```js
   Promise.all([
+    engine.query("menus").then((m) => {
+      menus = m;
+      Kit.menuBar(document.getElementById("menubar"),
+        menus.menus.map((menu) => ({ title: menu.title, items: () => menu.entries.map(menuItem) })));
+    }),
     engine.on("log", (e) => log.append(`${e.level} ${e.text}`)),
     engine.on("state", (s) => {
       state = s;
@@ -742,18 +773,18 @@ one ([app.js:454](../../applications/tagprogram-rs/ui/app.js#L454)):
     }),
   ]).then(async () => {
     await send("set_log_level", { level: ui.level });
-    await send("start");
+    await send("ready");
     if (params.get("dialog") === "program") programDialog(params.get("label") || "");
     if (params.get("dialog") === "conflict") labelAccepted("Program Tag", params.get("label") || "BitTag-017");
   });
 ```
 
-`await send("start")` resolves when Tauri has queued the command, not when
+`await send("ready")` resolves when Tauri has queued the command, not when
 the engine has acted on it.
 
 **Some dialogs are started by the page and ask queries first.** The
 Program dialog is the richest piece of front-end code in the three apps.
-`programDialog` ([app.js:367](../../applications/tagprogram-rs/ui/app.js#L367)):
+`programDialog` ([app.js:380](../../applications/tagprogram-rs/ui/app.js#L380)):
 
 ```js
   async function programDialog(initialLabel) {
@@ -800,7 +831,7 @@ Program dialog is the richest piece of front-end code in the three apps.
   the label for another tag; only then is `program {label}` sent.
 
 The body is a component with its own state, the only component in the
-three apps that calls `useState`. [app.js:328](../../applications/tagprogram-rs/ui/app.js#L328):
+three apps that calls `useState`. [app.js:341](../../applications/tagprogram-rs/ui/app.js#L341):
 
 ```js
   function ProgramBody({ pv, initialLabel, onLabel }) {
@@ -819,7 +850,7 @@ three apps that calls `useState`. [app.js:328](../../applications/tagprogram-rs/
     }, [label]);
 ```
 
-and its field, [app.js:346](../../applications/tagprogram-rs/ui/app.js#L346):
+and its field, [app.js:359](../../applications/tagprogram-rs/ui/app.js#L359):
 
 ```js
         <div class="kit-form-value"><input ref=${input} class="kit-field" type="text" value=${label}
@@ -849,8 +880,8 @@ renders without causing one.
 Two smaller page details. Choosing "Other ELF file..." in the firmware popup
 opens a file picker; if the user cancels, the page calls `draw()`, and the
 kit's `Select` snaps the popup back to the engine's selection
-([app.js:409](../../applications/tagprogram-rs/ui/app.js#L409)). And
-`keepSpaces` ([app.js:61](../../applications/tagprogram-rs/ui/app.js#L61))
+([app.js:422](../../applications/tagprogram-rs/ui/app.js#L422)). And
+`keepSpaces` ([app.js:73](../../applications/tagprogram-rs/ui/app.js#L73))
 replaces each double space in a firmware entry with a no-break space and a
 space, because a closed `<select>` collapses runs of spaces and qtprogram's
 texts align columns with two.
@@ -912,7 +943,7 @@ before. Tag Monitor's `spawn` is the same, with a `cancel` flag shared with
 its tag thread
 ([chapter 11](11-engine-and-model.md#the-engine-handle-and-spawn)).
 
-As in Tag Monitor, and unlike Tag Programmer, the state is built on the
+As in Tag Monitor and Tag Programmer, the state is built on the
 caller's thread and then moved into the engine thread, which the toolkit's
 `EngineState: Send` bound requires. For the calibrator that is only
 possible because the C++ session handle is declared movable between threads
@@ -980,15 +1011,16 @@ pub trait EngineState: Send + 'static {
 ```
 
 > **Rust:** `type Msg` is an *associated type*: each implementation names
-> one (`Report` for the calibrator, `()` for Tag View), and the trait's
+> one (`Report` for the calibrator, `Done` for Tag Programmer, `()` for Tag
+> View), and the trait's
 > methods and the toolkit's generic code refer to it as `Self::Msg` or
 > `S::Msg`. In C++ it is a nested typedef a template expects of its
 > parameter (`typename S::Msg`), checked when the `impl` is written rather
 > than when a template is instantiated. A method with a body is a *default*:
 > an implementation may leave it out, like a virtual function with a base
 > implementation, but resolved at compile time. Tag View writes only the
-> three required methods and `take_republish`; Tag Monitor and the
-> calibrator write all eight. `: Send + 'static` on the trait means only a state that can be moved
+> three required methods and `take_republish`; Tag Monitor, Tag Programmer
+> and the calibrator write all eight. `: Send + 'static` on the trait means only a state that can be moved
 > into the engine thread can implement it.
 
 The loop, `run_loop` ([lib.rs:278](../../libraries/tagapp-engine-rs/src/lib.rs#L278)),
@@ -1543,22 +1575,22 @@ embedded in the binary unused.
 | Engine state type | `Station` (with `session.rs`, `view.rs`) | `Monitor` (with `model/` rules) | `Calibrator` over `calibsession::Session` |
 | Who owns `tagcore::Tag` | the engine thread | a tag thread | a tag thread |
 | Other threads | short-lived workers via `spawn_work` | none | none |
-| `Msg` variants | `Command`, `Query`, `Done(closure)` | the toolkit's: a UI request, or `Report` as `EngineState::Msg`, posted through a `Poster` | the toolkit's, as Tag Monitor |
+| `Msg` variants | the toolkit's: a UI request, or `Done` (a closure from a worker) as `EngineState::Msg`, posted through a `Poster` | the toolkit's: a UI request, or `Report` as `EngineState::Msg`, posted through a `Poster` | the toolkit's, as Tag Monitor |
 | Shared between threads, besides channels and the logger's sink | `Arc<Catalog>` with internal `Mutex`es | `Arc<AtomicBool>` download cancel | none |
 | Timers | base poll 1 s, status poll 400 ms, attach retry, session tick 1 s, all in the station | engine: a tick and the quit deadline; tag thread: 400 ms status poll | tag thread: 100 ms samples or 1 s keep-awake; engine: 200 ms quality, replay tick, quit wait |
 | Long work | probe-rs programming and read-back, GitHub listing and downloads | SQLite download on the tag thread, with cancel | none |
 | C++ | none | `tagcore_c` SQLite writer (feature `sqlitelog`) | `tagcore_c` calibration session, always |
-| First page command | `start` (once; no republish) | `ready` (attaches the first time, through the toolkit's `Ready`; republishes every time) | `ready` (attaches or starts the replay the first time, through the toolkit's `Ready`; republishes every time) |
-| Prompts | one `Option<Prompt>`, JSON body, replaced by the next | typed `PromptKind`s in the toolkit's `Prompts` queue | typed `PromptKind`s in the toolkit's `Prompts` queue |
-| Prompt answers | per-kind commands, each with the prompt's `id`; stale ones dropped | `answer {id, button, ...}` | `answer {id, button, ...}` |
-| Menus | written in the page | `menus` query (table in `model/menus.rs`) | `menus` query (table in `view.rs`) |
+| First page command | `ready` (begins the checks, or asks the first-run question, the first time, through the toolkit's `Ready`; republishes every time) | `ready` (attaches the first time, through the toolkit's `Ready`; republishes every time) | `ready` (attaches or starts the replay the first time, through the toolkit's `Ready`; republishes every time) |
+| Prompts | typed `PromptKind`s in the toolkit's `Prompts` queue | typed `PromptKind`s in the toolkit's `Prompts` queue | typed `PromptKind`s in the toolkit's `Prompts` queue |
+| Prompt answers | `answer {id, button, ...}` | `answer {id, button, ...}` | `answer {id, button, ...}` |
+| Menus | `menus` query (table in `view.rs`) | `menus` query (table in `model/menus.rs`) | `menus` query (table in `view.rs`) |
 | Window close and Cmd-Q | through the engine: `quit` exits at once, or asks (`confirmQuit`) while a tag is being programmed | through the engine: `quit`, `Event::Exit` after the detach (at most 5 s) | as Tag Monitor, with no unsaved-changes question |
 | Shell (`tagapp-shell`) | `keep_awake`, `close_through_engine`; build rpath `Never` | the same flags; rpath `WithFeature("sqlitelog")` | the same flags; rpath `Always` |
 | Page-initiated queries | `program_preview`, `label_notes`, `label_conflict`, `retest_default_label` | none beyond `menus`, `about`, `user_guide_url` | none beyond `menus`, `about`, `user_guide_url` |
 | Progress display | inline `Session` row | `Kit.dialog` sheets following `erase`/`download` | quality figures and the sphere |
 | Kit pieces only it uses | `StatusGrid`, `Disclosure`, log drawer, `useState` | generated config form | `HeadingDial`, three.js views |
 | Mock data | hand-written, scenario chosen at `create` | hand-written plus the real BITTAG form, scenario at `ready` | a real capture replayed at 10 Hz, scenario at `ready` |
-| Headless tests | 29 unit tests in `model/`, `view.rs` and `station.rs`; `examples/smoke.rs` lists the base | Qt oracle files and model tests ([chapter 11](11-engine-and-model.md)) | replay of the reference capture through the real engine and C++ maths |
+| Headless tests | 30 unit tests in `model/`, `view.rs` and `station.rs`; `examples/smoke.rs` lists the base | Qt oracle files and model tests ([chapter 11](11-engine-and-model.md)) | replay of the reference capture through the real engine and C++ maths |
 | Window | 900 x 700 | 1100 x 640 | 1040 x 800 |
 
 Read as a history, the table shows the pattern settling: Tag Programmer
@@ -1566,9 +1598,12 @@ proved the engine/page split with a design shaped by qtprogram (workers,
 page-side menus, one command per answer); Tag Monitor moved the menus and the
 prompt protocol into the engine and added the tag thread; Tag Calibrator took
 Tag Monitor's shape unchanged and spent its novelty on the data path and the
-graphics. The next step is under way: that shape, taken out of the
-applications into `tagapp-engine`, which Tag Monitor and Tag Calibrator (and
-Tag View) now run on; Tag Programmer is the last to move.
+graphics. The last step took that shape out of the applications into
+`tagapp-engine`, which all three (and Tag View) now run on. Tag Programmer
+took the toolkit's protocol (`ready`, the prompt queue and `answer`, menus
+from the engine) but kept its threading, so the rows that still differ are
+the ones about threads: who owns the `Tag`, the workers, and what the
+application's message is.
 
 ## Try it
 
@@ -1586,19 +1621,20 @@ Tag View) now run on; Tag Programmer is the last to move.
   `host/`, with `CARGO_TARGET_DIR` on the build disk) renders `Station`,
   `SessionState` and `Step` with their documentation.
 - `cargo test -p tagprogram-core` runs its model, view and station tests;
-  none needs hardware (`stale_prompt_answers_are_dropped` opens a libusb
-  context but sends nothing on USB). Do not run its examples on the bench without reading their
+  none needs hardware (the `station.rs` tests open a libusb context but
+  send nothing on USB). Do not run its examples on the bench without reading their
   headers: `smoke` talks to a base on USB, and `bench` programs a real tag.
 - With a CMake build of `tagcore_c`,
   `TAGCORE_C_LIB_DIR=<build-dir>/Release/lib cargo test -p tagcalibrate-core`
   replays the reference capture through the real engine and compares its
   quality lines with qtcalibrate's (see
   [Checking a change](../../applications/tagcalibrate-rs/design/architecture.md#checking-a-change)).
-- Compare the loops directly: the `fn run` in Tag Programmer's
-  `core/src/engine/mod.rs`, and `run_loop` in
-  `host/libraries/tagapp-engine-rs/src/lib.rs`, which Tag Monitor and Tag
-  Calibrator run on, are each about 25 lines. `cargo test -p tagapp-engine` runs the toolkit's
-  own tests, with no window and no tag.
+- Compare the three `EngineState` impls: `rg -n "impl EngineState for"
+  host/applications` finds Tag Programmer's `Station`, Tag Monitor's
+  `Monitor`, Tag Calibrator's `Calibrator` and Tag View's `Viewer`; `run_loop` in
+  `host/libraries/tagapp-engine-rs/src/lib.rs`, about 25 lines, runs all of
+  them. `cargo test -p tagapp-engine` runs the toolkit's own tests, with no
+  window and no tag.
 
 ## Where next
 

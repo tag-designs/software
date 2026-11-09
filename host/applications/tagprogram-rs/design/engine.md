@@ -7,14 +7,23 @@ summary: How Tag Programmer's engine works - one thread that owns all state, the
 # Tag Programmer engine
 
 The engine is one thread that owns every piece of state: the checks, the base
-and tag connection, the firmware choice, the record file, the open prompt and
-the programming session. The UI cannot touch any of it. It sends commands and
+and tag connection, the firmware choice, the record file, the queued prompts
+and the programming session. The UI cannot touch any of it. It sends commands and
 queries, and receives the whole view state after every change. Slow work
 (programming, flash read-back, downloads) runs on worker threads, but its
 result is applied on the engine thread, so the station's state is never
 shared between threads and needs no lock. The one exception is the firmware
 catalog, an `Arc<Catalog>` that worker threads refresh and fetch through; it
 guards its release list and fetch state with its own mutexes.
+
+The plumbing around that state is not in this crate: the `Engine` handle,
+the `Event` type, the engine loop, the prompt queue, the `ready` guard and
+the `UiLogger` are the shared engine toolkit's,
+[`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md), which Tag
+Monitor, Tag Calibrator and Tag View run on too. `Station` implements its
+`EngineState`. Unlike those applications, Tag Programmer has no tag thread:
+its engine thread owns the `Tag`, and its messages are closures from worker
+threads ([the loop](#the-loop)).
 
 The engine is a port of qtprogram's `Station` and `ProgramSession`
 ([batch station design](../../qtprogram/design/batch-station.md)). Its texts,
@@ -27,10 +36,10 @@ document describes what is behind them.
 
 | File | Holds |
 | --- | --- |
-| `core/src/engine/mod.rs` | `Engine` (the UI's handle), `spawn`, the loop, `Msg`, the log forwarding (`UiLogger`) |
-| `core/src/engine/station.rs` | `Station`: checks, base and tag, firmware and catalog, record, prompts, commands and queries |
+| `core/src/engine/mod.rs` | `EngineConfig`; `Done`, the engine thread's message (a closure applied to the `Station`); `QUERY_TIMEOUT` (10 s); `spawn`, which makes the toolkit's channel, builds the `Station` on the calling thread and starts the toolkit's loop on it. `Engine`, `Event`, `LOGGER` and `UiLogger` are re-exported from `tagapp-engine` |
+| `core/src/engine/station.rs` | `Station`: checks, base and tag, firmware and catalog, record, commands and queries; `PromptKind` and the prompt queue (`Prompts<PromptKind>`), `answer`, the `ready` guard; its `EngineState` impl |
 | `core/src/engine/session.rs` | The program and retest step machine, as more `impl Station` |
-| `core/src/engine/view.rs` | The view-state JSON built from `Station` |
+| `core/src/engine/view.rs` | The view-state JSON built from `Station`, including the front prompt's JSON (`prompt_json`); the `menus` query's answer (`menus`) |
 | `core/src/model/` | Toolkit-free model: ELF reading, flash plan, identity record, image, release catalog, record CSV, settings |
 | `app/src/main.rs` | The Tauri shell: describes the app to the shared [`tagapp-shell`](../../../libraries/tagapp-shell-rs/README.md), which forwards `command`/`query`, emits `state` and `log` events, and turns a window close or Cmd-Q into `quit`; creates the engine and forwards its `State`, `Log` and `Exit` |
 
@@ -43,23 +52,34 @@ message loop. The session's own fields live in `SessionState`
 ## The loop
 
 ```text
-            UI thread(s)                     engine thread                worker threads
- command ──► Msg::Command ──────────────►  Station::command
- query   ──► Msg::Query(reply) ─────────►  Station::query ──► reply
+            UI thread(s)                     engine thread (tagapp-engine's loop)     worker threads
+ command ──► Engine::command ───────────►  Station::command
+ query   ──► Engine::query (reply) ─────►  Station::query ──► reply
                                            fire_timers(now)
-                                           view_state() != last? ──► Event::State
-                                           station.exit (once)   ──► Event::Exit
-                                     ◄──── Msg::Done(closure) ◄──────── spawn_work result,
-                                                                        progress
+                                           view_state() != last,
+                                             or after a ready?   ──► Event::State
+                                           take_exit() (once)    ──► Event::Exit
+                                     ◄──── Done (closure),     ◄──────── spawn_work result,
+                                           via EngineState::message      progress
 ```
 
-`run` blocks in `recv_timeout` until the earliest deadline from
-`Station::next_deadline`. After each message, or when the wait times out, it
-fires every due timer and rebuilds the view state. It emits the state only
-when it differs from the last one sent. The UI therefore receives a whole,
-consistent state, never a partial update, and an idle station emits nothing.
-Once the station sets `exit`, the loop emits `Event::Exit`, once, and the
-shell closes the window ([quitting](#quitting)).
+`spawn` builds the `Station` on the thread that calls it (it loads the
+settings file and the cached release list), then moves it onto the engine
+thread, where the toolkit's loop runs it. The loop blocks on its channel
+until the earliest deadline from `Station::next_deadline`. After each
+message, or when the wait times out, it fires every due timer and rebuilds
+the view state. It emits the state only when it differs from the last one
+sent, or when a `ready` asked for the whole state again
+(`EngineState::take_republish`). The UI therefore receives a whole,
+consistent state, never a partial update, and an idle station emits
+nothing. Once the station sets `exit`, `take_exit` returns true, once, the
+loop emits `Event::Exit`, and the shell closes the window
+([quitting](#quitting)).
+
+A worker reaches the station through a `Poster<Done>`, the toolkit's
+handle for an application's own messages: it posts a `Done` closure, and
+the loop hands it to `EngineState::message`, which calls it with
+`&mut Station`.
 
 There are four timers, each an `Option<Instant>` deadline rather than a
 thread:
@@ -75,8 +95,8 @@ A timer is cancelled by setting it to `None`. Nothing else needs cleaning up.
 
 ### Queries block the caller, not the engine
 
-`Engine::query` sends a reply channel and waits up to 10 s for the answer;
-after that it returns `null`. The Tauri `query` command runs it in
+`Engine::query` sends a reply channel and waits up to 10 s
+(`QUERY_TIMEOUT`) for the answer; after that it returns `null`. The Tauri `query` command runs it in
 `spawn_blocking`, so the webview's thread never waits on the engine.
 
 ### What runs on the engine thread
@@ -96,21 +116,21 @@ A window close or Cmd-Q reaches the engine as the `quit` command (the shell
 sets `close_through_engine`). `Station::quit` sets `exit` at once, unless a
 session is running its `Programming` step, the one step a quit would
 interrupt mid-write: probe-rs erasing, programming and verifying the tag.
-Then it raises a `confirmQuit` prompt ("Programming is in progress. Quitting
-now can leave the tag with a partial image. Quit anyway?"); `quit_anyway`
-sets `exit`, `prompt_cancel` keeps programming. The user decides, so a stuck
+Then it queues a `confirmQuit` prompt ("Programming is in progress. Quitting
+now can leave the tag with a partial image. Quit anyway?"); the answer's
+button `quit` sets `exit`, any other keeps programming. The user decides, so a stuck
 programming job cannot trap the program. Quitting during any other step,
 including a test or the read-back, exits at once.
 
 ### What runs on workers
 
-`Station::spawn_work(work, apply)` runs `work` on a new thread and posts
-`Msg::Done(apply(result))` back. The closure runs on the engine thread with
+`Station::spawn_work(work, apply)` runs `work` on a new thread and posts a
+`Done` closure, `apply` with the result, back through the `Poster`. The closure runs on the engine thread with
 `&mut Station`, exactly like a command. Workers run:
 
 - the connect check (`tagprobe::connect_check`) at attach;
 - programming (`tagprobe::program`). Its progress callback posts its own
-  `Msg::Done` per event, which updates the session's progress bar;
+  `Done` per event, which updates the session's progress bar;
 - the Retest flash read-back (`tagprobe::read_memory`);
 - the release catalog refresh and release downloads.
 
@@ -135,7 +155,7 @@ aborted the process. See
 
 ### Deferring work to the next pass
 
-A closure posted with `Msg::Done` from the engine thread itself runs on the
+A `Done` closure posted from the engine thread itself runs on the
 next pass of the loop, after the current view state has been emitted.
 `begin_checks` uses this to open the record file. On macOS the first `open()`
 in `~/Documents` by a new app identity waits for the user's answer to a
@@ -145,8 +165,8 @@ privacy prompt. Opening the record inline would have left the window blank
 
 ## Logging
 
-`UiLogger` is a `log` logger that forwards every record at or above the log
-pane's level to the UI as `Event::Log`. tagcore and tagprobe log through the
+`UiLogger`, the toolkit's, is a `log` logger that forwards every record at
+or above the log pane's level (`set_log_level`) to the UI as `Event::Log`. tagcore and tagprobe log through the
 same facade, so their messages reach the pane as qtprogram's did. The sink is
 a process-wide static because `log` allows one logger per process. The level
 is an atomic so that `log::Log::enabled` reads it without a lock.
@@ -183,7 +203,9 @@ comes from the connect check, so it is fresh at every attach.
 
 ### Start-up
 
-`begin` runs once, on the UI's `start` command, sent when the page has loaded. If the operator has never
+`begin` runs once, on the UI's first `ready` command, sent when the page
+has loaded; a later `ready` (a reloaded page) only gets the whole state
+again, through the toolkit's `Ready` guard. If the operator has never
 answered whether the station may attach automatically, it raises the
 `autoAttach` prompt first. Every automatic attach resets whatever tag is in
 the base, so this needs consent. `begin_checks` then:
@@ -311,7 +333,9 @@ Changes that have already gone wrong once, or that the bench rules forbid:
 ## Testing without hardware
 
 - `cargo test -p tagprogram-core` covers the model: ELF, flash plan,
-  identity, record CSV, settings and catalog, plus the view-state clock text.
+  identity, record CSV, settings and catalog, plus the view-state clock text
+  and, in `station.rs`, quitting, the prompt queue and its stale answers,
+  and `ready` starting the station once.
 - `examples/smoke.rs` runs the engine headless with scratch settings and
   automatic attach off. It finds and identifies the base but never attaches.
 - `examples/bench.rs` is qtprogram's `--bench-program`. It programs or

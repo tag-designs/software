@@ -19,7 +19,9 @@
  * and which prompt has been shown. User actions become `command`s, which
  * the engine answers with a new state, and the dialogs that need data
  * first ask `query`s (program_preview, label_notes, label_conflict, ...).
- * Prompts the engine raises (state.prompt) are answered with a command.
+ * Prompts the engine raises (state.prompt) are answered with
+ * `answer {id, button, index?, path?}`. The menus come from the engine's
+ * `menus` query.
  */
 (function () {
   "use strict";
@@ -31,6 +33,7 @@
   const engine = Kit.createEngine(!Kit.inApp() && window.MockEngine ? MockEngine.create(params) : null);
 
   let state = null;
+  let menus = null;           // the `menus` query's answer
   let shownPrompt = null;     // the id of the prompt on screen or answered
   let busy = false;           // a dialog of ours is open; ignore re-entry
   /** What the page keeps itself: the log drawer and the log level. */
@@ -49,6 +52,15 @@
     Promise.resolve(engine.command(cmd, args)).then((err) => {
       if (err) Kit.alert("Tag Programmer", String(err), null, "warning");
     }, (err) => Kit.alert("Tag Programmer", String(err), null, "warning"));
+
+  /**
+   * Answers the prompt `id` with `button`, plus `index` or `path` in `extra`.
+   * @param {number} id The prompt's id.
+   * @param {string} button The button pressed.
+   * @param {Object} [extra] `{index}` or `{path}`.
+   * @returns {Promise<void>}
+   */
+  const answer = (id, button, extra) => send("answer", Object.assign({ id, button }, extra || {}));
 
   // ---- Rendering --------------------------------------------------------
 
@@ -200,8 +212,10 @@
   // ---- Prompts ----------------------------------------------------------
 
   /**
-   * Shows the engine's prompt once per prompt id; each kind answers with
-   * its command, and an unknown kind is cancelled so the engine never waits.
+   * Shows the engine's prompt once per prompt id and answers it with
+   * `answer`; an unknown kind is cancelled so the engine never waits. Every
+   * answer carries the prompt's `id`, so the engine drops one for a prompt
+   * it is no longer showing.
    * @param {?Object} p The state's `prompt`, or null.
    */
   function showPrompt(p) {
@@ -212,15 +226,14 @@
     if (p.kind === "chooseBase") return promptChooseBase(p);
     if (p.kind === "confirmQuit") return promptConfirmQuit(p);
     if (p.kind === "alert") {
-      return Kit.alert(p.title, p.text, null, p.style).then(() => send("prompt_cancel", { id: p.id }));
+      return Kit.alert(p.title, p.text, null, p.style).then(() => answer(p.id, "ok"));
     }
-    send("prompt_cancel", { id: p.id });
+    answer(p.id, "cancel");
   }
 
   /**
-   * The first-run question: attach automatically? Answers
-   * `answer_auto_attach`. Every answer carries the prompt's `id`, so the
-   * engine can drop one for a prompt it has since replaced.
+   * The first-run question: attach automatically? Answers `ok` for Yes,
+   * `cancel` for No.
    * @param {Object} p The prompt.
    */
   async function promptAutoAttach(p) {
@@ -230,13 +243,13 @@
       "running. Attach automatically from now on? (Station > Attach Automatically changes this.)",
       null,
       [{ label: "No", value: false, default: true, enter: true, cancel: true }, { label: "Yes", value: true }]);
-    send("answer_auto_attach", { on, id: p.id });
+    answer(p.id, on ? "ok" : "cancel");
   }
 
   /**
    * Asks which record file to use: the default (open or create it), an
-   * existing file, or a new one elsewhere. Cancelling, at either step, sends
-   * `prompt_cancel`.
+   * existing file, or a new one elsewhere. Answers `default`, or `open` or
+   * `create` with the `path`; cancelling, at either step, answers `cancel`.
    * @param {Object} p The prompt, with `defaultPath` and `exists`.
    */
   async function promptRecordFile(p) {
@@ -252,38 +265,38 @@
         { label: "Create Elsewhere...", value: "create" },
         { label: p.exists ? "Use It" : "Create", value: "default", default: true, enter: true },
       ], 560);
-    if (choice === "default") return send("record_use_default", { id: p.id });
+    if (choice === "default") return answer(p.id, "default");
     if (choice === "open") {
       const path = await Kit.openFile({ title: "Record file", filters, defaultPath: p.defaultPath });
-      if (path) return send("record_open", { path, id: p.id });
+      if (path) return answer(p.id, "open", { path });
     } else if (choice === "create") {
       const path = await Kit.saveFile({ title: "New record file", filters, defaultPath: p.defaultPath });
-      if (path) return send("record_create", { path, id: p.id });
+      if (path) return answer(p.id, "create", { path });
     }
-    send("prompt_cancel", { id: p.id });
+    answer(p.id, "cancel");
   }
 
   /**
-   * Asks which of several bases to use; answers `choose_base` with the
-   * index, or `prompt_cancel`.
+   * Asks which of several bases to use; answers `ok` with the index, or
+   * `cancel`.
    * @param {Object} p The prompt, with `label`, `items` and `current`.
    */
   async function promptChooseBase(p) {
     const index = await Kit.chooseFromList("Choose a Base", p.label, p.items, p.current);
-    send(index === null ? "prompt_cancel" : "choose_base", index === null ? { id: p.id } : { index, id: p.id });
+    if (index === null) answer(p.id, "cancel");
+    else answer(p.id, "ok", { index });
   }
 
   /**
    * Asks whether to quit while a tag is being programmed (the window's close
-   * or Cmd-Q); answers `quit_anyway` or `prompt_cancel`. Keeping on is the
-   * default.
+   * or Cmd-Q); answers `quit` or `cancel`. Keeping on is the default.
    * @param {Object} p The prompt, with `title` and `text`.
    */
   async function promptConfirmQuit(p) {
     const quit = await Kit.confirm(p.title, p.text, null,
       [{ label: "Keep Programming", value: false, default: true, enter: true, cancel: true },
        { label: "Quit", value: true }]);
-    send(quit ? "quit_anyway" : "prompt_cancel", { id: p.id });
+    answer(p.id, quit ? "quit" : "cancel");
   }
 
   // ---- Dialogs started by the user --------------------------------------
@@ -435,23 +448,35 @@
 
   // ---- Wiring -----------------------------------------------------------
 
-  Kit.menuBar(document.getElementById("menubar"), [
-    { title: "Help", items: [
-      { label: "Tag Programmer User Guide", tooltip: "Open the Tag Programmer page of the user manual", action: userGuide },
-      { label: "About Tag Programmer", action: about },
-    ] },
-    { title: "Station", items: () => [
-      { label: "Attach Automatically", checked: state && state.autoAttach,
-        action: () => send("set_auto_attach", { on: !(state && state.autoAttach) }) },
-      { label: "Choose Base...", action: () => send("list_bases") },
-      { label: "Choose Record File...", action: () => send("choose_record") },
-      { label: "Refresh Firmware Releases", action: () => send("refresh_releases") },
-    ] },
-  ]);
+  /**
+   * One menu entry from the `menus` query as a Kit menu item, with its
+   * state read now.
+   * @param {Object} e The entry: `{kind, id, label, tooltip}`.
+   * @returns {Object|string} A Kit item, or "-".
+   */
+  function menuItem(e) {
+    if (e.kind === "separator") return "-";
+    const item = { label: e.label, tooltip: e.tooltip || undefined };
+    switch (e.id) {
+      case "user_guide": item.action = userGuide; break;
+      case "about": item.action = about; break;
+      case "auto_attach":
+        item.checked = !!(state && state.autoAttach);
+        item.action = () => send("set_auto_attach", { on: !(state && state.autoAttach) });
+        break;
+      default: item.action = () => send(e.id);
+    }
+    return item;
+  }
 
-  // Listen before `start`, so the first state is not missed (Tauri's listen
+  // Listen before `ready`, so the first state is not missed (Tauri's listen
   // resolves asynchronously).
   Promise.all([
+    engine.query("menus").then((m) => {
+      menus = m;
+      Kit.menuBar(document.getElementById("menubar"),
+        menus.menus.map((menu) => ({ title: menu.title, items: () => menu.entries.map(menuItem) })));
+    }),
     engine.on("log", (e) => log.append(`${e.level} ${e.text}`)),
     engine.on("state", (s) => {
       state = s;
@@ -461,7 +486,7 @@
     }),
   ]).then(async () => {
     await send("set_log_level", { level: ui.level });
-    await send("start");
+    await send("ready");
     if (params.get("dialog") === "program") programDialog(params.get("label") || "");
     if (params.get("dialog") === "conflict") labelAccepted("Program Tag", params.get("label") || "BitTag-017");
   });

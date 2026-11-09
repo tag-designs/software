@@ -608,7 +608,7 @@ the end. Read `opt.map(f)` as `opt ? f(*opt) : nullopt`.
 | `map_or(d, f)` | `f(value)`, or `d` | `.map_or(0, \|f\| f.value & 0xFFFF)`, [capture.rs:574](../../libraries/tagcore-rs/src/recovery/capture.rs#L574) |
 | `is_some_and(p)`, `is_ok_and(p)`, `is_none_or(p)` | Test presence and content in one call | `.is_some_and(\|id\| id & L4_DBGMCU_DEV_ID_MASK == L4_DEV_ID_L43X)`, [l4.rs:474](../../libraries/tagcore-rs/src/monitor/l4.rs#L474) |
 | `transpose()` | `Option<Result<T, E>>` to `Result<Option<T>, E>` | [tag-dwnld.rs:379](../../commandline-rs/src/bin/tag-dwnld.rs#L379) |
-| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:456](../../applications/tagprogram-rs/core/src/engine/station.rs#L456) |
+| `copied()`, `cloned()` | `Option<&T>` to `Option<T>` | `panic.downcast_ref::<String>().cloned()`, [station.rs:510](../../applications/tagprogram-rs/core/src/engine/station.rs#L510) |
 | `bool::then(f)` | `Some(f())` if true, else `None` | `self.cmd_read(&cmd, &mut result).then(\|\| unpack16(&result))`, [stlink.rs:353](../../libraries/tagcore-rs/src/link/stlink.rs#L353) |
 
 A longer chain, from [rescue.rs:118](../../libraries/tagcore-rs/src/recovery/rescue.rs#L118):
@@ -696,11 +696,11 @@ holding the panic's payload, like `catch (...)`. `downcast_ref::<T>()` is
 a checked `dynamic_cast` of that payload to recover its message.
 
 ```rust
-match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
+let done: Done = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
     Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
 ```
 
-[station.rs:450](../../applications/tagprogram-rs/core/src/engine/station.rs#L450).
+[station.rs:504](../../applications/tagprogram-rs/core/src/engine/station.rs#L504).
 Explained in: [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
 ## Enums and matching
@@ -944,7 +944,7 @@ TagState::try_from(state)
 [abi.rs:61](../../libraries/tagcore-rs/src/monitor/abi.rs#L61),
 [tag.rs:152](../../libraries/tagcore-rs/src/tag.rs#L152);
 `st.state == TagState::Idle as i32` at
-[session.rs:360](../../applications/tagprogram-rs/core/src/engine/session.rs#L360).
+[session.rs:358](../../applications/tagprogram-rs/core/src/engine/session.rs#L358).
 Explained in: [4, The ABI, mirrored by hand](04-monitor-and-rpc.md#the-abi-mirrored-by-hand);
 [5, What the generated types look like](05-protobuf-and-the-tag-api.md#what-the-generated-types-look-like);
 [8, Declaring C in Rust](08-bridges-to-cpp-and-python.md#declaring-c-in-rust).
@@ -1438,7 +1438,7 @@ index loops.
 .min()
 ```
 
-[station.rs:513](../../applications/tagprogram-rs/core/src/engine/station.rs#L513)
+[station.rs:573](../../applications/tagprogram-rs/core/src/engine/station.rs#L573)
 (the earliest armed timer, or `None`).
 Explained in: [6, mcu.rs](06-recovery.md#mcurs-one-table-per-part);
 [7, The connect check](07-programming-tags-and-bases.md#the-connect-check-without-probe-rs);
@@ -1573,7 +1573,7 @@ apply: impl FnOnce(&mut Station, T) + Send + 'static,
 ```
 
 [tagprobe lib.rs:484](../../libraries/tagprobe-rs/src/lib.rs#L484),
-[station.rs:445](../../applications/tagprogram-rs/core/src/engine/station.rs#L445);
+[station.rs:500](../../applications/tagprogram-rs/core/src/engine/station.rs#L500);
 `F: FnOnce(Setup<'_>) -> Result<Engine, Box<dyn Error>> + Send + 'static`,
 the application's setup closure, at
 [tagapp-shell lib.rs:271](../../libraries/tagapp-shell-rs/src/lib.rs#L271).
@@ -1590,13 +1590,13 @@ erases it so closures can travel in a channel message (a move-only
 passed to `map`, like a function pointer.
 
 ```rust
-Done(Box<dyn FnOnce(&mut Station) + Send>),
+pub(crate) type Done = Box<dyn FnOnce(&mut Station) + Send>;
 ```
 ```rust
 .map(Probe::from_specific_probe)
 ```
 
-[tagprogram engine/mod.rs:151](../../applications/tagprogram-rs/core/src/engine/mod.rs#L151),
+[tagprogram engine/mod.rs:90](../../applications/tagprogram-rs/core/src/engine/mod.rs#L90),
 [tagprobe lib.rs:357](../../libraries/tagprobe-rs/src/lib.rs#L357);
 `Engine::new(engine, engine::Engine::command, engine::Engine::query)`, two
 methods passed as `fn(&E, &str, Value)` pointers, at
@@ -1622,7 +1622,7 @@ loop, for one, ends when its channel reports `Disconnected`.
 std::thread::spawn(move || {
 ```
 
-[station.rs:448](../../applications/tagprogram-rs/core/src/engine/station.rs#L448).
+[station.rs:503](../../applications/tagprogram-rs/core/src/engine/station.rs#L503).
 Explained in: [11, The Engine handle and spawn](11-engine-and-model.md#the-engine-handle-and-spawn);
 [14, One engine thread](14-the-three-applications.md#one-engine-thread-that-owns-the-tag-and-workers-that-return-closures).
 
@@ -1836,7 +1836,7 @@ occur here:
 | `matches!` | Pattern test as a `bool`; see [`matches!`](#matches) | [monitor/mod.rs:706](../../libraries/tagcore-rs/src/monitor/mod.rs#L706) |
 | `cfg!(...)` | A compile-time `true`/`false`; the code it guards is still compiled and type-checked (`if constexpr`) | [link/mod.rs:80](../../libraries/tagcore-rs/src/link/mod.rs#L80) |
 | `include!`, `include_bytes!`, `include_str!` | Paste a file's Rust tokens, or embed its bytes or text, at compile time | [proto.rs:25](../../libraries/tagcore-rs/src/proto.rs#L25) |
-| `env!`, `option_env!`, `concat!` | Read an environment variable at compile time (`option_env!` gives `None` if unset); join literals | [session.rs:83](../../applications/tagprogram-rs/core/src/engine/session.rs#L83) |
+| `env!`, `option_env!`, `concat!` | Read an environment variable at compile time (`option_env!` gives `None` if unset); join literals | [session.rs:81](../../applications/tagprogram-rs/core/src/engine/session.rs#L81) |
 | `panic!`, `debug_assert!` | Abort the thread; a check that only debug builds run | [configshape.rs:253](../../libraries/tagcore-rs/src/configshape.rs#L253) |
 | `thread_local!` | A per-thread static; see [`thread_local!`](#thread_local) | [link/mod.rs:600](../../libraries/tagcore-rs/src/link/mod.rs#L600) |
 | `tauri::generate_handler![...]`, `tauri::generate_context!()` | The command dispatch table; the configuration and page embedded in the binary | [tagapp-shell lib.rs:314](../../libraries/tagapp-shell-rs/src/lib.rs#L314), [tagmonitor main.rs:37](../../applications/tagmonitor-rs/app/src/main.rs#L37) |
@@ -2435,7 +2435,7 @@ try {
 }
 ```
 
-[tagprogram app.js:370](../../applications/tagprogram-rs/ui/app.js#L370).
+[tagprogram app.js:383](../../applications/tagprogram-rs/ui/app.js#L383).
 Not discussed in a chapter.
 
 ### `Map` and `Set`
@@ -2465,7 +2465,7 @@ const [notes, setNotes] = useState("");
 const seq = useRef(0);
 ```
 
-[tagprogram app.js:329](../../applications/tagprogram-rs/ui/app.js#L329).
+[tagprogram app.js:342](../../applications/tagprogram-rs/ui/app.js#L342).
 Explained in: [12, Hooks: four of them, used sparingly](12-ui-kit-and-pages.md#hooks-four-of-them-used-sparingly);
 [14, The page](14-the-three-applications.md#the-page).
 

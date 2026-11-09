@@ -73,8 +73,8 @@ one `engine` object (see the kit's README).
 
 ## View state (event `state`)
 
-The engine sends the whole state after every change. All text is final, ready
-to show; the UI never composes messages.
+The engine sends the whole state after every change, and after every
+`ready`. All text is final, ready to show; the UI never composes messages.
 
 ```jsonc
 {
@@ -150,26 +150,35 @@ ERROR. The UI appends `"<LEVEL> <text>"` lines to the log pane.
 
 ## Prompts
 
-When the engine needs an answer it sets `state.prompt` to one of these, with a
-fresh `id`. The UI shows the dialog once per `id` and answers with the named
-command, adding the prompt's `id` to its arguments; the engine drops an
-answer whose `id` is not the outstanding prompt's, so a dialog left open
-while another prompt replaced it cannot clear the new one. Until answered
+When the engine needs an answer it queues a prompt, with a fresh `id`, and
+`state.prompt` is the front one of the queue (`null` when none is waiting).
+A prompt raised while another is shown waits behind it instead of replacing
+it. The UI shows the dialog once per `id` and answers with one command,
+`answer {id, button, index?, path?}`; the engine takes the answer only if
+its `id` is the front prompt's, and drops any other (a stale answer, from a
+dialog for a prompt no longer shown, or an answer with no `id`), so a late
+answer cannot act on the wrong question. A missing `button` reads as
+`cancel`, and any button a kind does not name cancels it. Until answered
 the prompt stays in the state.
 
-| `kind` | Fields | Dialog (qtprogram's) | Answer |
+The queue, the ids and the stale-id rule are the shared engine toolkit's
+([`tagapp-engine`](../../../libraries/tagapp-engine-rs/README.md)), as in
+Tag Monitor and Tag Calibrator.
+
+| `kind` | Fields | Dialog (qtprogram's) | Answer `button` |
 | --- | --- | --- | --- |
-| `autoAttach` | -- | "Attach Automatically?" question | `answer_auto_attach {on}` |
-| `recordFile` | `defaultPath`, `exists` | "Record File" box: Use It/Create, Open Existing..., Create Elsewhere..., Cancel | `record_use_default`, `record_open {path}`, `record_create {path}`, `prompt_cancel` |
-| `chooseBase` | `label`, `items[]` (text), `current` (index) | "Choose a Base" list | `choose_base {index}`, `prompt_cancel` |
-| `alert` | `title`, `text`, `style` (`"warning"`/`"info"`) | message box | `prompt_cancel` |
-| `confirmQuit` | `title`, `text` | "Programming in Progress": Keep Programming (default) or Quit | `quit_anyway`, `prompt_cancel` |
+| `autoAttach` | -- | "Attach Automatically?" question | `ok` (Yes) or `cancel` (No); either begins the checks |
+| `recordFile` | `defaultPath`, `exists` | "Record File" box: Use It/Create, Open Existing..., Create Elsewhere..., Cancel | `default` (open or create the default path), `open` with `path`, `create` with `path` (opens the file if one is already there), or `cancel` |
+| `chooseBase` | `label`, `items[]` (text), `current` (index) | "Choose a Base" list | `ok` with `index`, or `cancel`; the index names a base in the list as it was shown, so a base plugged or unplugged meanwhile cannot shift the choice |
+| `alert` | `title`, `text`, `style` (`"warning"`/`"info"`) | message box | `ok` |
+| `confirmQuit` | `title`, `text` | "Programming in Progress": Keep Programming (default) or Quit | `quit` (the engine exits) or `cancel` (keeps programming) |
 
 ## Commands (`invoke("command", {cmd, args})`)
 
 | `cmd` | `args` | Does |
 | --- | --- | --- |
-| `start` | -- | begin(): first-run prompt, checks, catalog refresh |
+| `ready` | -- | sent when the page has loaded, and again after a reload. The first one runs begin(): first-run prompt, checks, catalog refresh. Every one resends the whole view state, even if unchanged |
+| `answer` | `{id, button, index?, path?}` | answers the front prompt; see Prompts |
 | `choose_firmware` | `{id}` | an item from `firmware.items` (`release:`/`file:` ids); `other` is handled by the UI's file dialog, then `choose_file` |
 | `choose_file` | `{path}` | program a local ELF |
 | `choose_target` | `{name}` | tag type |
@@ -184,7 +193,6 @@ the prompt stays in the state.
 | `list_bases` | -- | Station > Choose Base... (raises `chooseBase`, or an `alert`) |
 | `choose_record` | -- | Station > Choose Record File... (raises `recordFile`) |
 | `quit` | -- | sent by the shell for a window close or Cmd-Q: quits at once (the engine's `Exit`), or raises `confirmQuit` while a tag is being programmed |
-| `quit_anyway`, `answer_auto_attach`, `record_use_default`, `record_open`, `record_create`, `choose_base`, `prompt_cancel` | see Prompts, each plus `id` | An answer whose `id` is not the outstanding prompt's is dropped; one without an `id` answers the outstanding prompt |
 | `set_log_level` | `{level}` | log pane combo |
 | `save_text` | `{path, text}` | Save Error Log (truncates; qtprogram's did not) |
 
@@ -198,6 +206,7 @@ the prompt stays in the state.
 | `retest_default_label` | -- | the last label recorded for this tag's UUID, or `""` |
 | `about` | -- | `{ title, text }` |
 | `user_guide_url` | -- | URL or `null` |
+| `menus` | -- | the menu bar: `{ menus: [{ title, entries: [{ kind: "item", id, label, tooltip }] }] }`, Help (`user_guide`, `about`) then Station (`auto_attach`, `list_bases`, `choose_record`, `refresh_releases`). The page acts on an entry by its `id`: `user_guide` and `about` open the user guide and the About box, `auto_attach` sends `set_auto_attach` with the opposite of `state.autoAttach` (and shows it as the check mark), and the rest send the command of that name |
 
 ## Model API (`core/src/model`)
 

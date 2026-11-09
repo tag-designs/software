@@ -11,6 +11,7 @@ tagprobe = { path = "../../../libraries/tagprobe-rs" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
+tagapp-engine = { path = "../../../libraries/tagapp-engine-rs" }
 sha2 = "0.10"
 regex = "1"
 tar = "0.4"

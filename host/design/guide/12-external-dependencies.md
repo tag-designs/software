@@ -53,7 +53,7 @@ crate with its licence.
 | Crate | Version | Used by | For | Notes |
 | --- | --- | --- | --- | --- |
 | `clap` | 4.6.7 | tag-tools | Command-line parsing with `derive`; `--help` from doc comments | Replaced cxxopts; option errors exit 2 rather than 1 |
-| `env_logger`, `log` | 0.11.11, 0.4.34 | all | The `log` facade every crate logs through, and the stderr logger the tools install in `log.c`'s format | The applications install a `log::Log` that feeds the log pane: `tagapp-engine`'s `UiLogger` in Tag Monitor, Tag Calibrator and Tag View, an own copy in Tag Programmer |
+| `env_logger`, `log` | 0.11.11, 0.4.34 | all | The `log` facade every crate logs through, and the stderr logger the tools install in `log.c`'s format | The applications install a `log::Log` that feeds the log pane: `tagapp-engine`'s `UiLogger` in all four |
 | `ctrlc` | 3.5.2 | tag-tools | Exit 1 on Ctrl-C, as the C++ tools' SIGINT handler did | |
 | `tauri`, `tauri-build` | 2.12.5, 2.7.4 | `tauri`: `tagapp-shell` and the four `app` crates; `tauri-build`: `tagapp-shell-build` | The native window with the platform's webview, `invoke` from the page, events to it | Underneath: `wry` 0.57 (the webview) and `tao` 0.37 (the window). Tauri's bundler and updater are not used |
 | `tauri-plugin-dialog` | 2.8.3 | `tagapp-shell` (registers it) and the `app` crates (for its permissions) | Native file open and save dialogs | |

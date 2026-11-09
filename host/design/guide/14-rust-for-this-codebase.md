@@ -91,7 +91,7 @@ inheritance. The ones this tree relies on:
 | `Sync` | The value may be shared by reference between threads | Deliberately **not** implemented by the C-bridge wrappers (`Send + !Sync`), which is the C side's one-thread rule as a type |
 | `Drop` | A destructor | `Tag` detaches, `LogWriter` closes its handle, `Session` frees it: RAII as in C++ |
 | `Default`, `Clone`, `Debug`, `PartialEq` | What `#[derive(...)]` writes for you: a default value, a copy, a printable form, equality | On nearly every data type; `PartialEq` is what lets the engine compare view states |
-| `log::Log` | A logger; the global `log` facade calls it | `UiLogger`: in `tagapp-engine` for Tag Monitor, Tag Calibrator and Tag View, still a copy of its own in Tag Programmer |
+| `log::Log` | A logger; the global `log` facade calls it | `UiLogger`, in `tagapp-engine`, for all four applications |
 | `serde::Serialize` | Conversion to JSON through `serde_json` | View-state pieces, settings |
 | probe-rs's `DebugProbe` | What a probe must provide | `FieldSafeProbe` in `tagprobe` |
 
@@ -104,8 +104,9 @@ The applications' concurrency is `std::thread::spawn` and
 `std::sync::mpsc::channel` (multi-producer, single-consumer): a thread owns
 its state and receives messages; senders are cloned to whoever needs to
 send. `recv_timeout` is the engine loop's wait with a deadline. A closure
-sent through a channel (`Msg::Done(Box<dyn FnOnce(&mut Station) + Send>)`)
-is how a worker's result is applied on the engine thread: the work happens
+sent through a channel (Tag Programmer's `Done`, a
+`Box<dyn FnOnce(&mut Station) + Send>` posted through the engine toolkit's
+`Poster`) is how a worker's result is applied on the engine thread: the work happens
 elsewhere, the mutation happens where the state lives. `Arc<AtomicBool>` is
 the cancel flag a download checks between pages. There are no condition
 variables and no raw locks in the applications; `Mutex` appears in `Tag` and

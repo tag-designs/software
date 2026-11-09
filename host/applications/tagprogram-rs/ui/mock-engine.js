@@ -93,6 +93,22 @@
     attach: { enabled: false, tooltip: why },
   });
 
+  /** The `menus` query's answer: the engine's menu table (view.rs `menus`). */
+  const MENUS = {
+    menus: [
+      { title: "Help", entries: [
+        { kind: "item", id: "user_guide", label: "Tag Programmer User Guide", tooltip: "Open the Tag Programmer page of the user manual" },
+        { kind: "item", id: "about", label: "About Tag Programmer", tooltip: "" },
+      ] },
+      { title: "Station", entries: [
+        { kind: "item", id: "auto_attach", label: "Attach Automatically", tooltip: "" },
+        { kind: "item", id: "list_bases", label: "Choose Base...", tooltip: "" },
+        { kind: "item", id: "choose_record", label: "Choose Record File...", tooltip: "" },
+        { kind: "item", id: "refresh_releases", label: "Refresh Firmware Releases", tooltip: "" },
+      ] },
+    ],
+  };
+
   /** Counter giving each canned prompt a fresh id, as the engine does. */
   let promptSeq = 0;
   /**
@@ -248,14 +264,13 @@
 
     /** Command name to its effect on the mock state. */
     const handlers = {
-      start: () => log("INFO", "Tag Programmer v2.0 (mock engine)"),
+      ready: () => log("INFO", "Tag Programmer v2.0 (mock engine)"),
       set_auto_attach: (a) => { s.autoAttach = a.on; },
-      answer_auto_attach: (a) => { s.autoAttach = a.on; s.prompt = null; },
-      record_use_default: () => { s.prompt = null; },
-      record_open: () => { s.prompt = null; },
-      record_create: () => { s.prompt = null; },
-      choose_base: () => { s.prompt = null; },
-      prompt_cancel: () => { s.prompt = null; },
+      answer: (a) => {
+        if (!s.prompt || s.prompt.id !== a.id) return;
+        if (s.prompt.kind === "autoAttach") s.autoAttach = a.button === "ok";
+        s.prompt = null;
+      },
       list_bases: () => { s.prompt = scenario("prompt-base").prompt; },
       choose_record: () => { s.prompt = prompt({ kind: "recordFile", defaultPath: s.recordPath, exists: true }); },
       choose_firmware: (a) => { s.firmware.selected = a.id; },
@@ -300,6 +315,7 @@
           about: () => ({ title: "About Tag Programmer",
             text: "Tag Programmer v2.0\n\nProgram and test a batch of tags through a USB base, recording each one." }),
           user_guide_url: () => null,
+          menus: () => MENUS,
         };
         return Promise.resolve(answers[name] ? answers[name]() : null);
       },

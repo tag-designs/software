@@ -71,7 +71,7 @@ sequenceDiagram
   T->>T: the only code that touches tagcore::Tag
   T-->>E: Report, posted on the same channel
   E->>W: spawn slow work (programming, releases)
-  W-->>E: Msg::Done(closure), applied on the engine thread
+  W-->>E: a Done closure, posted on the same channel and applied on the engine thread
   loop every 400 ms while attached
     T-->>E: Report::Status
   end
@@ -109,10 +109,8 @@ sequenceDiagram
   of their own.
 
 The handle, the loop and the logger are the same code in every
-application, and Tag Monitor, Tag Calibrator and Tag View get them from the
-shared engine toolkit described [below](#the-engine-toolkit). Tag
-Programmer still carries its own copies, which move onto the toolkit when it
-is next changed.
+application: all four get them from the shared engine toolkit described
+[below](#the-engine-toolkit).
 
 ## Prompts: dialogs as data
 
@@ -128,21 +126,20 @@ Quit was interrupted, so Save-then-continue works the same for all four.
 Even the file pickers are prompts, so the engine decides where they start
 and what happens with the result.
 
-Tag Monitor and Tag Calibrator keep their prompts in a **queue**: a prompt
-raised while another is up waits its turn rather than replacing it, the
-page shows the front one, and one command, `answer {id, button, index?,
-path?}`, answers it; an answer to any id but the front one's is ignored.
-Tag Programmer, the first port, still holds one prompt, which a new one
-replaces, and answers each kind with its own command carrying the id.
+Tag Programmer, Tag Monitor and Tag Calibrator keep their prompts in a
+**queue**: a prompt raised while another is up waits its turn rather than
+replacing it, the page shows the front one, and one command, `answer {id,
+button, index?, path?}`, answers it; an answer to any id but the front
+one's, or with no id, is ignored. Tag View has no prompts.
 
 ## The engine toolkit
 
 [`tagapp-engine`](../../libraries/tagapp-engine-rs/README.md)
 (`host/libraries/tagapp-engine-rs`) is the engine half of the pattern as a
 library: the parts every engine had repeated, with no Tauri dependency, so a
-`core` crate that uses it still builds and tests without a window. Tag
-Monitor, Tag Calibrator and Tag View run on it; Tag Programmer moves onto
-it in the last phase of [the proposal](../proposals/unified-app-shell.md).
+`core` crate that uses it still builds and tests without a window. All
+four applications run on it; [the proposal](../proposals/unified-app-shell.md)
+records how they moved onto it, Tag Programmer last.
 
 | Item | What it is |
 | --- | --- |
@@ -150,14 +147,16 @@ it in the last phase of [the proposal](../proposals/unified-app-shell.md).
 | `channel(timeout, sink)` | Makes the `Engine` handle, a `Poster` for the application's own messages, and the inbox; installs `sink` as the logger's destination and resets the level to `INFO` |
 | `spawn(name, state, inbox)` | Starts the engine thread: wait until the next deadline, apply the message, fire timers, rebuild the view state and emit it if it changed (or a `ready` asked for it), emit `Exit` if asked |
 | `Engine` | The handle the shell holds: `command`, and `query` with the application's timeout. Not generic: every application's handle is the same type |
-| `Poster<M>` | What a tag thread posts its reports through |
+| `Poster<M>` | What a tag thread posts its reports through (Tag Programmer's workers post their results) |
 | `Event` | `State`, `Log`, `Exit` |
 | `Ready` | The `ready` guard: the first `ready` starts the engine (attach, open the startup file), and every `ready` resends the whole view state, so a reloaded page is redrawn at once without attaching or opening anything again |
 | `Prompts<K>` | The prompt queue above, with fresh ids; `answer(args)` returns the parsed answer, or nothing for a stale id |
 | `UiLogger`, `LOGGER`, `set_log_level` | The `log` forwarding and its level |
 
-An application supplies only its state: Tag Monitor's `Monitor` and Tag
-Calibrator's `Calibrator` (messages are each tag thread's `Report`s, with
+An application supplies only its state: Tag Programmer's `Station`
+(messages are `Done` closures from its worker threads, applied to the
+station, with timers, prompts and a confirmed quit; it has no tag thread),
+Tag Monitor's `Monitor` and Tag Calibrator's `Calibrator` (messages are each tag thread's `Report`s, with
 timers, prompts and a confirmed quit), and Tag View's `Viewer` (no
 messages, no timers, no prompts, no exit).
 
@@ -282,8 +281,8 @@ In this order, for any of the four:
    threads, the source map with the C++ file each Rust file follows, how a
    command travels, where to change what.
 4. `core/src/lib.rs` and `core/src/engine/mod.rs`: the crate's front page
-   and the loop (for Tag Monitor, Tag Calibrator and Tag View, `spawn`, and
-   the loop in `tagapp-engine`).
+   and the loop (`spawn` in each application, and the loop in
+   `tagapp-engine`).
 5. `core/src/engine/view.rs`: how the state becomes JSON; then the state
    type it reads from (`station.rs`, `monitor.rs`, `calibrator.rs`,
    `engine.rs`).

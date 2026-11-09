@@ -1373,7 +1373,7 @@ The URL parameters the three pages accept:
 | `?theme=dark` or `light` | force a theme | `Kit.setupPage` |
 | `?page=config`, `tag` or `log` | Tag Monitor's tab | `app.js:42` |
 | `?page=calibrate`, `orientation` or `log` | Tag Calibrator's tab | its `app.js:37` |
-| `?dialog=program&label=...`, `?dialog=conflict&label=...`, `?log` | Tag Programmer: open the Program dialog, the label-conflict question, the log drawer | its `app.js:37` and `451-452` |
+| `?dialog=program&label=...`, `?dialog=conflict&label=...`, `?log` | Tag Programmer: open the Program dialog, the label-conflict question, the log drawer | its `app.js:40` and `490-491` |
 | `?percent=N`, `?sample=N`, `?pose=h,p,r` | Tag Calibrator's replay position, or a fixed pose | its `mock-engine.js` |
 
 The mock is a design tool, not a test oracle: it holds no rules and its

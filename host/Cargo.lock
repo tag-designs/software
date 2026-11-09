@@ -4693,6 +4693,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tagapp-engine",
  "tagcore",
  "tagprobe",
  "tar",

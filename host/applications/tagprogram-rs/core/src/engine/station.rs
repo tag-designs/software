@@ -8,10 +8,10 @@
 //! # State and ownership
 //!
 //! One [`Station`] holds all of the engine's state and is owned by the
-//! engine thread (`super::run`). Its methods run only there. Work that would
+//! engine thread (the toolkit's loop, started by `super::spawn`). Its methods run only there. Work that would
 //! block that thread for seconds -- listing and downloading releases, the
 //! SWD connect check, programming and the flash read-back -- runs through
-//! [`Station::spawn_work`], whose result comes back as a `Msg::Done`
+//! [`Station::spawn_work`], whose result comes back as a [`Done`]
 //! closure, so no state is ever touched off the engine thread. A worker
 //! that owns the base sets [`Station::worker_busy`] so that nothing else
 //! opens the ST-LINK meanwhile.
@@ -38,17 +38,17 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use log::{error, info, warn};
 use serde_json::{Value, json};
+use tagapp_engine::{EngineState, Poster, Prompts, Ready, query_error, set_log_level};
 use tagcore::proto::{Status, TagInfo, TagState, TestResult};
 use tagcore::{Tag, UsbDev};
 use tagprobe::{Connect, DEV_L432, DEV_U375, Driver};
 
 use super::session::{SessionState, Step};
-use super::{EngineConfig, Msg, query_error, set_log_level};
+use super::{Done, EngineConfig};
 use crate::model::catalog::Catalog;
 use crate::model::flashplan::Erase;
 use crate::model::image::{FirmwareImage, load_firmware_image};
@@ -165,31 +165,46 @@ pub(crate) struct CheckStatus {
     pub text: String,
 }
 
-/// A question for the UI (`state.prompt`).
+/// A question for the UI (`state.prompt`), queued in [`Station::prompts`].
 ///
-/// At most one is outstanding. Raising another replaces it; the UI shows a
-/// dialog once per `id` and answers with the command the contract names for
-/// its `kind`, which clears it.
-#[derive(Debug, Clone)]
-pub(crate) struct Prompt {
-    /// A fresh number per prompt, so the UI can tell a new question from the
-    /// one it is already showing.
-    pub id: u64,
-    /// The prompt's JSON without its `id`: `kind` and the kind's fields.
-    pub body: Value,
+/// The view sends the front one with its id; the page answers it with
+/// `answer {id, button, index?, path?}`, applied by [`Station::answer`].
+#[derive(Debug)]
+pub(crate) enum PromptKind {
+    /// A message box with OK.
+    Alert {
+        /// The box's title.
+        title: String,
+        /// The message.
+        text: String,
+        /// `warning` or `info`.
+        style: &'static str,
+    },
+    /// First run: attach automatically? `ok` is Yes.
+    AutoAttach,
+    /// Which record file to use: `default`, or `open` or `create` with a
+    /// `path`.
+    RecordFile {
+        /// The default record path, offered first.
+        default_path: PathBuf,
+        /// Whether a file is already there.
+        exists: bool,
+    },
+    /// Which of several bases to use: `ok` with the `index` of one.
+    ChooseBase {
+        /// The text above the list.
+        label: &'static str,
+        /// The bases as listed, in the list's order, so the answer's index
+        /// names the base the operator saw: one plugged or unplugged while
+        /// the prompt was open cannot shift the choice.
+        bases: Vec<UsbDev>,
+        /// The index preselected: the saved base's, else 0.
+        current: usize,
+    },
+    /// The window was closed while a tag is being programmed: `quit` quits
+    /// anyway; anything else keeps programming.
+    ConfirmQuit,
 }
-
-/// The commands that answer a prompt, each checked against the outstanding
-/// prompt's `id` before it runs.
-const PROMPT_ANSWERS: [&str; 7] = [
-    "quit_anyway",
-    "answer_auto_attach",
-    "choose_base",
-    "record_use_default",
-    "record_open",
-    "record_create",
-    "prompt_cancel",
-];
 
 /// Station state, owned by the engine thread.
 ///
@@ -202,7 +217,7 @@ pub(crate) struct Station {
     pub(crate) cfg: EngineConfig,
     /// The engine thread's own channel, for [`Self::spawn_work`] results and
     /// for the deferred record open in [`Self::begin_checks`].
-    tx: Sender<Msg>,
+    tx: Poster<Done>,
     /// The settings file, written through at every change.
     pub(crate) settings: Settings,
     /// The release catalog. Shared with the workers that refresh it and
@@ -281,20 +296,61 @@ pub(crate) struct Station {
     /// The current or last session. It stays after the session ends, so its
     /// message stays on the step line until Next Tag.
     pub(crate) session: Option<SessionState>,
-    /// The outstanding question for the UI.
-    pub(crate) prompt: Option<Prompt>,
+    /// Questions waiting for the UI, oldest first; the front one is shown.
+    pub(crate) prompts: Prompts<PromptKind>,
     /// The engine has agreed to quit: the loop sends [`super::Event::Exit`]
     /// and the shell closes the window.
     pub(crate) exit: bool,
-    /// The last prompt id issued.
-    prompt_seq: u64,
-    /// `start` has been received; later ones are ignored.
-    started: bool,
+    /// The `ready` guard: the first `ready` starts the station, every one
+    /// resends the whole view state.
+    ready: Ready,
     /// [`Self::begin_checks`] has run; it runs once.
     checks_begun: bool,
-    /// The bases the outstanding `chooseBase` prompt lists, in its order, so
-    /// its answer names the base the operator saw.
-    base_choices: Vec<UsbDev>,
+}
+
+/// The toolkit's engine loop runs a `Station` (see [`super::spawn`]).
+impl EngineState for Station {
+    type Msg = Done;
+
+    /// [`Station::command`].
+    fn command(&mut self, cmd: &str, args: &Value) {
+        Station::command(self, cmd, args);
+    }
+
+    /// [`Station::query`].
+    fn query(&mut self, name: &str, args: &Value) -> Value {
+        Station::query(self, name, args)
+    }
+
+    /// [`Station::view_state`].
+    fn view_state(&mut self) -> Value {
+        Station::view_state(self)
+    }
+
+    /// Applies a worker's result or progress to the station.
+    fn message(&mut self, done: Done) {
+        done(self);
+    }
+
+    /// [`Station::next_deadline`].
+    fn next_deadline(&self) -> Option<Instant> {
+        Station::next_deadline(self)
+    }
+
+    /// [`Station::fire_timers`].
+    fn fire_timers(&mut self, now: Instant) {
+        Station::fire_timers(self, now);
+    }
+
+    /// True once after each `ready`.
+    fn take_republish(&mut self) -> bool {
+        self.ready.take_republish()
+    }
+
+    /// True once after the engine agreed to quit.
+    fn take_exit(&mut self) -> bool {
+        std::mem::take(&mut self.exit)
+    }
 }
 
 /// Milliseconds since the Unix epoch, now; 0 if the clock is before it.
@@ -352,10 +408,11 @@ pub(crate) fn identity_field<'a>(identity: &'a str, key: &str) -> Option<&'a str
 impl Station {
     /// Builds the station from the settings file and the cached catalog.
     ///
-    /// Runs on the engine thread before any message. Loads the settings (absent
-    /// file: defaults) and restores the last label and tag type; every check
-    /// starts pending. Touches no USB device: that waits for `start`.
-    pub(crate) fn new(cfg: EngineConfig, tx: Sender<Msg>) -> Self {
+    /// Runs on the thread that calls [`super::spawn`], before the station
+    /// moves to the engine thread. Loads the settings (absent file: defaults)
+    /// and restores the last label and tag type; every check starts pending.
+    /// Touches no USB device: that waits for `ready`.
+    pub(crate) fn new(cfg: EngineConfig, tx: Poster<Done>) -> Self {
         let settings = Settings::load(&cfg.settings_path);
         let catalog = Arc::new(Catalog::new(&cfg.cache_dir));
         let last_label = settings.string(key::LAST_LABEL);
@@ -399,12 +456,10 @@ impl Station {
             failed_count: 0,
             result: (String::new(), None),
             session: None,
-            prompt: None,
+            prompts: Prompts::default(),
             exit: false,
-            prompt_seq: 0,
-            started: false,
+            ready: Ready::default(),
             checks_begun: false,
-            base_choices: Vec::new(),
         }
     }
 
@@ -431,7 +486,7 @@ impl Station {
     /// Runs `work` on a worker thread and applies its result on the engine
     /// thread with `apply`.
     ///
-    /// The result is posted back as a `Msg::Done`, so `apply` sees the station
+    /// The result is posted back as a [`Done`], so `apply` sees the station
     /// as it is when the message is handled, not as it was when the work began:
     /// it must re-check anything that may have changed meanwhile. The caller sets
     /// any busy flag (such as [`Self::worker_busy`]) and `apply` clears it.
@@ -446,19 +501,18 @@ impl Station {
     ) {
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let done: Box<dyn FnOnce(&mut Station) + Send> =
-                match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
-                    Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
-                    Err(panic) => {
-                        let what = panic
-                            .downcast_ref::<&str>()
-                            .map(|s| (*s).to_owned())
-                            .or_else(|| panic.downcast_ref::<String>().cloned())
-                            .unwrap_or_else(|| "unknown panic".to_owned());
-                        Box::new(move |s: &mut Station| s.worker_panicked(&what))
-                    }
-                };
-            let _ = tx.send(Msg::Done(done));
+            let done: Done = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)) {
+                Ok(result) => Box::new(move |s: &mut Station| apply(s, result)),
+                Err(panic) => {
+                    let what = panic
+                        .downcast_ref::<&str>()
+                        .map(|s| (*s).to_owned())
+                        .or_else(|| panic.downcast_ref::<String>().cloned())
+                        .unwrap_or_else(|| "unknown panic".to_owned());
+                    Box::new(move |s: &mut Station| s.worker_panicked(&what))
+                }
+            };
+            tx.post(done);
         });
     }
 
@@ -487,24 +541,30 @@ impl Station {
         self.check_firmware();
     }
 
-    /// A sender for progress messages from a worker, which posts them as
-    /// `Msg::Done` closures (as `run_programmer` does with probe-rs progress).
-    pub(crate) fn sender(&self) -> Sender<Msg> {
+    /// A poster for progress messages from a worker, which posts them as
+    /// [`Done`] closures (as `run_programmer` does with probe-rs progress).
+    pub(crate) fn sender(&self) -> Poster<Done> {
         self.tx.clone()
     }
 
-    /// Raises a prompt, replacing any outstanding one, with a fresh id.
-    pub(crate) fn raise(&mut self, body: Value) {
-        self.prompt_seq += 1;
-        self.prompt = Some(Prompt {
-            id: self.prompt_seq,
-            body,
+    /// Queues a prompt behind any already waiting.
+    pub(crate) fn ask(&mut self, kind: PromptKind) {
+        self.prompts.ask(kind);
+    }
+
+    /// Queues an `alert` prompt: a message box with OK, in `style`
+    /// (`warning` or `info`).
+    pub(crate) fn alert_styled(&mut self, title: &str, text: &str, style: &'static str) {
+        self.ask(PromptKind::Alert {
+            title: title.to_owned(),
+            text: text.to_owned(),
+            style,
         });
     }
 
-    /// Raises a warning-style `alert` prompt: a message box with OK.
+    /// Queues a warning-style `alert` prompt: a message box with OK.
     pub(crate) fn alert(&mut self, title: &str, text: &str) {
-        self.raise(json!({ "kind": "alert", "title": title, "text": text, "style": "warning" }));
+        self.alert_styled(title, text, "warning");
     }
 
     /// The nearest armed timer, for the engine loop's wait; `None` when no
@@ -583,35 +643,15 @@ impl Station {
 
     /// The window's close or Cmd-Q (the shell's `quit`): quits at once,
     /// except while a tag is being programmed, when it asks first
-    /// (`confirmQuit`, answered by `quit_anyway` or `prompt_cancel`). Quitting
+    /// (`confirmQuit`, answered with the button `quit` or any other). Quitting
     /// then ends probe-rs mid-write and can leave the tag with a partial
     /// image; the choice stays with the user, so a stuck job cannot trap the
     /// program.
     fn quit(&mut self) {
         if self.programming() {
-            self.raise(json!({
-                "kind": "confirmQuit",
-                "title": "Programming in Progress",
-                "text": "Programming is in progress. Quitting now can leave the tag with a partial image. Quit anyway?",
-            }));
+            self.ask(PromptKind::ConfirmQuit);
         } else {
             self.exit = true;
-        }
-    }
-
-    /// True when a prompt answer's `id` names the outstanding prompt, or the
-    /// answer carries no `id`.
-    ///
-    /// The page answers a prompt with the `id` it showed. If the engine has
-    /// raised another prompt meanwhile (an alert while the base list was
-    /// open), the late answer would otherwise clear the new prompt unseen and
-    /// act on the old one; Tag Monitor and Tag Calibrator drop such answers
-    /// the same way. An answer without an `id` is taken as answering the
-    /// current prompt, as before ids were checked.
-    fn answers_current(&self, args: &Value) -> bool {
-        match args.get("id").and_then(Value::as_u64) {
-            None => true,
-            Some(id) => self.prompt.as_ref().is_some_and(|p| p.id == id),
         }
     }
 
@@ -619,25 +659,19 @@ impl Station {
     ///
     /// Runs on the engine thread. Missing or mistyped arguments read as empty
     /// strings, `false` or index 0; an unknown command is logged as a warning.
-    /// The answers to prompts ([`PROMPT_ANSWERS`]) clear the outstanding
-    /// prompt first; one whose `id` names a prompt that has since been
-    /// replaced or cleared is dropped (see [`Station::answers_current`]).
-    /// `save_text` writes the file synchronously and raises an alert if it
-    /// cannot.
+    /// `answer` answers the front prompt ([`Self::answer`]). `save_text`
+    /// writes the file synchronously and raises an alert if it cannot.
     pub(crate) fn command(&mut self, cmd: &str, args: &Value) {
-        if PROMPT_ANSWERS.contains(&cmd) && !self.answers_current(args) {
-            info!("Ignored {cmd}: it answers a prompt that has been replaced");
-            return;
-        }
         let s = |k: &str| args.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
         let b = |k: &str| args.get(k).and_then(Value::as_bool).unwrap_or(false);
         match cmd {
-            "start" => self.begin(),
-            "quit" => self.quit(),
-            "quit_anyway" => {
-                self.prompt = None;
-                self.exit = true;
+            "ready" => {
+                if self.ready.ready() {
+                    self.begin();
+                }
             }
+            "answer" => self.answer(args),
+            "quit" => self.quit(),
             "choose_firmware" => {
                 let id = s("id");
                 if let Some(tag) = id.strip_prefix("release:") {
@@ -659,48 +693,65 @@ impl Station {
             "retry_connect" => self.session_retry_connect(),
             "cancel_session" => self.session_cancel(),
             "set_auto_attach" => self.set_auto_attach(b("on")),
-            "answer_auto_attach" => {
-                self.prompt = None;
-                self.set_auto_attach(b("on"));
-                self.begin_checks();
-            }
             "list_bases" => self.list_bases(),
-            "choose_base" => {
-                self.prompt = None;
-                let index = args.get("index").and_then(Value::as_u64).unwrap_or(0) as usize;
-                self.choose_base(index);
-            }
             "choose_record" => self.raise_record_prompt(),
-            "record_use_default" => {
-                self.prompt = None;
-                let path = self.default_record_path();
-                if path.exists() {
-                    self.open_record(&path)
-                } else {
-                    self.create_record(&path)
-                }
-            }
-            "record_open" => {
-                self.prompt = None;
-                self.open_record(Path::new(&s("path")));
-            }
-            "record_create" => {
-                self.prompt = None;
-                let path = PathBuf::from(s("path"));
-                if path.exists() {
-                    self.open_record(&path)
-                } else {
-                    self.create_record(&path)
-                }
-            }
-            "prompt_cancel" => self.prompt = None,
             "set_log_level" => set_log_level(&s("level")),
             "save_text" => {
                 if let Err(e) = std::fs::write(s("path"), s("text")) {
-                    self.raise(json!({ "kind": "alert", "title": "Error", "text": format!("Cannot open file: {e}"), "style": "warning" }));
+                    self.alert("Error", &format!("Cannot open file: {e}"));
                 }
             }
             other => warn!("unknown command {other}"),
+        }
+    }
+
+    /// The page's answer to the front prompt: `{id, button, index?, path?}`.
+    ///
+    /// An answer whose `id` is not the front prompt's -- one the page sent
+    /// for a prompt it has stopped showing -- is dropped, so it cannot act on
+    /// the wrong question. Each kind's buttons are in [`PromptKind`]; any
+    /// other button cancels.
+    fn answer(&mut self, args: &Value) {
+        let Some(answer) = self.prompts.answer(args) else {
+            info!("Ignored an answer to a prompt that is no longer shown");
+            return;
+        };
+        let ok = answer.ok();
+        let (button, index, path) = (answer.button, answer.index, answer.path);
+        match answer.kind {
+            PromptKind::Alert { .. } => {}
+            PromptKind::AutoAttach => {
+                self.set_auto_attach(ok);
+                self.begin_checks();
+            }
+            PromptKind::RecordFile { .. } => match (button.as_str(), path) {
+                ("default", _) => {
+                    let path = self.default_record_path();
+                    self.open_or_create_record(&path);
+                }
+                ("open", Some(path)) => self.open_record(Path::new(&path)),
+                ("create", Some(path)) => self.open_or_create_record(Path::new(&path)),
+                _ => {}
+            },
+            PromptKind::ChooseBase { bases, .. } => {
+                if ok && let Some(base) = index.and_then(|i| bases.get(i)) {
+                    self.use_base(base.clone());
+                }
+            }
+            PromptKind::ConfirmQuit => {
+                if button == "quit" {
+                    self.exit = true;
+                }
+            }
+        }
+    }
+
+    /// Opens the record at `path` if a file is there, else creates it.
+    fn open_or_create_record(&mut self, path: &Path) {
+        if path.exists() {
+            self.open_record(path)
+        } else {
+            self.create_record(path)
         }
     }
 
@@ -727,6 +778,7 @@ impl Station {
                 "text": "Tag Programmer v2.0\n\nProgram and test a batch of tags through a USB base, recording each one."
             }),
             "user_guide_url" => json!(self.cfg.user_guide_url),
+            "menus" => super::view::menus(),
             _ => query_error("unknown query"),
         }
     }
@@ -735,16 +787,12 @@ impl Station {
 
     /// Starts the station once: qtprogram's `Station::begin`.
     ///
-    /// On first run (no `autoAttach` setting) it raises the `autoAttach` prompt
-    /// and waits; `answer_auto_attach` then calls [`Self::begin_checks`].
-    /// Otherwise it begins the checks at once. A second `start` is ignored.
+    /// Runs on the first `ready` only. On first run (no `autoAttach`
+    /// setting) it raises the `autoAttach` prompt and waits; its answer then
+    /// calls [`Self::begin_checks`]. Otherwise it begins the checks at once.
     fn begin(&mut self) {
-        if self.started {
-            return;
-        }
-        self.started = true;
         if !self.settings.contains(key::AUTO_ATTACH) {
-            self.raise(json!({ "kind": "autoAttach" }));
+            self.ask(PromptKind::AutoAttach);
             return;
         }
         self.begin_checks();
@@ -756,7 +804,7 @@ impl Station {
     ///
     /// With no record path saved it raises the `recordFile` prompt. With one,
     /// it sets the Record row to "Opening..." and opens the file in a
-    /// `Msg::Done` posted to its own channel, so the open runs on the next pass
+    /// [`Done`] posted to its own channel, so the open runs on the next pass
     /// of the loop -- after this pass has published the view. On macOS the
     /// first open of a file under Documents blocks until the user answers the
     /// system's folder-access (TCC) prompt; deferring it means the window is
@@ -795,7 +843,7 @@ impl Station {
                 "Opening {name}. If the system asks, allow access to the folder that holds it."
             ),
         );
-        let _ = self.tx.send(Msg::Done(Box::new(move |s: &mut Station| {
+        self.tx.post(Box::new(move |s: &mut Station| {
             let mut record = RecordLog::new();
             match record.open(Path::new(&path)) {
                 Ok(()) => s.record = Some(record),
@@ -805,7 +853,7 @@ impl Station {
             if s.record.is_none() {
                 s.raise_record_prompt();
             }
-        })));
+        }));
     }
 
     /// The Attach Automatically setting; off when never set.
@@ -817,7 +865,7 @@ impl Station {
     /// base is ready and no tag is attached (qtprogram's `setAutoAttach`).
     fn set_auto_attach(&mut self, on: bool) {
         self.save_setting(key::AUTO_ATTACH, on);
-        if on && self.have_base && !self.attached() && self.started {
+        if on && self.have_base && !self.attached() && self.ready.started() {
             self.attach();
         }
     }
@@ -866,64 +914,46 @@ impl Station {
         }
     }
 
-    /// Raises the `chooseBase` prompt listing `bases`, with the saved base
-    /// preselected. The answer's index refers to this listing; see
-    /// [`Self::choose_base`].
+    /// Queues the `chooseBase` prompt listing `bases`, with the saved base
+    /// preselected. The answer's index refers to this listing, which the
+    /// prompt keeps (see [`PromptKind::ChooseBase`]).
     fn raise_base_prompt(&mut self, bases: &[UsbDev]) {
         let saved = self.settings.string(key::BASE_SERIAL);
-        let items: Vec<String> = bases
-            .iter()
-            .map(|b| {
-                let serial = if b.serial.is_empty() {
-                    "serial unknown"
-                } else {
-                    &b.serial
-                };
-                format!("ST-LINK {serial}  (bus {}, address {})", b.bus, b.address)
-            })
-            .collect();
         let current = bases.iter().position(|b| b.serial == saved).unwrap_or(0);
-        self.base_choices = bases.to_vec();
         let label = if bases.len() > 1 {
             "Several bases are connected. Use:"
         } else {
             "Use:"
         };
-        self.raise(
-            json!({ "kind": "chooseBase", "label": label, "items": items, "current": current }),
-        );
+        self.ask(PromptKind::ChooseBase {
+            label,
+            bases: bases.to_vec(),
+            current,
+        });
     }
 
     /// Station > Choose Base...: qtprogram's `listBases`. Forgets the tag and
     /// raises `chooseBase`, or an info alert while busy or with no base.
     fn list_bases(&mut self) {
         if self.busy() {
-            self.raise(json!({ "kind": "alert", "title": "Choose a Base",
-                "text": "No ST-LINK is on USB, or programming is in progress.", "style": "info" }));
+            self.alert_styled(
+                "Choose a Base",
+                "No ST-LINK is on USB, or programming is in progress.",
+                "info",
+            );
             return;
         }
         self.forget_tag();
         let bases = tagprobe::list();
         if bases.is_empty() {
-            self.raise(json!({ "kind": "alert", "title": "Choose a Base",
-                "text": "No ST-LINK is on USB, or programming is in progress.", "style": "info" }));
+            self.alert_styled(
+                "Choose a Base",
+                "No ST-LINK is on USB, or programming is in progress.",
+                "info",
+            );
             return;
         }
         self.raise_base_prompt(&bases);
-    }
-
-    /// Uses the base at `index` in the list the `chooseBase` prompt showed,
-    /// as its answer. An index past the end is ignored.
-    ///
-    /// The list is the one the operator saw, not a fresh USB listing, so a
-    /// base plugged or unplugged while the prompt was open cannot shift the
-    /// choice. A chosen base that has since gone fails at attach, where it is
-    /// found again by serial.
-    fn choose_base(&mut self, index: usize) {
-        let choices = std::mem::take(&mut self.base_choices);
-        if let Some(b) = choices.get(index) {
-            self.use_base(b.clone());
-        }
     }
 
     /// Uses `base`: qtprogram's `chooseBase`, with the base's identity added.
@@ -1710,12 +1740,12 @@ impl Station {
     /// Raises the `recordFile` prompt, offering the default path and whether
     /// it exists.
     fn raise_record_prompt(&mut self) {
-        let path = self.default_record_path();
-        self.raise(json!({
-            "kind": "recordFile",
-            "defaultPath": path.to_string_lossy(),
-            "exists": path.exists(),
-        }));
+        let default_path = self.default_record_path();
+        let exists = default_path.exists();
+        self.ask(PromptKind::RecordFile {
+            default_path,
+            exists,
+        });
     }
 
     /// Opens an existing record and saves its path: qtprogram's `openRecord`.
@@ -2047,16 +2077,26 @@ mod tests {
             documents_dir: dir,
             user_guide_url: None,
         };
-        Station::new(cfg, std::sync::mpsc::channel().0)
+        let (_engine, poster, _inbox) =
+            tagapp_engine::channel::<Done>(std::time::Duration::from_secs(1), |_| {});
+        Station::new(cfg, poster)
+    }
+
+    /// The front prompt's id and kind name, as the page sees them.
+    fn front(st: &Station) -> Option<(u64, String)> {
+        let p = st.prompt_json();
+        p.get("id")
+            .and_then(Value::as_u64)
+            .map(|id| (id, p["kind"].as_str().unwrap_or("").to_owned()))
     }
 
     /// Quit exits at once with no session; while a tag is being programmed
-    /// it asks first, and only `quit_anyway` (for that prompt) exits.
+    /// it asks first, and only the `quit` button (for that prompt) exits.
     #[test]
     fn quit_asks_only_while_programming() {
         let mut st = station("quit");
         st.command("quit", &json!({}));
-        assert!(st.exit && st.prompt.is_none());
+        assert!(st.exit && st.prompts.is_empty());
 
         let mut st = station("quit-programming");
         let mut session = SessionState::new("T1", None, false);
@@ -2064,31 +2104,54 @@ mod tests {
         st.session = Some(session);
         st.command("quit", &json!({}));
         assert!(!st.exit, "quit while programming exited without asking");
-        let id = st.prompt.as_ref().map(|p| p.id);
-        assert_eq!(st.prompt.as_ref().map(|p| p.body["kind"].clone()), Some(json!("confirmQuit")));
-        st.command("prompt_cancel", &json!({ "id": id }));
-        assert!(!st.exit && st.prompt.is_none());
+        let (id, kind) = front(&st).expect("a prompt");
+        assert_eq!(kind, "confirmQuit");
+        st.command("answer", &json!({ "id": id, "button": "cancel" }));
+        assert!(!st.exit && st.prompts.is_empty());
         st.command("quit", &json!({}));
-        let id = st.prompt.as_ref().map(|p| p.id);
-        st.command("quit_anyway", &json!({ "id": id }));
+        let (id, _) = front(&st).expect("a prompt");
+        st.command("answer", &json!({ "id": id, "button": "quit" }));
         assert!(st.exit);
     }
 
-    /// An answer for a prompt that has been replaced is dropped; an answer
-    /// for the current prompt, or one without an id, clears it.
+    /// Prompts queue: a second waits behind the first instead of replacing
+    /// it, and an answer for any prompt but the front one is dropped.
     #[test]
-    fn stale_prompt_answers_are_dropped() {
+    fn prompts_queue_and_stale_answers_are_dropped() {
         let mut st = station("prompt-ids");
         st.alert("First", "one");
-        let first = st.prompt.as_ref().map(|p| p.id);
         st.alert("Second", "two");
-        st.command("prompt_cancel", &json!({ "id": first }));
-        assert!(st.prompt.is_some(), "a stale answer cleared the newer prompt");
-        let second = st.prompt.as_ref().map(|p| p.id);
-        st.command("prompt_cancel", &json!({ "id": second }));
-        assert!(st.prompt.is_none());
-        st.alert("Third", "three");
-        st.command("prompt_cancel", &json!({}));
-        assert!(st.prompt.is_none());
+        let (first, _) = front(&st).expect("a prompt");
+        st.command("answer", &json!({ "id": first + 1, "button": "ok" }));
+        assert_eq!(
+            front(&st).map(|p| p.0),
+            Some(first),
+            "an answer to a waiting prompt was taken"
+        );
+        st.command("answer", &json!({ "id": first, "button": "ok" }));
+        let (second, _) = front(&st).expect("the second prompt was lost");
+        assert_eq!(second, first + 1);
+        st.command("answer", &json!({ "button": "ok" }));
+        assert!(!st.prompts.is_empty(), "an answer without an id was taken");
+        st.command("answer", &json!({ "id": second, "button": "ok" }));
+        assert!(st.prompts.is_empty());
+    }
+
+    /// `ready` starts the station once; a second `ready` asks only for the
+    /// whole state again.
+    #[test]
+    fn ready_starts_once() {
+        let mut st = station("ready");
+        st.command("ready", &json!({}));
+        assert!(st.take_republish());
+        let first = front(&st);
+        assert_eq!(first.as_ref().map(|p| p.1.as_str()), Some("autoAttach"));
+        st.command("ready", &json!({}));
+        assert!(st.take_republish());
+        assert_eq!(
+            front(&st),
+            first,
+            "a second ready started the station again"
+        );
     }
 }

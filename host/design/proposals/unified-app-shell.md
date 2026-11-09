@@ -9,7 +9,7 @@ summary: "Give the Tauri applications one shell and one engine toolkit instead o
 **Proposed 2026-11-08; decisions taken the same day (see the end). Phase 1
 (the shell) done 2026-11-08; phase 2 (the toolkit, Tag Calibrator and Tag
 View) done 2026-11-08; phase 3 (Tag Monitor) done 2026-11-08; phase 4
-open
+(Tag Programmer) done 2026-11-09
 ([Phases](#phases)).** Tag Programmer, Tag Monitor, Tag Calibrator and Tag
 View each carry their own copy of the same two layers: a Tauri shell
 (`app/src/main.rs`, `app/build.rs`, `capabilities/`) and the plumbing of an
@@ -260,6 +260,53 @@ unsaved changes. The documents changed with
 it: the toolkit's README, Tag Monitor's README, architecture and contract,
 guide chapters 02, 10, 11, 12, 14 and 15, and tutorial chapters 01, 02, 10,
 11, 13 and 14.
+
+**Phase 4 done, 2026-11-09.** Tag Programmer's core
+runs on the toolkit. Its `engine/mod.rs` is now `EngineConfig`, `Done` (the
+boxed closure a worker posts), `QUERY_TIMEOUT` (10 s) and a `spawn` that
+makes the toolkit's channel, builds the `Station` with the `Poster` and
+starts the toolkit's loop on it; `Engine`, `Event`, `LOGGER` and `UiLogger`
+are re-exported from `tagapp-engine`. Its own handle, `Msg`, loop, logger
+and `query_error` are gone. Its threading stays as
+[above](#what-stays-app-specific-tag-programmers-threading): there is still
+no tag thread, the engine thread owns the `Tag`, and worker results are
+`Done` closures posted through the `Poster` and applied by
+`EngineState::message`. `Station` implements `EngineState` with `Done` as
+its message, guards `ready` with `Ready`, and keeps its prompts as a typed
+`PromptKind` (alert, autoAttach, recordFile, chooseBase, confirmQuit) in
+`Prompts<PromptKind>`; the view renders the front prompt in the same JSON
+shapes as before, and builds the base list's text, which the station used
+to. The `Station` is now built on the thread that calls `spawn` and moved
+to the engine thread, where it used to be built on the engine thread. The
+page contract changes to the toolkit's:
+
+- **`ready` replaces `start`.** The first `ready` starts the station (the
+  first-run question, the checks, the catalog refresh); every `ready`
+  resends the whole state, so a reloaded page is drawn at once.
+- **One `answer {id, button, index?, path?}` replaces the seven per-kind
+  answer commands** (`answer_auto_attach`, `choose_base`,
+  `record_use_default`, `record_open`, `record_create`, `prompt_cancel`,
+  `quit_anyway`). autoAttach answers `ok` (Yes) or `cancel`; recordFile
+  `default`, `open` or `create` with a `path`, or `cancel`; chooseBase `ok`
+  with an `index`, or `cancel`; confirmQuit `quit` or `cancel`; alert `ok`.
+- **Prompts queue.** A prompt raised while another is shown waits behind it
+  instead of replacing it.
+- **An answer without an `id` is dropped.** Before, it answered whatever
+  prompt was outstanding; the page always sends one.
+- **Menus come from the `menus` query**, the same menus in the same order,
+  instead of being written in the page.
+
+The examples move with it: `smoke` and `bench` send `ready` and answer
+prompts with `answer` by id (`bench` raises the record prompt with
+`choose_record` when a saved record kept it away). Its tests pass (30 unit
+tests and 5 doc tests), including three new or rewritten station tests
+(quitting, the prompt queue and its stale answers, `ready` starting once); clippy and
+rustdoc are clean, and the `smoke` example's prompt flow ran headless. Bench-checked
+by the user: the full program-and-record sequence on one L4 and one U375
+tag with an image and a record file. The
+documents changed with it: the contract and engine design, the README, the
+toolkit's README, `host/README.md`, guide chapters 02, 10, 11, 12, 14 and
+15, and tutorial chapters 01, 02, 10, 12 and 14.
 
 The mock engines (`ui/mock-engine.js`) and the screenshots for the manual
 change with each page; `screenshots.sh` before and after shows any visual

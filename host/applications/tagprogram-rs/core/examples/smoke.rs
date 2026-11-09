@@ -6,7 +6,7 @@
 //! `cargo run -p tagprogram-core --example smoke -- /tmp/tagprogram-smoke`
 //!
 //! It exercises the whole engine path a UI uses -- [`engine::spawn`], the
-//! `start` command, a prompt answered by command, and [`Event::State`] --
+//! `ready` command, a prompt answered with `answer`, and [`Event::State`] --
 //! without the Tauri shell. Identifying the base sends it the `F6 99`
 //! command but does not touch the tag. The first-run prompt only appears
 //! with a fresh scratch directory; reusing one prints `prompt: null`, and
@@ -19,7 +19,7 @@ use std::time::Duration;
 use serde_json::json;
 use tagprogram_core::engine::{self, EngineConfig, Event};
 
-/// Starts the engine on the scratch directory, sends `start`, prints the
+/// Starts the engine on the scratch directory, sends `ready`, prints the
 /// prompt, answers it with automatic attach off, and prints the view state
 /// 8 s later.
 ///
@@ -42,10 +42,13 @@ fn main() {
         Event::Log { level, text } => eprintln!("{level} {text}"),
         Event::Exit => {}
     });
-    engine.command("start", json!({}));
+    engine.command("ready", json!({}));
     std::thread::sleep(Duration::from_millis(500));
-    println!("prompt: {}", latest.lock().unwrap()["prompt"]);
-    engine.command("answer_auto_attach", json!({ "on": false }));
+    let prompt = latest.lock().unwrap()["prompt"].clone();
+    println!("prompt: {prompt}");
+    if prompt["kind"] == "autoAttach" {
+        engine.command("answer", json!({ "id": prompt["id"], "button": "cancel" }));
+    }
     std::thread::sleep(Duration::from_secs(8));
     let state = latest.lock().unwrap().clone();
     println!("{}", serde_json::to_string_pretty(&state).unwrap());

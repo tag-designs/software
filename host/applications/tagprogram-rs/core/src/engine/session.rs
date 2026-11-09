@@ -31,7 +31,7 @@
 //! steps (Stopping, Erasing, Connecting, Testing) are driven by a 1 s tick,
 //! as qtprogram's were: `Station::fire_timers` calls
 //! [`Station::session_tick`] when `tick_at` is due. Programming and Reading
-//! have no tick: they end when their worker's `Msg::Done` arrives.
+//! have no tick: they end when their worker's [`Done`](super::Done) arrives.
 //! PowerCycle waits for the user's Retry or Give Up. Each tick logs one
 //! DEBUG line ([`Station::log_tick`]).
 //!
@@ -43,12 +43,10 @@ use std::time::{Duration, Instant};
 
 use chrono::Utc;
 use log::{debug, error, info, warn};
-use serde_json::json;
 use tagcore::proto::{TagState, TagType, TestReq, TestResult};
 use tagcore::tag::{STOP_RESEND_AFTER, is_acquiring};
 use tagprobe::Progress;
 
-use super::Msg;
 use super::station::{Check, Level, Station, state_name, test_name};
 use crate::model::flashplan::Erase;
 use crate::model::image::{FirmwareImage, compare_image_flash, image_flash_range, same_commit};
@@ -684,7 +682,7 @@ impl Station {
     /// Finds the base and the probe-rs target (failing the session if either
     /// cannot be had), then runs `tagprobe::program` on a worker with
     /// `Station::worker_busy` set: erase as the image's flash plan says,
-    /// program, verify and start the image. Progress comes back as `Msg::Done`
+    /// program, verify and start the image. Progress comes back as [`Done`](super::Done)
     /// closures ([`Station::program_progress`]). Success moves to Connecting;
     /// an error ends PROGRAM_FAILED.
     ///
@@ -730,9 +728,7 @@ impl Station {
         self.spawn_work(
             move || {
                 tagprobe::program(&base, driver, chip, &image.elf_path, erase, |p| {
-                    let _ = tx.send(Msg::Done(Box::new(move |s: &mut Station| {
-                        s.program_progress(p)
-                    })));
+                    tx.post(Box::new(move |s: &mut Station| s.program_progress(p)));
                 })
             },
             |s, result| {
@@ -1077,7 +1073,7 @@ impl Station {
             s.step_text = message.clone();
         }
         if !ok {
-            self.raise(json!({ "kind": "alert", "title": "Program Tag", "text": message, "style": "warning" }));
+            self.alert("Program Tag", &message);
         }
     }
 }

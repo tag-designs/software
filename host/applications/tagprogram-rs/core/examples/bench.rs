@@ -8,9 +8,11 @@
 //! status: 0 for a written OK row, 1 otherwise, 2 if it cannot program.
 //!
 //! It drives the engine only as a UI would, through commands, queries and
-//! the published view state: it answers the first-run prompt with automatic
-//! attach **on** (so the station attaches as soon as it finds the base),
-//! creates or opens `<scratch-dir>/programmed-tags.csv`, chooses the
+//! the published view state, answering prompts with `answer` by their id:
+//! it answers the first-run prompt with automatic attach **on** (so the
+//! station attaches as soon as it finds the base), answers the record
+//! prompt by creating or opening `<scratch-dir>/programmed-tags.csv`
+//! (raising it with `choose_record` if a saved record kept it away), chooses the
 //! release, waits up to 180 s for the download and attach to settle, then
 //! sends `program` (after the `program_preview` query) or `retest`. While
 //! the session waits for a power cycle it presses Retry every 5 s, and
@@ -38,6 +40,29 @@ fn wait_until(latest: &Mutex<Value>, timeout: Duration, done: impl Fn(&Value) ->
         }
         std::thread::sleep(Duration::from_millis(200));
     }
+}
+
+/// Waits up to `timeout` for the front prompt to be one of `kind` and
+/// answers it with `button` and the fields of `extra`, as the page does.
+/// Returns false, answering nothing, if no such prompt came.
+fn answer_prompt(
+    engine: &engine::Engine,
+    latest: &Mutex<Value>,
+    timeout: Duration,
+    kind: &str,
+    button: &str,
+    extra: Value,
+) -> bool {
+    let state = wait_until(latest, timeout, |s| s["prompt"]["kind"] == kind);
+    if state["prompt"]["kind"] != kind {
+        return false;
+    }
+    let mut answer = json!({ "id": state["prompt"]["id"], "button": button });
+    if let (Some(a), Some(e)) = (answer.as_object_mut(), extra.as_object()) {
+        a.extend(e.clone());
+    }
+    engine.command("answer", answer);
+    true
 }
 
 /// Prints the eight checks, one per line: name, level (`FAIL` and `-` for
@@ -110,13 +135,32 @@ fn main() {
         Event::Exit => {}
     });
     engine.command("set_log_level", json!({ "level": level }));
-    engine.command("start", json!({}));
-    let state = wait_until(&latest, Duration::from_secs(5), |s| !s["prompt"].is_null());
-    if state["prompt"]["kind"] == "autoAttach" {
-        engine.command("answer_auto_attach", json!({ "on": true }));
-    }
+    engine.command("ready", json!({}));
+    // A fresh scratch directory asks about automatic attach first.
+    answer_prompt(
+        &engine,
+        &latest,
+        Duration::from_secs(5),
+        "autoAttach",
+        "ok",
+        json!({}),
+    );
+    // Then the record: the station asks when no record path is saved; with
+    // one saved, ask for the prompt with Station > Choose Record File.
     let record = dir.join("programmed-tags.csv");
-    engine.command("record_create", json!({ "path": record.to_string_lossy() }));
+    let use_record = json!({ "path": record.to_string_lossy() });
+    let short = Duration::from_secs(2);
+    if !answer_prompt(
+        &engine,
+        &latest,
+        short,
+        "recordFile",
+        "create",
+        use_record.clone(),
+    ) {
+        engine.command("choose_record", json!({}));
+        answer_prompt(&engine, &latest, short, "recordFile", "create", use_record);
+    }
     engine.command(
         "choose_firmware",
         json!({ "id": format!("release:{}", args[2]) }),
