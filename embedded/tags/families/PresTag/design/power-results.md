@@ -1146,3 +1146,37 @@ and the target was qualified by hand. The host's SWD enter retry fixed that.
 - **notes**: the two option runs were functional checks, not power windows;
   the per-option charge figures are the PresTagHR entry above, measured on the
   same sensor path.
+
+### 2026-11-09  LPS27 one-shot conversion time, both modes
+- **build**: PresTag at `d8190752` plus a measurement-only patch to
+  `lps27GetPressureTempFull()` (never committed), flashed with `tag-flash
+  program`; `tag-test` ALL_PASSED. After triggering the one-shot it busy-waits
+  a fixed delay timed by the DWT cycle counter (SYSCLK 2 MHz), reads `STATUS`
+  once, and counts whether the data is ready. The delay steps through 16
+  values in turn, one per sample. Counts go to unused SRAM2 (`0x10002000`),
+  read with `tag-peek` while the tag is still RUNNING: that attach resets the
+  tag, but SRAM2 survives the reset and the conversions already timed don't
+  change. A FINISHED tag sleeps in Shutdown, which loses SRAM2, so stopping
+  first loses the record.
+- **board**: UUID `20333050364150040063005F`, on `bittag-base-v7`, 2.496 V,
+  room temperature.
+- **conditions**: high resolution at a 5 s period (below 10 s, so the tag
+  never shuts down), about 10 min per sweep.
+- **result**:
+
+  | mode | never ready at | always ready at | trials |
+  | --- | --- | --- | --- |
+  | low-noise | 11.75 ms (0 of 118 below) | **12.0 ms** (119 of 119, 12.0-13.875 ms) | 237 |
+  | low-power | 3.25 ms (0 of 75 below) | **3.5 ms** (42 of 42, 3.5-4.75 ms) | 117 |
+
+  The edge is sharp in both modes: no delay gave a mix of ready and not ready.
+- **notes**: polling `STATUS` back to back from the trigger (a read every
+  1.27 ms at 2 MHz) found the low-noise data ready only at 14.0 ms (11th read,
+  65 of 65 samples) and the low-power data at 5.09 ms (4th read): reading the
+  sensor during the conversion appears to slow it. PresTag sleeps between
+  reads, which is the sweep's case. With 5 ms polls the low-noise path woke
+  three times (5, 10, 15 ms), and the first two could never succeed; from
+  `d980e5da` it waits 13 ms once (`LPS27_LOW_NOISE_FIRST_WAIT_MS`), then
+  polls at 5 ms, five polls in all (33 ms). The low-power path's single 5 ms
+  wait already clears 3.5 ms and is unchanged. Not measured across
+  temperature: a late conversion costs one more 5 ms poll, never the sample.
