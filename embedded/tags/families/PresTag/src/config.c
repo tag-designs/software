@@ -26,6 +26,8 @@ _Static_assert(offsetof(t_storedconfig, stop) == 4, "PresTag stored_config layou
 _Static_assert(offsetof(t_storedconfig, hibernate) == 8, "PresTag stored_config layout: see capturesource.cc");
 _Static_assert(sizeof(hibernate_t) == 8, "PresTag stored_config layout: see capturesource.cc");
 _Static_assert(offsetof(t_storedconfig, lps_period) == 24, "PresTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, lps_low_noise) == 29, "PresTag stored_config layout: see capturesource.cc");
+_Static_assert(offsetof(t_storedconfig, session) == 32, "PresTag stored_config layout: see capturesource.cc");
 
 
 // ram based config (used by monitor to communicate to tag)
@@ -89,6 +91,10 @@ void readConfig(Config *config)
     config->hibernate[i].start_epoch = sconfig.hibernate[i].start_epoch;
     config->hibernate[i].end_epoch = sconfig.hibernate[i].end_epoch;
   }
+#if defined(PRESTAG_HR_LOG) && PRESTAG_HR_LOG
+  config->has_lps27 = true;
+  config->lps27.low_noise = sconfig.lps_low_noise;
+#endif
 }
 
 /**
@@ -115,5 +121,9 @@ bool writeConfig(Config *config)
     config_tmp.hibernate[i].start_epoch = config->hibernate[i].start_epoch;
     config_tmp.hibernate[i].end_epoch = config->hibernate[i].end_epoch;
   }
+#if defined(PRESTAG_HR_LOG) && PRESTAG_HR_LOG
+  /* An absent lps27 section means the default, low-power conversion. */
+  config_tmp.lps_low_noise = config->has_lps27 && config->lps27.low_noise;
+#endif
   return true;
 }

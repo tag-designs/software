@@ -30,6 +30,12 @@ typedef struct
   hibernate_t hibernate[2];
   uint32_t lps_period;
   bool internal;
+  /**
+   * PresTagHR: convert in LPS27 low-noise mode (Config.lps27.low_noise).
+   * Occupies what was padding before session, so no other member moves;
+   * every other PresTag variant leaves it zero. Stored-config layout 3.
+   */
+  bool lps_low_noise;
   t_sessionFacts session; ///< Session facts; filled at start (session_facts.h).
 } t_storedconfig __attribute__ ((aligned (8)));
 

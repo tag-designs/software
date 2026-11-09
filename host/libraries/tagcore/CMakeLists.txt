@@ -185,7 +185,7 @@ option(BUILD_TAGCORE_CHECKS
        OFF)
 
 if(BUILD_TAGCORE_CHECKS)
-  foreach(check uiuctag_format_check uiuctag_decoder_check
+  foreach(check uiuctag_format_check uiuctag_decoder_check prestaghr_decoder_check
                 uiuctag_end_to_end_check config_shape_check)
     add_executable(${check} test/${check}.cc)
     target_link_libraries(${check} PRIVATE tagcore tag_monitor_interface)

@@ -949,6 +949,19 @@ Directory: [`embedded/tags/families/PresTag/`](embedded/tags/families/PresTag/).
 - **Measure B1, B4 and B5** (1 s, 15 s and 30 s) if extra fit leverage is
   wanted. They are optional; the field fit already rests on three measured
   points.
+- **PresTagHR qualification** ([decision 0047](docs/decisions/0047-prestaghr-full-resolution-pressure.md)).
+  Before PresTagHR leaves `NO_PROFILE` in `tag_release_check.py`: measure the
+  low-noise conversion time and settle `LPS27_READY_POLLS` (6 x 5 ms now);
+  take a second run window per mode so the 2026-11-09 figures (0.88 and
+  1.29 uA at 20 s, 2.496 V, one window each) are agreed rather than single;
+  then add a `PresTagHR` profile on `prestaghr-20.json`. Low-noise at 20 s
+  leaves no five-month margin on 5.5 mAh; say so in the user manual.
+- **PresTagHR side-by-side noise.** Run a PresTag and a PresTagHR together for
+  an hour and compare sample-to-sample noise in both modes.
+- **Legacy qtmonitor has no pressure-sensor panel.** Its
+  `--check-config-panels` will report the `PRESTAG` shape's `lps27`. Port the
+  panel from `tagmonitor-rs` (`configform.rs`, `Panel::Lps27`) if the legacy
+  build is ever revived.
 
 #### UIUCTag
 

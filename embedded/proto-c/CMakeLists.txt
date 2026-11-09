@@ -495,7 +495,12 @@ function(add_nanopb_target name)
       COMMAND "${CONFIG_GEN_PYTHON}" "${CONFIG_GEN_SCRIPT}"
               --descriptor-set "${CONFIG_GEN_DESCRIPTOR}"
               "${default_config_json}" "${default_config}"
-      DEPENDS config-gen-descriptor "${CONFIG_GEN_SCRIPT}" "${default_config_json}"
+      # The descriptor FILE as well as its target: a custom target in DEPENDS
+      # only orders the build, so without the file a .proto edit that moves a
+      # field number regenerated the nanopb headers but left this encoding
+      # naming the old number.
+      DEPENDS config-gen-descriptor "${CONFIG_GEN_DESCRIPTOR}"
+              "${CONFIG_GEN_SCRIPT}" "${default_config_json}"
       VERBATIM)
 
     foreach(P ${TAG_PROTO_SOURCES})
@@ -589,6 +594,7 @@ add_subdirectory(bittag-legacy-proto-c)
 add_subdirectory(bittag-ng-proto-c)
 add_subdirectory(prestag-proto-c)
 add_subdirectory(prestagraw-proto-c)
+add_subdirectory(prestaghr-proto-c)
 add_subdirectory(bitprestag-proto-c)
 add_subdirectory(uiuctag-proto-c)
 add_subdirectory(compasstag-proto-c)

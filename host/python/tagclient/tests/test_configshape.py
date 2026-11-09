@@ -31,6 +31,7 @@ MEMBER_PATHS = {
     "adxl362_active_sec": "adxl362.active_sec",
     "lsm6": "lsm6", "lsm6_odr": "lsm6.odr", "lsm6_accel_rng": "lsm6.accel_rng",
     "lsm6_gyro_rng": "lsm6.gyro_rng",
+    "lps27": "lps27", "lps27_low_noise": "lps27.low_noise",
 }
 GENERATOR_TABLE = {
     T.BITPRESTAG: {"active_interval", "hibernate", "adxl362", "adxl362_act_thresh_g",
@@ -44,7 +45,8 @@ GENERATOR_TABLE = {
                   "adxl362_act_thresh_g", "adxl362_inact_thresh_g", "adxl362_inactive_sec"},
     T.COMPASSTAG: {"active_interval", "hibernate"},
     T.IMUTAG: {"start_delay", "lsm6", "lsm6_odr", "lsm6_accel_rng", "lsm6_gyro_rng"},
-    T.PRESTAG: {"active_interval", "hibernate", "period"},
+    # PresTag, PresTagRaw and PresTagHR share PRESTAG; only PresTagHR lists lps27.
+    T.PRESTAG: {"active_interval", "hibernate", "period", "lps27", "lps27_low_noise"},
     T.UIUCTAG: {"active_interval", "hibernate", "adxl362", "adxl362_act_thresh_g",
                 "adxl362_inactive_sec"},
 }

@@ -96,6 +96,10 @@ message Config {
   Lsm6dsv lsm6 = 8;
 
   uint32 start_delay = 9;           // delay start in minutes
+
+  // 10 is reserved for config_schema
+  // (docs/shared/design/proposals/tag-reported-config-presence.md).
+  Lps27 lps27 = 11;                 // LPS27 pressure sensor (PresTagHR)
  
   
 }
@@ -169,6 +173,12 @@ message Adxl362 {
   Adxl367DataFormat data_format = 8; // data format, ADXl367 only
   Adxl367Channel channels = 9;       // channels, ADXL367 only
   float active_sec = 10;             // need active seconds for triaxial mode
+}
+
+// LPS27HHW pressure sensor settings (PresTagHR).
+
+message Lps27 {
+  bool low_noise = 1;  // CTRL_REG2.LOW_NOISE_EN for every one-shot conversion
 }
 
 //
@@ -285,6 +295,13 @@ message PresTagRawLog {
   float temp_constant = 1;
   float pres_constant = 2;
   bytes samples = 3; // packed repeated t_PresTagRawBlock records
+}
+
+// PresTagHR full-resolution log: packed repeated t_PresTagHRBlock records
+// (include/prestag_log_format.h). The scales are fixed by the format:
+// pressure 4096 counts/hPa (signed 24-bit), temperature 100 counts/degC.
+message PresTagHRLog {
+  bytes samples = 1;
 }
 
 message CompassTagLog {

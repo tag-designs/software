@@ -24,7 +24,8 @@
 
 use serde_json::{Value, json};
 use tagcore::proto::{
-    Adxl362, BitTagLogFmt, Config, Lsm6dsv, TagType, adxl362, config::Interval, lsm6dsv,
+    Adxl362, BitTagLogFmt, Config, Lps27, Lsm6dsv, TagType, adxl362, config::Interval,
+    lsm6dsv,
 };
 use tagcore::textformat::format_g;
 
@@ -1191,10 +1192,17 @@ pub enum Panel {
     Adxl(Adxl),
     /// The IMU: rate, accelerometer and gyro ranges.
     Lsm6([RadioGroup; 3]),
+    /// The LPS27 pressure sensor: low-noise conversion (PresTagHR).
+    ///
+    /// PresTag variants share one tag type, and only PresTagHR supports this
+    /// field. A proto3 message field has presence, and PresTagHR always
+    /// reports `lps27` while older PresTag firmware never sends it, so the
+    /// panel is shown only for a configuration that carries `lps27`.
+    Lps27(bool),
 }
 
 /// The panels in page order, by the names the probe's layout uses.
-pub const PANEL_NAMES: [&str; 9] = [
+pub const PANEL_NAMES: [&str; 10] = [
     "IntervalSchedule",
     "IntervalScheduleWithPeriod",
     "StartDelaySchedule",
@@ -1204,6 +1212,7 @@ pub const PANEL_NAMES: [&str; 9] = [
     "Adxl367Wake",
     "Adxl367WakeWithType",
     "Lsm6Imu",
+    "Lps27Pressure",
 ];
 
 /// Which panels each tag type shows, by index into [`PANEL_NAMES`]
@@ -1216,7 +1225,7 @@ pub fn panels_for_tag(tag_type: TagType) -> &'static [usize] {
         TagType::Bittagng => &[0, 7],
         TagType::Uiuctag => &[0, 6],
         TagType::Compasstag => &[0],
-        TagType::Prestag => &[1],
+        TagType::Prestag => &[1, 9],
         TagType::Imutag => &[2, 8],
         _ => &[],
     }
@@ -1247,6 +1256,10 @@ impl Panel {
                 accel.set_checked(lsm.accel_rng);
                 gyro.set_checked(lsm.gyro_rng);
             }
+            Panel::Lps27(low_noise) => match config.lps27 {
+                Some(l) => *low_noise = l.low_noise,
+                None => return false,
+            },
         }
         true
     }
@@ -1264,6 +1277,11 @@ impl Panel {
                 lsm.accel_rng = accel.checked;
                 lsm.gyro_rng = gyro.checked;
                 config.lsm6 = Some(lsm);
+            }
+            Panel::Lps27(low_noise) => {
+                config.lps27 = Some(Lps27 {
+                    low_noise: *low_noise,
+                });
             }
         }
     }
@@ -1295,6 +1313,18 @@ impl Panel {
                 c("lsm6.accel", &["IMU", "Accelerometer Range"], "", accel),
                 c("lsm6.gyro", &["IMU", "Gyro Range"], "", gyro),
             ],
+            Panel::Lps27(low_noise) => vec![Control {
+                id: "lps27.low_noise".into(),
+                path: &["Pressure Sensor"],
+                label: "",
+                tooltip: "Convert in the LPS27's low-noise mode: less noise per \
+                          sample, at a cost in current per sample",
+                enabled,
+                kind: ControlKind::Check {
+                    text: "Low-noise conversion",
+                    checked: *low_noise,
+                },
+            }],
         }
     }
 
@@ -1316,6 +1346,10 @@ impl Panel {
                     _ => return false,
                 };
                 groups[i].set_checked(int);
+                true
+            }
+            Panel::Lps27(low_noise) if id == "lps27.low_noise" => {
+                *low_noise = v.as_bool().unwrap_or(false);
                 true
             }
             _ => false,
@@ -1349,6 +1383,7 @@ impl Panel {
                 p
             }
             Panel::Lsm6(_) => vec!["lsm6.odr", "lsm6.accel_rng", "lsm6.gyro_rng"],
+            Panel::Lps27(_) => vec!["lps27.low_noise"],
         }
     }
 
@@ -1360,6 +1395,7 @@ impl Panel {
             Panel::Adxl(a) if a.variant == AdxlVariant::Standard => "Accelerometer",
             Panel::Adxl(_) => "Activity Wakeup",
             Panel::Lsm6(_) => "IMU",
+            Panel::Lps27(_) => "Pressure Sensor",
         }
     }
 }
@@ -1482,6 +1518,7 @@ impl ConfigForm {
                     RadioGroup::new(&LSM6_ACCEL),
                     RadioGroup::new(&LSM6_GYRO),
                 ]),
+                Panel::Lps27(false),
             ],
             shown: Vec::new(),
             enabled: false,
@@ -1584,6 +1621,35 @@ mod tests {
         assert_eq!(qt_round(1.005, 2), 1.0); // 1.005 is just below in binary
         assert_eq!(qt_round(9.999, 2), 10.0);
         assert_eq!(qt_round(5.1, 2), 5.1);
+    }
+
+    /// The pressure-sensor panel shows only for a PresTag configuration that
+    /// carries lps27 (PresTagHR), and Start sends what the box says.
+    #[test]
+    fn lps27_panel_follows_presence() {
+        let mut form = ConfigForm::new();
+        form.set_enabled(true);
+        let plain = Config {
+            period: 60,
+            ..Config::default()
+        };
+        form.load(&plain, TagType::Prestag, 0);
+        assert_eq!(form.shown_names(), ["IntervalScheduleWithPeriod"]);
+        assert!(form.collect(&plain, TagType::Prestag, 0).lps27.is_none());
+
+        let hr = Config {
+            period: 20,
+            lps27: Some(Lps27 { low_noise: false }),
+            ..Config::default()
+        };
+        form.load(&hr, TagType::Prestag, 0);
+        assert_eq!(
+            form.shown_names(),
+            ["IntervalScheduleWithPeriod", "Lps27Pressure"]
+        );
+        assert!(form.edit("lps27.low_noise", &json!(true)));
+        let sent = form.collect(&hr, TagType::Prestag, 0);
+        assert_eq!(sent.lps27, Some(Lps27 { low_noise: true }));
     }
 
     /// The hour rounding of the schedule's boxes.

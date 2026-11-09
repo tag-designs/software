@@ -382,6 +382,65 @@ embedded/tags/common/rtc/inc/rv3028.h
 embedded/tags/families/PresTag/inc/tag_identity_family.h
 ```
 
+## PresTagHR
+
+### C Files
+
+```text
+embedded/tags/families/PresTag/src/config.c
+embedded/tags/families/PresTag/src/datalog.c
+embedded/tags/families/PresTag/src/devices.c
+embedded/tags/families/PresTag/src/state_run.c
+embedded/tags/common/storage/src/at25xe.c
+embedded/tags/common/storage/src/external_flash_test.c
+embedded/tags/common/rtc/src/hal_rtc_lld.c
+embedded/tags/common/core/src/bus_power.c
+embedded/tags/common/core/src/handlers.c
+embedded/tags/common/core/src/i2c_bus.c
+embedded/tags/common/sensors/src/sensor_io.c
+embedded/tags/common/sensors/pressure/src/pressure_device.c
+embedded/tags/common/sensors/pressure/src/lps27.c
+embedded/tags/common/sensors/pressure/src/lps27_test.c
+embedded/tags/common/core/src/main.c
+embedded/tags/common/core/src/monitor.c
+embedded/tags/common/core/src/persistent.c
+embedded/tags/common/core/src/session_facts.c
+embedded/tags/common/rtc/src/rtc_device.c
+embedded/tags/common/rtc/src/rtc_rv3028.c
+embedded/tags/common/rtc/src/rtc_test.c
+embedded/tags/common/core/src/state_machine.c
+embedded/tags/common/core/src/stm32adc.c
+embedded/tags/common/core/src/stm32flash.c
+embedded/tags/common/core/src/tag_identity.c
+embedded/tags/common/core/src/usart_bus.c
+embedded/tags/common/core/src/test.c
+embedded/tags/common/core/src/time.c
+```
+
+### Header Files
+
+```text
+include/prestag_log_format.h
+embedded/tags/PresTagHR/inc/custom.h
+embedded/tags/common/core/inc/session_facts.h
+embedded/tags/common/core/inc/tag_identity.h
+embedded/tags/families/PresTag/inc/config.h
+embedded/tags/families/PresTag/inc/datalog.h
+embedded/tags/families/PresTag/inc/devices.h
+embedded/tags/families/PresTag/inc/persistent.h
+embedded/tags/families/PresTag/cfg/chconf.h
+embedded/tags/families/PresTag/cfg/halconf.h
+embedded/tags/families/PresTag/cfg/mcuconf.h
+embedded/tags/common/sensors/pressure/inc/lps.h
+embedded/tags/common/sensors/pressure/inc/lps27hhw.h
+embedded/tags/common/storage/inc/at25xe.h
+embedded/tags/common/storage/inc/at25xe_commands.h
+embedded/tags/common/storage/inc/storage_flash.h
+embedded/tags/common/rtc/inc/rtc_api.h
+embedded/tags/common/rtc/inc/rv3028.h
+embedded/tags/families/PresTag/inc/tag_identity_family.h
+```
+
 ## BitPresTag
 
 ### C Files

@@ -12,6 +12,7 @@
 #include "recovery/capturesource.h"
 
 #include "recovery/sha256.h"
+#include "prestag_log_format.h"
 #include "uiuctag_log_format.h"
 #include "sqlitelog.h"
 
@@ -387,6 +388,76 @@ public:
       d->set_pressure(pressure / 16.0f);
       d->set_temperature(static_cast<int16_t>(Le16(page + 4 * j + 2)) / 100.0f);
     }
+  }
+};
+
+/**
+ * @brief   PresTagHR, full-resolution samples (decoder "prestag_hr").
+ *
+ * @details Follows the PRESTAG_HR_LOG branches of
+ *          embedded/tags/families/PresTag/src/datalog.c and config.c. Headers
+ *          and the 240-byte page stride are PresTag's; a page holds 48
+ *          t_PresTagHRSample records (int24 pressure, int16 temperature,
+ *          include/prestag_log_format.h). data_logAck() answers with as many
+ *          whole t_PresTagHRBlock records as PresTagHRLog.samples holds (15),
+ *          starting at the index and stopping at the first unwritten header;
+ *          the writer advances by the number it receives. Stored-config
+ *          layout 3 adds lps_low_noise at offset 29.
+ */
+class PresTagHRDecoder : public PresTagDecoder {
+public:
+  static constexpr uint32_t kBlockBytes = sizeof(t_PresTagHRBlock); ///< 252
+  static constexpr uint32_t kBlocksPerReply = 3780 / kBlockBytes;   ///< max_size / block
+
+  std::vector<KnownLayout> Layouts() const override {
+    return {{"stored_config", 3, 0}, {"data_headers", 1, kHeaderBytes}};
+  }
+
+  bool ReadConfig(const CaptureSource &src, Config &config,
+                  std::string *error) const override {
+    if (!PresTagDecoder::ReadConfig(src, config, error))
+      return false;
+    const auto it = src.Identity().regions.find("stored_config");
+    uint8_t low_noise = 0;
+    if (!src.Flash(it->second.start + 29, &low_noise, 1))
+      return Fail(error, "stored configuration outside the captured image");
+    config.mutable_lps27()->set_low_noise(low_noise != 0);
+    return true;
+  }
+
+  void DataLog(const CaptureSource &src, uint32_t index, Ack &ack) const override {
+    ack.Clear();
+    ack.set_err(Ack_Err_OK);
+    const IdentityRecord &id = src.Identity();
+    const auto dh = id.regions.find("data_headers");
+    const auto ps = id.regions.find("persistent");
+    if (dh == id.regions.end() || ps == id.regions.end())
+      return;
+    const uint32_t end = dh->second.end ? dh->second.end : ps->second.end;
+    std::string payload;
+    for (uint32_t n = 0; n < kBlocksPerReply; n++) {
+      const uint64_t i = uint64_t(index) + n;
+      const uint64_t address = uint64_t(dh->second.start) + i * kHeaderBytes;
+      const uint64_t byte_offset = uint64_t(kPageBytes) * i;
+      uint8_t h[kHeaderBytes];
+      if (address + kHeaderBytes > end ||
+          !src.Flash(static_cast<uint32_t>(address), h, sizeof h) ||
+          Le32(h) == kErased32 || byte_offset >= ExternalFlashSize(src))
+        break;
+      t_PresTagHRBlock block;
+      std::memset(&block.samples, 0xFF, sizeof block.samples);
+      uint32_t count = kPageBytes;
+      if (byte_offset + count > ExternalFlashSize(src))
+        count = static_cast<uint32_t>(ExternalFlashSize(src) - byte_offset);
+      if (!src.External(byte_offset, reinterpret_cast<uint8_t *>(&block.samples), count))
+        break;
+      block.epoch = static_cast<int32_t>(Le32(h));
+      block.voltage = Le16(h + 4) * 0.01f;
+      block.temperature = Le16(h + 6) * 0.01f;
+      payload.append(reinterpret_cast<const char *>(&block), sizeof block);
+    }
+    if (!payload.empty())
+      ack.mutable_prestag_hr_data_log()->set_samples(payload);
   }
 };
 
@@ -941,6 +1012,8 @@ bool CaptureSource::Open(const std::string &dir, std::string *error) {
     decoder_ = std::make_unique<ImuTagNandDecoder>();
   else if (decoder == "prestag" && !external_.empty())
     decoder_ = std::make_unique<PresTagDecoder>();
+  else if (decoder == "prestag_hr" && !external_.empty())
+    decoder_ = std::make_unique<PresTagHRDecoder>();
   else if (decoder == "compasstag" && !external_.empty())
     decoder_ = std::make_unique<CompassTagDecoder>();
   else if (decoder == "uiuctag" && !external_.empty())

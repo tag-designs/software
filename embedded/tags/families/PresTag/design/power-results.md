@@ -1079,3 +1079,44 @@ and the target was qualified by hand. The host's SWD enter retry fixed that.
   `release-PresTag-20261101-210014` (kept off the repository).
 - **verdict**: **PASS**. Running 0.37 uA sits with this board family's
   0.37-0.41 uA at 60 s from 2026-10-05 and 2026-10-07.
+
+### 2026-11-09  PresTagHR first bench run, both conversion modes — life cycle **PASS**
+- **build**: `PresTagHR` from branch `prestaghr` on `4ba10c6b` plus the
+  uncommitted PresTagHR change set (decision 0047), ELF sha256
+  `ca87b14f...`; `LPS27_READY_POLLS 6`, `LPS27_READY_POLL_MS 5`.
+  Flashed with `tag-flash program` (plan erase); `tag-test` ALL_PASSED.
+- **board**: UUID `20333050364150040063005F`, on `bittag-base-v7`.
+- **conditions**: 2.496 V through the JS320 (`joulescope_server.py`,
+  auto-range); `tag_lifecycle_check.py` with `prestaghr-20.json` (20 s),
+  rest windows 120 s, settle 75 s, **one** 960 s run window per mode (one
+  48-sample page). Monitor and Joulescope UI detached.
+- **result**:
+
+  | mode | idle before | running | stopped | idle after | samples | gaps |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | low-power (`lps27.low_noise` false) | 0.11 uA | **0.88 uA** | 0.12 uA | 0.12 uA | 51 | 0 |
+  | low-noise (`lps27.low_noise` true) | 0.12 uA | **1.29 uA** | 0.12 uA | 0.12 uA | 51 | 0 |
+
+  Charge per sample against this board's 0.115 uA floor: low-power
+  (0.88 - 0.115) x 20 = **15.3 uC**, the family fit's 15.26 uC, so the
+  five-byte read and write cost nothing measurable; low-noise
+  (1.29 - 0.12) x 20 = **23.4 uC**, +8 uC per sample.
+
+  Sample-to-sample noise (RMS of successive differences / sqrt 2, desk, 51
+  samples): low-power **4.28 Pa** (4.38 Pa with the same data cut to
+  1/16 hPa); low-noise **1.85 Pa** (2.80 Pa cut to 1/16 hPa). Every sample
+  carried resolution below 1/16 hPa. The LPS27HHW's RMS noise without its
+  low-pass filter is 5.6 Pa in low-current mode and 1.8 Pa in low-noise mode
+  (datasheet, per the user, 2026-11-09): low-noise sits on the spec, and its
+  noise equals PresTag's 1/16 hPa rounding (6.25 / sqrt 12 = 1.8 Pa), which
+  is why the full byte matters in that mode and barely in the other.
+- **notes**: one run window per mode, so these figures are single, not agreed.
+  No low-noise sample failed, so its conversion finishes within the 30 ms the
+  six polls allow; the conversion time itself was not measured. A first run
+  at 3.24 V (before the JS320 was inserted) took 34 samples at exactly 20 s and
+  ended `ABORTED/POWERFAIL` when the supply was re-cabled; a `tag-capture` of
+  it rebuilt (`tag-rebuild`, decoder `prestag_hr`) identically to its download.
+  Lifetime at 20 s on the family fit's 0.2842 uA floor: low-power 1.05 uA,
+  5.5 mAh **219 days** nominal; low-noise 1.45 uA, 5.5 mAh **158 days**
+  nominal, 11 mAh 316 days. Low-noise at 20 s on 5.5 mAh therefore has no
+  margin for a five-month run once derated.

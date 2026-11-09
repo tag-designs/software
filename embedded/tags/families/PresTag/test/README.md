@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run the PresTag datalog host simulation for both download formats, checking the last partial page and mid-page resets.
+summary: How to build and run the PresTag datalog host simulation for all three download formats, checking the last partial page and mid-page resets.
 ---
 
 # PresTag Datalog Simulation
@@ -26,11 +26,15 @@ without reprogramming written bytes, and that a halt mid-page also starts one
 every later sample too early. Integer-second wake jitter at 1 s must not split
 a page.
 
-It is built twice, once for each download path:
+It is built three times, once for each download path:
 
 - as is, for the converted `PresTagLog` download (PresTag);
 - with `-DPRESTAG_RAW_LOG=1`, for the packed-block `PresTagRawLog` download
-  (PresTagRaw).
+  (PresTagRaw);
+- with `-DPRESTAG_HR_LOG=1`, for PresTagHR's `PresTagHRLog` blocks of 48
+  five-byte samples. This build also checks that a failed read keeps its slot
+  as the 24-bit minimum, and that the stored low-noise setting reaches the
+  driver. Its last page on 4 MiB holds 12 samples.
 
 Every sample carries its sequence number in its pressure and temperature words,
 so the download is checked sample by sample against what was written.
@@ -39,11 +43,11 @@ so the download is checked sample by sample against what was written.
 
 ```sh
 cd embedded/tags/families/PresTag
-for raw in 0 1; do
-  cc -std=c11 -Wall -Wextra -Wno-pointer-to-int-cast -O1 -DPRESTAG_RAW_LOG=$raw \
-     -o /tmp/prestag_datalog_sim$raw test/datalog_sim.c \
+for fmt in PRESTAG_RAW_LOG=0 PRESTAG_RAW_LOG=1 PRESTAG_HR_LOG=1; do
+  cc -std=c11 -Wall -Wextra -Wno-pointer-to-int-cast -O1 -D$fmt \
+     -o /tmp/prestag_datalog_sim test/datalog_sim.c \
      -Itest/stub -Iinc -I../../../../include
-  /tmp/prestag_datalog_sim$raw
+  /tmp/prestag_datalog_sim
 done
 ```
 
@@ -73,8 +77,9 @@ The internal header region is sized so that external flash fills first.
 ## Stubs
 
 `stub/` holds hand-written stand-ins for the headers the two sources include.
-Among them are the family's `BackupState`, the `PresTagLog` and `PresTagRawLog`
-Acks (mirroring `embedded/proto-c/prestag-proto-c` and `prestagraw-proto-c`),
+Among them are the family's `BackupState`, the `PresTagLog`, `PresTagRawLog`
+and `PresTagHRLog` Acks (mirroring `embedded/proto-c/prestag-proto-c`,
+`prestagraw-proto-c` and `prestaghr-proto-c`),
 the storage and internal-flash calls, and the phase probes, which compile to
 nothing. The real `inc/datalog.h` and `include/prestag_log_format.h` are used,
 so the page layout under test is the firmware's own.

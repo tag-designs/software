@@ -53,6 +53,24 @@ static uint32_t erase_sector_size;
 static uint32_t erase_sector_total;
 static bool erase_external_active;
 
+#if PRESTAG_RAW_LOG && PRESTAG_HR_LOG
+#error "PRESTAG_RAW_LOG and PRESTAG_HR_LOG select different log formats"
+#endif
+
+#if PRESTAG_HR_LOG
+_Static_assert(sizeof(t_PresTagHRSample) == DATALOG_SAMPLE_BYTES,
+               "PresTagHR sample has unexpected padding");
+_Static_assert(DATALOG_SAMPLES * DATALOG_SAMPLE_BYTES == 240,
+               "PresTagHR page must stay the PresTag page size: see capturesource.cc");
+_Static_assert(offsetof(t_PresTagHRSample, temperature) == 3,
+               "PresTagHR page layout: see capturesource.cc");
+_Static_assert(sizeof(t_PresTagHRBlock) ==
+                   sizeof(int32_t) + (2 * sizeof(float)) + sizeof(t_DataLog),
+               "PresTagHR block layout has unexpected padding");
+_Static_assert(sizeof(((PresTagHRLog *)0)->samples.bytes) >= sizeof(t_PresTagHRBlock),
+               "nanopb PresTagHRLog.samples buffer cannot hold one block");
+#endif
+
 #if PRESTAG_RAW_LOG
 _Static_assert(sizeof(t_PresTagRawBlock) ==
                    sizeof(int32_t) + (2 * sizeof(float)) + sizeof(t_DataLog),
@@ -319,6 +337,38 @@ enum LOGERR writeDataLog(uint16_t *data, int num)
   return LOGWRITE_OK;
 }
 
+#if PRESTAG_HR_LOG
+/**
+ * @brief Append one full-resolution sample at the current log cursor.
+ *
+ * @details The cursor external_blocks counts samples, and a page is exactly
+ *          DATALOG_SAMPLES * DATALOG_SAMPLE_BYTES = sizeof(t_DataLog) bytes,
+ *          so sample n lives at n * DATALOG_SAMPLE_BYTES and header i still
+ *          owns bytes [i * 240, (i + 1) * 240). Five-byte samples straddle
+ *          256-byte program pages; the storage driver splits those writes.
+ *
+ * @param[in] sample DATALOG_SAMPLE_BYTES bytes in t_PresTagHRSample layout.
+ * @return LOGWRITE_FULL when the sample would pass the end of external flash,
+ *         otherwise LOGWRITE_OK. The cursor is not advanced here.
+ *
+ * @pre The external flash is asleep; it is woken and returned to sleep here.
+ */
+enum LOGERR writeDataSample(const uint8_t *sample)
+{
+  const uint64_t addr = (uint64_t)pState->external_blocks * DATALOG_SAMPLE_BYTES;
+  int cnt = DATALOG_SAMPLE_BYTES;
+
+  if (addr + DATALOG_SAMPLE_BYTES > externalFlashSize())
+    return LOGWRITE_FULL;
+
+  tagStorageWake(TAG_EXTERNAL_FLASH);
+  tagStorageWrite(TAG_EXTERNAL_FLASH, (uint32_t)addr, (uint8_t *)sample, &cnt);
+  tagStorageSleep(TAG_EXTERNAL_FLASH);
+
+  return LOGWRITE_OK;
+}
+#endif
+
 /**
  * @brief Persist an internal flash header for the next external log page.
  *
@@ -404,6 +454,8 @@ int data_logAck(int index, Ack *ack)
   fast_msi();
 #if PRESTAG_RAW_LOG
   PresTagRawLog *data = &ack->payload.prestag_raw_data_log;
+#elif PRESTAG_HR_LOG
+  PresTagHRLog *data = &ack->payload.prestag_hr_data_log;
 #else
   PresTagLog *data = &ack->payload.prestag_data_log;
 #endif
@@ -447,6 +499,46 @@ int data_logAck(int index, Ack *ack)
 
   ack->which_payload =
       (data->samples.size > 0) ? Ack_prestag_raw_data_log_tag : 0;
+#elif PRESTAG_HR_LOG
+  /*
+   * As the raw branch: as many whole header-plus-page blocks as the payload
+   * holds, starting at index, stopping at the first unwritten header. The
+   * host walks the log by the number of blocks it receives.
+   */
+  data->samples.size = 0;
+
+  if (index >= 0)
+  {
+    tagStorageWake(TAG_EXTERNAL_FLASH);
+    while ((data->samples.size + sizeof(t_PresTagHRBlock)) <=
+           sizeof(data->samples.bytes))
+    {
+      const int current_index =
+          index + (int)(data->samples.size / sizeof(t_PresTagHRBlock));
+      const uint64_t byte_offset = sizeof(databuf) * (uint64_t)current_index;
+      t_DataHeader header;
+      t_PresTagHRBlock block;
+
+      if (((uint32_t)&vddHeader[current_index] >= persistent_end) ||
+          !readDataHeader(current_index, &header) ||
+          (header.epoch == -1) ||
+          !readExternalPage(byte_offset))
+      {
+        break;
+      }
+
+      block.epoch = header.epoch;
+      block.voltage = header.vdd100[0] * 0.01f;
+      block.temperature = header.vdd100[1] * 0.01f;
+      memcpy(&block.samples, &databuf, sizeof(block.samples));
+      memcpy(&data->samples.bytes[data->samples.size], &block, sizeof(block));
+      data->samples.size += sizeof(block);
+    }
+    tagStorageSleep(TAG_EXTERNAL_FLASH);
+  }
+
+  ack->which_payload =
+      (data->samples.size > 0) ? Ack_prestag_hr_data_log_tag : 0;
 #else
   uint64_t byte_offset = sizeof(databuf) * (uint64_t)index;
   t_DataHeader header;

@@ -402,8 +402,12 @@ typedef struct {
  *         magnitude and carries the accelerometer offset (decision 0027). */
 #define TAG_ID_CALIBRATION_VERSION 2U
 
-/** @brief Stored-config layout version: 2 once it carries session facts. */
-#if defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
+/** @brief Stored-config layout version: 2 once it carries session facts; a
+ *         family that extends its layout further sets
+ *         TAG_IDENTITY_STORED_CONFIG_VERSION in its tag_identity_family.h. */
+#if defined(TAG_IDENTITY_STORED_CONFIG_VERSION)
+#define TAG_ID_STORED_CONFIG_VERSION TAG_IDENTITY_STORED_CONFIG_VERSION
+#elif defined(TAG_STORED_CONFIG_HAS_SESSION) && TAG_STORED_CONFIG_HAS_SESSION
 #define TAG_ID_STORED_CONFIG_VERSION 2U
 #else
 #define TAG_ID_STORED_CONFIG_VERSION 1U

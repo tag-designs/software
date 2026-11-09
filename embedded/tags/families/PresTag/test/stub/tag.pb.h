@@ -1,6 +1,7 @@
 /* Minimal stand-ins for the nanopb types the PresTag sources use. PresTagLog
    mirrors embedded/proto-c/prestag-proto-c, PresTagRawLog prestagraw-proto-c
-   (samples max_size 3780, default-options/tagdata.options). */
+   and PresTagHRLog prestaghr-proto-c (samples max_size 3780 for both,
+   default-options/tagdata.options). The Ack tags are the stubs' own. */
 #ifndef STUB_TAG_PB_H
 #define STUB_TAG_PB_H
 #include <stdint.h>
@@ -27,12 +28,21 @@ typedef struct {
   float pres_constant;
   struct { uint16_t size; uint8_t bytes[3780]; } samples;
 } PresTagRawLog;
+/** PresTagHRLog: packed t_PresTagHRBlock records. */
+typedef struct {
+  struct { uint16_t size; uint8_t bytes[3780]; } samples; /**< The blocks. */
+} PresTagHRLog;
 typedef enum { Ack_Err_OK = 0 } Ack_Err;
 #define Ack_prestag_data_log_tag 8
 #define Ack_prestag_raw_data_log_tag 18
+#define Ack_prestag_hr_data_log_tag 19
 typedef struct {
   Ack_Err err;
   uint16_t which_payload;
-  union { PresTagLog prestag_data_log; PresTagRawLog prestag_raw_data_log; } payload;
+  union {
+    PresTagLog prestag_data_log;
+    PresTagRawLog prestag_raw_data_log;
+    PresTagHRLog prestag_hr_data_log;
+  } payload;
 } Ack;
 #endif

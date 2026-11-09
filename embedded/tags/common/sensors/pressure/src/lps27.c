@@ -21,6 +21,7 @@ enum LPS27_Reg
     LPS27_CTRL_REG1 = 0x10,
     LPS27_CTRL_REG2 = 0x11,
     LPS27_STATUS = 0x27,
+    LPS27_PRESS_OUT_XL = 0x28,
     LPS27_PRESS_OUT_L = 0x29,
     LPS27_TEMP_OUT_L = 0x2B,
 };
@@ -205,6 +206,88 @@ bool lps27GetPressureTemp(const TagPressureDevice *device, int16_t *pressure,
                      status, *pressure, *temperature);
   }
   return status == 3;
+}
+
+/**
+ * @brief Trigger one conversion and read all five output registers.
+ *
+ * @details Same one-shot sequence as lps27GetPressureTemp(), but the burst
+ *          read starts at PRESS_OUT_XL (0x28), so the pressure keeps its low
+ *          byte: 24 bits at 4096 LSB/hPa instead of 16 at 16 LSB/hPa. The
+ *          noise mode is chosen per call rather than by LPS_LOW_POWER, so a
+ *          stored configuration can select it. Readiness is polled up to
+ *          LPS27_READY_POLLS times, LPS27_READY_POLL_MS apart, and the loop
+ *          leaves on the first ready status; a target that offers low-noise
+ *          mode must allow enough polls for its longer conversion.
+ *
+ *          lps27GetPressureTemp() is deliberately left as it was: it is the
+ *          path qualified on PresTag, PresTagRaw and BitPresTag, and sharing
+ *          code with it would change their images.
+ *
+ * @param[in]  device    Pressure device descriptor.
+ * @param[in]  low_noise true to set CTRL_REG2.LOW_NOISE_EN for this conversion.
+ * @param[out] raw       PRESS_OUT_XL, PRESS_OUT_L, PRESS_OUT_H, TEMP_OUT_L,
+ *                       TEMP_OUT_H as read. On failure the pressure bytes are
+ *                       0x00 0x00 0x80 (24-bit minimum) and the temperature
+ *                       0x8000, so a failed read is distinguishable from data
+ *                       and from erased flash.
+ * @return true when a fresh, non-overrun sample was read.
+ *
+ * @pre    The sensor is powered off (the call powers it and removes power).
+ * @warning Blocks for the power-up delay and the readiness polls, sleeping in
+ *          Stop between them; not callable from an ISR.
+ */
+bool lps27GetPressureTempFull(const TagPressureDevice *device, bool low_noise,
+                              uint8_t raw[LPS27_FULL_SAMPLE_BYTES])
+{
+  uint8_t status = 0;
+  uint8_t cmd[2];
+
+  raw[0] = 0x00;
+  raw[1] = 0x00;
+  raw[2] = 0x80;
+  raw[3] = 0x00;
+  raw[4] = 0x80;
+
+  lps27_PowerOn(device);
+  tagPhaseProbeMark(1);   /* sensor rail on, bus session begun */
+  stopMilliseconds(LPS27_POWERUP_MS);
+  tagPhaseProbeMark(2);   /* power-up delay done */
+
+  cmd[0] = LPS27_CTRL_REG1_BDU;
+  cmd[1] = LPS27_CTRL_REG2_ONE_SHOT | LPS27_CTRL_REG2_IF_ADD_INC;
+  if (low_noise)
+    cmd[1] |= LPS27_CTRL_REG2_LOW_NOISE_EN;
+
+  lps27_SetReg(device, LPS27_CTRL_REG1, cmd, 2);
+  tagPhaseProbeMark(3);   /* one-shot triggered */
+
+  for (int i = 0; i < LPS27_READY_POLLS; i++) {
+    stopMilliseconds(LPS27_READY_POLL_MS);
+    lps27_GetReg(device, LPS27_STATUS, &status, 1);
+    if ((status & 3) == 3)
+      break;
+  }
+
+  tagPhaseProbeMark(4);   /* readiness poll finished */
+  tagPhaseProbeAux(1, status);
+  if (status == 3) // don't capture if overrun
+    lps27_GetReg(device, LPS27_PRESS_OUT_XL, raw, LPS27_FULL_SAMPLE_BYTES);
+  lps27_PowerOff(device);
+  if (status != 3)
+    debug_log_printf("lps27: full sample status=0x%x\r\n", status);
+  return status == 3;
+}
+
+/**
+ * @brief Convert a full-resolution raw pressure to hectopascals.
+ *
+ * @param[in] pressure Sign-extended 24-bit raw pressure.
+ * @return Pressure in hPa (4096 LSB/hPa).
+ */
+float lps27PressureFull(int32_t pressure)
+{
+  return (float)pressure / 4096.0f;
 }
 
 /**

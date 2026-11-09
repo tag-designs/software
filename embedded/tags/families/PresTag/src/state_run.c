@@ -141,6 +141,17 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
     {
       enum LOGERR err = LOGWRITE_OK;
 
+#if PRESTAG_HR_LOG
+      /* Full resolution: the five output registers as read, in the
+       * t_PresTagHRSample layout; a failed read leaves the 24-bit minimum. */
+      uint8_t datablock[LPS27_FULL_SAMPLE_BYTES];
+
+      tagPhaseProbeBegin();
+      tagPhaseProbeMark(0);   /* sample tick: entering the sample path */
+      lps27GetPressureTempFull(TAG_PRESSURE_DEVICE, sconfig.lps_low_noise,
+                               datablock);
+      tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
+#else
       struct{
         int16_t pressure;
         int16_t temperature;
@@ -151,6 +162,7 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       lps27GetPressureTemp(TAG_PRESSURE_DEVICE, &datablock.pressure,
                            &datablock.temperature);
       tagPhaseProbeMark(5);   /* pressure read complete, sensor powered off */
+#endif
       t_DataHeader dataheader;
 
       /*
@@ -208,7 +220,11 @@ enum Sleep Running(enum StateTrans t, State_Event reason)
       // write data 
 
       tagPhaseProbeMark(6);   /* about to write the sample to external flash */
+#if PRESTAG_HR_LOG
+      err = writeDataSample(datablock);
+#else
       err = writeDataLog((uint16_t *)&datablock.pressure, 2);
+#endif
       tagPhaseProbeMark(11);  /* external flash write returned */
       switch (err)
       {
