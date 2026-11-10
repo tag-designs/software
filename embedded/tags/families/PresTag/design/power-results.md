@@ -1180,3 +1180,40 @@ and the target was qualified by hand. The host's SWD enter retry fixed that.
   polls at 5 ms, five polls in all (33 ms). The low-power path's single 5 ms
   wait already clears 3.5 ms and is unchanged. Not measured across
   temperature: a late conversion costs one more 5 ms poll, never the sample.
+
+### 2026-11-09  High resolution at 20 s, both conversion modes — release check **PASS**
+- **build**: PresTag `d980e5da` (13 ms low-noise first wait), ELF sha256
+  `521030296d...`, clean tree. Flashed with `tag-flash program` after a
+  `tag-reset` from FINISHED; `tag-test` ALL_PASSED.
+- **board**: UUID `20333050364150040063005F`, on `bittag-base-v7`.
+- **conditions**: 2.496 V through the JS320 (`joulescope_server.py`).
+  `tag_release_check.py --target PresTag --skip-build --run-duration 3600`
+  (PresTag profile otherwise: 4 idle trials of 120 s at <= 0.22 uA, rest
+  windows 120 s, settle 75 s), with `prestag-hr-20.json` and run bound
+  1.01 uA, then `prestag-hr-ln-20.json` and run bound 1.48 uA (1.15x the
+  single-window figures above). One 3600 s run window each, 180 samples.
+- **result**:
+
+  | mode | idle trials | running | stopped | idle after | samples |
+  | --- | --- | --- | --- | --- | --- |
+  | high resolution, low-power | 0.110 / 0.110 / 0.110 / 0.110 uA | **0.88 uA** | 0.11 uA | 0.11 uA | 183 of 180 expected |
+  | high resolution, low-noise | 0.109 / 0.109 / 0.109 / 0.109 uA | **1.30 uA** | 0.11 uA | 0.11 uA | 183 of 180 expected |
+
+  Charge per sample against the 0.11 uA floor: low-power
+  (0.88 - 0.11) x 20 = **15.4 uC**, low-noise (1.30 - 0.11) x 20 =
+  **23.8 uC**.
+- **notes**: both figures repeat the earlier single windows (0.88, 1.29 uA) on
+  a run four times as long, so they are now agreed. The 13 ms first wait,
+  which saves two wakes and two status reads per low-noise sample, made no
+  difference at this resolution: the extra cost of low noise is the
+  conversion, not the polling. Lifetime at 20 s on the family fit's 0.2842 uA
+  floor (the conservative board), nominal / derated 0.75:
+
+  | mode | `I_avg` | 5.5 mAh (days) | 11 mAh (days) |
+  | --- | --- | --- | --- |
+  | low-power | 1.054 uA | 217 / 163 | 435 / 326 |
+  | low-noise | 1.474 uA | 155 / 117 | 311 / 233 |
+  | low-noise at 30 s | 1.077 uA | 213 / 160 | 425 / 319 |
+
+  A five-month (~150-day) run with low noise at 20 s needs the 11 mAh cell;
+  on 5.5 mAh it needs low-power or a 30 s period.

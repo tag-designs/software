@@ -951,20 +951,16 @@ Directory: [`embedded/tags/families/PresTag/`](embedded/tags/families/PresTag/).
   points.
 - **High-resolution and low-noise options: qualification**
   ([decision 0047](docs/decisions/0047-prestag-high-resolution-pressure.md)).
-  PresTag's image changed, so it joins the batched qualification. Also:
-  measure the low-noise conversion time and settle
-  `LPS27_LOW_NOISE_READY_POLLS` (6 x 5 ms now); take a second run window per
-  option so the 2026-11-09 figures (0.88 and 1.29 uA at 20 s, 2.496 V, one
-  window each) are agreed rather than single; consider a release-check pass on
-  `prestag-hr-20.json` beside `prestag-60.json`. Low noise at 20 s leaves no
-  five-month margin on 5.5 mAh; say so in the user manual.
+  PresTag's image changed, so it joins the batched qualification. Done
+  2026-11-09: the conversion time (low-noise 12.0 ms, low-power 3.5 ms) and
+  the 13 ms low-noise first wait; release checks of both high-resolution modes
+  at 20 s over 3600 s (0.88 and 1.30 uA, PASS); the battery note in the Tag
+  Monitor manual. Still open: the conversion time across temperature.
 - **Release the host first.** A host up to v4.1.1 does not recognise
   `PresTagHRLog` (`Ack` field 18): its `PRESTAG` case returns 0, which reads as
   end of log, so downloading a high-resolution tag writes an empty database with
   no error. Ship this host before or with the PresTag firmware, and say in the
   firmware release notes that a high-resolution tag needs it to download.
-- **Side-by-side noise.** Run two PresTags together for an hour, default and
-  high-resolution, and compare sample-to-sample noise in both noise modes.
 - **Legacy qtmonitor has no pressure-sensor panel.** Its
   `--check-config-panels` will report the `PRESTAG` shape's `lps27`. Port the
   panel from `tagmonitor-rs` (`configform.rs`, `Panel::Lps27`) if the legacy
