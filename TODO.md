@@ -1126,6 +1126,25 @@ UIUCTag was qualified on `fw-v0.6` on 2026-10-08
 
 Directory: [`embedded/bases/`](embedded/bases/).
 
+- **Bring up `tagbase-lipo-v1` on the first boards.** The firmware builds but
+  has not run: the board has not been made. First flash through J102 or DFU
+  (the BOOT0 button). Then check, with no tag fitted: EN1V8 (pad J3) stays low
+  and only rises during a session; the reset pad J7 never rises above the tag's
+  own level through attach, `DRIVE_NRST` and release. With a tag: `tag-info`,
+  `tag-flash` and `tag-test` per the flashing protocol in `AGENTS.md`, in each
+  SW1/SW2 position. Charge a cell and watch the red LED go out at completion.
+  Then pass it `DISTRIBUTE`, commit its board's generated files, and confirm
+  `base-flash` handles it.
+- **LiPo Base: the TAG_3V3 sense input floats.** On `tagbase-lipo-v1` the
+  TLV9001 follower reads `TAG_3V3` through R5 (1 MOhm) with nothing pulling the
+  node down, so with no tag, or SW2 on the battery side with no cell, PA0
+  reads whatever the follower drifts to, and the firmware ignores it. Fix on
+  the next revision by making sure `TAG_3V3` always has a power source in
+  every switch position, as `tag-breakout-l432-u375-lipo-v1` does, but
+  without its Schottky diode (D4). A pull-down at the follower input was
+  rejected: a permanent load on the tag's supply makes measuring the tag's
+  current impossible. Once `TAG_3V3` is always driven, the firmware can
+  read PA0 for tag power and report a real target voltage.
 - **One failed read can fail the next several block reads.** With the parity
   bug of [2026-11](embedded/bases/design/investigations/2026-11-breakout-parity-bit.md) on
   `tag-breakout-base-l432-v1`, 112 single parity errors left 25 block reads

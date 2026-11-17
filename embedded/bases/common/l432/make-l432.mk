@@ -1,3 +1,20 @@
+# @brief  Shared ChibiOS make scaffold for the STM32L432 bases.
+#
+# @details Used by tag-breakout-base-l432-u375-1v8 and tagbase-lipo-v1, whose
+#          Makefile is just `include ../common/l432/make-l432.mk`. Builds
+#          ChibiOS RT and HAL for the STM32L432xC, includes the base's
+#          project.mk for its board and source list, and searches for sources
+#          in the base's ./src, then common/l432/src (the SPI-assisted SWD
+#          driver and USB descriptors these bases share), then common/src. A
+#          file in ./src replaces a shared file of the same name.
+#
+# @param   SWD_DELAY_COUNT  GPIO bitbang half-period delay, from project.mk.
+# @param   SWD_SPI_BR       SPI1 baud-rate divider bits for SWD shift-outs,
+#                           from project.mk.
+# @param   PROJECT_UDEFS    Extra defines from project.mk, e.g. the error log
+#                           switch (see "The Base Error Log" in
+#                           embedded/bases/README.md).
+
 #############################################################################
 # Build global options
 #############################################################################
@@ -137,4 +154,4 @@ RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
 include $(RULESPATH)/arm-none-eabi.mk
 include $(RULESPATH)/rules.mk
 
-VPATH := $(BUILDDIR) ./src ../common/src $(VPATH)
+VPATH := $(BUILDDIR) ./src ../common/l432/src ../common/src $(VPATH)

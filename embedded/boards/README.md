@@ -60,6 +60,7 @@ in `<board>/generated/`.
 | `tag-breakout-base-jlcpcb32-v1` | `board-tag-breakout-base-jlcpcb32-v1` | `tag-breakout-base-jlcpcb32-v1/board.mk` | `generate_board_files()` | Bases: `tag-breakout-base-jlcpcb32-v1` |
 | `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` | `generate_configured_board_files()`, committed | Bases: `tag-breakout-base-l432-v1` |
 | `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` | `generate_configured_board_files()`, committed | Bases: `tag-breakout-base-l432-u375-1v8` |
+| `tagbase-lipo-v1` | `board-tagbase-lipo-v1` | `TagBase_LiPo_V1/board.mk` | `generate_configured_board_files()` | Bases: `tagbase-lipo-v1` |
 
 The firmware side declares the dependency in its `CMakeLists.txt` and includes
 the generated board fragment in `project.mk`:

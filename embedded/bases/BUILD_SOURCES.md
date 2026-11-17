@@ -127,10 +127,10 @@ embedded/bases/tag-breakout-base-l432-v1/cfg/mcuconf.h
 ### C Files
 
 ```text
+embedded/bases/common/l432/src/ll_swd_spi.c
+embedded/bases/common/l432/src/usbcfg.c
 embedded/bases/common/src/stlink.c
-embedded/bases/tag-breakout-base-l432-u375-1v8/src/ll_swd_spi.c
 embedded/bases/tag-breakout-base-l432-u375-1v8/src/main.c
-embedded/bases/tag-breakout-base-l432-u375-1v8/src/usbcfg.c
 ```
 
 ### Header Files
@@ -144,6 +144,31 @@ embedded/bases/common/inc/usbcfg.h
 embedded/bases/tag-breakout-base-l432-u375-1v8/cfg/chconf.h
 embedded/bases/tag-breakout-base-l432-u375-1v8/cfg/halconf.h
 embedded/bases/tag-breakout-base-l432-u375-1v8/cfg/mcuconf.h
+```
+
+## tagbase-lipo-v1
+
+### C Files
+
+```text
+embedded/bases/common/l432/src/ll_swd_spi.c
+embedded/bases/common/l432/src/usbcfg.c
+embedded/bases/common/src/stlink.c
+embedded/bases/tagbase-lipo-v1/src/main.c
+```
+
+### Header Files
+
+```text
+embedded/bases/common/inc/app.h
+embedded/bases/common/inc/debug_cm.h
+embedded/bases/common/inc/dp_swd.h
+embedded/bases/common/inc/stlink.h
+embedded/bases/common/inc/usbcfg.h
+embedded/bases/tagbase-lipo-v1/cfg/chconf.h
+embedded/bases/tagbase-lipo-v1/cfg/halconf.h
+embedded/bases/tagbase-lipo-v1/cfg/mcuconf.h
+embedded/bases/tagbase-lipo-v1/inc/base_board.h
 ```
 
 ## tag-base-c071

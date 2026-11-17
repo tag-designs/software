@@ -24,12 +24,16 @@ embedded/bases/
     src/                      Shared USB, SWD, ST-Link, and ADC sources
     make.mk                   Shared ChibiOS make scaffold for STM32F042 bases
     make-c071.mk              Shared ChibiOS make scaffold for STM32C071 bases
+    l432/
+      make-l432.mk            Shared ChibiOS make scaffold for STM32L432 bases
+      src/                    Shared L432 SPI-assisted SWD and USB descriptors
   <base-target>/
     CMakeLists.txt            Firmware target and board dependency
     Makefile                  Includes a shared or target-local make scaffold
     project.mk                Board include and local/shared source list
     cfg/                      ChibiOS configuration overrides
     src/                      Base-local application or SWD implementation
+    inc/                      Optional base_board.h target-interface hooks
 ```
 
 Each active base target follows this CMake shape:
@@ -65,6 +69,7 @@ it. The other bases are not installed or packaged.
 | `tag-breakout-base-jlcpcb32-v1` | `board-tag-breakout-base-jlcpcb32-v1` | `tag-breakout-base-jlcpcb32-v1/board.mk` |
 | `tag-breakout-base-l432-v1` | `board-tag-breakout-base-l432-v1` | `Tag_Breakout_Base_L432_V1/board.mk` |
 | `tag-breakout-base-l432-u375-1v8` | `board-tag-breakout-base-l432-u375-1v8` | `Tag_Breakout_Base_L432_U375_1V8/board.mk` |
+| `tagbase-lipo-v1` | `board-tagbase-lipo-v1` | `TagBase_LiPo_V1/board.mk` |
 
 ## Base Descriptions
 
@@ -81,13 +86,33 @@ MCU, board, and how it clocks SWD.
 | `bittag-base-v7` | STM32F042x6 | BitTag Base v7 | GPIO bitbang, `common/src/ll_swd.c` |
 | `tag-breakout-base-jlcpcb32-v1` | STM32F042 | Tag Breakout Base JLCPCB32 v1 | GPIO bitbang, `common/src/ll_swd.c` |
 | `tag-breakout-base-l432-v1` | STM32F042x6 | Tag Breakout Base L432 v1 | optimized GPIO bitbang, local `src/ll_swd.c` |
-| `tag-breakout-base-l432-u375-1v8` | STM32L432 | Tag Breakout Base L432 U375 1V8 | hybrid SPI/GPIO, local `src/ll_swd_spi.c` |
+| `tag-breakout-base-l432-u375-1v8` | STM32L432 | Tag Breakout Base L432 U375 1V8 | hybrid SPI/GPIO, `common/l432/src/ll_swd_spi.c` |
+| `tagbase-lipo-v1` | STM32L432 | LiPo Base V1 (`tagbase-lipo-v1`) | hybrid SPI/GPIO, `common/l432/src/ll_swd_spi.c` |
 | `tag-base-c071` | STM32C071 | ST Nucleo64-C071RB | hybrid SPI/GPIO, local `src/ll_swd_spi.c` |
 
-The STM32F042 bases build with `common/make.mk`;
-`tag-breakout-base-l432-u375-1v8` has its own `make-l432.mk`, and
-`tag-base-c071` uses `common/make-c071.mk`. A local file in a base's `src/`
-replaces the `common/src/` file of the same name (`VPATH` lists `./src` first).
+The STM32F042 bases build with `common/make.mk`, the STM32L432 bases
+(`tag-breakout-base-l432-u375-1v8`, `tagbase-lipo-v1`) with
+`common/l432/make-l432.mk`, and `tag-base-c071` with `common/make-c071.mk`. A
+local file in a base's `src/` replaces the shared file of the same name: `VPATH`
+lists `./src` first, then, for the L432 bases, `common/l432/src`, then
+`common/src`. So the L432 bases share one SPI-assisted SWD driver and one USB
+descriptor set, and a fix to either reaches both boards.
+
+### Target-Interface Hooks
+
+`common/src/stlink.c` drives the tag's reset and, where a board has one, the
+tag-side I/O supply through four macros. A base that needs other behaviour
+defines them in `inc/base_board.h`, which `stlink.c` includes when it exists:
+
+| Macro | Called on | Default (no `base_board.h`) |
+| --- | --- | --- |
+| `TGT_RESET_ASSERT()` | `DRIVE_NRST` 0, and the start of the pulse (2) | `palSetLine(LINE_TGT_RESET)`: an inverting transistor pulls nRST low |
+| `TGT_RESET_RELEASE()` | `DRIVE_NRST` 1, and the end of the pulse | `palClearLine(LINE_TGT_RESET)` |
+| `TGT_IO_POWER_ON()` | SWD enter, before `SWD_Open()`; must return with the interface usable | nothing |
+| `TGT_IO_POWER_OFF()` | `DEBUG_EXIT` after `SWD_Close()`, and a failed SWD enter | nothing |
+
+Only `tagbase-lipo-v1` overrides them. With the defaults every other base
+compiles to the same code as before the hooks existed.
 Each target's `project.mk` lists exactly what it compiles; see also
 [BUILD_SOURCES.md](BUILD_SOURCES.md).
 
@@ -137,8 +162,8 @@ active-high, and SWD drives `SWDIO_DIR` high for transmit and low for receive.
 SWD is hybrid: `SW_ShiftOutBytes()` sends byte-aligned phases through SPI1, and
 every other phase -- the odd-width shift-ins above all -- is GPIO bitbang.
 `SWD_DELAY_COUNT` and `SWD_SPI_BR` in `project.mk` set the bitbang delay and the
-SPI baud-rate divider. Local `src/usbcfg.c` replaces the common one; the local
-`src/ll_swd.c` is not compiled.
+SPI baud-rate divider. `common/l432/src/usbcfg.c` replaces the common one; the
+local `src/ll_swd.c` is not compiled.
 
 `LED_GREEN` is PA3 routed to TIM2 channel 4 (`AF1`). The LED flashes only while
 `stlink_open` is true. TIM2 drives a 1 kHz PWM brightness carrier, while a
@@ -147,6 +172,43 @@ apparent brightness with `LED_GREEN_PWM_DUTY_PERCENT`; tune the visible blink
 envelope with `LED_GREEN_BLINK_ON_MS` and `LED_GREEN_BLINK_OFF_MS`. This target
 uses periodic SysTick timing (`CH_CFG_ST_TIMEDELTA == 0`) so TIM2 is available
 to the PWM driver on STM32L432.
+
+### `tagbase-lipo-v1`
+
+The LiPo Base V1 (hardware `BoardDesigns/Bases/tagbase-lipo-v1`) programs a
+tag over SWD and charges the tag's LiPo cell from USB through an XC6808 linear
+charger. It has the same STM32L432 and the same SWD path as
+`tag-breakout-base-l432-u375-1v8`: SPI1 on PB3/PB4/PB5, `SWDIO_DIR` on PA15,
+SN74LVC1T45 level shifters to 1.8 V, USB on HSI48 with CRS, and the same
+ChibiOS configuration. It differs in four ways:
+
+- **Reset is active-low and open-drain.** PA10 reaches the tag's nRST through
+  R104 (2.2 kOhm) with no transistor, so `LINE_TGT_RESET` is open-drain in the
+  board file and `inc/base_board.h` inverts the reset macros: clearing the line
+  pulls nRST low, setting it lets the tag's own pull-up return it to the tag's
+  1.8 V. The pin can never drive 3.3 V into the tag.
+- **The 1.8 V level-shifter supply follows the SWD session.** `EN1V8` is PB6
+  (PA1 on the breakout), low at reset. `TGT_IO_POWER_ON()` sets it, waiting
+  2 ms the first time, before `SWD_Open()`. `TGT_IO_POWER_OFF()` clears it at
+  `DEBUG_EXIT` and after a failed enter. So the shifters cannot back-power an
+  unpowered tag between sessions, and with their VCCB off both tag pins are
+  high impedance. A host that dies without sending `DEBUG_EXIT` leaves the rail
+  on until the next session ends. Reset does not pass through the shifters, so
+  a host can assert it with the rail off, as attach does.
+- **No tag-power sensing.** PA0 carries a TLV9001 follower of `TAG_3V3`, but
+  its input (through R5, 1 MOhm) floats when nothing drives `TAG_3V3`, so the
+  reading says nothing reliable. It is not used, and the base reports a fixed
+  1.80 V target voltage, as the breakout does.
+- **Two LEDs and a charger status.** Green (PA2, TIM2 channel 3) blinks 250 ms
+  in every second while an SWD session is open. Red (PA3, TIM2 channel 4)
+  shows the charger's CSO output on PA1: on while charging, off when charging
+  is complete or there is no cell, and blinking at 2.5 Hz on a charger fault,
+  which the XC6808A signals by toggling CSO at about 1 kHz. A status thread
+  samples CSO 40 times, a tick (100 us) apart, every 50 ms; a fault must show
+  in two windows in a row.
+
+It is not yet passed `DISTRIBUTE`: the board has not been built, and the
+target joins the distributed set after bench bring-up.
 
 ### `tag-base-c071`
 
@@ -218,9 +280,8 @@ found.
 port, so a logging base runs normally unattended; lines written then are lost.
 Revert `project.mk` and reflash a clean image afterwards.
 
-`tag-breakout-base-l432-u375-1v8` has its own scaffold, `make-l432.mk`, which
-reads `PROJECT_UDEFS` the same way, so the same line in its `project.mk` turns
-its log on.
+The L432 bases' scaffold, `common/l432/make-l432.mk`, reads `PROJECT_UDEFS`
+the same way, so the same line in their `project.mk` turns their log on.
 
 ## Labels on Bases vs Boards:
 

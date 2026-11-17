@@ -26,6 +26,59 @@
 #include <string.h>
 #include <strings.h>
 
+/*
+ * A base whose target interface differs from the default supplies
+ * inc/base_board.h, which overrides the hooks below. Without one, the base
+ * gets today's behaviour: an active-high reset driver (a transistor that pulls
+ * the tag's nRST low when LINE_TGT_RESET is set) and a target I/O supply that
+ * is always on.
+ */
+#if defined(__has_include)
+#if __has_include("base_board.h")
+#include "base_board.h"
+#endif
+#endif
+
+/**
+ * @def     TGT_RESET_ASSERT
+ * @brief   Holds the tag in reset.
+ * @details Default: sets LINE_TGT_RESET, for a base that drives the tag's
+ *          nRST through an inverting transistor.
+ */
+#ifndef TGT_RESET_ASSERT
+#define TGT_RESET_ASSERT() palSetLine(LINE_TGT_RESET)
+#endif
+
+/**
+ * @def     TGT_RESET_RELEASE
+ * @brief   Lets the tag run.
+ * @details Default: clears LINE_TGT_RESET; see TGT_RESET_ASSERT.
+ */
+#ifndef TGT_RESET_RELEASE
+#define TGT_RESET_RELEASE() palClearLine(LINE_TGT_RESET)
+#endif
+
+/**
+ * @def     TGT_IO_POWER_ON
+ * @brief   Powers the tag-side SWD interface before an SWD session opens.
+ * @details Called before SWD_Open() on STLINK_DEBUG_APIV2_ENTER. It must
+ *          return only once the interface is usable. Default: nothing, for a
+ *          base whose interface supply is always on.
+ */
+#ifndef TGT_IO_POWER_ON
+#define TGT_IO_POWER_ON() do { } while (0)
+#endif
+
+/**
+ * @def     TGT_IO_POWER_OFF
+ * @brief   Unpowers the tag-side SWD interface once no session is open.
+ * @details Called after SWD_Close() on STLINK_DEBUG_EXIT, and after an
+ *          STLINK_DEBUG_APIV2_ENTER that failed. Default: nothing.
+ */
+#ifndef TGT_IO_POWER_OFF
+#define TGT_IO_POWER_OFF() do { } while (0)
+#endif
+
 #define DATABUFSIZE 512
 static int mode = STLINK_DEV_DEBUG_MODE;
 bool stlink_open = false;
@@ -368,6 +421,7 @@ int stlink_eval(uint8_t *buf)
     EPRINTF("debug exit\r\n");
     if (stlink_open)
       SWD_Close();
+    TGT_IO_POWER_OFF();
     stlink_open = false;
     core_status = STLINK_CORE_NO_TARGET;
     // no return packet
@@ -386,9 +440,11 @@ int stlink_eval(uint8_t *buf)
     if (*buf == STLINK_DEBUG_ENTER_SWD)
     {
       EPRINTF("swd enter\r\n");
+      TGT_IO_POWER_ON();
       if ((swderr = SWD_Open()))
       {
         //mode = STLINK_DEV_DEBUG_MODE;
+        TGT_IO_POWER_OFF();
         PACK16(txbuf, STLINK_DEBUG_ERR_FAULT);
         lastrwstatus = STLINK_DEBUG_ERR_FAULT;
         stlink_open = false;
@@ -480,15 +536,15 @@ int stlink_eval(uint8_t *buf)
     switch (value)
     {
     case 0:
-      palSetLine(LINE_TGT_RESET);
+      TGT_RESET_ASSERT();
       break;
     case 1:
-      palClearLine(LINE_TGT_RESET);
+      TGT_RESET_RELEASE();
       break;
     case 2:
-      palSetLine(LINE_TGT_RESET);
+      TGT_RESET_ASSERT();
       chThdSleepMilliseconds(10);
-      palClearLine(LINE_TGT_RESET);
+      TGT_RESET_RELEASE();
       break;
     default:
       EPRINTF("unexpected Drive_nrst parameter %d\n", value);
