@@ -1126,11 +1126,14 @@ UIUCTag was qualified on `fw-v0.6` on 2026-10-08
 
 Directory: [`embedded/bases/`](embedded/bases/).
 
-- **Bring up `tagbase-lipo-v1` on the first boards.** The firmware builds but
-  has not run: the board has not been made. First flash through J102 or DFU
-  (the BOOT0 button). Then check, with no tag fitted: EN1V8 (pad J3) stays low
-  and only rises during a session; the reset pad J7 never rises above the tag's
-  own level through attach, `DRIVE_NRST` and release. With a tag: `tag-info`,
+- **Finish bringing up `tagbase-lipo-v1`.** Done 2026-11-17 on the first board
+  (UUID `0024002D3243500820373655`): programmed `fa95bef1` by DFU with
+  `base-flash`, and with no tag fitted the ST-LINK interface answers version,
+  mode, target voltage (1.80 V) and the `F6 99` identity; an attach fails SWD
+  enter with `0x81`, as it should with no tag. Still to do, with no tag: EN1V8
+  (pad J3) stays low and only rises during a session; the reset pad J7 never
+  rises above the tag's own level through attach, `DRIVE_NRST` and release.
+  The rest waits for the 3D-printed tag case. With a tag: `tag-info`,
   `tag-flash` and `tag-test` per the flashing protocol in `AGENTS.md`, in each
   SW1/SW2 position. Charge a cell and watch the red LED go out at completion.
   Then pass it `DISTRIBUTE`, commit its board's generated files, and confirm
