@@ -89,6 +89,7 @@ design document.
 - [0044. UIUCTag stores one 8-byte record per minute](decisions/0044-uiuctag-minute-records.md) *(decision)* — UIUCTag stores one 8-byte record a minute -- three 20-second activity counts for the minute before, then raw BMP585 pressure and temperature -- written whole in one program, 32 to a 256-byte page; the 12-byte five-minute format (layout 1) is dropped, not decoded.
 - [0045. Host: SWD capture and recovery move to Rust](decisions/0045-swd-recovery-in-rust.md) *(decision)* — The SWD capture and recovery library and its four tools (tag-capture, tag-xflash, tag-sramcall, tag-rebuild) are Rust, in tagcore-rs on its own LinkAdapt; the C++ library and tools and tag_capture_state.py are deleted, and only the offline rebuild (CaptureSource) stays C++, behind tagcore_c's rbd_* interface.
 - [0046. Host: one shell for the Tauri applications](decisions/0046-host-shared-app-shell.md) *(decision)* — The four Tauri applications share one shell (tagapp-shell) and one build helper (tagapp-shell-build) with one capabilities file; Tag Monitor, Tag Calibrator and Tag Programmer close through their engine's quit, Tag Programmer asking only while it programs a tag; Tag View keeps a plain close.
+- [0047. PresTag: high-resolution pressure and low-noise conversion](decisions/0047-prestag-high-resolution-pressure.md) *(decision)* — PresTag gains two stored-configuration options -- high resolution, which logs the LPS27's full 24-bit pressure as 5-byte register images, 48 to a 240-byte page, and low-noise conversion -- in one image, with the page geometry following the stored configuration; a separate PresTagHR target or tag type was built and rejected.
 
 ### Investigations
 
@@ -293,7 +294,7 @@ design document.
 
 ### Tags / Families / PresTag
 
-- [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, with links to the power test plan, results, open items and host simulation.
+- [PresTag Family](../embedded/tags/families/PresTag/README.md) — PresTag family members and their log formats, the high-resolution and low-noise configuration options, with links to the power test plan, results, open items and host simulation.
 - [PresTag Power and Schedule Test Plan](../embedded/tags/families/PresTag/design/power-test-plan.md) *(procedure)* — PresTag power and schedule test plan -- what the firmware does in each state, the configs, the resting-state, period-sweep, schedule and data phases, the power model and the gates.
 - [PresTag Power Measurement Log](../embedded/tags/families/PresTag/design/power-results.md) *(results)* — Append-only log of every PresTag power measurement with build and conditions, plus the campaign's fit, lifetime, schedule and data verdicts -- the source for figures quoted elsewhere.
 
@@ -302,9 +303,13 @@ design document.
 - [PresTag Log Cursor Round-Up (2026-09)](../embedded/tags/families/PresTag/design/investigations/2026-09-prestag-log-cursor-round-up.md) *(investigation, closed)* — How the PresTag log cursor round-up and hibernation gate used 120 instead of 60 samples, why a brownout with an odd page count desynchronised the log, and the fix (329f1e52).
 - [PresTag Power Campaign and Stop 2 Diagnosis (2026-09)](../embedded/tags/families/PresTag/design/investigations/2026-09-prestag-stop2-and-power-campaign.md) *(investigation, closed)* — The 2026-09-08/09 PresTag power campaign -- why Stop 2 looked broken (a floating PA2 input and the LPTIM arming cost), the bench incidents, and both executions' findings.
 
+### Tags / Families / PresTag / Proposals
+
+- [PresTagHR: Full-Resolution Pressure Logging](../embedded/tags/families/PresTag/design/proposals/prestaghr.md) *(proposal, superseded)* — PresTagHR -- a PresTag variant that logs the LPS27's full 24-bit pressure in 5-byte packed records, with low-noise mode as a stored-configuration option, sized for 20 s sampling over 3-5 months.
+
 ### Tags / Families / PresTag / test
 
-- [PresTag Datalog Simulation](../embedded/tags/families/PresTag/test/README.md) — How to build and run the PresTag datalog host simulation for both download formats, checking the last partial page and mid-page resets.
+- [PresTag Datalog Simulation](../embedded/tags/families/PresTag/test/README.md) — How to build and run the PresTag datalog host simulation in both PresTag formats and PresTagRaw's, checking the last partial page and mid-page resets.
 
 ### Tags / IMUTagNand
 
@@ -549,7 +554,7 @@ design document.
 
 ### Libraries / tagcore / test
 
-- [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
+- [tagcore Offline Checks](../host/libraries/tagcore/test/README.md) — How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, PresTag high-resolution decoder, and ConfigShape.
 
 ### Libraries / tagcore-c
 

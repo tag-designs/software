@@ -195,12 +195,43 @@ panels for the settings its firmware accepts, and nothing else.
     one sample is about 160 ms and 12 samples about 1.9 s. The firmware fixes
     the range, rate and filter.
 - **PresTag** shows the schedule with one more setting, the sampling
-    **Period** in seconds. It has no separate sensor controls.
+    **Period** in seconds. PresTag firmware newer than fw-v0.8 adds a
+    **Pressure Sensor** panel; see
+    [PresTag pressure sensor options](#prestag-pressure-sensor-options).
 - **IMUTag**'s schedule is a **Start Delay** in minutes: logging begins that
     long after Start, and runs until the tag is stopped. The **IMU** panel
     sets the sample rate and the accelerometer and gyro ranges.
 - **CompassTag** uses the schedule for deployment timing and hibernation
     windows. It has no separate sensor controls.
+
+### PresTag pressure sensor options
+
+PresTag firmware newer than fw-v0.8 shows a **Pressure Sensor** panel with two
+checkboxes. Older PresTag firmware does not show it and logs as before.
+
+- **High-resolution pressure** logs the sensor's full pressure reading,
+  in steps of 1/4096 hPa instead of 1/16 hPa (about 0.5 m of altitude).
+  Each page holds 48 samples instead of 60, so the memory fills a fifth
+  sooner, but it still holds 194 days at a 20 s period. It costs no
+  extra battery. Download such a tag with a Tag Monitor that shows this
+  panel; an older one writes an empty log without reporting an error.
+- **Low-noise conversion** reduces the sensor's noise from about 4.3 Pa
+  to about 1.9 Pa per sample. It is worth combining with high
+  resolution, since 1/16 hPa steps are coarser than the low-noise
+  noise. It draws about 50% more battery per sample.
+
+!!! warning "Low noise shortens the battery life"
+    Battery life at a 20 s period, nominal and with a 25% allowance for
+    cell losses:
+
+    | Setting | 5.5 mAh cell | 11 mAh cell |
+    | --- | --- | --- |
+    | Standard or high resolution | 217 / 163 days | 435 / 326 days |
+    | Low noise | 155 / 117 days | 311 / 233 days |
+    | Low noise, 30 s period | 213 / 160 days | 425 / 319 days |
+
+    A five-month deployment with low noise at 20 s needs the 11 mAh
+    cell. On a 5.5 mAh cell, leave low noise off or use a 30 s period.
 
 ## Downloading and Erasing
 

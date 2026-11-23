@@ -8,9 +8,18 @@
  *          temperature} samples (prestag_log_format.h). The sample period
  *          comes from the stored configuration (lps_period).
  *
+ *          The data_format facts below describe the default format. PresTag
+ *          (not PresTagRaw) can instead log full resolution when its stored
+ *          configuration says so (stored-config layout 3, lps_high_res at
+ *          offset 30 == 1): the same 240-byte page holds 48 five-byte samples
+ *          {int24 pressure, int16 temperature} and the pressure divisor is
+ *          4096. A reader must take the format from the stored configuration,
+ *          not from these facts alone.
+ *
  *          Scale slots, in this order, as data_logAck() applies them:
  *          0. header voltage: vdd100[0] * 0.01;
- *          1. sample pressure: raw / 16 (hPa) -- a divisor;
+ *          1. sample pressure: raw / 16 (hPa) in the default format -- a
+ *             divisor;
  *          2. sample temperature: raw / 100 (degC) -- a divisor;
  *          3. header second voltage: vdd100[1] * 0.01.
  */
@@ -26,6 +35,9 @@
 #else
 /** @brief Host sqlitelog decoder that reads this family's data log. */
 #define TAG_IDENTITY_DECODER "prestag"
+/** @brief Stored-config layout 3: layout 2 plus lps_low_noise at offset 29
+ *         and lps_high_res at offset 30. */
+#define TAG_IDENTITY_STORED_CONFIG_VERSION 3U
 #endif
 /** @brief Version of the data layout; bump when it changes. */
 #define TAG_IDENTITY_DATA_LAYOUT_VERSION 1U

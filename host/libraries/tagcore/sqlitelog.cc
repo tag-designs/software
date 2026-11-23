@@ -289,6 +289,9 @@ public:
             return dumpCompassTagLog(context, ack.compasstag_data_log());
 
         case PRESTAG:
+            if (ack.has_prestag_hr_data_log()) {
+                return dumpPresTagHRLog(context, ack.prestag_hr_data_log());
+            }
             if (ack.has_prestag_raw_data_log()) {
                 return dumpPresTagRawLog(context, ack.prestag_raw_data_log());
             }

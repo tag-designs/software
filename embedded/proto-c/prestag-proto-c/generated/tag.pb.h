@@ -160,6 +160,7 @@ typedef struct _Ack {
         char error_message[64]; /* debugging support */
         StateLog system_log;
         PresTagLog prestag_data_log;
+        PresTagHRLog prestag_hr_data_log; /* PresTag in high resolution */
     } payload;
 } Ack;
 
@@ -309,6 +310,7 @@ extern "C" {
 #define Ack_error_message_tag                    5
 #define Ack_system_log_tag                       6
 #define Ack_prestag_data_log_tag                 8
+#define Ack_prestag_hr_data_log_tag              18
 
 /* Struct field encoding specification for nanopb */
 #define Req_FIELDLIST(X, a) \
@@ -343,7 +345,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (payload,config,payload.config),   3) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (payload,status,payload.status),   4) \
 X(a, STATIC,   ONEOF,    STRING,   (payload,error_message,payload.error_message),   5) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (payload,system_log,payload.system_log),   6) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (payload,prestag_data_log,payload.prestag_data_log),   8)
+X(a, STATIC,   ONEOF,    MESSAGE,  (payload,prestag_data_log,payload.prestag_data_log),   8) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (payload,prestag_hr_data_log,payload.prestag_hr_data_log),  18)
 #define Ack_CALLBACK NULL
 #define Ack_DEFAULT NULL
 #define Ack_payload_info_MSGTYPE TagInfo
@@ -351,6 +354,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (payload,prestag_data_log,payload.prestag_dat
 #define Ack_payload_status_MSGTYPE Status
 #define Ack_payload_system_log_MSGTYPE StateLog
 #define Ack_payload_prestag_data_log_MSGTYPE PresTagLog
+#define Ack_payload_prestag_hr_data_log_MSGTYPE PresTagHRLog
 
 #define Empty_FIELDLIST(X, a) \
 
@@ -408,10 +412,10 @@ extern const pb_msgdesc_t StateLog_msg;
 #define StateLog_fields &StateLog_msg
 
 /* Maximum encoded size of messages (where known) */
-#define Ack_size                                 2085
+#define Ack_size                                 3789
 #define Empty_size                               0
 #define LogReq_size                              8
-#define Req_size                                 99
+#define Req_size                                 105
 #define StateLog_size                            2080
 #define State_size                               205
 #define Status_size                              200

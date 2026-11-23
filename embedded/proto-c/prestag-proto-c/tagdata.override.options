@@ -1,1 +1,4 @@
 PresTagLog skip_message:false
+PresTagHRLog skip_message:false
+Config.lps27 type:FT_STATIC
+Lps27 skip_message:false

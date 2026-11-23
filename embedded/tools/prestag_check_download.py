@@ -20,8 +20,15 @@ Voltage row per 60-sample block. Sample epochs advance by exactly the configured
 period from each block header, so a larger step is a real discontinuity --
 a hibernation window or a restart -- and is reported rather than failed.
 
+A PresTag configured for high resolution (--hr; lps27.high_resolution) logs
+48 full-resolution samples per header. A failed read
+there writes no row and keeps its slot, so it shows as a one-period gap, not a
+sentinel; and a full-resolution log must actually use resolution finer than
+PresTag's 1/16 hPa, or the low pressure byte was lost on the way.
+
 Examples:
     prestag_check_download.py run.db --period 10
+    prestag_check_download.py run.db --period 20 --hr   # lps27.high_resolution
     prestag_check_download.py run.db --period 90 --expect-gaps 1
     prestag_check_download.py run.db --period 10 --pressure-min 950
 """
@@ -48,6 +55,12 @@ SENTINEL_TOL = 0.05
 
 #: Samples per block header, matching PRESTAG_LOG_SAMPLES.
 DATALOG_SAMPLES = 60
+
+#: Samples per block header in high resolution, matching PRESTAG_HR_LOG_SAMPLES.
+HR_DATALOG_SAMPLES = 48
+
+#: PresTag's default pressure step, in hPa. High resolution's is 1/4096.
+PRESTAG_PRESSURE_LSB_HPA = 1.0 / 16.0
 
 #: Plausible supply range for a bench-powered tag, in volts.
 #:
@@ -127,13 +140,14 @@ def check_presence(pressure: list, temperature: list,
     return c
 
 
-def check_blocks(pressure: list, voltage: list) -> Check:
-    """Verify one Voltage row per 60-sample block."""
-    c = Check("one header per 60-sample block")
+def check_blocks(pressure: list, voltage: list,
+                 samples: int = DATALOG_SAMPLES) -> Check:
+    """Verify one Voltage row per block of @p samples samples."""
+    c = Check(f"one header per {samples}-sample block")
     if not pressure or not voltage:
         c.skip("needs both Pressure and Voltage rows")
         return c
-    expected = -(-len(pressure) // DATALOG_SAMPLES)  # ceil
+    expected = -(-len(pressure) // samples)  # ceil
     c.note(f"{len(pressure)} samples -> expect {expected} headers, "
            f"found {len(voltage)}")
     if len(voltage) != expected:
@@ -232,6 +246,32 @@ def check_values(rows: list, label: str, unit: str, lo: float, hi: float,
     return c
 
 
+def check_resolution(pressure: list) -> Check:
+    """Verify a high-resolution log carries resolution finer than 1/16 hPa.
+
+    @details PresTag stores pressure in 1/16 hPa steps. A full-resolution log
+             whose every value is still a multiple of 1/16 hPa has lost the
+             PRESS_OUT_XL byte somewhere between the sensor and the database.
+             With 256 sub-steps per PresTag step, a genuine reading lands on a
+             multiple by chance about once in 256.
+
+    @param[in] pressure (epoch, hPa) pairs.
+    @return The completed check.
+    """
+    c = Check("full resolution present")
+    if len(pressure) < 20:
+        c.skip("needs at least 20 samples")
+        return c
+    coarse = sum(1 for _, v in pressure
+                 if abs(v / PRESTAG_PRESSURE_LSB_HPA
+                        - round(v / PRESTAG_PRESSURE_LSB_HPA)) < 1e-6)
+    c.note(f"{coarse} of {len(pressure)} sample(s) on a 1/16 hPa step")
+    if coarse > len(pressure) // 4:
+        c.fail("most samples sit on PresTag's 1/16 hPa grid: the low pressure "
+               "byte is missing")
+    return c
+
+
 def check_voltage(voltage: list) -> Check:
     """Verify header supply readings are in a plausible range."""
     c = Check("supply voltage plausible")
@@ -249,7 +289,8 @@ def check_voltage(voltage: list) -> Check:
 
 
 def check_count(pressure: list, period: int | None,
-                expect_duration: float | None) -> Check:
+                expect_duration: float | None,
+                samples: int = DATALOG_SAMPLES) -> Check:
     """Compare the sample count against the intended run length."""
     c = Check("sample count matches run duration")
     if expect_duration is None or period is None:
@@ -264,7 +305,7 @@ def check_count(pressure: list, period: int | None,
            f"({expect_duration:.0f} s / {period} s)")
     # Deliberately loose: collection starts before and ends after the nominal
     # window, and the final block is truncated wherever the run stopped.
-    if not 0.8 * expected <= actual <= 1.2 * expected + DATALOG_SAMPLES:
+    if not 0.8 * expected <= actual <= 1.2 * expected + samples:
         c.fail(f"{actual} samples is not within 20% of the expected {expected:.0f}")
     return c
 
@@ -283,6 +324,10 @@ def main() -> int:
     p.add_argument("--expect-gaps", type=int, default=None, metavar="N",
                    help="number of epoch discontinuities to require, e.g. 1 for "
                         "a run with a single hibernation window")
+    p.add_argument("--hr", action="store_true",
+                   help="the run used lps27.high_resolution: 48 samples per "
+                        "header, failed reads as gaps, and full resolution "
+                        "required")
     p.add_argument("--pressure-min", type=float, default=900.0, metavar="HPA",
                    help="lower plausible pressure bound (default: 900)")
     p.add_argument("--pressure-max", type=float, default=1100.0, metavar="HPA",
@@ -305,19 +350,22 @@ def main() -> int:
         temperature = read_series(con, "Temperature", "Temperature")
         voltage = read_series(con, "Voltage", "Voltage")
 
+    samples = HR_DATALOG_SAMPLES if args.hr else DATALOG_SAMPLES
     checks = [
         check_presence(pressure, temperature, voltage),
-        check_blocks(pressure, voltage),
+        check_blocks(pressure, voltage, samples),
         check_epochs(pressure, args.period, args.expect_gaps),
         check_values(pressure, "pressure", "hPa", args.pressure_min,
                      args.pressure_max, PRESSURE_READ_FAILED_HPA),
         check_values(temperature, "temperature", "C", args.temp_min,
                      args.temp_max, TEMPERATURE_READ_FAILED_C),
         check_voltage(voltage),
-        check_count(pressure, args.period, args.expect_duration),
+        check_count(pressure, args.period, args.expect_duration, samples),
     ]
+    if args.hr:
+        checks.append(check_resolution(pressure))
 
-    print(f"PresTag download check: {args.database}")
+    print(f"PresTag{' high-resolution' if args.hr else ''} download check: {args.database}")
     print()
     failed = 0
     for c in checks:

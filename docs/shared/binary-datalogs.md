@@ -72,7 +72,8 @@ must not collide:
 ## Coherence with nanopb options
 
 Raw records travel to the host inside protobuf messages, as a bytes field
-(`IMUTagRawLog.samples`, `PresTagRawLog.samples`, `UIUCTagLog.samples`) whose
+(`IMUTagRawLog.samples`, `PresTagRawLog.samples`, `PresTagHRLog.samples`,
+`UIUCTagLog.samples`) whose
 size nanopb fixes from `embedded/proto-c/default-options/tagdata.options`. If
 that limit drifts from the C layout, the result is a buffer overflow, truncated
 logs or wasted RAM. The firmware therefore asserts the relationship where it
@@ -84,8 +85,9 @@ static_assert(sizeof(((IMUTagRawLog*)0)->samples.bytes) == DATALOG_SAMPLES * siz
 ```
 
 (`families/IMUTag/src/datalog.c`; the PresTag family has the equivalent `>=`
-check against `t_PresTagRawBlock`, compiled only when `PRESTAG_RAW_LOG` is set,
-as it is for PresTagRaw.) A tag may send fewer records than the buffer holds:
+checks against `t_PresTagRawBlock` when `PRESTAG_RAW_LOG` is set, as it is for
+PresTagRaw, and otherwise against `t_PresTagHRBlock`, which PresTag sends when
+its stored configuration selects high resolution.) A tag may send fewer records than the buffer holds:
 UIUCTag trims trailing never-written records from a block before sending it
 (`UIUCTag/src/datalog.c`).
 

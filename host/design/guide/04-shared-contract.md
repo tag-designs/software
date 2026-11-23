@@ -72,8 +72,8 @@ record these when nothing valid came back) and tag errors (`NODATA`,
 `INVAL`, `PERM`, `NXIO`, `NANOPB`). A refusal often carries `error_message`
 instead of a payload. The payloads are the answers to the table above plus
 one **data-log message per family**: `BitTagLog`, `PresTagLog`,
-`PresTagRawLog`, `BitPresTagLog`, `CompassTagLog`, `BitTagNgLog`,
-`UIUCTagLog`, `IMUTagLog`, `IMUTagRawLog`. Which one a tag sends is how the
+`PresTagRawLog`, `PresTagHRLog`, `BitPresTagLog`, `CompassTagLog`,
+`BitTagNgLog`, `UIUCTagLog`, `IMUTagLog`, `IMUTagRawLog`. Which one a tag sends is how the
 host's writer knows how to decode a page (chapter 5).
 
 ### The messages a host reads most
@@ -189,9 +189,10 @@ firmware.
 
 ## Packed binary log formats: `include/*_log_format.h`
 
-Three families (IMUTag, PresTagRaw, UIUCTag) send their data pages as the
-raw bytes they wrote to flash, inside a protobuf `bytes` field
-(`IMUTagRawLog.samples`, `PresTagRawLog.samples`, `UIUCTagLog.samples`),
+IMUTag, PresTagRaw, UIUCTag and PresTag in high resolution send their data
+pages as the raw bytes they wrote to flash, inside a protobuf `bytes` field
+(`IMUTagRawLog.samples`, `PresTagRawLog.samples`, `PresTagHRLog.samples`,
+`UIUCTagLog.samples`),
 rather than as decoded protobuf fields. It saves the tag the work and the
 RAM of re-encoding, and it makes the download a faithful image of the flash.
 The layouts are packed C structs in `include/`, with compile-time size

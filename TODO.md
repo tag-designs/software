@@ -949,6 +949,22 @@ Directory: [`embedded/tags/families/PresTag/`](embedded/tags/families/PresTag/).
 - **Measure B1, B4 and B5** (1 s, 15 s and 30 s) if extra fit leverage is
   wanted. They are optional; the field fit already rests on three measured
   points.
+- **High-resolution and low-noise options: qualification**
+  ([decision 0047](docs/decisions/0047-prestag-high-resolution-pressure.md)).
+  PresTag's image changed, so it joins the batched qualification. Done
+  2026-11-09: the conversion time (low-noise 12.0 ms, low-power 3.5 ms) and
+  the 13 ms low-noise first wait; release checks of both high-resolution modes
+  at 20 s over 3600 s (0.88 and 1.30 uA, PASS); the battery note in the Tag
+  Monitor manual. Still open: the conversion time across temperature.
+- **Release the host first.** A host up to v4.1.1 does not recognise
+  `PresTagHRLog` (`Ack` field 18): its `PRESTAG` case returns 0, which reads as
+  end of log, so downloading a high-resolution tag writes an empty database with
+  no error. Ship this host before or with the PresTag firmware, and say in the
+  firmware release notes that a high-resolution tag needs it to download.
+- **Legacy qtmonitor has no pressure-sensor panel.** Its
+  `--check-config-panels` will report the `PRESTAG` shape's `lps27`. Port the
+  panel from `tagmonitor-rs` (`configform.rs`, `Panel::Lps27`) if the legacy
+  build is ever revived.
 
 #### UIUCTag
 

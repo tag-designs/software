@@ -16,6 +16,9 @@ from _common import TagState, fail, open_tag, parser, run, state_name, wait_for_
 # sizeof(t_PresTagRawBlock) in include/prestag_log_format.h: epoch, voltage and
 # temperature (12 bytes) and 60 four-byte raw samples.
 PRESTAG_RAW_BLOCK_BYTES = 12 + 60 * 4
+# sizeof(t_PresTagHRBlock), PresTag in high resolution: the same 12-byte header
+# and 48 five-byte samples.
+PRESTAG_HR_BLOCK_BYTES = 12 + 48 * 5
 
 
 def records_in(page) -> int:
@@ -23,13 +26,16 @@ def records_in(page) -> int:
 
     In tag-dwnld and qtmonitor the log writer reports this as it decodes the
     page (host/libraries/tagcore/sqlitelog/): one per BitTag data entry, one
-    per PresTag raw block, and one per page for every other log type.
+    per PresTag raw or high-resolution block, and one per page for every other log
+    type.
     """
     kind = page.WhichOneof("payload")
     if kind == "bittag_data_log":
         return len(page.bittag_data_log.data)
     if kind == "prestag_raw_data_log":
         return len(page.prestag_raw_data_log.samples) // PRESTAG_RAW_BLOCK_BYTES
+    if kind == "prestag_hr_data_log":
+        return len(page.prestag_hr_data_log.samples) // PRESTAG_HR_BLOCK_BYTES
     return 1
 
 

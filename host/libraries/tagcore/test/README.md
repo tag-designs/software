@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, and ConfigShape.
+summary: How to build and run the tagcore offline assertion checks — UIUCTag format, decoder and end-to-end, PresTag high-resolution decoder, and ConfigShape.
 ---
 
 # tagcore Offline Checks
@@ -20,7 +20,7 @@ them explicitly:
 ```sh
 cmake -DBUILD_TAGCORE_CHECKS=ON <build-dir>
 cmake --build <build-dir> --target uiuctag_format_check uiuctag_decoder_check \
-      uiuctag_end_to_end_check config_shape_check
+      uiuctag_end_to_end_check config_shape_check prestaghr_decoder_check
 ```
 
 Each writes its output into the working directory by default and takes optional
@@ -58,6 +58,20 @@ an unobserved minute has no rows, and the unit conversions. Expect
 
 The fully erased block contributes a `Voltage` row and nothing else, which is
 correct: its checkpoint was written, its records were not.
+
+## `prestaghr_decoder_check`
+
+Feeds hand-built `PresTagHRLog` replies through `SqliteTagLogWriter`: two
+blocks in one reply, as `data_logAck()` packs them, a full page and a partial
+one ended by erased flash. It covers positive and negative 24-bit pressures
+(sign extension), the low pressure byte PresTag drops, a negative temperature,
+an interior failed read, and malformed and empty payloads. It asserts the row
+counts, that the failed read leaves no row but the samples after it keep their
+times, the conversions to hPa and degrees C, and where the partial page ends.
+Expect `prestaghr_decoder_check: all assertions passed`. The firmware side of
+the same format is checked by the PresTag family simulation
+(`embedded/tags/families/PresTag/test/`, whose PresTag build runs every test
+in high resolution as well).
 
 ## `uiuctag_end_to_end_check`
 

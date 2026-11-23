@@ -56,6 +56,9 @@ const std::vector<std::pair<std::string, std::string>> kMemberPaths = {
     {"lsm6_odr", "lsm6.odr"},
     {"lsm6_accel_rng", "lsm6.accel_rng"},
     {"lsm6_gyro_rng", "lsm6.gyro_rng"},
+    {"lps27", "lps27"},
+    {"lps27_low_noise", "lps27.low_noise"},
+    {"lps27_high_resolution", "lps27.high_resolution"},
 };
 
 /// The generator's last output: the members that were true, per tag type.
@@ -71,7 +74,8 @@ const std::map<TagType, std::vector<std::string>> kGeneratorTable = {
                  "adxl362_act_thresh_g", "adxl362_inact_thresh_g", "adxl362_inactive_sec"}},
     {COMPASSTAG, {"active_interval", "hibernate"}},
     {IMUTAG, {"start_delay", "lsm6", "lsm6_odr", "lsm6_accel_rng", "lsm6_gyro_rng"}},
-    {PRESTAG, {"active_interval", "hibernate", "period"}},
+    {PRESTAG, {"active_interval", "hibernate", "period", "lps27", "lps27_low_noise",
+               "lps27_high_resolution"}},
     {UIUCTAG, {"active_interval", "hibernate", "adxl362", "adxl362_act_thresh_g",
                "adxl362_inactive_sec"}},
 };

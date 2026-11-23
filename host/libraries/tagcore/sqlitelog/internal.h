@@ -176,6 +176,11 @@ int dumpIMUTagLog(WriterContext &ctx, const IMUTagLog &log);
 int dumpIMUTagRawLog(WriterContext &ctx, const IMUTagRawLog &log);
 int dumpPresTagLog(WriterContext &ctx, const PresTagLog &log);
 int dumpPresTagRawLog(WriterContext &ctx, const PresTagRawLog &log);
+/**
+ * @brief   Write one PresTag reply of packed high-resolution blocks.
+ * @details Contract documented at the definition in pressure.cc.
+ */
+int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log);
 
 } // namespace tagcore::sqlite_log
 

@@ -15,8 +15,12 @@
  *          written and never downloaded. It also checks a mid-page reset
  *          resumes on a fresh page without reprogramming written bytes.
  *
- *          Built twice: as is for the converted PresTagLog download, and with
- *          -DPRESTAG_RAW_LOG=1 for PresTagRaw's packed-block download.
+ *          Built twice: as is for PresTag, and with -DPRESTAG_RAW_LOG=1 for
+ *          PresTagRaw's packed-block download. The PresTag build runs every
+ *          test in each stored-configuration format -- the converted
+ *          PresTagLog download and, with lps27.high_resolution, the
+ *          PresTagHRLog blocks of five-byte samples -- and each with
+ *          lps27.low_noise as well.
  *
  *          Every sample carries its sequence number in pressure/temperature,
  *          so the download is checked sample by sample against what was
@@ -139,6 +143,38 @@ int encode_ack(void) { return 0; }
 float lps27Pressure(int16_t pressure) { return (float)pressure; }
 float lps27Temperature(int16_t temperature) { return (float)temperature; }
 
+/* Full read. In high resolution the 24-bit pressure is the sequence number
+   itself (never -1 or the failed-read value) and the temperature its low 15
+   bits. In the 4-byte format, which keeps PRESS_OUT_L, PRESS_OUT_H and the
+   temperature, those four bytes carry the 4-byte encoding below, so either
+   read path decodes the same way. A sample numbered fail_seq fails as the
+   driver does, leaving the 24-bit minimum. */
+static uint32_t fail_seq = UINT32_MAX; /**< Sample number whose read fails; none by default. */
+static int last_low_noise = -1;        /**< low_noise of the last read; -1 before any read. */
+
+/** Fake full-resolution read: see the comment above. Records @p low_noise. */
+bool lps27GetPressureTempFull(const TagRegisterDevice *dev, bool low_noise,
+                              uint8_t raw[LPS27_FULL_SAMPLE_BYTES])
+{
+    (void)dev;
+    last_low_noise = low_noise;
+    const bool ok = sample_seq != fail_seq;
+    const bool hr = sconfig.lps_high_res == 1U;
+    const uint32_t p = !ok ? 0x800000u
+                     : hr  ? sample_seq
+                           : (0x5Au | ((sample_seq % 30000u) << 8));
+    const uint16_t t = !ok ? 0x8000u
+                     : hr  ? (uint16_t)(sample_seq & 0x7FFFu)
+                           : (uint16_t)(sample_seq / 30000u);
+    raw[0] = (uint8_t)p;
+    raw[1] = (uint8_t)(p >> 8);
+    raw[2] = (uint8_t)(p >> 16);
+    raw[3] = (uint8_t)t;
+    raw[4] = (uint8_t)(t >> 8);
+    sample_seq++;
+    return ok;
+}
+
 /* Each sample carries its sequence number: pressure = seq % 30000 (never the
    -1 end marker), temperature = seq / 30000. */
 void lps27GetPressureTemp(const TagRegisterDevice *dev, int16_t *pressure,
@@ -151,6 +187,12 @@ void lps27GetPressureTemp(const TagRegisterDevice *dev, int16_t *pressure,
 }
 
 /* --- harness ------------------------------------------------------------- */
+
+static uint8_t sim_high_res;  /**< lps_high_res reset_world() stores; PresTagRaw ignores it. */
+static uint8_t sim_low_noise; /**< lps_low_noise reset_world() stores; PresTagRaw ignores it. */
+
+/** Samples per page in the format under test. */
+#define SPP ((int)prestagSamplesPerPage())
 
 /** Erase everything and set the external flash to @p bytes. */
 static void reset_world(uint32_t bytes)
@@ -167,7 +209,11 @@ static void reset_world(uint32_t bytes)
     memset(&backup, 0, sizeof(backup));
     sconfig.stop = INT_MAX;
     sconfig.lps_period = 1;
+    sconfig.lps_low_noise = sim_low_noise;
+    sconfig.lps_high_res = sim_high_res;
     memset(sconfig.hibernate, 0, sizeof(sconfig.hibernate));
+    fail_seq = UINT32_MAX;
+    last_low_noise = -1;
     timestamp = 1000000;
     events = 0;
     sample_seq = 0;
@@ -201,6 +247,47 @@ static uint32_t decode_seq(int16_t pressure, int16_t temperature)
 
 /** A page as downloaded: its header epoch and its samples' sequence numbers. */
 typedef struct { int32_t epoch; int count; uint32_t seq[DATALOG_SAMPLES]; } Page;
+
+/** Sequence number recorded for a high-resolution sample whose read failed. */
+#define SEQ_FAILED UINT32_MAX
+
+#if !PRESTAG_RAW_LOG
+/**
+ * Decode a high-resolution reply, which packs whole pages from the requested
+ * index on, as the host does (sqlitelog/pressure.cc). Returns the number of
+ * pages.
+ */
+static int decode_hr(const Ack *ack, Page *pages, int max_pages)
+{
+    assert(sconfig.lps_high_res == 1U && "high-resolution reply in the 4-byte format");
+    const PresTagHRLog *log = &ack->payload.prestag_hr_data_log;
+    assert(log->samples.size > 0);
+    assert(log->samples.size % sizeof(t_PresTagHRBlock) == 0);
+    int n = (int)(log->samples.size / sizeof(t_PresTagHRBlock));
+    assert(n <= max_pages);
+    for (int b = 0; b < n; b++) {
+        t_PresTagHRBlock block;
+        memcpy(&block, &log->samples.bytes[b * sizeof(block)], sizeof(block));
+        pages[b].epoch = block.epoch;
+        pages[b].count = 0;
+        for (int j = 0; j < PRESTAG_HR_LOG_SAMPLES; j++) {
+            const t_PresTagHRSample *s = &block.samples.data[j];
+            const int32_t p = prestagHRPressureRaw(s);
+            if (p == PRESTAG_RAW_PRESSURE_END)
+                break;
+            if (p == PRESTAG_HR_PRESSURE_FAILED) {
+                assert(s->temperature == INT16_MIN);
+                pages[b].seq[pages[b].count++] = SEQ_FAILED;
+                continue;
+            }
+            assert(s->temperature == (int16_t)(p & 0x7FFF) &&
+                   "temperature bytes misplaced");
+            pages[b].seq[pages[b].count++] = (uint32_t)p;
+        }
+    }
+    return n;
+}
+#endif
 
 #if PRESTAG_RAW_LOG
 /**
@@ -237,7 +324,11 @@ static int download(int index, Page *pages, int max_pages)
     return n;
 }
 #else
-/** Download page @p index. Returns 1, or 0 when the page is not served. */
+/**
+ * Download from page @p index: one converted page in the 4-byte format, or
+ * as many whole high-resolution pages as one reply holds. Returns the number
+ * of pages, 0 when none are served.
+ */
 static int download(int index, Page *pages, int max_pages)
 {
     static Ack ack;
@@ -248,6 +339,9 @@ static int download(int index, Page *pages, int max_pages)
     assert(stub_tim.PSC == SIM_TICK_PSC);
     if (ack.which_payload == 0)
         return 0;
+    if (ack.which_payload == Ack_prestag_hr_data_log_tag)
+        return decode_hr(&ack, pages, max_pages);
+    assert(sconfig.lps_high_res != 1U && "4-byte reply in high resolution");
     assert(ack.which_payload == Ack_prestag_data_log_tag);
     const PresTagLog *log = &ack.payload.prestag_data_log;
     pages[0].epoch = log->epoch;
@@ -277,7 +371,9 @@ static int download_all(int npages, const int *expect, const uint32_t *first)
             assert(pages[b].epoch == vddHeader[index].epoch);
             assert(pages[b].count == expect[index] && "wrong sample count");
             for (int j = 0; j < pages[b].count; j++)
-                assert(pages[b].seq[j] == first[index] + (uint32_t)j &&
+                assert((pages[b].seq[j] == first[index] + (uint32_t)j ||
+                        (pages[b].seq[j] == SEQ_FAILED &&
+                         first[index] + (uint32_t)j == fail_seq)) &&
                        "downloaded sample out of sequence");
         }
     }
@@ -292,23 +388,23 @@ static void test_resume(void)
 {
     reset_world(4u * 1024u * 1024u);
     Running(T_INIT, 0);
-    for (int i = 0; i < 2 * DATALOG_SAMPLES + DATALOG_SAMPLES / 2; i++)
+    for (int i = 0; i < 2 * SPP + SPP / 2; i++)
         assert(tick());
     assert(pState->pages == 3);
 
     memset(&backup, 0, sizeof(backup));
     (void)restoreLog();
     assert(pState->pages == 3);
-    assert(pState->external_blocks == 3 * DATALOG_SAMPLES);
+    assert(pState->external_blocks == (uint32_t)(3 * SPP));
 
     uint32_t resumed = sample_seq;
     Running(T_INIT, 0);
-    for (int i = 0; i < DATALOG_SAMPLES; i++)
+    for (int i = 0; i < SPP; i++)
         assert(tick());
 
-    const int expect[] = {DATALOG_SAMPLES, DATALOG_SAMPLES, DATALOG_SAMPLES / 2,
-                          DATALOG_SAMPLES};
-    const uint32_t first[] = {0, DATALOG_SAMPLES, 2 * DATALOG_SAMPLES, resumed};
+    const int expect[] = {SPP, SPP, SPP / 2,
+                          SPP};
+    const uint32_t first[] = {0, SPP, 2 * SPP, resumed};
     assert(download_all(4, expect, first) == 4);
     printf("resume: 4 pages downloaded intact across a mid-page reset\n");
 }
@@ -330,19 +426,20 @@ static void test_full(uint32_t bytes, const char *part)
         ;
 
     const int whole = (int)(bytes / page_bytes);
-    const int tail = (int)((bytes % page_bytes) / sizeof(t_PresTagRawSample));
+    const int sample_bytes = sim_high_res ? PRESTAG_HR_SAMPLE_BYTES : 4;
+    const int tail = (int)((bytes % page_bytes) / sample_bytes);
     assert(tail > 0 && "choose a size that cuts the last page short");
     assert(pState->pages == (uint32_t)whole + 1 && "header for the cut-short page");
 
     for (int i = 0; i <= whole; i++) {
-        expect[i] = (i < whole) ? DATALOG_SAMPLES : tail;
-        first[i] = (uint32_t)i * DATALOG_SAMPLES;
+        expect[i] = (i < whole) ? SPP : tail;
+        first[i] = (uint32_t)i * SPP;
     }
     int served = download_all(whole + 1, expect, first);
     assert(served == whole + 1 && "final partial page not served");
 
     /* Lost: only the sample whose write was refused. */
-    uint32_t downloaded = (uint32_t)whole * DATALOG_SAMPLES + (uint32_t)tail;
+    uint32_t downloaded = (uint32_t)whole * SPP + (uint32_t)tail;
     assert(sample_seq - downloaded == 1);
 
     printf("A3 full %s: %d whole pages + final page of %d samples; "
@@ -385,23 +482,75 @@ static void test_jitter(void)
     static const int32_t steps[] = {1, 1, 2, 0, 1, 2, 0, 1};
     reset_world(4u * 1024u * 1024u);
     Running(T_INIT, 0);
-    for (int i = 0; i < DATALOG_SAMPLES; i++)
+    for (int i = 0; i < SPP; i++)
         assert(tick_by(steps[i % 8]));
-    const int expect[] = {DATALOG_SAMPLES};
+    const int expect[] = {SPP};
     const uint32_t first[] = {0};
     assert(download_all(1, expect, first) == 1);
     assert(pState->pages == 1 && "jitter split a page");
     printf("jitter: 1 s wake jitter keeps one page\n");
 }
 
-int main(void)
+#if !PRESTAG_RAW_LOG
+/**
+ * High resolution: a failed read keeps its slot as the 24-bit minimum, so the
+ * samples after it keep their times.
+ */
+static void test_hr_failed_read(void)
 {
-    printf("PresTag %s download\n", PRESTAG_RAW_LOG ? "raw" : "converted");
+    reset_world(4u * 1024u * 1024u);
+    fail_seq = 7;
+    Running(T_INIT, 0);
+    for (int i = 0; i < SPP + 5; i++)
+        assert(tick());
+    const int expect[] = {SPP, 5};
+    const uint32_t first[] = {0, (uint32_t)SPP};
+    assert(download_all(2, expect, first) == 2);
+    static Page pages[16];
+    assert(download(0, pages, 16) == 2);
+    assert(pages[0].seq[7] == SEQ_FAILED && pages[0].seq[8] == 8);
+    printf("hr: a failed read holds its slot\n");
+}
+#endif
+
+/** Every test, in the format and noise mode set in sim_high_res and
+    sim_low_noise, then a check that the noise mode reached the driver. */
+static void run_all(void)
+{
+    printf("-- %s format, %s conversion\n",
+           PRESTAG_RAW_LOG ? "raw" : (sim_high_res ? "high-resolution" : "4-byte"),
+           sim_low_noise ? "low-noise" : "low-power");
     test_resume();
     test_full(4u * 1024u * 1024u, "4 MiB (AT25XE321D)");
     test_gap(1, 55);
     test_gap(10, 55);
     test_jitter();
+    /* The default configuration keeps PresTag's original read; either option
+       takes the full read and passes the stored noise mode on. */
+    if (sim_high_res || sim_low_noise)
+        assert(last_low_noise == sim_low_noise && "noise mode not passed on");
+    else
+        assert(last_low_noise == -1 && "default configuration used the full read");
+}
+
+int main(void)
+{
+#if PRESTAG_RAW_LOG
+    printf("PresTag raw download\n");
+    run_all();
+#else
+    printf("PresTag download, both formats\n");
+    for (int hr = 0; hr <= 1; hr++) {
+        for (int ln = 0; ln <= 1; ln++) {
+            sim_high_res = (uint8_t)hr;
+            sim_low_noise = (uint8_t)ln;
+            run_all();
+        }
+    }
+    sim_high_res = 1;
+    sim_low_noise = 0;
+    test_hr_failed_read();
+#endif
     printf("PRESTAG DATALOG SIM: all assertions passed\n");
     return 0;
 }

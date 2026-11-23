@@ -209,4 +209,102 @@ int dumpPresTagRawLog(WriterContext &ctx, const PresTagRawLog &log)
     return static_cast<int>(block_count);
 }
 
+/**
+ * @brief   Write one high-resolution PresTag download reply: packed header-plus-page blocks
+ *          of full-resolution samples.
+ *
+ * @details Each t_PresTagHRBlock is copied out of the payload, never cast in
+ *          place. Sample j of a block is at the block epoch plus
+ *          j * config.period(), the rule the firmware keeps by starting a new
+ *          page whenever a sample would break it. The 24-bit pressure is
+ *          sign-extended and divided by PRESTAG_HR_PRESSURE_LSB_PER_HPA; the
+ *          temperature by PRESTAG_HR_TEMPERATURE_LSB_PER_C. A block ends at
+ *          its first pressure of -1 (erased flash). A failed read
+ *          (PRESTAG_HR_PRESSURE_FAILED) writes no row but keeps its slot, so
+ *          it appears as a one-period gap rather than as a value.
+ *
+ * @param[in,out] ctx  Writer context; its tables are created on first use.
+ * @param[in]     log  The reply's PresTagHRLog payload.
+ * @return  The number of blocks written (at least 1), or -2 on a malformed
+ *          payload, a zero sample period or an SQLite failure, with the error
+ *          recorded in @p ctx.
+ */
+int dumpPresTagHRLog(WriterContext &ctx, const PresTagHRLog &log)
+{
+    if (!ctx.createLogTables()) {
+        return -2;
+    }
+
+    if (ctx.config.period() == 0) {
+        ctx.setLastError("PresTag high-resolution SQLite output requires a nonzero sample period");
+        return -2;
+    }
+
+    Statement voltage_insert(ctx.db, "INSERT INTO Voltage (Epoch, Voltage) VALUES (?, ?)");
+    Statement pressure_insert(ctx.db, "INSERT INTO Pressure (Epoch, Pressure) VALUES (?, ?)");
+    Statement temperature_insert(
+        ctx.db,
+        "INSERT INTO Temperature (Epoch, Temperature) VALUES (?, ?)");
+
+    if (!voltage_insert.valid()
+        || !pressure_insert.valid()
+        || !temperature_insert.valid()) {
+        ctx.setLastSqliteError("Could not prepare PresTagHR log insert");
+        return -2;
+    }
+
+    const std::string &payload = log.samples();
+    if (payload.empty() || (payload.size() % sizeof(t_PresTagHRBlock)) != 0) {
+        std::ostringstream error;
+        error << "PresTag high-resolution payload has " << payload.size()
+              << " bytes, expected a nonzero multiple of " << sizeof(t_PresTagHRBlock);
+        ctx.setLastError(error.str());
+        return -2;
+    }
+
+    const size_t block_count = payload.size() / sizeof(t_PresTagHRBlock);
+    for (size_t block_index = 0; block_index < block_count; block_index++) {
+        t_PresTagHRBlock block = {};
+        std::memcpy(&block,
+                    payload.data() + (block_index * sizeof(block)),
+                    sizeof(block));
+
+        sqlite3_int64 timestamp = block.epoch;
+
+        if (!voltage_insert.bindInt64(1, timestamp)
+            || !voltage_insert.bindDouble(2, block.voltage)
+            || !voltage_insert.stepDone()) {
+            ctx.setLastSqliteError("PresTag high-resolution log header insert failed");
+            return -2;
+        }
+
+        for (const t_PresTagHRSample &sample : block.samples.data) {
+            const int32_t pressure = prestagHRPressureRaw(&sample);
+            if (pressure == PRESTAG_RAW_PRESSURE_END) {
+                break;
+            }
+
+            if (pressure != PRESTAG_HR_PRESSURE_FAILED) {
+                const double hpa =
+                    static_cast<double>(pressure) / PRESTAG_HR_PRESSURE_LSB_PER_HPA;
+                const double celsius = static_cast<double>(sample.temperature)
+                                       / PRESTAG_HR_TEMPERATURE_LSB_PER_C;
+                if (!pressure_insert.bindInt64(1, timestamp)
+                    || !pressure_insert.bindDouble(2, hpa)
+                    || !pressure_insert.stepDone()
+                    || !temperature_insert.bindInt64(1, timestamp)
+                    || !temperature_insert.bindDouble(2, celsius)
+                    || !temperature_insert.stepDone()) {
+                    ctx.setLastSqliteError("PresTag high-resolution log data insert failed");
+                    return -2;
+                }
+            }
+
+            timestamp += ctx.config.period();
+        }
+    }
+
+    return static_cast<int>(block_count);
+}
+
 } // namespace tagcore::sqlite_log

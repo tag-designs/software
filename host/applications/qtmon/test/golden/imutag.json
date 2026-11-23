@@ -2644,6 +2644,7 @@
             "id": "open:foreign:PRESTAG",
             "layout": [
                 "panel IntervalScheduleWithPeriod",
+                "panel Lps27Pressure",
                 "configtab visible=1 enabled=1"
             ],
             "open": "Opened",
@@ -2663,11 +2664,15 @@
                         "start_epoch": 0
                     }
                 ],
+                "lps27": {
+                    "high_resolution": false,
+                    "low_noise": false
+                },
                 "period": 60,
                 "start_delay": 0,
                 "tag_type": "PRESTAG"
             },
-            "sent_hex": "0803120610ffffffff071a001a00383c",
+            "sent_hex": "0803120610ffffffff071a001a00383c5a00",
             "ui": [
                 " | group title=\"Logging Schedule\" enabled=1",
                 "Logging Schedule > Hibernation | check text=\"In use\" checked=0 enabled=1 tooltip=\"Hibernate between the start and end below. Unchecked, the row is not used.\"",
@@ -2691,7 +2696,10 @@
                 "Logging Schedule | group title=\"Hibernation\" enabled=1",
                 "Logging Schedule | group title=\"Period\" enabled=1 tooltip=\"Set Data Sample Period\"",
                 "Logging Schedule | group title=\"Run\" enabled=1 tooltip=\"Set data collection ending conditions.\"",
-                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\""
+                "Logging Schedule | group title=\"Start\" enabled=1 tooltip=\"Set data collection starting conditions.\"",
+                " | group title=\"Pressure Sensor\" enabled=1",
+                "Pressure Sensor | check text=\"High-resolution pressure\" checked=0 enabled=1 tooltip=\"Log the full 24-bit pressure (1/4096 hPa steps) instead of 1/16 hPa: 48 samples a page instead of 60, so the log fills a fifth sooner\"",
+                "Pressure Sensor | check text=\"Low-noise conversion\" checked=0 enabled=1 tooltip=\"Convert in the LPS27's low-noise mode: about a third the noise per sample, at about half as much again in charge per sample\""
             ]
         },
         {

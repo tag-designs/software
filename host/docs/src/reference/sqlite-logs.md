@@ -217,6 +217,13 @@ PresTag logs contain:
 Samples are written using the sample period from the tag configuration. Raw
 PresTag downloads are converted to engineering units before rows are written.
 
+A PresTag configured for high resolution (`lps27.high_resolution`) writes the
+same tables, with pressure steps of 1/4096 mbar instead of 1/16 mbar. A
+reading the sensor failed to deliver then writes no row, so it appears as a
+missing sample, one period long, rather than as a value. Both options, and
+whether the tag converted in low-noise mode (`lps27.low_noise`), are recorded
+with the rest of the configuration.
+
 Example:
 
 ```sql

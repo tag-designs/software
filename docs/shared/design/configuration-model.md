@@ -63,7 +63,9 @@ The walk has these properties:
 - JSON names are stored as .proto names: IMUTag's `accelRng` becomes
   `lsm6.accel_rng`.
 - Two files for the same tag type are unioned: `prestag-proto-c` and
-  `prestagraw-proto-c` are both `PRESTAG`.
+  `prestagraw-proto-c` are both `PRESTAG`, so the `PRESTAG` shape includes
+  PresTag's `lps27` although PresTagRaw, and PresTag up to fw-v0.8, do not
+  support it. See [Fields only some firmware of a type supports](#fields-only-some-firmware-of-a-type-supports).
 
 Today's shapes:
 
@@ -75,7 +77,7 @@ Today's shapes:
 | `BITTAGNG` | schedule with hibernation; `adxl362` `accel_type`, `act_thresh_g`, `inactive_sec` |
 | `UIUCTAG` | schedule with hibernation; `adxl362` `act_thresh_g`, `inactive_sec` |
 | `COMPASSTAG` | schedule with hibernation |
-| `PRESTAG` | schedule with hibernation; `period` |
+| `PRESTAG` | schedule with hibernation; `period`; `lps27` `low_noise`, `high_resolution` (PresTag after fw-v0.8 only) |
 | `IMUTAG` | `start_delay`; `lsm6` odr, accel_rng, gyro_rng. No schedule interval and no hibernation. |
 
 A default config that lists a field the firmware ignores, or omits one it
@@ -84,6 +86,25 @@ uses, is not caught on the host. For example, UIUCTag's firmware reports
 treats the field as unsupported and passes it through. The firmware is the authority on what it
 does. [Tag-reported configuration presence](proposals/tag-reported-config-presence.md)
 is the deferred proposal that would close that gap.
+
+## Fields only some firmware of a type supports
+
+A shape is per tag type, so it cannot say that only some firmware of a type
+supports a field. `lps27` is the one such field today: PresTag supports it from
+the release after fw-v0.8, and PresTagRaw and older PresTag do not
+([decision 0047](../../decisions/0047-prestag-high-resolution-pressure.md)).
+It is a sub-message, and sub-messages carry presence, so the tag says it
+itself: PresTag's `readConfig()` and built-in default always include `lps27`,
+even when both its flags are false, and PresTagRaw and older PresTag never
+send it. Tag Monitor's pressure-sensor panel loads only from a configuration
+that carries `lps27`, and stays hidden otherwise.
+
+This works without the marker the
+[tag-reported presence proposal](proposals/tag-reported-config-presence.md)
+needs because the field is a message, not a scalar, and is new: no older
+firmware ever sends it. A scalar added this way would still need that
+proposal. Field 10 of `Config` stays reserved for that proposal's
+`config_schema`.
 
 ## qtmonitor: fixed panels per tag type
 

@@ -128,6 +128,11 @@ typedef struct _Config_Interval {
     int32_t end_epoch;
 } Config_Interval;
 
+typedef struct _Lps27 {
+    bool low_noise; /* CTRL_REG2.LOW_NOISE_EN for every one-shot conversion */
+    bool high_resolution; /* log full 24-bit pressure: 48 five-byte samples a page */
+} Lps27;
+
 typedef struct _Lsm6dsv {
     Lsm6dsv_ODR odr;
     Lsm6dsv_ACCEL accel_rng;
@@ -146,6 +151,10 @@ typedef struct _Config {
     bool has_lsm6;
     Lsm6dsv lsm6;
     uint32_t start_delay; /* delay start in minutes */
+    /* 10 is reserved for config_schema
+ (docs/shared/design/proposals/tag-reported-config-presence.md). */
+    bool has_lps27;
+    Lps27 lps27; /* LPS27 pressure sensor (PresTag) */
 } Config;
 
 typedef struct _PresTagLog_PT {
@@ -166,6 +175,15 @@ typedef struct _BitPresTagLog_BPT {
     float temperature;
     float pressure;
 } BitPresTagLog_BPT;
+
+typedef PB_BYTES_ARRAY_T(3780) PresTagHRLog_samples_t;
+/* PresTag full-resolution log (Config.lps27.high_resolution): packed repeated
+ t_PresTagHRBlock records
+ (include/prestag_log_format.h). The scales are fixed by the format:
+ pressure 4096 counts/hPa (signed 24-bit), temperature 100 counts/degC. */
+typedef struct _PresTagHRLog {
+    PresTagHRLog_samples_t samples;
+} PresTagHRLog;
 
 typedef struct _CompassTagLog_Compass {
     float activity;
@@ -317,6 +335,7 @@ extern "C" {
 #define Config_bittag_log_ENUMTYPE BitTagLogFmt
 
 
+
 #define Lsm6dsv_odr_ENUMTYPE Lsm6dsv_ODR
 #define Lsm6dsv_accel_rng_ENUMTYPE Lsm6dsv_ACCEL
 #define Lsm6dsv_gyro_rng_ENUMTYPE Lsm6dsv_GYRO
@@ -330,26 +349,31 @@ extern "C" {
 
 
 
+
 /* Initializer values for message structs */
 #define TagInfo_init_default                     {_TagType_MIN, "", "", 0, 0, "", "", "", "", "", 0, 0, 0, 0, false, 0}
-#define Config_init_default                      {_TagType_MIN, false, Config_Interval_init_default, 0, {Config_Interval_init_default, Config_Interval_init_default}, _BitTagLogFmt_MIN, 0, false, Lsm6dsv_init_default, 0}
+#define Config_init_default                      {_TagType_MIN, false, Config_Interval_init_default, 0, {Config_Interval_init_default, Config_Interval_init_default}, _BitTagLogFmt_MIN, 0, false, Lsm6dsv_init_default, 0, false, Lps27_init_default}
 #define Config_Interval_init_default             {0, 0}
+#define Lps27_init_default                       {0, 0}
 #define Lsm6dsv_init_default                     {_Lsm6dsv_ODR_MIN, _Lsm6dsv_ACCEL_MIN, _Lsm6dsv_GYRO_MIN}
 #define PresTagLog_init_default                  {0, 0, 0, 0, {PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default, PresTagLog_PT_init_default}}
 #define PresTagLog_PT_init_default               {0, 0}
 #define BitPresTagLog_BPT_init_default           {0, 0, 0}
+#define PresTagHRLog_init_default                {{0, {0}}}
 #define CompassTagLog_Compass_init_default       {0, 0, 0, 0, 0, 0, 0}
 #define SensorData_AccelData_init_default        {0, 0, 0}
 #define SensorData_MagData_init_default          {0, 0, 0}
 #define CalibrationConstants_MagConstants_init_default {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define CalibrationConstants_AccelConstants_init_default {0, 0, 0}
 #define TagInfo_init_zero                        {_TagType_MIN, "", "", 0, 0, "", "", "", "", "", 0, 0, 0, 0, false, 0}
-#define Config_init_zero                         {_TagType_MIN, false, Config_Interval_init_zero, 0, {Config_Interval_init_zero, Config_Interval_init_zero}, _BitTagLogFmt_MIN, 0, false, Lsm6dsv_init_zero, 0}
+#define Config_init_zero                         {_TagType_MIN, false, Config_Interval_init_zero, 0, {Config_Interval_init_zero, Config_Interval_init_zero}, _BitTagLogFmt_MIN, 0, false, Lsm6dsv_init_zero, 0, false, Lps27_init_zero}
 #define Config_Interval_init_zero                {0, 0}
+#define Lps27_init_zero                          {0, 0}
 #define Lsm6dsv_init_zero                        {_Lsm6dsv_ODR_MIN, _Lsm6dsv_ACCEL_MIN, _Lsm6dsv_GYRO_MIN}
 #define PresTagLog_init_zero                     {0, 0, 0, 0, {PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero, PresTagLog_PT_init_zero}}
 #define PresTagLog_PT_init_zero                  {0, 0}
 #define BitPresTagLog_BPT_init_zero              {0, 0, 0}
+#define PresTagHRLog_init_zero                   {{0, {0}}}
 #define CompassTagLog_Compass_init_zero          {0, 0, 0, 0, 0, 0, 0}
 #define SensorData_AccelData_init_zero           {0, 0, 0}
 #define SensorData_MagData_init_zero             {0, 0, 0}
@@ -374,6 +398,8 @@ extern "C" {
 #define TagInfo_ppm_clock_error_tag              15
 #define Config_Interval_start_epoch_tag          1
 #define Config_Interval_end_epoch_tag            2
+#define Lps27_low_noise_tag                      1
+#define Lps27_high_resolution_tag                2
 #define Lsm6dsv_odr_tag                          1
 #define Lsm6dsv_accel_rng_tag                    2
 #define Lsm6dsv_gyro_rng_tag                     3
@@ -384,6 +410,7 @@ extern "C" {
 #define Config_period_tag                        7
 #define Config_lsm6_tag                          8
 #define Config_start_delay_tag                   9
+#define Config_lps27_tag                         11
 #define PresTagLog_PT_temperature_tag            1
 #define PresTagLog_PT_pressure_tag               2
 #define PresTagLog_epoch_tag                     1
@@ -393,6 +420,7 @@ extern "C" {
 #define BitPresTagLog_BPT_activity_tag           1
 #define BitPresTagLog_BPT_temperature_tag        2
 #define BitPresTagLog_BPT_pressure_tag           3
+#define PresTagHRLog_samples_tag                 1
 #define CompassTagLog_Compass_activity_tag       1
 #define CompassTagLog_Compass_ax_tag             2
 #define CompassTagLog_Compass_ay_tag             3
@@ -449,18 +477,26 @@ X(a, STATIC,   REPEATED, MESSAGE,  hibernate,         3) \
 X(a, STATIC,   SINGULAR, UENUM,    bittag_log,        4) \
 X(a, STATIC,   SINGULAR, UINT32,   period,            7) \
 X(a, STATIC,   OPTIONAL, MESSAGE,  lsm6,              8) \
-X(a, STATIC,   SINGULAR, UINT32,   start_delay,       9)
+X(a, STATIC,   SINGULAR, UINT32,   start_delay,       9) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  lps27,            11)
 #define Config_CALLBACK NULL
 #define Config_DEFAULT NULL
 #define Config_active_interval_MSGTYPE Config_Interval
 #define Config_hibernate_MSGTYPE Config_Interval
 #define Config_lsm6_MSGTYPE Lsm6dsv
+#define Config_lps27_MSGTYPE Lps27
 
 #define Config_Interval_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    start_epoch,       1) \
 X(a, STATIC,   SINGULAR, INT32,    end_epoch,         2)
 #define Config_Interval_CALLBACK NULL
 #define Config_Interval_DEFAULT NULL
+
+#define Lps27_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BOOL,     low_noise,         1) \
+X(a, STATIC,   SINGULAR, BOOL,     high_resolution,   2)
+#define Lps27_CALLBACK NULL
+#define Lps27_DEFAULT NULL
 
 #define Lsm6dsv_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    odr,               1) \
@@ -490,6 +526,11 @@ X(a, STATIC,   SINGULAR, FLOAT,    temperature,       2) \
 X(a, STATIC,   SINGULAR, FLOAT,    pressure,          3)
 #define BitPresTagLog_BPT_CALLBACK NULL
 #define BitPresTagLog_BPT_DEFAULT NULL
+
+#define PresTagHRLog_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BYTES,    samples,           1)
+#define PresTagHRLog_CALLBACK NULL
+#define PresTagHRLog_DEFAULT NULL
 
 #define CompassTagLog_Compass_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, FLOAT,    activity,          1) \
@@ -542,10 +583,12 @@ X(a, STATIC,   SINGULAR, FLOAT,    o2,                3)
 extern const pb_msgdesc_t TagInfo_msg;
 extern const pb_msgdesc_t Config_msg;
 extern const pb_msgdesc_t Config_Interval_msg;
+extern const pb_msgdesc_t Lps27_msg;
 extern const pb_msgdesc_t Lsm6dsv_msg;
 extern const pb_msgdesc_t PresTagLog_msg;
 extern const pb_msgdesc_t PresTagLog_PT_msg;
 extern const pb_msgdesc_t BitPresTagLog_BPT_msg;
+extern const pb_msgdesc_t PresTagHRLog_msg;
 extern const pb_msgdesc_t CompassTagLog_Compass_msg;
 extern const pb_msgdesc_t SensorData_AccelData_msg;
 extern const pb_msgdesc_t SensorData_MagData_msg;
@@ -556,10 +599,12 @@ extern const pb_msgdesc_t CalibrationConstants_AccelConstants_msg;
 #define TagInfo_fields &TagInfo_msg
 #define Config_fields &Config_msg
 #define Config_Interval_fields &Config_Interval_msg
+#define Lps27_fields &Lps27_msg
 #define Lsm6dsv_fields &Lsm6dsv_msg
 #define PresTagLog_fields &PresTagLog_msg
 #define PresTagLog_PT_fields &PresTagLog_PT_msg
 #define BitPresTagLog_BPT_fields &BitPresTagLog_BPT_msg
+#define PresTagHRLog_fields &PresTagHRLog_msg
 #define CompassTagLog_Compass_fields &CompassTagLog_Compass_msg
 #define SensorData_AccelData_fields &SensorData_AccelData_msg
 #define SensorData_MagData_fields &SensorData_MagData_msg
@@ -572,13 +617,15 @@ extern const pb_msgdesc_t CalibrationConstants_AccelConstants_msg;
 #define CalibrationConstants_MagConstants_size   60
 #define CompassTagLog_Compass_size               35
 #define Config_Interval_size                     22
-#define Config_size                              97
+#define Config_size                              103
+#define Lps27_size                               4
 #define Lsm6dsv_size                             7
+#define PresTagHRLog_size                        3783
 #define PresTagLog_PT_size                       10
 #define PresTagLog_size                          741
 #define SensorData_AccelData_size                15
 #define SensorData_MagData_size                  15
-#define TAGDATA_PB_H_MAX_SIZE                    PresTagLog_size
+#define TAGDATA_PB_H_MAX_SIZE                    PresTagHRLog_size
 #define TagInfo_size                             501
 
 #ifdef __cplusplus
