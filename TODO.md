@@ -1286,6 +1286,22 @@ item when it is done.
   different clock and their dependencies are pinned by the vcpkg baseline. But
   the `dataprocessing` path also produces records that outlive their build.
 
+#### Windows code signing
+
+[Signing the Windows package](docs/release/windows-code-signing.md).
+
+- **First local signing.** Set the four shared repository variables, install
+  jsign and a way to sign in, and sign the next release's ZIP with
+  `sign-latest-windows`; check one signed `.exe` on a Windows machine (status
+  `Valid`, timestamp present). The first tag after this change is also the first
+  whose Windows ZIP carries a provenance attestation.
+- **CI signing waits on IU.** The `sign-windows` job needs a CI identity with
+  Certificate Profile Signer, which only a subscription administrator can
+  assign. When granted: federated credential for the `windows-signing`
+  environment, the environment itself (tags `v*`, branch `main`),
+  `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID`, then `WINDOWS_SIGNING_IN_CI=true`.
+- **Note it in the next host release notes**: the first signed Windows package.
+
 ### Shared contracts
 
 Directory: [`docs/shared/`](docs/shared/).

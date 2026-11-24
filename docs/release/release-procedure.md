@@ -38,7 +38,7 @@ ships, or invite it to be skipped.
 
 | Tag | Workflow | Produces |
 | --- | --- | --- |
-| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP and the Linux tarball of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
+| `vX.Y`, `vX.Y.Z` | `release.yml` | a draft release with the Windows ZIP (Authenticode-signed in CI, [windows-code-signing.md](windows-code-signing.md)) and the Linux tarball of the host tools, and an ad-hoc signed macOS DMG that is re-signed and added locally |
 | `fw-vX.Y`, `fw-vX.Y.Z` | `release-firmware.yml` | images and build manifests for the tags and external loaders marked `DISTRIBUTE` |
 
 The host version lookup filters tags on `v[0-9]*.[0-9]*`, so `fw-v` tags do not

@@ -845,6 +845,20 @@ if(APPLE)
       --out "${CMAKE_BINARY_DIR}/signed-release"
     USES_TERMINAL
     VERBATIM)
+
+  # Authenticode-sign the Windows ZIP that CI built for the newest release tag
+  # with Azure Artifact Signing, as the signed-in Azure user, and replace the
+  # unsigned ZIP on its draft release (docs/release/windows-code-signing.md).
+  # Needs gh logged in and jsign; the account settings come from the
+  # repository variables. To sign a particular tag, run the script directly:
+  # host/tools/sign-ci-windows.sh vX.Y[.Z].
+  add_custom_target(
+    sign-latest-windows
+    COMMAND
+      "${PROJECT_SOURCE_DIR}/host/tools/sign-ci-windows.sh"
+      --out "${CMAKE_BINARY_DIR}/signed-release"
+    USES_TERMINAL
+    VERBATIM)
 endif()
 
 include(CPack)

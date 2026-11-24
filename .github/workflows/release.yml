@@ -16,6 +16,11 @@ name: Release host tools
 # containers and runs every application against the repository's fixtures,
 # under Wayland and X11. A package that fails is never uploaded.
 #
+# The Windows ZIP is Authenticode-signed with Azure Artifact Signing: in CI by
+# the sign-windows job when WINDOWS_SIGNING_IN_CI is set, otherwise locally by
+# host/tools/sign-ci-windows.sh, which replaces the unsigned ZIP on the draft.
+# See docs/release/windows-code-signing.md.
+#
 # The macOS DMG is deliberately not attached. CI has no access to the Developer
 # ID key -- keeping it out of a public repository's secrets is the point -- so
 # the DMG it builds is only ad-hoc signed and macOS refuses to launch it. The
@@ -301,13 +306,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # Records that this workflow built the package from this commit. For the
-      # DMG, the local signing step (host/tools/sign-ci-macos.sh) refuses one
-      # without it, so what gets the Developer ID signature is provably this
-      # build. The Linux tarball is not signed; this is what ties it to the
-      # workflow run.
+      # Records that this workflow built the package from this commit. The
+      # local signing steps (host/tools/sign-ci-macos.sh for the DMG,
+      # host/tools/sign-ci-windows.sh for the ZIP) refuse a package without
+      # it, so what gets signed is provably this build. The Linux tarball is
+      # not signed; this is what ties it to the workflow run.
       - name: Attest package provenance
-        if: runner.os != 'Windows'
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: ${{ matrix.package_glob }}
@@ -320,12 +324,162 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Authenticode-signs the Windows package with Azure Artifact Signing, so
+  # SmartScreen and Smart App Control see a verified publisher. It unpacks the
+  # ZIP CPack built, signs every .exe and .dll in it that is not already
+  # signed (the Microsoft runtime DLLs keep Microsoft's signature), checks
+  # that every one now carries a valid, timestamped signature, repacks it
+  # with the same name and layout, attests it, and replaces the build job's
+  # artifact, so the release job attaches the signed ZIP.
+  #
+  # Authentication is OpenID Connect: the job's GitHub token is exchanged for
+  # an Entra ID token through a federated credential on the app registration
+  # that holds the Artifact Signing Certificate Profile Signer role, so no
+  # secret is stored. The federated credential names the `windows-signing`
+  # environment, whose deployment rules decide which refs may sign. The
+  # identifiers are repository variables, not secrets: AZURE_TENANT_ID,
+  # AZURE_CLIENT_ID, AZURE_SUBSCRIPTION_ID, ARTIFACT_SIGNING_ENDPOINT,
+  # ARTIFACT_SIGNING_ACCOUNT and ARTIFACT_SIGNING_PROFILE; the local signing
+  # script, host/tools/sign-ci-windows.sh, reads the same ones. The job runs
+  # only when WINDOWS_SIGNING_IN_CI is `true`. Until then it is skipped, the
+  # release job attaches the unsigned ZIP, and sign-ci-windows.sh replaces it
+  # with one signed locally. A legacy build is never signed (it never
+  # publishes).
+  # Setup and checks: docs/release/windows-code-signing.md.
+  sign-windows:
+    name: Sign the Windows package
+    needs: build
+    if: ${{ !inputs.legacy && vars.WINDOWS_SIGNING_IN_CI == 'true' }}
+    runs-on: windows-2022
+    environment: windows-signing
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Download the unsigned package
+        uses: actions/download-artifact@v4
+        with:
+          name: host-tools-windows-x64
+          path: unsigned
+
+      - name: Unpack and list the files to sign
+        id: unpack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zips = @(Get-ChildItem unsigned -Filter *.zip)
+          if ($zips.Count -ne 1) { throw "expected one ZIP in unsigned/, found $($zips.Count)" }
+          Expand-Archive -Path $zips[0].FullName -DestinationPath stage
+          "PACKAGE_NAME=$($zips[0].Name)" >> $env:GITHUB_ENV
+          # Ours: everything not already signed. Anything signed but invalid
+          # is a fault in the build, not something to paper over by signing.
+          $toSign = @()
+          foreach ($f in Get-ChildItem stage -Recurse -Include *.exe,*.dll) {
+            $status = (Get-AuthenticodeSignature -LiteralPath $f.FullName).Status
+            if ($status -eq 'NotSigned') { $toSign += $f.FullName }
+            elseif ($status -eq 'Valid') { "already signed: $($f.FullName)" }
+            else { throw "$($f.FullName): existing signature is $status" }
+          }
+          if ($toSign.Count -eq 0) { throw "no unsigned .exe or .dll in the package" }
+          $toSign | ForEach-Object { "to sign: $_" }
+          $delimiter = "EOF_$([guid]::NewGuid().ToString('N'))"
+          "files<<$delimiter" >> $env:GITHUB_OUTPUT
+          $toSign >> $env:GITHUB_OUTPUT
+          $delimiter >> $env:GITHUB_OUTPUT
+
+      - name: Log in to Azure (OpenID Connect)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign with Azure Artifact Signing
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ steps.unpack.outputs.files }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: Ultralight Tags host tools
+          description-url: ${{ github.server_url }}/${{ github.repository }}
+          # Only the Azure CLI credential from the login step above.
+          exclude-environment-credential: true
+          exclude-workload-identity-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-azure-cli-credential: false
+          exclude-azure-powershell-credential: true
+          exclude-azure-developer-cli-credential: true
+          exclude-interactive-browser-credential: true
+
+      # Every PE file in the package, ours and Microsoft's, must now verify
+      # to a trusted root and carry a timestamp, so the signature outlives
+      # the certificate's 72-hour validity.
+      - name: Verify every signature
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bad = 0
+          foreach ($f in Get-ChildItem stage -Recurse -Include *.exe,*.dll) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $f.FullName
+            $rel = [IO.Path]::GetRelativePath("$PWD/stage", $f.FullName)
+            if ($sig.Status -ne 'Valid' -or -not $sig.TimeStamperCertificate) {
+              "::error::$rel signature $($sig.Status), timestamp $([bool]$sig.TimeStamperCertificate)"
+              $bad++
+            } else {
+              "ok  $rel  $($sig.SignerCertificate.Subject)"
+            }
+          }
+          if ($bad) { exit 1 }
+
+      # Same name and top-level layout as the ZIP CPack wrote.
+      - name: Repack the signed package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force signed | Out-Null
+          $out = Join-Path $PWD "signed/$env:PACKAGE_NAME"
+          Push-Location stage
+          $entries = @(Get-ChildItem -Name)
+          cmake -E tar cf $out --format=zip -- @entries
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Pop-Location
+          Get-Item $out | Format-List Name, Length
+
+      - name: Attest package provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: signed/*.zip
+
+      - name: Replace the package artifact with the signed one
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-tools-windows-x64
+          path: signed/*.zip
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
   release:
     name: Open the draft release
     # Only a tag push publishes; a tag push has no inputs, so it is never a
-    # legacy build.
-    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
-    needs: build
+    # legacy build. The Windows package must be signed when signing is
+    # configured; when it is not, sign-windows is skipped and the build's
+    # unsigned ZIP is attached.
+    if: >-
+      !cancelled()
+      && startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+      && needs.build.result == 'success'
+      && (needs.sign-windows.result == 'success' || needs.sign-windows.result == 'skipped')
+    needs: [build, sign-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -348,7 +502,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          # The Windows and Linux packages. The macOS DMG built above is
+          # The Windows (signed by sign-windows) and Linux packages. The macOS DMG built above is
           # ad-hoc signed and is not shippable; `sign-latest` re-signs it
           # locally and uploads it.
           shopt -s nullglob

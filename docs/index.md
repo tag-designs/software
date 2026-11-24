@@ -102,6 +102,7 @@ design document.
 
 - [Release](release/README.md) — Qualifying, programming and publishing firmware and host tool releases.
 - [Releasing Tag Firmware and Host Tools](release/release-procedure.md) *(procedure)* — How to qualify a firmware image on the bench, program and record a field tag from a release, and cut a signed host tools release.
+- [Signing the Windows Package](release/windows-code-signing.md) *(procedure)* — How the Windows host tools package is Authenticode-signed with Azure Artifact Signing -- locally from a Mac with sign-ci-windows.sh (the current route), or in CI by the sign-windows job once a CI identity holds the signing role -- with the one-time setup, how to check a signed ZIP, and what goes wrong.
 
 ### Shared Contracts
 
