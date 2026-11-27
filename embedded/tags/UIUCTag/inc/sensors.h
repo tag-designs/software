@@ -4,11 +4,15 @@
  * @author tag firmware authors
  * @date 2026-08-31
  *
- * @details Keeps ADXL367 and BMP585 register-level detail out of the RUNNING
+ * @details Keeps accelerometer and BMP585 register-level detail out of the RUNNING
  *          state handler. state_run.c owns time, state, and log sequencing and
  *          reaches the sensors only through this interface, so a change of
  *          sampling strategy — notably the deferred move from polled DRDY to
  *          the LPS_RDY interrupt — stays inside sensors.c.
+ *
+ *          samplePressureRaw() is in sensors.c. initDataCollection() is in
+ *          accel_adxl362.c for UIUCTag (ADXL362) or accel_adxl367.c for
+ *          UIUCadxl367 (ADXL367); each target's project.mk compiles one.
  *
  * @note    UIUCTag-local. The other BitPresTag family variants keep their
  *          sensor calls inside the shared family state_run.c.
@@ -27,20 +31,25 @@
 /**
  * @brief Configure the accelerometer for activity wakeups during acquisition.
  *
- * @details Places the ADXL367 in wake-mode operation with the stored
- *          activity/inactivity thresholds from @c sconfig, maps the AWAKE
- *          event to the INT1 line (UIUCTag wires INT1, not INT2, to the MCU
- *          wakeup pin), and leaves the device measuring. The accelerometer
+ * @details Soft-resets the fitted accelerometer (ADXL362 or ADXL367), places
+ *          it in wake-up mode with referenced activity at the stored threshold
+ *          (@c sconfig.adxl_act_thresh_cnt, mg), absolute inactivity at a
+ *          fixed 1100 mg after @c sconfig.adxl_inactive_samples samples, loop
+ *          mode, maps the AWAKE state to the INT1 line (UIUCTag wires INT1,
+ *          not INT2, to the MCU wakeup pin), and leaves the device measuring. The accelerometer
  *          then drives the tag's activity wake source for the whole RUNNING
  *          state.
  *
  * @pre     Stored configuration has been loaded into @c sconfig.
- * @post    The ADXL367 is measuring in wake mode and its INT1 line reports
+ * @post    The accelerometer is measuring in wake mode and its INT1 line reports
  *          AWAKE transitions; the bus session is closed.
  *
  * @note    The underlying register writes report no status, so there is no
  *          success value to return. A missing or unresponsive accelerometer is
  *          detected by the RUN_ADXL362 device test, not here.
+ *
+ * @warning Blocks for the post-reset settling delay (10 ms on the ADXL362,
+ *          100 ms on the ADXL367).
  */
 void initDataCollection(void);
 

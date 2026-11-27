@@ -587,7 +587,7 @@ public:
 };
 
 /**
- * @brief   UIUCTag (decoder "uiuctag").
+ * @brief   UIUCTag and UIUCadxl367 (decoder "uiuctag").
  *
  * @details Follows embedded/tags/UIUCTag/src/datalog.c and config.c, with the
  *          layout in include/uiuctag_log_format.h. Checkpoint i (vddHeader[i]:
@@ -609,6 +609,25 @@ public:
   static constexpr uint32_t kHeaderBytes = 8;     ///< UIUCTAG_INTERNAL_LOG_SIZE
   /** UIUCTAG_ADXL_INACT_THRESH_MG: what readConfig() reports, hardcoded. */
   static constexpr uint32_t kInactThreshMg = 1100;
+
+  /**
+   * @brief   The accelerometer readConfig() reports for the captured image.
+   *
+   * @details Both parts share the stored configuration's layout and meaning
+   *          (UIUCTag/src/config.c), so only the reported type differs.
+   *          UIUCTag carries an ADXL362 from fw 3.0.0; the UIUCadxl367 target,
+   *          and UIUCTag images before 3.0.0, drive an ADXL367.
+   *
+   * @param[in] id  The capture's identity record.
+   * @return  The accel_type the tag's own readConfig() would report.
+   */
+  static Adxl362_AdxlType FittedAccel(const IdentityRecord &id) {
+    if (id.String("target") == "UIUCadxl367")
+      return Adxl362_AdxlType_AdxlType_367;
+    if (id.String("firmware").rfind("UIUCTag, Firmware version 2.", 0) == 0)
+      return Adxl362_AdxlType_AdxlType_367;
+    return Adxl362_AdxlType_AdxlType_362;
+  }
 
   std::vector<KnownLayout> Layouts() const override {
     return {{"stored_config", 1, 0}, {"stored_config", 2, 0},
@@ -633,7 +652,7 @@ public:
     adxl->set_act_thresh_g(Le16(c) / 1000.0f);
     adxl->set_inact_thresh_g(kInactThreshMg / 1000.0f);
     adxl->set_inactive_sec(static_cast<float>(Le16(c + 4)));
-    adxl->set_accel_type(Adxl362_AdxlType_AdxlType_367);
+    adxl->set_accel_type(FittedAccel(src.Identity()));
     Config_Interval *active = config.mutable_active_interval();
     active->set_start_epoch(static_cast<int32_t>(Le32(c + 8)));
     active->set_end_epoch(static_cast<int32_t>(Le32(c + 12)));

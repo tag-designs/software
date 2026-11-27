@@ -1,7 +1,7 @@
 ---
 type: design
 status: current
-summary: What UIUCTag is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
+summary: What UIUCTag (and its ADXL367 build, UIUCadxl367) is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
 ---
 
 # UIUCTag Design
@@ -23,15 +23,23 @@ family's sensors, log format and RUNNING state with its own. Why this format:
 
 | Component | BitPresTag baseline | UIUCTag |
 | --- | --- | --- |
-| Accelerometer | ADXL362 on SPI2 | ADXL367 on USART2, synchronous 4-wire SPI (CPOL 0, CPHA 0) |
+| Accelerometer | ADXL362 on SPI2 | ADXL362 on USART2, synchronous 4-wire SPI (CPOL 0, CPHA 0); ADXL367 on the `UIUCadxl367` target |
 | Pressure sensor | LPS27 on USART1 synchronous SPI | BMP585 on SPI1 |
 | Pressure interrupt | none | `LPS_RDY` line, wired but unused by firmware |
 | External flash | AT25XE or MX25R | AT25XE321D, 4 MB |
 
-- **ADXL367.** Bound through the shared `TagBusDevice` transport with
-  `TAG_BUS_USART_INIT()` on the generated `LINE_ACCEL_*` lines; the driver is
-  the same whether the bus is SPI or USART. It runs in wake mode, nominally
-  6.25 Hz, for activity detection; bring-up measured the inactivity timing
+- **Accelerometer.** The prototypes carry an **ADXL362**; the pin-compatible
+  **ADXL367** the board was first brought up with is supported by a second
+  target, `UIUCadxl367`, built from these same sources. Either is bound
+  through the shared `TagBusDevice` transport with `TAG_BUS_USART_INIT()` on
+  the generated `LINE_ACCEL_*` lines; both drivers are the same whether the
+  bus is SPI or USART. Both run the same activity configuration -- wake-up
+  mode, referenced activity at the stored threshold in mg, absolute
+  inactivity at a fixed 1100 mg after the stored sample count, loop mode,
+  `AWAKE` on INT1 -- so the stored configuration and the host's view of it do
+  not depend on the part; only `Config.adxl362.accel_type` says which is
+  fitted. The ADXL362 wakes about 6 times a second in wake-up mode; the
+  ADXL367 is set to 6.25 Hz, and bring-up measured its inactivity timing
   faster than that nominal (roughly 100-130 ms per sample rather than 160 ms),
   which is still open
   ([bring-up report](investigations/bringup-report.md#adxl367-wake-mode-sample-rate-timing)).
@@ -50,11 +58,21 @@ family's sensors, log format and RUNNING state with its own. Why this format:
 UIUCTag-local `src/state_run.c`, `src/datalog.c`, `inc/datalog.h`,
 `src/config.c`, `src/devices.c` and `inc/devices.h` replace the BitPresTag
 family files of the same name (a tag's `./src` and `./inc` are searched first).
-`src/sensors.c` and `inc/sensors.h` have no family counterpart; `project.mk`
-adds `sensors.c` to `ALLCSRC` itself. `inc/custom.h` is tag-local, as in every
+`src/sensors.c`, `inc/sensors.h` and the accelerometer files
+`src/accel_adxl362.c` and `src/accel_adxl367.c` have no family counterpart;
+`project.mk` adds `sensors.c` and the one accelerometer file it builds to
+`ALLCSRC` itself. `inc/custom.h` is tag-local, as in every
 variant. The record formats genuinely differ, so these should not be merged
 back into the family. `state_run.c` owns time, state and log sequencing and knows nothing
-about sensor registers; `sensors.c` owns the ADXL367 and BMP585.
+about sensor registers; `sensors.c` owns the BMP585 and `accel_adxl362.c`
+(or `accel_adxl367.c`) the accelerometer.
+
+`UIUCadxl367` ([its README](../../UIUCadxl367/README.md)) has no sources of
+its own beyond `custom.h`. Its `project.mk` puts this directory's `inc/` and
+`src/` on the search path after its own and before the family's, selects the
+`sensor_accel_adxl367` module, and builds `accel_adxl367.c`. The module's
+`TAG_SENSOR_ACCEL_ADXL367` definition is what `devices.[ch]` and `config.c`
+key on. A change to this directory changes both targets.
 
 The shared format, `include/uiuctag_log_format.h`, is on both the firmware and
 host include paths and is the single source of geometry and decode helpers.

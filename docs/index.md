@@ -253,7 +253,7 @@ design document.
 
 ### Tags / Families / BitPresTag
 
-- [BitPresTag Family](../embedded/tags/families/BitPresTag/README.md) — BitPresTag family variants, what UIUCTag overrides locally, and ADXL362 configuration semantics.
+- [BitPresTag Family](../embedded/tags/families/BitPresTag/README.md) — BitPresTag family variants, what UIUCTag (and UIUCadxl367) override locally, and ADXL362 configuration semantics.
 - [BitPresTag BMP581/BMP585 Forced-Mode Pressure Plan](../embedded/tags/families/BitPresTag/design/bmp581-forced-mode.md) *(proposal, proposed)* — Unbuilt plan for interrupt-paced BMP58x forced-mode pressure sampling; the driver operations it needs exist, but every user still polls.
 
 ### Tags / Families / BitTagNG
@@ -332,10 +332,14 @@ design document.
 - [Field Data Extraction](../embedded/tags/design/proposals/field-data-extraction.md) *(proposal, proposed)* — Two unbuilt changes so a returned tag's data decodes and explains itself - a session superblock in the data region, and gaps closed in the flash marker log.
 - [The stored-configuration write is unchecked on every tag but IMUTag](../embedded/tags/design/proposals/stored-config-write-is-unchecked.md) *(proposal, proposed)* — writeStoredConfig() ignores whether the flash write succeeded on every tag but IMUTag, so a refused program leaves a stale configuration running while the host reports the new one. A cheap fix catches it; the full fix needs a page per target.
 
+### Tags / UIUCadxl367
+
+- [UIUCadxl367](../embedded/tags/UIUCadxl367/README.md) — UIUCadxl367 is the UIUCTag firmware for boards fitted with an ADXL367 instead of the ADXL362; it builds UIUCTag's sources and owns only its firmware string.
+
 ### Tags / UIUCTag
 
 - [UIUCTag Data Collection Integration Plan](../embedded/tags/UIUCTag/design/data-collection.md) *(proposal, superseded)* — Plan, built and since replaced by minute records, for the UIUCTag five-minute record format, write sequencing, cursor recovery, host decoder and download, with where implementation diverged.
-- [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
+- [UIUCTag Design](../embedded/tags/UIUCTag/design/overview.md) — What UIUCTag (and its ADXL367 build, UIUCadxl367) is, how its hardware differs from BitPresTag, and the minute-record layout, timing and firmware/host contract of its pressure and activity log.
 - [UIUCTag Power Measurement Log](../embedded/tags/UIUCTag/design/power-results.md) *(results)* — Append-only log of UIUCTag power measurements -- resting states good; a reattach that boots as a power init stopped collection until the 2026-11-03 fix; the 2026-11-04 mailbox image qualifies; firmware 2.0 (minute records) runs at 0.79 uA.
 - [UIUCTag Power Test Plan](../embedded/tags/UIUCTag/design/power-test-plan.md) *(procedure)* — UIUCTag power test plan -- qualifying a release image for idle, running and finished current on a tag that wakes once a minute and stores one 8-byte record each wake.
 - [UIUCTag Test Strategy](../embedded/tags/UIUCTag/design/test-strategy.md) — How the UIUCTag log path is tested layer by layer, from shared format helpers and host simulation to hardware, and what it does not cover.

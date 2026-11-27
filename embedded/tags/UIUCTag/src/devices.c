@@ -37,7 +37,8 @@
  * Device descriptors.
  *
  * UIUCTag uses:
- * - ADXL367 on USART2 in 4-wire SPI mode (instead of ADXL362 on SPI2)
+ * - ADXL362 (UIUCTag) or ADXL367 (UIUCadxl367) on USART2 in 4-wire SPI mode
+ *   (the BitPresTag family has its ADXL362 on SPI)
  * - BMP585 on SPI1 with LPS_RDY interrupt (instead of LPS27 on USART1)
  */
 binary_semaphore_t SPI1mutex;
@@ -66,8 +67,8 @@ const TagStorageDevice tagExternalFlash = {
     .sector_count = EXTERNAL_FLASH_SECTOR_COUNT,
 };
 
-/* ADXL367 on USART2 synchronous clocked bus. */
-const TagAdxl367Device uiucTagAccelDevice = {
+/* ADXL362 or ADXL367 on USART2 synchronous clocked bus. */
+const UiucTagAccelDevice uiucTagAccelDevice = {
     .bus = TAG_BUS_USART_INIT(
         TAG_USART2_SYNC_DEVICE_DEFAULTS,
         .cs = LINE_ACCEL_nCS,
@@ -100,7 +101,11 @@ const TagPressureDevice uiucTagPressureDevice = {
 
 static const TagTestCase tag_tests[] =
 {
-  {RUN_ADXL362, tag_test_adxl367, &uiucTagAccelDevice},  // Uses ADXL367 test
+#if defined(TAG_SENSOR_ACCEL_ADXL367)
+  {RUN_ADXL362, tag_test_adxl367, &uiucTagAccelDevice},
+#else
+  {RUN_ADXL362, tag_test_adxl362, &uiucTagAccelDevice},
+#endif
   {RUN_RTC, tag_test_rtc, NULL},
   {RUN_EXT_FLASH, tag_test_external_flash, TAG_EXTERNAL_FLASH},
   {RUN_LPS, tag_test_bmp581, &uiucTagPressureDevice},   // Uses BMP581 test
@@ -113,8 +118,9 @@ const TagTestCase *tagTestCases(size_t *count)
   return tag_tests;
 }
 
+#if defined(TAG_SENSOR_ACCEL_ADXL367)
 /**
- * @brief Return the UIUCTag ADXL367 descriptor.
+ * @brief Return the UIUCadxl367 ADXL367 descriptor.
  *
  * @return Accelerometer descriptor used by shared ADXL367 code.
  */
@@ -122,6 +128,17 @@ const TagAdxl367Device *tagAdxl367Device(void)
 {
   return &uiucTagAccelDevice;
 }
+#else
+/**
+ * @brief Return the UIUCTag ADXL362 descriptor.
+ *
+ * @return Accelerometer descriptor used by shared ADXL362 code.
+ */
+const TagAdxl362Device *tagAdxl362Device(void)
+{
+  return &uiucTagAccelDevice;
+}
+#endif
 
 /**
  * @brief Return the UIUCTag BMP585 descriptor.
@@ -139,7 +156,11 @@ const TagPressureDevice *tagPressureDevice(void)
 static void uiucTagShutdownDevices(void)
 {
   tagBusPowerOff(&TAG_PRESSURE_DEVICE->registers->bus);
+#if defined(TAG_SENSOR_ACCEL_ADXL367)
   ADXL367_DeinitDevice(TAG_ACCEL_DEVICE);
+#else
+  ADXL362_DeinitDevice(TAG_ACCEL_DEVICE);
+#endif
   chThdSleepMilliseconds(2);
 }
 
@@ -180,7 +201,7 @@ void tagDevicesPrepareStandby(uint32_t state)
 /**
  * @brief Apply board pin pulls needed for standby leakage and wake behavior.
  *
- * @details The ADXL367's USART2 sync-SPI bus declares
+ * @details The accelerometer's USART2 sync-SPI bus declares
  *          .sleep_policy = TAG_USART_SLEEP_SAFE_IDLE (uiucTagAccelDevice,
  *          this file), but nothing previously invoked
  *          tagUsartDevicePrepareSleep()/tagBusPrepareSleep() to apply it --
@@ -222,7 +243,7 @@ void tagDevicesDisableWakeupSources(void)
  */
 bool tagDevicesConfigureWakeupSources(uint32_t state, bool is_active)
 {
-  /* ADXL367 activity wake on WKUP1 */
+  /* Accelerometer AWAKE (INT1) wake on WKUP1 */
   if (is_active)
     SET_BIT(PWR->CR4, PWR_CR4_WP1);
   else

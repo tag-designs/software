@@ -17,8 +17,8 @@ omitted. Local source overrides under `embedded/tags` are included.
 
 There is no generator: the lists were extracted by hand from the
 `<build-dir>/embedded/tags/<Tag>/dep/*.o.d` files of a full build, and filtered
-to `embedded/tags`. **The inventory is incomplete:** `UIUCTag` and
-`BitPresTagMX25R`, both active in `embedded/tags/CMakeLists.txt`, have no
+to `embedded/tags`. **The inventory is incomplete:** `UIUCTag`, `UIUCadxl367` and
+`BitPresTagMX25R`, all active in `embedded/tags/CMakeLists.txt`, have no
 section yet. Extract a missing or changed target the same way.
 
 ## BitTag

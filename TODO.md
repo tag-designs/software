@@ -978,6 +978,21 @@ retracted; see
 UIUCTag was qualified on `fw-v0.6` on 2026-10-08
 ([power results](embedded/tags/UIUCTag/design/power-results.md)).
 
+- **UIUCTag now drives an ADXL362 (fw 3.0.0); the ADXL367 build is
+  `UIUCadxl367`.** Changed 2026-11-27 because the prototypes carry the
+  ADXL362. Not yet on hardware. Before trusting it:
+  - build `UIUCTag` and `UIUCadxl367`, plus a target that already used the
+    ADXL362 driver (`BitPresTag`, `BitTag`), since the driver gained a USART
+    path; check `dep/devices.o.d` for UIUCadxl367 names `UIUCTag/src`;
+  - on a prototype: `tag-test` (`RUN_ADXL362` now checks the ADXL362 part ID
+    over USART2), then a run with a shake test to confirm the AWAKE line
+    wakes and clears with the 1100 mg absolute inactivity threshold;
+  - measure with `tag_lifecycle_check.py`: the accelerometer and its wake
+    configuration changed, so the qualified figures no longer apply. The
+    ADXL362's wake-up mode current (about 270 nA) is above the ADXL367's;
+  - tagmonitor's UIUCTag panel tooltips still say "ADXL367" (the text is
+    pinned by the qtmon parity goldens); reword both together.
+
 - **`tag-test` on `RUN_ALL` was intermittent; probably fixed, not yet
   attributed.** On 2026-11-02, main `12af820d` on the same
   `tag-breakout-base-l432-v1` (fw `be8f9062`, a dirty build of 2026-10-28)

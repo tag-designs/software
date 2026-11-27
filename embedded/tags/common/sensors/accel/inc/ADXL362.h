@@ -10,7 +10,10 @@
  *          field names the data sheet uses, prefixed ADXL362_, and are
  *          unchanged from the names the tag firmware has always used.
  *
- *          The ADXL362 talks SPI only. Every transaction starts with a
+ *          The ADXL362 talks SPI only, through a TagBusDevice that is either
+ *          an SPI controller or a USART in synchronous mode (CPOL 0, CPHA 0),
+ *          as on UIUCTag; an I2C descriptor is ignored and every access
+ *          becomes a no-op. Every transaction starts with a
  *          command byte (ADXL362_WRITE_REG, ADXL362_READ_REG or
  *          ADXL362_READ_FIFO); register transactions follow it with a start
  *          address and auto-increment through consecutive registers.
@@ -239,6 +242,9 @@ typedef struct {
  *
  * @param[in] device ADXL362 device descriptor.
  * @return SPI device descriptor used for ADXL362 transfers.
+ *
+ * @warning Meaningful only for a descriptor bound with TAG_BUS_SPI_INIT(); the
+ *          driver itself dispatches on the bus kind and does not use this.
  */
 static inline const TagSpiDevice *tagAdxl362SpiDevice(const TagAdxl362Device *device)
 {

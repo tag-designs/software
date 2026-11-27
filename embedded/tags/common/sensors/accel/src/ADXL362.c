@@ -12,22 +12,120 @@
 
 static uint8_t selected_range = 2;
 
-static bool adxl362WritePayload(const TagSpiDevice *spi,
+/**
+ * @brief Transmit an ADXL362 command or payload phase on the descriptor bus.
+ *
+ * @details SPI uses polled transfers up to TAG_SPI_POLLED_TRANSFER_MAX bytes
+ *          and DMA above that. A USART in synchronous mode (UIUCTag wires the
+ *          accelerometer to USART2) clocks the bytes out as SPI mode 0.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @param[in] buffer Bytes to transmit while chip select is asserted.
+ * @param[in] length Number of bytes to transmit.
+ * @return true when the bytes were sent; false for a bus the ADXL362 cannot
+ *         use (I2C) or a failed SPI transfer.
+ */
+static bool adxl362WritePayload(const TagBusDevice *bus,
                                 const uint8_t *buffer,
                                 size_t length)
 {
-  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
-    return tagSpiPolledSend(spi, buffer, (uint32_t)length);
-  return tagSpiWrite(spi, buffer, (uint32_t)length);
+  const TagSpiDevice *spi;
+
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    spi = tagBusSpiDevice(bus);
+    if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+      return tagSpiPolledSend(spi, buffer, (uint32_t)length);
+    return tagSpiWrite(spi, buffer, (uint32_t)length);
+
+  case TAG_BUS_USART:
+    tagUsartWrite(tagBusUsartDevice(bus), buffer, (uint32_t)length);
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
 }
 
-static bool adxl362ReadPayload(const TagSpiDevice *spi,
+/**
+ * @brief Receive an ADXL362 payload phase on the descriptor bus.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @param[out] buffer Destination for bytes clocked from the sensor.
+ * @param[in] length Number of bytes to receive.
+ * @return true when the bytes were read; false for a bus the ADXL362 cannot
+ *         use (I2C) or a failed SPI transfer.
+ */
+static bool adxl362ReadPayload(const TagBusDevice *bus,
                                uint8_t *buffer,
                                size_t length)
 {
-  if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
-    return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
-  return tagSpiRead(spi, buffer, (uint32_t)length);
+  const TagSpiDevice *spi;
+
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    spi = tagBusSpiDevice(bus);
+    if (length <= TAG_SPI_POLLED_TRANSFER_MAX)
+      return tagSpiPolledReceive(spi, buffer, (uint32_t)length);
+    return tagSpiRead(spi, buffer, (uint32_t)length);
+
+  case TAG_BUS_USART:
+    tagUsartRead(tagBusUsartDevice(bus), buffer, (uint32_t)length);
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Assert chip select for an ADXL362 transaction.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ * @return true when the bus supports ADXL362 chip-select control; false for
+ *         I2C, in which case the caller must not transfer.
+ */
+static bool adxl362Select(const TagBusDevice *bus)
+{
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    tagSpiSelect(tagBusSpiDevice(bus));
+    return true;
+
+  case TAG_BUS_USART:
+    tagUsartSelect(tagBusUsartDevice(bus));
+    return true;
+
+  case TAG_BUS_I2C:
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Release chip select after an ADXL362 transaction.
+ *
+ * @param[in] bus Physical bus descriptor selected for this accelerometer.
+ */
+static void adxl362Deselect(const TagBusDevice *bus)
+{
+  switch (bus->kind) {
+  case TAG_BUS_SPI:
+    tagSpiDeselect(tagBusSpiDevice(bus));
+    break;
+
+  case TAG_BUS_USART:
+    tagUsartDeselect(tagBusUsartDevice(bus));
+    break;
+
+  case TAG_BUS_I2C:
+    break;
+  }
 }
 
 /** @name ADXL362 bus lifecycle
@@ -59,8 +157,8 @@ void ADXL362_DeviceEnd(const TagAdxl362Device *device)
 /** @} */
 
 /** @name ADXL362 transfer helpers
- * Low-level SPI helpers keep chip select asserted across command and data
- * phases required by the ADXL362 register protocol.
+ * Low-level helpers keep chip select asserted across the command and data
+ * phases the ADXL362 register protocol requires, on SPI or a synchronous USART.
  * @{
  */
 /**
@@ -74,11 +172,12 @@ static void adxl362Write(const TagAdxl362Device *device,
                          const uint8_t *buffer,
                          size_t length)
 {
-  const TagSpiDevice *spi = tagAdxl362SpiDevice(device);
+  const TagBusDevice *bus = &device->bus;
 
-  tagSpiSelect(spi);
-  adxl362WritePayload(spi, buffer, length);
-  tagSpiDeselect(spi);
+  if (!adxl362Select(bus))
+    return;
+  adxl362WritePayload(bus, buffer, length);
+  adxl362Deselect(bus);
 }
 
 /**
@@ -96,12 +195,13 @@ static void adxl362WriteThenRead(const TagAdxl362Device *device,
                                  uint8_t *read_buffer,
                                  size_t read_length)
 {
-  const TagSpiDevice *spi = tagAdxl362SpiDevice(device);
+  const TagBusDevice *bus = &device->bus;
 
-  tagSpiSelect(spi);
-  if (adxl362WritePayload(spi, write_buffer, write_length))
-    adxl362ReadPayload(spi, read_buffer, read_length);
-  tagSpiDeselect(spi);
+  if (!adxl362Select(bus))
+    return;
+  if (adxl362WritePayload(bus, write_buffer, write_length))
+    adxl362ReadPayload(bus, read_buffer, read_length);
+  adxl362Deselect(bus);
 }
 /** @} */
 

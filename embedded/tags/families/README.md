@@ -29,8 +29,11 @@ override the family copy.  Keep those overrides temporary and visible in
 `project.mk` so unintended divergence does not become permanent.
 
 Some overrides are permanent by design: `UIUCTag` replaces the BitPresTag
-family's `state_run.c`, `datalog.[ch]`, `sensors.[ch]` and `devices.[ch]`
-because it stores a different log record. A family README says which of its
+family's `state_run.c`, `datalog.[ch]`, `config.c` and `devices.[ch]`
+because it stores a different log record. A variant can also put another
+target's directories ahead of the family's: `UIUCadxl367` searches
+`../UIUCTag/inc` and `../UIUCTag/src` before the family's, so it is UIUCTag
+with a different accelerometer. A family README says which of its
 variants have forked this way and why, so the next reader does not merge them
 back. Each family's `README.md` lists what it shares and what its variants
 keep local.

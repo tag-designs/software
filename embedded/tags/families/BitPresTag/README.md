@@ -1,7 +1,7 @@
 ---
 type: readme
 status: current
-summary: BitPresTag family variants, what UIUCTag overrides locally, and ADXL362 configuration semantics.
+summary: BitPresTag family variants, what UIUCTag (and UIUCadxl367) override locally, and ADXL362 configuration semantics.
 ---
 
 # BitPresTag Family
@@ -13,7 +13,8 @@ Current variants:
 
 - `BitPresTag`: AT25XE external flash.
 - `BitPresTagMX25R`: MX25R external flash.
-- `UIUCTag`: ADXL367 on USART2 + BMP585 on SPI1 with LPS_RDY interrupt.
+- `UIUCTag`: ADXL362 on USART2 + BMP585 on SPI1 with LPS_RDY interrupt.
+- `UIUCadxl367`: UIUCTag's sources for a board fitted with an ADXL367.
 
 `BitPresTag` and `BitPresTagMX25R` differ only in the external flash module
 selected from their `project.mk` files. Shared headers, state code, data logging,
@@ -22,12 +23,14 @@ and the small build wrappers so a flash-specific firmware string or board
 constant can still be adjusted without copying application code.
 
 `UIUCTag` is the exception: it owns tag-local `state_run.c`, `datalog.[ch]`,
-`sensors.[ch]`, and `devices.[ch]` because it carries different sensors and
+`sensors.[ch]`, `config.c` and `devices.[ch]` because it carries different sensors and
 stores a different log record (see `include/uiuctag_log_format.h`). The common
 makefile resolves a tag's `./src` and `./inc` ahead of the family directories, so
 those files replace the family versions for that target only, with no change to
 the shared sources. Do not "unify" them back: the record formats are genuinely
-different, not accidentally divergent.
+different, not accidentally divergent. `UIUCadxl367` adds `../UIUCTag/inc` and
+`../UIUCTag/src` to its search path between its own directories and this
+family's, so it builds UIUCTag's overrides with only its `custom.h` of its own.
 
 Power and bus control now come from the common `tag_core` module. The
 BitPresTag variants keep any RTC line-swap override in `custom.h`; the shared

@@ -26,3 +26,4 @@ add_subdirectory(stop1test)
 #add_subdirectory(BitTagNG-proto)
 
 add_subdirectory(UIUCTag)
+add_subdirectory(UIUCadxl367)

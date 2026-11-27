@@ -32,20 +32,21 @@ _Static_assert(offsetof(t_storedconfig, hibernate) == 16, "UIUCTag stored_config
  * UIUCTag has no local config.h -- it shares the t_storedconfig layout and
  * Config/adxl362 protobuf shape with the rest of the BitPresTag family (see
  * ../families/BitPresTag/inc/config.h). Only the accelerometer field
- * conversions below differ, because UIUCTag is the one member of this
- * family wired to an ADXL367 (see sensors.c) rather than the family's
- * ADXL362. Reusing BitPresTag's own config.c unmodified was the bug this
- * file exists to fix: it converted g thresholds using the ADXL362's native
- * sensitivity table (0.002 g/LSB at its fixed 4G range), which is not the
- * scale sensors.c's inline register writes expect. sensors.c's inline
- * writes are a verbatim port of BitTagNG's ADXL367 driver, which stores the
- * activity threshold as raw milligrams and shifts it into the register
- * field assuming the ADXL367's own native 2G-range sensitivity (4 LSB/mg).
- * Reading a value produced by the wrong table applied a threshold exactly
- * half of what was requested (measured: requesting 0.498 g resulted in
- * 0.249 g actually being written to THRESH_ACT). This file restores
- * BitTagNG's conversion (see families/BitTagNG/src/config.c) so the
- * configured threshold matches what is actually applied.
+ * conversions below differ. They define one contract that both fitted parts
+ * implement -- the ADXL362 on UIUCTag (accel_adxl362.c) and the ADXL367 on
+ * UIUCadxl367 (accel_adxl367.c) -- so the host sees the same configuration
+ * whichever part is fitted:
+ * - adxl_act_thresh_cnt holds the activity threshold in whole mg, clamped to
+ *   BitTagNG's field-validated 200..700 mg;
+ * - adxl_inactive_samples holds the inactivity time as a sample count at the
+ *   ~6 Hz wake-up rate, clamped to 3..12;
+ * - the inactivity threshold is fixed (below).
+ *
+ * The BitPresTag family's own config.c converts g thresholds with the
+ * ADXL362's 4G-range sensitivity table, which is not the scale the accel_*.c
+ * files expect. Reusing it unmodified was the bug this file exists to fix
+ * (requesting 0.498 g wrote 0.249 g to the ADXL367's THRESH_ACT); this file
+ * follows BitTagNG's conversion (see families/BitTagNG/src/config.c) instead.
  */
 #define UIUCTAG_ADXL_ACT_THRESH_MIN_MG 200
 #define UIUCTAG_ADXL_ACT_THRESH_MAX_MG 700
@@ -53,11 +54,10 @@ _Static_assert(offsetof(t_storedconfig, hibernate) == 16, "UIUCTag stored_config
 #define UIUCTAG_ADXL_INACTIVE_SAMPLES_MAX 12
 
 /*
- * The inactivity threshold is not a configuration input: sensors.c hardcodes
- * it to 1100 mg (UIUCTAG_ADXL_INACT_THRESH_MG there), matching BitTagNG's
- * own field-validated configuration verbatim -- see the "referenced
- * activity, absolute inactivity" note in sensors.c and
- * feedback-port-reference-verbatim. t_storedconfig.adxl_inact_thresh_cnt
+ * The inactivity threshold is not a configuration input: accel_adxl362.c and
+ * accel_adxl367.c hardcode it to 1100 mg (UIUCTAG_ADXL_INACT_THRESH_MG
+ * there), matching BitTagNG's own field-validated configuration verbatim --
+ * see the "referenced activity, absolute inactivity" note in those files. t_storedconfig.adxl_inact_thresh_cnt
  * exists in the shared struct but is deliberately left unset by
  * writeConfig() below, the same way BitTagNG's own writeConfig() leaves it
  * unset. readConfig() reports the true, hardcoded value here rather than
@@ -66,6 +66,14 @@ _Static_assert(offsetof(t_storedconfig, hibernate) == 16, "UIUCTag stored_config
  * value nothing enforces.
  */
 #define UIUCTAG_ADXL_INACT_THRESH_MG 1100U
+
+#if defined(TAG_SENSOR_ACCEL_ADXL367)
+/** Accelerometer readConfig() reports: UIUCadxl367 carries an ADXL367. */
+#define UIUCTAG_ACCEL_TYPE Adxl362_AdxlType_367
+#else
+/** Accelerometer readConfig() reports: UIUCTag carries an ADXL362. */
+#define UIUCTAG_ACCEL_TYPE Adxl362_AdxlType_362
+#endif
 /* The host capture decoder reports this value too (capturesource.cc). */
 _Static_assert(UIUCTAG_ADXL_INACT_THRESH_MG == 1100U, "UIUCTag reported inactivity threshold: see capturesource.cc");
 
@@ -121,14 +129,14 @@ bool writeStoredConfig(t_storedconfig *s)
 }
 
 /**
- * @brief Convert and clamp a g threshold to the raw milligrams sensors.c
- *        expects.
+ * @brief Convert and clamp a g threshold to the raw milligrams the
+ *        accel_*.c files expect.
  *
  * @param[in] threshold_g Threshold in g.
  * @return Threshold in whole milligrams, clamped to BitTagNG's field-
  *         validated range.
  */
-static uint16_t clampAdxl367ActivityThreshold(float threshold_g)
+static uint16_t clampActivityThresholdMg(float threshold_g)
 {
   int threshold_mg = (int)(threshold_g * 1000.0f + 0.5f);
 
@@ -143,12 +151,12 @@ static uint16_t clampAdxl367ActivityThreshold(float threshold_g)
  * @brief Round and clamp the wake-mode inactivity sample count.
  *
  * @param[in] samples_f Inactivity sample count encoded in the historical
- *                      inactive_sec protobuf field (samples at the ADXL367
- *                      wake-mode rate, not seconds -- see sensors.c).
+ *                      inactive_sec protobuf field (samples at the ~6 Hz
+ *                      wake-up rate, not seconds -- see accel_*.c).
  * @return Inactivity sample count, clamped to BitTagNG's field-validated
  *         range.
  */
-static uint16_t clampAdxl367InactivitySamples(float samples_f)
+static uint16_t clampInactivitySamples(float samples_f)
 {
   int samples = (int)(samples_f + 0.5f);
 
@@ -176,24 +184,20 @@ void readConfig(Config *config)
   config->adxl362.act_thresh_g = sconfig.adxl_act_thresh_cnt / 1000.0f;
   /*
    * Not a configuration input -- see the file-level note above. Reports
-   * the value sensors.c actually hardcodes, not one derived from the
+   * the value accel_*.c actually hardcode, not one derived from the
    * unused adxl_inact_thresh_cnt field.
    */
   config->adxl362.inact_thresh_g = UIUCTAG_ADXL_INACT_THRESH_MG / 1000.0f;
   /*
-   * Historical protobuf field name; sensors.c uses this as a sample count
-   * at the ADXL367 wake-mode rate, not seconds.
+   * Historical protobuf field name; accel_*.c use this as a sample count
+   * at the ~6 Hz wake-up rate, not seconds.
    */
   config->adxl362.inactive_sec = sconfig.adxl_inactive_samples;
   /*
-   * UIUCTag is wired to an ADXL367, not the family's default ADXL362 (see
-   * sensors.c). This field defaults to AdxlType_362 (the proto3 zero value)
-   * when left unset, which is what BitPresTag's original config.c did --
-   * silently misreporting the sensor to every host tool that reads the
-   * stored config back (qtmonitor, log decoders, etc.). BitTagNG's config.c
-   * sets this explicitly for the same reason; do the same here.
+   * Report the fitted part. Set explicitly even for the ADXL362, whose value
+   * is the proto3 default, so this stays correct if either target changes.
    */
-  config->adxl362.accel_type = Adxl362_AdxlType_367;
+  config->adxl362.accel_type = UIUCTAG_ACCEL_TYPE;
 
   config->has_active_interval = true;
   config->active_interval.start_epoch = sconfig.start;
@@ -235,7 +239,7 @@ bool writeConfig(Config *config)
 
   if (!config->has_adxl362)
   {
-    config_error = "UIUCTag config missing ADXL367 settings";
+    config_error = "UIUCTag config missing accelerometer settings";
     return false;
   }
 
@@ -246,9 +250,9 @@ bool writeConfig(Config *config)
   }
 
   config_tmp.adxl_act_thresh_cnt =
-      clampAdxl367ActivityThreshold(config->adxl362.act_thresh_g);
+      clampActivityThresholdMg(config->adxl362.act_thresh_g);
   config_tmp.adxl_inactive_samples =
-      clampAdxl367InactivitySamples(config->adxl362.inactive_sec);
+      clampInactivitySamples(config->adxl362.inactive_sec);
 
   config_tmp.start = config->active_interval.start_epoch;
   config_tmp.stop = config->active_interval.end_epoch;
